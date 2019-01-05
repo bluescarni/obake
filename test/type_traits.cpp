@@ -19,45 +19,46 @@ using namespace piranha;
 
 TEST_CASE("is_cpp_integral")
 {
-    REQUIRE(is_cpp_integral<int>);
-    REQUIRE(is_cpp_integral<const int>);
-    REQUIRE(is_cpp_integral<const volatile int>);
-    REQUIRE(is_cpp_integral<volatile int>);
-    REQUIRE(!is_cpp_integral<int &>);
-    REQUIRE(!is_cpp_integral<const int &>);
-    REQUIRE(!is_cpp_integral<int &&>);
+    REQUIRE(is_cpp_integral_v<int>);
+    REQUIRE(is_cpp_integral_v<const int>);
+    REQUIRE(is_cpp_integral_v<const volatile int>);
+    REQUIRE(is_cpp_integral_v<volatile int>);
+    REQUIRE(!is_cpp_integral_v<int &>);
+    REQUIRE(!is_cpp_integral_v<const int &>);
+    REQUIRE(!is_cpp_integral_v<int &&>);
 
-    REQUIRE(is_cpp_integral<long>);
-    REQUIRE(is_cpp_integral<const long>);
-    REQUIRE(is_cpp_integral<const volatile long>);
-    REQUIRE(is_cpp_integral<volatile long>);
-    REQUIRE(!is_cpp_integral<long &>);
-    REQUIRE(!is_cpp_integral<const long &>);
-    REQUIRE(!is_cpp_integral<long &&>);
+    REQUIRE(is_cpp_integral_v<long>);
+    REQUIRE(is_cpp_integral_v<const long>);
+    REQUIRE(is_cpp_integral_v<const volatile long>);
+    REQUIRE(is_cpp_integral_v<volatile long>);
+    REQUIRE(!is_cpp_integral_v<long &>);
+    REQUIRE(!is_cpp_integral_v<const long &>);
+    REQUIRE(!is_cpp_integral_v<long &&>);
 
-    REQUIRE(!is_cpp_integral<float>);
-    REQUIRE(!is_cpp_integral<const double>);
-    REQUIRE(!is_cpp_integral<const volatile long double>);
-    REQUIRE(!is_cpp_integral<volatile float>);
+    REQUIRE(!is_cpp_integral_v<float>);
+    REQUIRE(!is_cpp_integral_v<const double>);
+    REQUIRE(!is_cpp_integral_v<const volatile long double>);
+    REQUIRE(!is_cpp_integral_v<volatile float>);
 
-    REQUIRE(!is_cpp_integral<std::string>);
+    REQUIRE(!is_cpp_integral_v<std::string>);
+    REQUIRE(!is_cpp_integral_v<void>);
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
-    REQUIRE(is_cpp_integral<__int128_t>);
-    REQUIRE(is_cpp_integral<const __int128_t>);
-    REQUIRE(is_cpp_integral<const volatile __int128_t>);
-    REQUIRE(is_cpp_integral<volatile __int128_t>);
-    REQUIRE(!is_cpp_integral<__int128_t &>);
-    REQUIRE(!is_cpp_integral<const __int128_t &>);
-    REQUIRE(!is_cpp_integral<__int128_t &&>);
+    REQUIRE(is_cpp_integral_v<__int128_t>);
+    REQUIRE(is_cpp_integral_v<const __int128_t>);
+    REQUIRE(is_cpp_integral_v<const volatile __int128_t>);
+    REQUIRE(is_cpp_integral_v<volatile __int128_t>);
+    REQUIRE(!is_cpp_integral_v<__int128_t &>);
+    REQUIRE(!is_cpp_integral_v<const __int128_t &>);
+    REQUIRE(!is_cpp_integral_v<__int128_t &&>);
 
-    REQUIRE(is_cpp_integral<__uint128_t>);
-    REQUIRE(is_cpp_integral<const __uint128_t>);
-    REQUIRE(is_cpp_integral<const volatile __uint128_t>);
-    REQUIRE(is_cpp_integral<volatile __uint128_t>);
-    REQUIRE(!is_cpp_integral<__uint128_t &>);
-    REQUIRE(!is_cpp_integral<const __uint128_t &>);
-    REQUIRE(!is_cpp_integral<__uint128_t &&>);
+    REQUIRE(is_cpp_integral_v<__uint128_t>);
+    REQUIRE(is_cpp_integral_v<const __uint128_t>);
+    REQUIRE(is_cpp_integral_v<const volatile __uint128_t>);
+    REQUIRE(is_cpp_integral_v<volatile __uint128_t>);
+    REQUIRE(!is_cpp_integral_v<__uint128_t &>);
+    REQUIRE(!is_cpp_integral_v<const __uint128_t &>);
+    REQUIRE(!is_cpp_integral_v<__uint128_t &&>);
 #endif
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
@@ -73,26 +74,29 @@ TEST_CASE("is_cpp_integral")
 
 TEST_CASE("is_cpp_floating_point")
 {
-    REQUIRE(is_cpp_floating_point<float>);
-    REQUIRE(is_cpp_floating_point<const float>);
-    REQUIRE(is_cpp_floating_point<const volatile float>);
-    REQUIRE(is_cpp_floating_point<volatile float>);
-    REQUIRE(!is_cpp_floating_point<float &>);
-    REQUIRE(!is_cpp_floating_point<const float &>);
-    REQUIRE(!is_cpp_floating_point<float &&>);
+    REQUIRE(is_cpp_floating_point_v<float>);
+    REQUIRE(is_cpp_floating_point_v<const float>);
+    REQUIRE(is_cpp_floating_point_v<const volatile float>);
+    REQUIRE(is_cpp_floating_point_v<volatile float>);
+    REQUIRE(!is_cpp_floating_point_v<float &>);
+    REQUIRE(!is_cpp_floating_point_v<const float &>);
+    REQUIRE(!is_cpp_floating_point_v<float &&>);
 
-    REQUIRE(is_cpp_floating_point<double>);
-    REQUIRE(is_cpp_floating_point<const double>);
-    REQUIRE(is_cpp_floating_point<const volatile double>);
-    REQUIRE(is_cpp_floating_point<volatile double>);
-    REQUIRE(!is_cpp_floating_point<double &>);
-    REQUIRE(!is_cpp_floating_point<const double &>);
-    REQUIRE(!is_cpp_floating_point<double &&>);
+    REQUIRE(is_cpp_floating_point_v<double>);
+    REQUIRE(is_cpp_floating_point_v<const double>);
+    REQUIRE(is_cpp_floating_point_v<const volatile double>);
+    REQUIRE(is_cpp_floating_point_v<volatile double>);
+    REQUIRE(!is_cpp_floating_point_v<double &>);
+    REQUIRE(!is_cpp_floating_point_v<const double &>);
+    REQUIRE(!is_cpp_floating_point_v<double &&>);
 
-    REQUIRE(!is_cpp_floating_point<int>);
-    REQUIRE(!is_cpp_floating_point<const long>);
-    REQUIRE(!is_cpp_floating_point<const volatile long long>);
-    REQUIRE(!is_cpp_floating_point<volatile short>);
+    REQUIRE(!is_cpp_floating_point_v<int>);
+    REQUIRE(!is_cpp_floating_point_v<const long>);
+    REQUIRE(!is_cpp_floating_point_v<const volatile long long>);
+    REQUIRE(!is_cpp_floating_point_v<volatile short>);
+
+    REQUIRE(!is_cpp_floating_point_v<std::string>);
+    REQUIRE(!is_cpp_floating_point_v<void>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(CppFloatingPoint<float>);
@@ -102,5 +106,29 @@ TEST_CASE("is_cpp_floating_point")
     REQUIRE(!CppFloatingPoint<float &>);
     REQUIRE(!CppFloatingPoint<const float &>);
     REQUIRE(!CppFloatingPoint<float &&>);
+#endif
+}
+
+TEST_CASE("is_cpp_arithmetic")
+{
+    REQUIRE(is_cpp_arithmetic_v<int>);
+    REQUIRE(is_cpp_arithmetic_v<const bool>);
+    REQUIRE(is_cpp_arithmetic_v<const volatile float>);
+    REQUIRE(is_cpp_arithmetic_v<volatile double>);
+    REQUIRE(!is_cpp_arithmetic_v<float &>);
+    REQUIRE(!is_cpp_arithmetic_v<const float &>);
+    REQUIRE(!is_cpp_arithmetic_v<float &&>);
+
+    REQUIRE(!is_cpp_arithmetic_v<std::string>);
+    REQUIRE(!is_cpp_arithmetic_v<void>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(CppArithmetic<float>);
+    REQUIRE(CppArithmetic<const bool>);
+    REQUIRE(CppArithmetic<const volatile long>);
+    REQUIRE(CppArithmetic<volatile char>);
+    REQUIRE(!CppArithmetic<float &>);
+    REQUIRE(!CppArithmetic<const int &>);
+    REQUIRE(!CppArithmetic<short &&>);
 #endif
 }
