@@ -14,6 +14,9 @@
 #include <cmath>
 #include <type_traits>
 
+#include <mp++/config.hpp>
+#include <mp++/integer.hpp>
+
 #include <piranha/config.hpp>
 
 TEST_CASE("pow_arith")
@@ -28,8 +31,11 @@ TEST_CASE("pow_arith")
     REQUIRE(!piranha::is_exponentiable_v<void, void>);
 #if defined(PIRANHA_HAVE_GCC_INT128)
     REQUIRE(piranha::is_exponentiable_v<float, __int128_t>);
+    REQUIRE(piranha::is_exponentiable_v<float, __uint128_t>);
+    REQUIRE(piranha::is_exponentiable_v<__int128_t &&, const double>);
     REQUIRE(piranha::is_exponentiable_v<__uint128_t &&, const double>);
     REQUIRE(!piranha::is_exponentiable_v<__uint128_t &&, __int128_t>);
+    REQUIRE(!piranha::is_exponentiable_v<__int128_t &&, __uint128_t>);
 #endif
 #if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(piranha::Exponentiable<float, int>);
@@ -63,10 +69,23 @@ TEST_CASE("pow_arith")
     REQUIRE(piranha::pow(3., __int128_t(5)) == std::pow(3., 5));
     REQUIRE(piranha::pow(__uint128_t(5), 3.) == std::pow(5, 3.));
     REQUIRE(std::is_same_v<decltype(piranha::pow(3., __int128_t(5))), double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(3., __uint128_t(5))), double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.)), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.)), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, __int128_t(5))), double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, __uint128_t(5))), double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.f)), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.f)), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(3.l, __int128_t(5))), long double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(3.l, __uint128_t(5))), long double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.l)), long double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.l)), long double>);
 #endif
+}
+
+TEST_CASE("pow_mp++_int")
+{
+    using int_t = mppp::integer<1>;
+
+    REQUIRE(piranha::pow(int_t{3}, 5) == 243);
 }

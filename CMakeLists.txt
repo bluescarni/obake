@@ -27,7 +27,7 @@ set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 # Find the dependencies.
 
 # mp++.
-find_package(mp++ REQUIRED)
+find_package(mp++ 0.12 REQUIRED)
 
 # Initial setup of the piranha target.
 add_library(piranha INTERFACE)

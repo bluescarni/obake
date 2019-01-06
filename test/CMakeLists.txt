@@ -10,5 +10,6 @@ function(ADD_PIRANHA_TESTCASE arg1)
   add_test(${arg1} ${arg1})
 endfunction()
 
+ADD_PIRANHA_TESTCASE(custom)
 ADD_PIRANHA_TESTCASE(math_pow)
 ADD_PIRANHA_TESTCASE(type_traits)

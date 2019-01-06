@@ -9,6 +9,7 @@
 #ifndef PIRANHA_TYPE_TRAITS_HPP
 #define PIRANHA_TYPE_TRAITS_HPP
 
+#include <cstddef>
 #include <type_traits>
 
 #include <mp++/detail/type_traits.hpp>
@@ -21,6 +22,18 @@ namespace piranha
 // Lift the detection idiom from mp++.
 using ::mppp::detected_t;
 using ::mppp::is_detected;
+
+// Handy alias.
+template <typename T>
+using uncvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
+
+template <::std::size_t I>
+struct priority_tag : ::piranha::priority_tag<I - 1u> {
+};
+
+template <>
+struct priority_tag<0> {
+};
 
 // Detect C++ integral types, including GCC-style 128bit integers.
 template <typename T>

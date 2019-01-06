@@ -14,11 +14,27 @@
 #include <utility>
 
 #include <piranha/config.hpp>
-#include <piranha/detail/cp_func_forward.hpp>
+#include <piranha/detail/cp_func_utils.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
 {
+
+namespace customisation
+{
+
+struct not_implemented_t {
+};
+
+template <typename T, typename U
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto pow = not_implemented_t{};
+
+} // namespace customisation
 
 namespace cp
 {
@@ -54,12 +70,20 @@ inline auto pow(const T &x, const U &y) noexcept
 #endif
 }
 
-inline constexpr auto pow_func =
-    [](auto &&x, auto &&y) PIRANHA_CP_FUNC_FORWARD(pow(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y)));
+// Highest priority: explicit user override in the customisation namespace.
+template <typename T, typename U>
+constexpr auto pow_impl(T &&x, U &&y, ::piranha::priority_tag<1>)
+    PIRANHA_IMPLEMENT_CP_FUNC((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// ADL-based implementation.
+template <typename T, typename U>
+constexpr auto pow_impl(T &&x, U &&y, ::piranha::priority_tag<0>)
+    PIRANHA_IMPLEMENT_CP_FUNC(pow(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace cp
 
-inline constexpr auto &pow = ::piranha::cp::pow_func;
+inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_IMPLEMENT_CP_LAMBDA(::piranha::cp::pow_impl(
+    ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ::piranha::priority_tag<1>{}));
 
 namespace detect
 {
