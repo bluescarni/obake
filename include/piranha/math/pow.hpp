@@ -14,7 +14,8 @@
 #include <utility>
 
 #include <piranha/config.hpp>
-#include <piranha/detail/cp_func_utils.hpp>
+#include <piranha/detail/not_implemented.hpp>
+#include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
@@ -23,23 +24,21 @@ namespace piranha
 namespace customisation
 {
 
-struct not_implemented_t {
-};
-
+// Intrusive customisation point for piranha::pow().
 template <typename T, typename U
 #if !defined(PIRANHA_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
           >
-inline constexpr auto pow = not_implemented_t{};
+inline constexpr auto pow = ::piranha::customisation::not_implemented;
 
 } // namespace customisation
 
 namespace cp
 {
 
-// Implementation if one argument is a C++ FP type, and the other argument is a C++ arithmetic type.
+// Implementation if one argument is a C++ FP type and the other argument is a C++ arithmetic type.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires ::piranha::CppArithmetic<T> && ::piranha::CppArithmetic<U> && (::piranha::CppFloatingPoint<T> || ::piranha::CppFloatingPoint<U>)
@@ -52,37 +51,37 @@ template <typename T, typename U,
 #endif
 inline auto pow(const T &x, const U &y) noexcept
 {
-#if defined(PIRANHA_HAVE_GCC_INT128)
-    // NOTE: for consistency with the behaviour of std::pow(), we cast
-    // 128bit ints to double before feeding them to std::pow(). This also
-    // means that any pow() call involving 128bit ints will have a result
-    // of type at least double.
+    // NOTE: when one of the arguments to std::pow() is an integral type,
+    // then that argument will be converted to double automatically. This means that,
+    // e.g., std::pow(3.f, 4) will give a double result instead of float. This is
+    // not consistent with the fact that 3.f + 4 gives a float result, so here
+    // we implement a pow() behaviour consistent with the usual promotion rules
+    // for mixed integral/fp operations.
     // https://en.cppreference.com/w/cpp/numeric/math/pow
-    if constexpr (::std::disjunction_v<::std::is_same<T, __int128_t>, ::std::is_same<T, __uint128_t>>) {
-        return ::std::pow(static_cast<double>(x), y);
-    } else if constexpr (::std::disjunction_v<::std::is_same<U, __int128_t>, ::std::is_same<U, __uint128_t>>) {
-        return ::std::pow(x, static_cast<double>(y));
+    // NOTE: this will also apply to 128bit integers, if supported.
+    if constexpr (::piranha::is_cpp_integral_v<T>) {
+        return ::std::pow(static_cast<U>(x), y);
+    } else if constexpr (::piranha::is_cpp_integral_v<U>) {
+        return ::std::pow(x, static_cast<T>(y));
     } else {
-#endif
         return ::std::pow(x, y);
-#if defined(PIRANHA_HAVE_GCC_INT128)
     }
-#endif
 }
 
 // Highest priority: explicit user override in the customisation namespace.
 template <typename T, typename U>
 constexpr auto pow_impl(T &&x, U &&y, ::piranha::priority_tag<1>)
-    PIRANHA_IMPLEMENT_CP_FUNC((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x),
+                                                                            ::std::forward<U>(y)));
 
 // ADL-based implementation.
 template <typename T, typename U>
 constexpr auto pow_impl(T &&x, U &&y, ::piranha::priority_tag<0>)
-    PIRANHA_IMPLEMENT_CP_FUNC(pow(::std::forward<T>(x), ::std::forward<U>(y)));
+    PIRANHA_SS_FORWARD_FUNCTION(pow(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace cp
 
-inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_IMPLEMENT_CP_LAMBDA(::piranha::cp::pow_impl(
+inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(::piranha::cp::pow_impl(
     ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ::piranha::priority_tag<1>{}));
 
 namespace detect

@@ -61,8 +61,8 @@ TEST_CASE("pow_arith")
     REQUIRE(piranha::pow(3.l, -2.l) == std::pow(3.l, -2.l));
     REQUIRE(std::is_same_v<decltype(piranha::pow(3., 5)), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(5, 3.)), double>);
-    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, 5)), double>);
-    REQUIRE(std::is_same_v<decltype(piranha::pow(5, 3.f)), double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, 5)), float>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(5, 3.f)), float>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(3.l, 5)), long double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(5, 3.l)), long double>);
 #if defined(PIRANHA_HAVE_GCC_INT128)
@@ -72,10 +72,10 @@ TEST_CASE("pow_arith")
     REQUIRE(std::is_same_v<decltype(piranha::pow(3., __uint128_t(5))), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.)), double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.)), double>);
-    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, __int128_t(5))), double>);
-    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, __uint128_t(5))), double>);
-    REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.f)), double>);
-    REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.f)), double>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, __int128_t(5))), float>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(3.f, __uint128_t(5))), float>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.f)), float>);
+    REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.f)), float>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(3.l, __int128_t(5))), long double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(3.l, __uint128_t(5))), long double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.l)), long double>);
