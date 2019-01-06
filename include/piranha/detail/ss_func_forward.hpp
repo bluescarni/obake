@@ -21,7 +21,7 @@
 //
 // That is, func will call some other function in body while perfecty forwarding
 // x and y, we want to make sure that func is constexpr/noexcept is the body
-// is toom and we want SFINAE to kick in to detect if body is malformed (hence the
+// is too and we want SFINAE to kick in to detect if body is malformed (hence the
 // trailing return type). This pattern requires to type body 3 times, hence
 // these macros.
 //

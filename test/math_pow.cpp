@@ -12,19 +12,32 @@
 #include "catch.hpp"
 
 #include <cmath>
+#include <string>
 #include <type_traits>
+#include <utility>
 
 #include <mp++/config.hpp>
 #include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
+#if defined(MPPP_WITH_MPFR)
+#include <mp++/real.hpp>
+#endif
+#if defined(MPPP_WITH_QUADMATH)
+#include <mp++/real128.hpp>
+#endif
 
 #include <piranha/config.hpp>
+#include <piranha/type_traits.hpp>
 
 TEST_CASE("pow_arith")
 {
+    // Check type-traits/concepts.
     REQUIRE(piranha::is_exponentiable_v<float, int>);
     REQUIRE(piranha::is_exponentiable_v<double, float>);
     REQUIRE(piranha::is_exponentiable_v<const double &, long &&>);
     REQUIRE(piranha::is_exponentiable_v<int &&, const double>);
+    REQUIRE(!piranha::is_exponentiable_v<float, std::string>);
+    REQUIRE(!piranha::is_exponentiable_v<std::string, float>);
     REQUIRE(!piranha::is_exponentiable_v<int, int>);
     REQUIRE(!piranha::is_exponentiable_v<float, void>);
     REQUIRE(!piranha::is_exponentiable_v<void, float>);
@@ -54,6 +67,7 @@ TEST_CASE("pow_arith")
 #endif
 #endif
 
+    // Simple checks, and check the return types.
     REQUIRE(piranha::pow(3., 5) == std::pow(3., 5));
     REQUIRE(piranha::pow(5, 3.) == std::pow(5, 3.));
     REQUIRE(piranha::pow(3., -2.) == std::pow(3., -2.));
@@ -81,11 +95,140 @@ TEST_CASE("pow_arith")
     REQUIRE(std::is_same_v<decltype(piranha::pow(__int128_t(5), 3.l)), long double>);
     REQUIRE(std::is_same_v<decltype(piranha::pow(__uint128_t(5), 3.l)), long double>);
 #endif
+
+    // Check perfect forwarding.
+    REQUIRE(noexcept(piranha::pow(1.5, 1.5)));
+    REQUIRE(noexcept(piranha::pow(1.5, 1)));
+    REQUIRE(noexcept(piranha::pow(1, 1.5)));
+    REQUIRE(noexcept(piranha::pow(1.5f, 1.5f)));
+    REQUIRE(noexcept(piranha::pow(1.5f, 1)));
+    REQUIRE(noexcept(piranha::pow(1, 1.5f)));
 }
 
 TEST_CASE("pow_mp++_int")
 {
     using int_t = mppp::integer<1>;
 
+    // A few simple checks.
     REQUIRE(piranha::pow(int_t{3}, 5) == 243);
+    REQUIRE(piranha::pow(3, int_t{5}) == 243);
+    REQUIRE(piranha::pow(3., int_t{5}) == std::pow(3., 5.));
+    REQUIRE(piranha::pow(int_t{5}, 3.) == std::pow(5., 3.));
+    REQUIRE(!noexcept(piranha::pow(int_t{5}, 3.)));
+#if defined(MPPP_WITH_MPFR)
+    REQUIRE(piranha::pow(3.l, int_t{5}) == std::pow(3.l, 5.l));
+    REQUIRE(piranha::pow(int_t{5}, 3.l) == std::pow(5.l, 3.l));
+#else
+    REQUIRE(!piranha::is_exponentiable_v<long double, int_t>);
+    REQUIRE(!piranha::is_exponentiable_v<int_t, long double>);
+#endif
+    REQUIRE(!piranha::is_exponentiable_v<int_t, std::string>);
+}
+
+TEST_CASE("pow_mp++_rat")
+{
+    using rat_t = mppp::rational<1>;
+
+    // A few simple checks.
+    REQUIRE(piranha::pow(rat_t{3, 2}, 5) == rat_t{243, 32});
+    REQUIRE(piranha::pow(3., rat_t{5, 2}) == std::pow(3., 5. / 2.));
+    REQUIRE(piranha::pow(rat_t{5, 2}, 3.) == std::pow(5. / 2., 3.));
+    REQUIRE(!noexcept(piranha::pow(rat_t{5}, 3.)));
+#if defined(MPPP_WITH_MPFR)
+    REQUIRE(piranha::pow(3.l, rat_t{5}) == std::pow(3.l, 5.l));
+    REQUIRE(piranha::pow(rat_t{5}, 3.l) == std::pow(5.l, 3.l));
+#else
+    REQUIRE(!piranha::is_exponentiable_v<long double, rat_t>);
+    REQUIRE(!piranha::is_exponentiable_v<rat_t, long double>);
+#endif
+    REQUIRE(!piranha::is_exponentiable_v<rat_t, std::string>);
+}
+
+#if defined(MPPP_WITH_MPFR)
+
+TEST_CASE("pow_mp++_real")
+{
+    using mppp::real;
+
+    // A few simple checks.
+    REQUIRE(piranha::pow(real{3}, 5) == 243);
+    REQUIRE(piranha::pow(3, real{5}) == 243);
+    REQUIRE(piranha::pow(3., real{5}) == std::pow(3., 5.));
+    REQUIRE(piranha::pow(real{5}, 3.) == std::pow(5., 3.));
+    REQUIRE(!noexcept(piranha::pow(real{5}, 3.)));
+    REQUIRE(!piranha::is_exponentiable_v<real, std::string>);
+}
+
+#endif
+
+#if defined(MPPP_WITH_QUADMATH)
+
+TEST_CASE("pow_mp++_real")
+{
+    using mppp::real128;
+
+    // A few simple checks.
+    REQUIRE(piranha::pow(real128{3}, 5) == 243);
+    REQUIRE(piranha::pow(3, real128{5}) == 243);
+    REQUIRE(piranha::pow(3., real128{5}) == std::pow(3., 5.));
+    REQUIRE(piranha::pow(real128{5}, 3.) == std::pow(5., 3.));
+    REQUIRE(!noexcept(piranha::pow(real128{5}, 3.)));
+    REQUIRE(!piranha::is_exponentiable_v<real128, std::string>);
+}
+
+#endif
+
+// Test the customisation machinery.
+
+// A new type.
+struct foo0 {
+};
+
+// A non-constexpr function.
+inline void non_constexpr() {}
+
+// Customise piranha::pow() for foo0.
+namespace piranha::customisation
+{
+
+template <typename T, typename U>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvref<T, foo0> &&SameCvref<U, foo0> inline constexpr auto pow<T, U>
+#else
+inline constexpr auto pow<T, U, std::enable_if_t<is_same_cvref_v<T, foo0> && is_same_cvref_v<U, foo0>>>
+#endif
+    = [](auto &&, auto &&) constexpr noexcept
+{
+    if constexpr (std::is_rvalue_reference_v<T> && std::is_rvalue_reference_v<U>) {
+        return 1;
+    } else {
+        // Make some non-constexpr operation.
+        non_constexpr();
+        return 2;
+    }
+};
+
+} // namespace piranha::customisation
+
+template <int>
+struct bar {
+};
+
+TEST_CASE("pow_custom")
+{
+    REQUIRE(!piranha::is_exponentiable_v<foo0, int>);
+    REQUIRE(!piranha::is_exponentiable_v<int, foo0>);
+    REQUIRE(piranha::is_exponentiable_v<foo0, foo0>);
+
+    REQUIRE(piranha::pow(foo0{}, foo0{}) == 1);
+    foo0 f;
+    REQUIRE(piranha::pow(f, foo0{}) == 2);
+    REQUIRE(piranha::pow(foo0{}, f) == 2);
+    REQUIRE(piranha::pow(std::move(f), foo0{}) == 1);
+    REQUIRE(piranha::pow(foo0{}, std::move(f)) == 1);
+
+    // Check that constexpr is preserved if only rvalues are involved.
+    [[maybe_unused]] bar<piranha::pow(foo0{}, foo0{})> b0;
+    // This will result in a compilation error.
+    // [[maybe_unused]] bar<piranha::pow(foo0{}, f)> b1;
 }

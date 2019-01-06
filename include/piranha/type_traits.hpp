@@ -25,7 +25,21 @@ using ::mppp::is_detected;
 
 // Handy alias.
 template <typename T>
-using uncvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
+using remove_cvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
+
+// Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
+template <typename T, typename U>
+using is_same_cvref = ::std::is_same<::piranha::remove_cvref_t<T>, ::piranha::remove_cvref_t<U>>;
+
+template <typename T, typename U>
+inline constexpr bool is_same_cvref_v = ::piranha::is_same_cvref<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL SameCvref = ::piranha::is_same_cvref_v<T, U>;
+
+#endif
 
 template <::std::size_t I>
 struct priority_tag : ::piranha::priority_tag<I - 1u> {
