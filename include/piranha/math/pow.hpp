@@ -101,7 +101,10 @@ inline constexpr bool is_exponentiable_v = ::piranha::is_exponentiable<T, U>::va
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL Exponentiable = ::piranha::is_exponentiable_v<T, U>;
+PIRANHA_CONCEPT_DECL Exponentiable = requires(T &&x, U &&y)
+{
+    ::piranha::pow(std::forward<T>(x), std::forward<U>(y));
+};
 
 #endif
 
