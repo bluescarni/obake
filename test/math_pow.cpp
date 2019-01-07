@@ -163,7 +163,7 @@ TEST_CASE("pow_mp++_real")
 
 #if defined(MPPP_WITH_QUADMATH)
 
-TEST_CASE("pow_mp++_real")
+TEST_CASE("pow_mp++_real128")
 {
     using mppp::real128;
 
