@@ -15,6 +15,7 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/not_implemented.hpp>
+#include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/type_traits.hpp>
 
@@ -24,7 +25,7 @@ namespace piranha
 namespace customisation
 {
 
-// Intrusive customisation point for piranha::pow().
+// Customisation point for piranha::pow().
 template <typename T, typename U
 #if !defined(PIRANHA_HAVE_CONCEPTS)
           ,
@@ -35,7 +36,7 @@ inline constexpr auto pow = ::piranha::customisation::not_implemented;
 
 } // namespace customisation
 
-namespace cp
+namespace detail
 {
 
 // Implementation if one argument is a C++ FP type and the other argument is a C++ arithmetic type.
@@ -70,21 +71,21 @@ inline auto pow(const T &x, const U &y) noexcept
 
 // Highest priority: explicit user override in the customisation namespace.
 template <typename T, typename U>
-constexpr auto pow_impl(T &&x, U &&y, ::piranha::priority_tag<1>)
+constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x),
                                                                             ::std::forward<U>(y)));
 
 // ADL-based implementation.
 template <typename T, typename U>
-constexpr auto pow_impl(T &&x, U &&y, ::piranha::priority_tag<0>)
+constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(pow(::std::forward<T>(x), ::std::forward<U>(y)));
 
-} // namespace cp
+} // namespace detail
 
-inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(::piranha::cp::pow_impl(
-    ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ::piranha::priority_tag<1>{}));
+inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(::piranha::detail::pow_impl(
+    ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ::piranha::detail::priority_tag<1>{}));
 
-namespace detect
+namespace detail
 {
 
 template <typename T, typename U>
@@ -93,7 +94,7 @@ using pow_t = decltype(::piranha::pow(::std::declval<T>(), ::std::declval<U>()))
 }
 
 template <typename T, typename U>
-using is_exponentiable = ::piranha::is_detected<::piranha::detect::pow_t, T, U>;
+using is_exponentiable = ::piranha::is_detected<::piranha::detail::pow_t, T, U>;
 
 template <typename T, typename U>
 inline constexpr bool is_exponentiable_v = ::piranha::is_exponentiable<T, U>::value;

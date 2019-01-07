@@ -9,7 +9,6 @@
 #ifndef PIRANHA_TYPE_TRAITS_HPP
 #define PIRANHA_TYPE_TRAITS_HPP
 
-#include <cstddef>
 #include <type_traits>
 
 #include <mp++/detail/type_traits.hpp>
@@ -40,14 +39,6 @@ template <typename T, typename U>
 PIRANHA_CONCEPT_DECL SameCvref = ::piranha::is_same_cvref_v<T, U>;
 
 #endif
-
-template <::std::size_t I>
-struct priority_tag : ::piranha::priority_tag<I - 1u> {
-};
-
-template <>
-struct priority_tag<0> {
-};
 
 // Detect C++ integral types, including GCC-style 128bit integers.
 template <typename T>

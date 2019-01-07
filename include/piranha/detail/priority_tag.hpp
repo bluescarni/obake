@@ -6,18 +6,22 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/math/pow.hpp>
+#ifndef PIRANHA_DETAIL_PRIORITY_TAG_HPP
+#define PIRANHA_DETAIL_PRIORITY_TAG_HPP
 
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
+#include <cstddef>
 
-struct foo {
+namespace piranha::detail
+{
+
+template <::std::size_t I>
+struct priority_tag : ::piranha::detail::priority_tag<I - 1u> {
 };
 
-TEST_CASE("customisation")
-{
-    std::cout << n<int, int> << '\n';
-    std::cout << n<float, int> << '\n';
-    // foo f1, f2;
-    // REQUIRE(piranha::pow(f1, f2) == 0);
-}
+template <>
+struct priority_tag<0> {
+};
+
+} // namespace piranha::detail
+
+#endif
