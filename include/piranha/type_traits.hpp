@@ -22,6 +22,9 @@ namespace piranha
 using ::mppp::detected_t;
 using ::mppp::is_detected;
 
+template <template <class...> class Op, class... Args>
+inline constexpr bool is_detected_v = ::piranha::is_detected<Op, Args...>::value;
+
 // Handy alias.
 template <typename T>
 using remove_cvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
