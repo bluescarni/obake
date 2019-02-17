@@ -42,7 +42,7 @@ template <typename T>
 constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<2>)
     PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::is_zero<T &&>)(::std::forward<T>(x)));
 
-// ADL-based implementation.
+// Unqualified function call implementation.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(is_zero(::std::forward<T>(x)));

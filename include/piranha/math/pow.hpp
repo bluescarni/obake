@@ -75,7 +75,7 @@ constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x),
                                                                             ::std::forward<U>(y)));
 
-// ADL-based implementation.
+// Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(pow(::std::forward<T>(x), ::std::forward<U>(y)));

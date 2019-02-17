@@ -29,12 +29,9 @@
 
 #define PIRANHA_HAVE_CONCEPTS
 
-#if defined(PIRANHA_COMPILER_IS_CLANG)
+#if defined(PIRANHA_COMPILER_IS_GCC)
 
-#define PIRANHA_CONCEPT_DECL concept
-
-#elif defined(PIRANHA_COMPILER_IS_GCC)
-
+// NOTE: currently, all GCC versions are still using the concepts TS syntax.
 #define PIRANHA_CONCEPT_DECL concept bool
 
 #else
@@ -45,7 +42,7 @@
 
 #endif
 
-// Detect 128bit integers, lifted from mp++
+// Detect 128bit integers, lifted from mp++. This is part of the public API.
 #include <mp++/config.hpp>
 
 #if defined(MPPP_HAVE_GCC_INT128)
