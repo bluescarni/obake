@@ -54,7 +54,7 @@ constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<1>)
 // implementations.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(static_cast<bool>(std::forward<T>(x) == remove_cvref_t<T>(0)));
+    PIRANHA_SS_FORWARD_FUNCTION(static_cast<bool>(std::forward<T>(x) == ::piranha::remove_cvref_t<T>(0)));
 
 } // namespace detail
 
