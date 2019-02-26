@@ -42,19 +42,18 @@ template <typename T>
 constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<2>)
     PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::is_zero<T &&>)(::std::forward<T>(x)));
 
-// ADL-based implementation.
+// Unqualified function call implementation.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(is_zero(::std::forward<T>(x)));
 
 // Lowest-priority: implementation based on the comparison operator and construction from the zero
 // integral constant.
-// NOTE: this must go into lowest priority, because it swallows any suitable T. E.g., if we implemented
-// this as an is_zero() overload within this namespace, then it would compete with ADL-based
-// implementations.
+// NOTE: this must go into lowest priority, we want the ADL-based implementation to have
+// the precedence.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, ::piranha::detail::priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(static_cast<bool>(std::forward<T>(x) == remove_cvref_t<T>(0)));
+    PIRANHA_SS_FORWARD_FUNCTION(static_cast<bool>(::std::forward<T>(x) == ::piranha::remove_cvref_t<T>(0)));
 
 } // namespace detail
 

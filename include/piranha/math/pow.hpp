@@ -40,6 +40,11 @@ namespace detail
 {
 
 // Implementation if one argument is a C++ FP type and the other argument is a C++ arithmetic type.
+// NOTE: when piranha::pow() is called with a C++ FP+arithmetic combination, then the
+// unqualified function call implementation of pow_impl below won't be able to look up pow() in other
+// namespaces (as ADL does not kick in for fundamental types), and thus only this specific
+// pow() function will be found and used. This is convenient, because it shields us
+// from abiguities with pow() functions defined in the root namespace.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires ::piranha::CppArithmetic<T> && ::piranha::CppArithmetic<U> && (::piranha::CppFloatingPoint<T> || ::piranha::CppFloatingPoint<U>)
@@ -75,7 +80,7 @@ constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x),
                                                                             ::std::forward<U>(y)));
 
-// ADL-based implementation.
+// Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(pow(::std::forward<T>(x), ::std::forward<U>(y)));
