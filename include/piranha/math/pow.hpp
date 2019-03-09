@@ -32,7 +32,7 @@ template <typename T, typename U
           typename = void
 #endif
           >
-inline constexpr auto pow = ::piranha::customisation::not_implemented;
+inline constexpr auto pow = not_implemented;
 
 } // namespace customisation
 
@@ -47,13 +47,13 @@ namespace detail
 // from abiguities with pow() functions defined in the root namespace.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires ::piranha::CppArithmetic<T> && ::piranha::CppArithmetic<U> && (::piranha::CppFloatingPoint<T> || ::piranha::CppFloatingPoint<U>)
+requires CppArithmetic<T> && CppArithmetic<U> && (CppFloatingPoint<T> || CppFloatingPoint<U>)
 #else
-template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<::piranha::is_cpp_arithmetic<T>, ::piranha::is_cpp_arithmetic<U>,
-                                                  ::std::disjunction<::piranha::is_cpp_floating_point<T>,
-                                                                     ::piranha::is_cpp_floating_point<U>>>,
-                             int> = 0>
+template <
+    typename T, typename U,
+    ::std::enable_if_t<::std::conjunction_v<is_cpp_arithmetic<T>, is_cpp_arithmetic<U>,
+                                            ::std::disjunction<is_cpp_floating_point<T>, is_cpp_floating_point<U>>>,
+                       int> = 0>
 #endif
 inline auto pow(const T &x, const U &y) noexcept
 {
@@ -65,9 +65,9 @@ inline auto pow(const T &x, const U &y) noexcept
     // for mixed integral/fp operations.
     // https://en.cppreference.com/w/cpp/numeric/math/pow
     // NOTE: this will also apply to 128bit integers, if supported.
-    if constexpr (::piranha::is_cpp_integral_v<T>) {
+    if constexpr (is_cpp_integral_v<T>) {
         return ::std::pow(static_cast<U>(x), y);
-    } else if constexpr (::piranha::is_cpp_integral_v<U>) {
+    } else if constexpr (is_cpp_integral_v<U>) {
         return ::std::pow(x, static_cast<T>(y));
     } else {
         return ::std::pow(x, y);
@@ -76,19 +76,18 @@ inline auto pow(const T &x, const U &y) noexcept
 
 // Highest priority: explicit user override in the customisation namespace.
 template <typename T, typename U>
-constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION((::piranha::customisation::pow<T &&, U &&>)(::std::forward<T>(x),
-                                                                            ::std::forward<U>(y)));
+constexpr auto pow_impl(T &&x, U &&y, detail::priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto pow_impl(T &&x, U &&y, ::piranha::detail::priority_tag<0>)
+constexpr auto pow_impl(T &&x, U &&y, detail::priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(pow(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
-inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(::piranha::detail::pow_impl(
-    ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ::piranha::detail::priority_tag<1>{}));
+inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+    detail::pow_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<1>{}));
 
 namespace detail
 {
@@ -99,17 +98,17 @@ using pow_t = decltype(::piranha::pow(::std::declval<T>(), ::std::declval<U>()))
 }
 
 template <typename T, typename U>
-using is_exponentiable = ::piranha::is_detected<::piranha::detail::pow_t, T, U>;
+using is_exponentiable = is_detected<detail::pow_t, T, U>;
 
 template <typename T, typename U>
-inline constexpr bool is_exponentiable_v = ::piranha::is_exponentiable<T, U>::value;
+inline constexpr bool is_exponentiable_v = is_exponentiable<T, U>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename U>
 PIRANHA_CONCEPT_DECL Exponentiable = requires(T &&x, U &&y)
 {
-    ::piranha::pow(std::forward<T>(x), std::forward<U>(y));
+    ::piranha::pow(::std::forward<T>(x), ::std::forward<U>(y));
 };
 
 #endif
