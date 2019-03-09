@@ -15,7 +15,7 @@ namespace piranha::detail
 {
 
 template <::std::size_t I>
-struct priority_tag : ::piranha::detail::priority_tag<I - 1u> {
+struct priority_tag : priority_tag<I - 1u> {
 };
 
 template <>

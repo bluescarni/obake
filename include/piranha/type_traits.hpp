@@ -23,7 +23,7 @@ using ::mppp::detected_t;
 using ::mppp::is_detected;
 
 template <template <class...> class Op, class... Args>
-inline constexpr bool is_detected_v = ::piranha::is_detected<Op, Args...>::value;
+inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
 // Handy alias.
 template <typename T>
@@ -31,15 +31,15 @@ using remove_cvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
 
 // Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
 template <typename T, typename U>
-using is_same_cvref = ::std::is_same<::piranha::remove_cvref_t<T>, ::piranha::remove_cvref_t<U>>;
+using is_same_cvref = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
 
 template <typename T, typename U>
-inline constexpr bool is_same_cvref_v = ::piranha::is_same_cvref<T, U>::value;
+inline constexpr bool is_same_cvref_v = is_same_cvref<T, U>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL SameCvref = ::piranha::is_same_cvref_v<T, U>;
+PIRANHA_CONCEPT_DECL SameCvref = is_same_cvref_v<T, U>;
 
 #endif
 
@@ -54,12 +54,12 @@ using is_cpp_integral = ::std::disjunction<::std::is_integral<T>
                                            >;
 
 template <typename T>
-inline constexpr bool is_cpp_integral_v = ::piranha::is_cpp_integral<T>::value;
+inline constexpr bool is_cpp_integral_v = is_cpp_integral<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CppIntegral = ::piranha::is_cpp_integral_v<T>;
+PIRANHA_CONCEPT_DECL CppIntegral = is_cpp_integral_v<T>;
 
 #endif
 
@@ -68,26 +68,26 @@ template <typename T>
 using is_cpp_floating_point = ::std::is_floating_point<T>;
 
 template <typename T>
-inline constexpr bool is_cpp_floating_point_v = ::piranha::is_cpp_floating_point<T>::value;
+inline constexpr bool is_cpp_floating_point_v = is_cpp_floating_point<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CppFloatingPoint = ::piranha::is_cpp_floating_point_v<T>;
+PIRANHA_CONCEPT_DECL CppFloatingPoint = is_cpp_floating_point_v<T>;
 
 #endif
 
 // Detect C++ arithmetic types, including GCC-style 128bit integers.
 template <typename T>
-using is_cpp_arithmetic = ::std::disjunction<::piranha::is_cpp_integral<T>, ::piranha::is_cpp_floating_point<T>>;
+using is_cpp_arithmetic = ::std::disjunction<is_cpp_integral<T>, is_cpp_floating_point<T>>;
 
 template <typename T>
-inline constexpr bool is_cpp_arithmetic_v = ::piranha::is_cpp_arithmetic<T>::value;
+inline constexpr bool is_cpp_arithmetic_v = is_cpp_arithmetic<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CppArithmetic = ::piranha::is_cpp_arithmetic_v<T>;
+PIRANHA_CONCEPT_DECL CppArithmetic = is_cpp_arithmetic_v<T>;
 
 #endif
 
