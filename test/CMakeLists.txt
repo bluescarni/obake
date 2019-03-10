@@ -12,4 +12,6 @@ endfunction()
 
 ADD_PIRANHA_TESTCASE(math_is_zero)
 ADD_PIRANHA_TESTCASE(math_pow)
+ADD_PIRANHA_TESTCASE(polynomials_polynomial)
+ADD_PIRANHA_TESTCASE(series)
 ADD_PIRANHA_TESTCASE(type_traits)

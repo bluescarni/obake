@@ -11,6 +11,14 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <mp++/config.hpp>
+
+#if defined(MPPP_WITH_MPFR)
+
+#include <mp++/real.hpp>
+
+#endif
+
 #include <piranha/config.hpp>
 
 struct no_is_zero {
@@ -50,5 +58,9 @@ TEST_CASE("is_zero_default")
     REQUIRE(piranha::ZeroTestable<const __uint128_t &>);
     REQUIRE(piranha::ZeroTestable<__int128_t &>);
 #endif
+#endif
+#if defined(MPPP_WITH_MPFR)
+    REQUIRE(piranha::is_zero(mppp::real{}));
+    REQUIRE(piranha::is_zero(mppp::real{}));
 #endif
 }
