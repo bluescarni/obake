@@ -25,7 +25,7 @@ namespace piranha
 namespace customisation
 {
 
-// Customisation point for piranha::pow().
+// External customisation point for piranha::pow().
 template <typename T, typename U
 #if !defined(PIRANHA_HAVE_CONCEPTS)
           ,
@@ -33,6 +33,20 @@ template <typename T, typename U
 #endif
           >
 inline constexpr auto pow = not_implemented;
+
+namespace internal
+{
+
+// Internal customisation point for piranha::pow().
+template <typename T, typename U
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto pow = not_implemented;
+
+} // namespace internal
 
 } // namespace customisation
 
@@ -74,20 +88,25 @@ inline auto pow(const T &x, const U &y) noexcept
     }
 }
 
-// Highest priority: explicit user override in the customisation namespace.
+// Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
-constexpr auto pow_impl(T &&x, U &&y, detail::priority_tag<1>)
+constexpr auto pow_impl(T &&x, U &&y, priority_tag<2>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto pow_impl(T &&x, U &&y, detail::priority_tag<0>)
+constexpr auto pow_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(pow(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Lowest priority: override in the internal customisation namespace.
+template <typename T, typename U>
+constexpr auto pow_impl(T &&x, U &&y, priority_tag<0>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
 inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
-    detail::pow_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<1>{}));
+    detail::pow_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
 
 namespace detail
 {
