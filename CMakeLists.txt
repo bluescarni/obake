@@ -24,6 +24,12 @@ include(YACMACompilerLinkerSettings)
 set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
 set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 
+if(YACMA_COMPILER_IS_MSVC)
+    # Disable the idiotic minmax macros on MSVC.
+    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX")
+    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX")
+endif()
+
 # Find the dependencies.
 
 # mp++.
