@@ -15,7 +15,7 @@ environment:
 install:
 - if [%BUILD_TYPE%]==[MSVC17_64] set PATH=C:\Miniconda36-x64\Scripts;%PATH%
 - if [%BUILD_TYPE%]==[MSVC17_64] conda config --add channels conda-forge --force
-- if [%BUILD_TYPE%]==[MSVC17_64] conda create -y --name piranha cmake mpir mpfr
+- if [%BUILD_TYPE%]==[MSVC17_64] conda create -y --name piranha cmake mppp
 - if [%BUILD_TYPE%]==[MSVC17_64] call activate piranha
 
 build_script:
