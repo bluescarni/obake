@@ -13,6 +13,7 @@
 
 #include <piranha/config.hpp>
 #include <piranha/math/pow.hpp>
+#include <piranha/type_traits.hpp>
 
 namespace piranha
 {
@@ -29,18 +30,6 @@ template <typename T>
 struct is_series_impl : ::std::false_type {
 };
 
-template <typename T>
-struct is_series_impl<const T> : is_series_impl<T> {
-};
-
-template <typename T>
-struct is_series_impl<volatile T> : is_series_impl<T> {
-};
-
-template <typename T>
-struct is_series_impl<const volatile T> : is_series_impl<T> {
-};
-
 template <typename Cf, typename Key, typename Tag>
 struct is_series_impl<series<Cf, Key, Tag>> : ::std::true_type {
 };
@@ -48,22 +37,34 @@ struct is_series_impl<series<Cf, Key, Tag>> : ::std::true_type {
 } // namespace detail
 
 template <typename T>
-using is_series = detail::is_series_impl<T>;
+using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
 
 template <typename T>
-inline constexpr bool is_series_v = is_series<T>::value;
+inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Series = is_series_v<T>;
+PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
 
 #endif
 
 namespace customisation::internal
 {
 
-}
+template <typename T, typename U>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires CvrSeries<T> &&CppIntegral<::std::remove_reference_t<U>> inline constexpr auto pow<T, U>
+#else
+inline constexpr auto
+    pow<T, U, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>, is_cpp_integral<::std::remove_reference_t<U>>>>>
+#endif
+    = [](auto &&, auto &&) constexpr
+{
+    return 0;
+};
+
+} // namespace customisation::internal
 
 } // namespace piranha
 
