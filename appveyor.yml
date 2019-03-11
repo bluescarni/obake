@@ -9,10 +9,17 @@ environment:
     PLATFORMTOOLSET: "v140"
 
   matrix:
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      BUILD_TYPE: MSVC17_64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019 Preview
+      BUILD_TYPE: MSVC19_64
+    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    #   BUILD_TYPE: MSVC17_64
 
 install:
+- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=C:\Miniconda36-x64\Scripts;%PATH%
+- if [%BUILD_TYPE%]==[MSVC19_64] conda config --add channels conda-forge --force
+- if [%BUILD_TYPE%]==[MSVC19_64] conda create -y --name piranha cmake mppp
+- if [%BUILD_TYPE%]==[MSVC19_64] call activate piranha
+
 - if [%BUILD_TYPE%]==[MSVC17_64] set PATH=C:\Miniconda36-x64\Scripts;%PATH%
 - if [%BUILD_TYPE%]==[MSVC17_64] conda config --add channels conda-forge --force
 - if [%BUILD_TYPE%]==[MSVC17_64] conda create -y --name piranha cmake mppp
@@ -22,10 +29,15 @@ build_script:
 - mkdir build
 - cd build
 
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 15 2017 Win64" -DPIRANHA_BUILD_TESTS=yes
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug
+
 - if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017 Win64" -DPIRANHA_BUILD_TESTS=yes
 - if [%BUILD_TYPE%]==[MSVC17_64] cmake --build . --config Debug
 
 test_script:
+- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
+
 - if [%BUILD_TYPE%]==[MSVC17_64] ctest -V -C Debug
 
 # Enable this to be able to login to the build worker. You can use the
