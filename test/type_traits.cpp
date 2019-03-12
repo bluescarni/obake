@@ -132,3 +132,29 @@ TEST_CASE("is_cpp_arithmetic")
     REQUIRE(!CppArithmetic<short &&>);
 #endif
 }
+
+TEST_CASE("is_const")
+{
+    REQUIRE(!is_const_v<void>);
+    REQUIRE(is_const_v<const void>);
+    REQUIRE(!is_const_v<volatile void>);
+    REQUIRE(is_const_v<const volatile void>);
+    REQUIRE(!is_const_v<int>);
+    REQUIRE(is_const_v<const int>);
+    REQUIRE(!is_const_v<volatile int>);
+    REQUIRE(is_const_v<const volatile int>);
+    REQUIRE(!is_const_v<int &>);
+    REQUIRE(!is_const_v<const int &>);
+    REQUIRE(!is_const_v<volatile int &>);
+    REQUIRE(!is_const_v<const volatile int &>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Const<void>);
+    REQUIRE(Const<void const>);
+    REQUIRE(Const<void const volatile>);
+    REQUIRE(!Const<std::string>);
+    REQUIRE(Const<std::string const>);
+    REQUIRE(!Const<std::string &>);
+    REQUIRE(!Const<const std::string &>);
+#endif
+}

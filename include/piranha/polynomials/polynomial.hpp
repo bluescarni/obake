@@ -62,7 +62,7 @@ template <typename T, typename U,
 #endif
     inline auto pow(const T &, const U &)
 {
-    return 1.;
+    return 1;
 }
 
 } // namespace polynomials

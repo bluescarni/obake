@@ -23,7 +23,6 @@
 // NOTE: additional compiler configurations go here.
 #endif
 
-
 // Concepts setup.
 #if defined(__cpp_concepts)
 

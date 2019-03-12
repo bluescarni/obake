@@ -9,6 +9,8 @@
 #ifndef PIRANHA_TYPE_TRAITS_HPP
 #define PIRANHA_TYPE_TRAITS_HPP
 
+#include <limits>
+#include <tuple>
 #include <type_traits>
 
 #include <mp++/detail/type_traits.hpp>
@@ -90,6 +92,80 @@ template <typename T>
 PIRANHA_CONCEPT_DECL CppArithmetic = is_cpp_arithmetic_v<T>;
 
 #endif
+
+template <typename T>
+using is_const = ::std::is_const<T>;
+
+template <typename T>
+inline constexpr bool is_const_v = is_const<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL Const = is_const_v<T>;
+
+#endif
+
+template <typename T>
+using is_signed = ::std::disjunction<::std::is_signed<T>
+#if defined(PIRANHA_HAVE_GCC_INT128)
+                                     ,
+                                     ::std::is_same<::std::remove_cv_t<T>, __int128_t>
+#endif
+                                     >;
+
+template <typename T>
+inline constexpr bool is_signed_v = is_signed<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL Signed = is_signed_v<T>;
+
+#endif
+
+namespace detail
+{
+
+template <typename T>
+struct make_unsigned_impl : ::std::make_unsigned<T> {
+};
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+// TODO fix.
+template <>
+struct make_unsigned_impl<__int128_t> {
+    using type = __uint128_t;
+};
+
+#endif
+
+} // namespace detail
+
+template <typename T>
+using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
+
+namespace detail
+{
+
+// Small wrapper to fetch the min/max values of a builtin numerical type. Works on 128bit integrals as well.
+template <typename T>
+inline constexpr auto limits_minmax = ::std::tuple{::std::numeric_limits<T>::min(), ::std::numeric_limits<T>::max()};
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+inline constexpr auto max_int128_t = (((__int128_t(1) << 126) - 1) << 1) + 1;
+
+template <>
+inline constexpr auto limits_minmax<__int128_t> = ::std::tuple{-max_int128_t - 1, max_int128_t};
+
+template <>
+inline constexpr auto limits_minmax<__uint128_t> = ::std::tuple{__uint128_t(0), ~__uint128_t(0)};
+
+#endif
+
+} // namespace detail
 
 } // namespace piranha
 
