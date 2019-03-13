@@ -65,7 +65,7 @@ namespace detail
 
 // Implementation of is_zero() for mppp::real. It will be found
 // by the unqualified function call overload of is_zero_impl().
-inline bool is_zero(const mppp::real &r)
+inline bool is_zero(const ::mppp::real &r)
 {
     return r.zero_p();
 }
