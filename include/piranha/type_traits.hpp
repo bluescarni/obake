@@ -93,6 +93,7 @@ PIRANHA_CONCEPT_DECL CppArithmetic = is_cpp_arithmetic_v<T>;
 
 #endif
 
+// Detect const-qualified types.
 template <typename T>
 using is_const = ::std::is_const<T>;
 
@@ -106,6 +107,8 @@ PIRANHA_CONCEPT_DECL Const = is_const_v<T>;
 
 #endif
 
+// Detect (possibly cv-qualified) signed types.
+// Supports also 128bit integers.
 template <typename T>
 using is_signed = ::std::disjunction<::std::is_signed<T>
 #if defined(PIRANHA_HAVE_GCC_INT128)
@@ -127,22 +130,32 @@ PIRANHA_CONCEPT_DECL Signed = is_signed_v<T>;
 namespace detail
 {
 
-template <typename T>
+template <typename T, typename = void>
 struct make_unsigned_impl : ::std::make_unsigned<T> {
+    // NOTE: std::make_unsigned requires integrals but refuses bool:
+    // https://en.cppreference.com/w/cpp/types/make_unsigned
+    static_assert(!::std::is_same_v<bool, ::std::remove_cv_t<T>>,
+                  "make_unsigned_t does not accept bool as input type.");
+    static_assert(::std::is_integral_v<::std::remove_cv_t<T>> || ::std::is_enum_v<::std::remove_cv_t<T>>,
+                  "make_unsigned_t works only on integrals or enumeration types.");
 };
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-// TODO fix.
-template <>
-struct make_unsigned_impl<__int128_t> {
-    using type = __uint128_t;
+// NOTE: make_unsigned is supposed to preserve cv qualifiers, hence the non-trivial implementation.
+template <typename T>
+struct make_unsigned_impl<T,
+                          ::std::enable_if_t<::std::disjunction_v<::std::is_same<::std::remove_cv_t<T>, __uint128_t>,
+                                                                  ::std::is_same<::std::remove_cv_t<T>, __int128_t>>>> {
+    using tmp_type = ::std::conditional_t<::std::is_const_v<T>, const __uint128_t, __uint128_t>;
+    using type = ::std::conditional_t<::std::is_volatile_v<T>, volatile tmp_type, tmp_type>;
 };
 
 #endif
 
 } // namespace detail
 
+// Compute the corresponding unsigned type. Works on 128bit integers too.
 template <typename T>
 using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
 
