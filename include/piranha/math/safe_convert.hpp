@@ -86,7 +86,7 @@ template <typename T, typename U,
 template <::std::size_t SSize, typename T>
 requires CppIntegral<T>
 #else
-template <::std::size_t SSize, typename T, ::std::enable_if_t<is_cpp_integral<T>, int> = 0>
+template <::std::size_t SSize, typename T, ::std::enable_if_t<is_cpp_integral_v<T>, int> = 0>
 #endif
     inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 {
