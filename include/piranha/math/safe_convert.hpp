@@ -50,14 +50,39 @@ template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<is_cpp_integral<T>, ::std::negation<is_const<T>>, is_cpp_integral<U>>,
                              int> = 0>
 #endif
-    constexpr bool safe_convert(T &out, const U &n) noexcept
+    constexpr bool safe_convert(T &out, const U &n_orig) noexcept
 {
-    // Fetch the minmaxes of T.
-    constexpr auto T_minmax = detail::limits_minmax<T>;
+    // Small helpers to get the min/max values of type T.
+    // For bool, they will cast the return type to unsigned in
+    // order to avoid compiler warnings.
+    [[maybe_unused]] constexpr auto Tmin = []() {
+        if constexpr (::std::is_same_v<T, bool>) {
+            return 0u;
+        } else {
+            return ::std::get<0>(detail::limits_minmax<T>);
+        }
+    }();
+    constexpr auto Tmax = []() {
+        if constexpr (::std::is_same_v<T, bool>) {
+            return 1u;
+        } else {
+            return ::std::get<1>(detail::limits_minmax<T>);
+        }
+    }();
+
+    // Promote n to unsigned, if it is of type bool, in order
+    // to avoid compiler warnings.
+    const auto n = [&n_orig]() {
+        if constexpr (std::is_same_v<U, bool>) {
+            return static_cast<unsigned>(n_orig);
+        } else {
+            return n_orig;
+        }
+    }();
 
     if constexpr (is_signed_v<T> == is_signed_v<U>) {
         // Same signedness, we can use direct comparisons.
-        if (n >= ::std::get<0>(T_minmax) && n <= ::std::get<1>(T_minmax)) {
+        if (n >= Tmin && n <= Tmax) {
             out = static_cast<T>(n);
             return true;
         }
@@ -65,14 +90,14 @@ template <typename T, typename U,
     } else {
         if constexpr (is_signed_v<T>) {
             // T signed, U unsigned.
-            if (n <= static_cast<make_unsigned_t<T>>(::std::get<1>(T_minmax))) {
+            if (n <= static_cast<make_unsigned_t<T>>(Tmax)) {
                 out = static_cast<T>(n);
                 return true;
             }
             return false;
         } else {
             // T unsigned, U signed.
-            if (n < U(0) || static_cast<make_unsigned_t<U>>(n) > ::std::get<1>(T_minmax)) {
+            if (n < U(0) || static_cast<make_unsigned_t<U>>(n) > Tmax) {
                 return false;
             }
             out = static_cast<T>(n);
