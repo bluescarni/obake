@@ -124,6 +124,9 @@ TEST_CASE("safe_convert_integrals")
     REQUIRE(!piranha::is_safely_convertible_v<void, void>);
     REQUIRE(!piranha::is_safely_convertible_v<int &&, int>);
     REQUIRE(!piranha::is_safely_convertible_v<int &&, const int &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int, void>);
+    REQUIRE(!piranha::is_safely_convertible_v<void, int>);
+    REQUIRE(!piranha::is_safely_convertible_v<void, void>);
 #if defined(PIRANHA_HAVE_GCC_INT128)
     REQUIRE(piranha::is_safely_convertible_v<int &&, __int128_t &>);
     REQUIRE(piranha::is_safely_convertible_v<int &, __uint128_t &>);
