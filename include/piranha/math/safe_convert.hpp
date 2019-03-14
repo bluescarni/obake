@@ -133,19 +133,31 @@ template <typename T, ::std::size_t SSize,
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
-constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
+constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<2>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::safe_convert<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
+constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(safe_convert(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Lowest priority: it will assign y to x, but only if T and U are the same type,
+// after the removal of reference and cv qualifiers.
+// TODO write tests.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires Same<remove_cvref_t<T>, remove_cvref_t<U>>
+#else
+template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>, int> = 0>
+#endif
+    constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
+        PIRANHA_SS_FORWARD_FUNCTION((void(std::forward<T>(x) = std::forward<U>(y)), true));
 
 } // namespace detail
 
 inline constexpr auto safe_convert =
     [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
-        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<1>{})));
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 namespace detail
 {
