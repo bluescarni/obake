@@ -28,6 +28,9 @@ if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC.
     list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX")
     list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX")
+    # Enable strict conformance mode.
+    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/permissive-")
+    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
 endif()
 
 # Find the dependencies.
