@@ -12,6 +12,7 @@
 #include "catch.hpp"
 
 #include <limits>
+#include <type_traits>
 
 #include <piranha/config.hpp>
 #include <piranha/type_traits.hpp>
@@ -115,6 +116,44 @@ TEST_CASE("safe_convert_integrals")
     }
 
 #endif
+
+    REQUIRE(piranha::is_safely_convertible_v<int &&, int &>);
+    REQUIRE(piranha::is_safely_convertible_v<int &, int &>);
+    REQUIRE(piranha::is_safely_convertible_v<const int &, int &>);
+    REQUIRE(!piranha::is_safely_convertible_v<double &, int &>);
+    REQUIRE(!piranha::is_safely_convertible_v<void, void>);
+    REQUIRE(!piranha::is_safely_convertible_v<int &&, int>);
+    REQUIRE(!piranha::is_safely_convertible_v<int &&, const int &>);
+#if defined(PIRANHA_HAVE_GCC_INT128)
+    REQUIRE(piranha::is_safely_convertible_v<int &&, __int128_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<int &, __uint128_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int &&, const __int128_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int &, __uint128_t &&>);
+    REQUIRE(piranha::is_safely_convertible_v<__int128_t &&, int &>);
+    REQUIRE(piranha::is_safely_convertible_v<__uint128_t &, int &>);
+    REQUIRE(!piranha::is_safely_convertible_v<__int128_t &&, const int &>);
+    REQUIRE(!piranha::is_safely_convertible_v<__uint128_t &, int &&>);
+#endif
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(piranha::SafelyConvertible<int &&, int &>);
+    REQUIRE(piranha::SafelyConvertible<int &, int &>);
+    REQUIRE(piranha::SafelyConvertible<const int &, int &>);
+    REQUIRE(!piranha::SafelyConvertible<double &, int &>);
+    REQUIRE(!piranha::SafelyConvertible<void, void>);
+    REQUIRE(!piranha::SafelyConvertible<int &&, int>);
+    REQUIRE(!piranha::SafelyConvertible<int &&, const int &>);
+#if defined(PIRANHA_HAVE_GCC_INT128)
+    REQUIRE(piranha::SafelyConvertible<int &&, __int128_t &>);
+    REQUIRE(piranha::SafelyConvertible<int &, __uint128_t &>);
+    REQUIRE(!piranha::SafelyConvertible<int &&, const __int128_t &>);
+    REQUIRE(!piranha::SafelyConvertible<int &, __uint128_t &&>);
+    REQUIRE(piranha::SafelyConvertible<__int128_t &&, int &>);
+    REQUIRE(piranha::SafelyConvertible<__uint128_t &, int &>);
+    REQUIRE(!piranha::SafelyConvertible<__int128_t &&, const int &>);
+    REQUIRE(!piranha::SafelyConvertible<__uint128_t &, int &&>);
+#endif
+#endif
 }
 
 TEST_CASE("safe_convert_mppp_integer")
@@ -159,4 +198,59 @@ TEST_CASE("safe_convert_mppp_integer")
     REQUIRE(!piranha::safe_convert(ui128, int_t{std::get<1>(piranha::detail::limits_minmax<__uint128_t>)} + 1));
 
 #endif
+
+    REQUIRE(piranha::is_safely_convertible_v<int &&, int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<int &, int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<const int &, int_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<double &, int_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int &&, int_t>);
+    REQUIRE(!piranha::is_safely_convertible_v<int &&, const int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<int_t &&, int &>);
+    REQUIRE(piranha::is_safely_convertible_v<int_t &, int &>);
+    REQUIRE(piranha::is_safely_convertible_v<const int_t &, int &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t &, double &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t &&, int>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t &&, const int &>);
+#if defined(PIRANHA_HAVE_GCC_INT128)
+    REQUIRE(piranha::is_safely_convertible_v<int_t &&, __int128_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<int_t &, __uint128_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t &&, const __int128_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t &, __uint128_t &&>);
+    REQUIRE(piranha::is_safely_convertible_v<__int128_t &&, int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<__uint128_t &, int_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<__int128_t &&, const int_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<__uint128_t &, int_t &&>);
+#endif
+}
+
+// Test the customisation machinery.
+
+// A new type.
+struct foo0 {
+};
+
+// Customise piranha::safe_convert() for foo0.
+namespace piranha::customisation
+{
+
+template <typename T, typename U>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvref<T, foo0> &&SameCvref<U, foo0> inline constexpr auto safe_convert<T, U>
+#else
+inline constexpr auto safe_convert<T, U, std::enable_if_t<is_same_cvref_v<T, foo0> && is_same_cvref_v<U, foo0>>>
+#endif
+    = [](auto &&, auto &&) constexpr noexcept
+{
+    return true;
+};
+
+} // namespace piranha::customisation
+
+TEST_CASE("safe_convert_custom")
+{
+    REQUIRE(!piranha::is_safely_convertible_v<foo0, int>);
+    REQUIRE(!piranha::is_safely_convertible_v<int, foo0>);
+    REQUIRE(piranha::is_safely_convertible_v<foo0, foo0>);
+
+    REQUIRE(piranha::safe_convert(foo0{}, foo0{}));
 }

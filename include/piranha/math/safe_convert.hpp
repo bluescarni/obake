@@ -147,6 +147,30 @@ inline constexpr auto safe_convert =
     [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<1>{})));
 
+namespace detail
+{
+
+template <typename T, typename U>
+using safe_convert_t = decltype(::piranha::safe_convert(::std::declval<T>(), ::std::declval<U>()));
+
+}
+
+template <typename From, typename To>
+using is_safely_convertible = is_detected<detail::safe_convert_t, To, From>;
+
+template <typename From, typename To>
+inline constexpr bool is_safely_convertible_v = is_safely_convertible<From, To>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename From, typename To>
+PIRANHA_CONCEPT_DECL SafelyConvertible = requires(From &&x, To &&y)
+{
+    ::piranha::safe_convert(::std::forward<To>(y), ::std::forward<From>(x));
+};
+
+#endif
+
 } // namespace piranha
 
 #endif
