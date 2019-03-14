@@ -204,6 +204,7 @@ TEST_CASE("safe_convert_mppp_integer")
     REQUIRE(piranha::is_safely_convertible_v<const int &, int_t &>);
     REQUIRE(!piranha::is_safely_convertible_v<double &, int_t &>);
     REQUIRE(!piranha::is_safely_convertible_v<int &&, int_t>);
+    piranha::safe_convert(int_t{}, 4);
     REQUIRE(!piranha::is_safely_convertible_v<int &&, const int_t &>);
     REQUIRE(piranha::is_safely_convertible_v<int_t &&, int &>);
     REQUIRE(piranha::is_safely_convertible_v<int_t &, int &>);
