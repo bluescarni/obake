@@ -147,6 +147,30 @@ struct make_unsigned_impl<T,
 template <typename T>
 using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
 
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL DefaultConstructible = ::std::is_default_constructible_v<T>;
+
+#endif
+
+// Detect if type can be returned from a function.
+// NOTE: constructability implies destructability:
+// https://cplusplus.github.io/LWG/issue2116
+template <typename T>
+using is_returnable = ::std::disjunction<::std::is_same<::std::remove_cv_t<T>, void>, ::std::is_copy_constructible<T>,
+                                         ::std::is_move_constructible<T>>;
+
+template <typename T>
+inline constexpr bool is_returnable_v = is_returnable<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL Returnable = is_returnable_v<T>;
+
+#endif
+
 namespace detail
 {
 

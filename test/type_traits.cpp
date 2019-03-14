@@ -11,7 +11,9 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <memory>
 #include <string>
+#include <thread>
 
 #include <piranha/config.hpp>
 
@@ -72,9 +74,9 @@ TEST_CASE("is_integral")
 #endif
 }
 
+#if defined(PIRANHA_HAVE_CONCEPTS)
 TEST_CASE("is_floating_point")
 {
-#if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(FloatingPoint<float>);
     REQUIRE(FloatingPoint<const float>);
     REQUIRE(FloatingPoint<const volatile float>);
@@ -82,8 +84,8 @@ TEST_CASE("is_floating_point")
     REQUIRE(!FloatingPoint<float &>);
     REQUIRE(!FloatingPoint<const float &>);
     REQUIRE(!FloatingPoint<float &&>);
-#endif
 }
+#endif
 
 TEST_CASE("is_arithmetic")
 {
@@ -109,9 +111,9 @@ TEST_CASE("is_arithmetic")
 #endif
 }
 
+#if defined(PIRANHA_HAVE_CONCEPTS)
 TEST_CASE("is_const")
 {
-#if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(!Const<void>);
     REQUIRE(Const<void const>);
     REQUIRE(Const<void const volatile>);
@@ -119,8 +121,8 @@ TEST_CASE("is_const")
     REQUIRE(Const<std::string const>);
     REQUIRE(!Const<std::string &>);
     REQUIRE(!Const<const std::string &>);
-#endif
 }
+#endif
 
 TEST_CASE("is_signed")
 {
@@ -208,3 +210,51 @@ TEST_CASE("make_unsigned")
     REQUIRE((std::is_same_v<const volatile __uint128_t, make_unsigned_t<const volatile __int128_t>>));
 #endif
 }
+
+struct unreturnable_00 {
+    unreturnable_00(const unreturnable_00 &) = delete;
+    unreturnable_00(unreturnable_00 &&) = delete;
+};
+
+struct unreturnable_01 {
+    ~unreturnable_01() = delete;
+};
+
+TEST_CASE("is_returnable")
+{
+    REQUIRE(is_returnable_v<void>);
+    REQUIRE(is_returnable_v<const void>);
+    REQUIRE(is_returnable_v<volatile void>);
+    REQUIRE(is_returnable_v<const volatile void>);
+    REQUIRE(is_returnable_v<int>);
+    REQUIRE(is_returnable_v<int &>);
+    REQUIRE(is_returnable_v<const int &>);
+    REQUIRE(is_returnable_v<int &&>);
+    REQUIRE(is_returnable_v<int *>);
+    REQUIRE(is_returnable_v<std::string>);
+    REQUIRE(is_returnable_v<std::thread>);
+    REQUIRE(is_returnable_v<std::unique_ptr<int>>);
+    REQUIRE(is_returnable_v<std::shared_ptr<int>>);
+    REQUIRE(!is_returnable_v<unreturnable_00>);
+    REQUIRE(is_returnable_v<unreturnable_00 &>);
+    REQUIRE(!is_returnable_v<unreturnable_01>);
+    REQUIRE(is_returnable_v<unreturnable_01 &>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(Returnable<const volatile void>);
+    REQUIRE(!Returnable<unreturnable_00>);
+#endif
+}
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+TEST_CASE("default_constructible")
+{
+    REQUIRE(DefaultConstructible<int>);
+    REQUIRE(DefaultConstructible<int *>);
+    REQUIRE(!DefaultConstructible<void>);
+    REQUIRE(!DefaultConstructible<const void>);
+    REQUIRE(!DefaultConstructible<int &>);
+    REQUIRE(!DefaultConstructible<const int &>);
+    REQUIRE(!DefaultConstructible<int &&>);
+}
+#endif
