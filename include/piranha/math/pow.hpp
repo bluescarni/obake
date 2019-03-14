@@ -61,13 +61,13 @@ namespace detail
 // from abiguities with pow() functions defined in the root namespace.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires CppArithmetic<T> && CppArithmetic<U> && (CppFloatingPoint<T> || CppFloatingPoint<U>)
+requires Arithmetic<T> && Arithmetic<U> && (FloatingPoint<T> || FloatingPoint<U>)
 #else
-template <
-    typename T, typename U,
-    ::std::enable_if_t<::std::conjunction_v<is_cpp_arithmetic<T>, is_cpp_arithmetic<U>,
-                                            ::std::disjunction<is_cpp_floating_point<T>, is_cpp_floating_point<U>>>,
-                       int> = 0>
+template <typename T, typename U,
+          ::std::enable_if_t<
+              ::std::conjunction_v<is_arithmetic<T>, is_arithmetic<U>,
+                                   ::std::disjunction<::std::is_floating_point<T>, ::std::is_floating_point<U>>>,
+              int> = 0>
 #endif
 inline auto pow(const T &x, const U &y) noexcept
 {
@@ -79,9 +79,9 @@ inline auto pow(const T &x, const U &y) noexcept
     // for mixed integral/fp operations.
     // https://en.cppreference.com/w/cpp/numeric/math/pow
     // NOTE: this will also apply to 128bit integers, if supported.
-    if constexpr (is_cpp_integral_v<T>) {
+    if constexpr (is_integral_v<T>) {
         return ::std::pow(static_cast<U>(x), y);
-    } else if constexpr (is_cpp_integral_v<U>) {
+    } else if constexpr (is_integral_v<U>) {
         return ::std::pow(x, static_cast<T>(y));
     } else {
         return ::std::pow(x, y);

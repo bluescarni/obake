@@ -71,10 +71,10 @@ namespace customisation::internal
 
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires CvrSeries<T> &&CppIntegral<::std::remove_reference_t<U>> inline constexpr auto pow<T, U>
+requires CvrSeries<T> &&Integral<::std::remove_reference_t<U>> inline constexpr auto pow<T, U>
 #else
 inline constexpr auto
-    pow<T, U, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>, is_cpp_integral<::std::remove_reference_t<U>>>>>
+    pow<T, U, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>, is_integral<::std::remove_reference_t<U>>>>>
 #endif
     = [](auto &&, auto &&) constexpr
 {

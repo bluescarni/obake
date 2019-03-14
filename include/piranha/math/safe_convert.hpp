@@ -44,10 +44,10 @@ namespace detail
 // Implementation for C++ integrals.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-    requires CppIntegral<T> && !Const<T> && CppIntegral<U>
+    requires Integral<T> && !Const<T> && Integral<U>
 #else
 template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<is_cpp_integral<T>, ::std::negation<is_const<T>>, is_cpp_integral<U>>,
+          ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>, is_integral<U>>,
                              int> = 0>
 #endif
     constexpr bool safe_convert(T &out, const U &n_orig) noexcept
@@ -109,9 +109,9 @@ template <typename T, typename U,
 // Implementations for mppp::integer - C++ integrals.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <::std::size_t SSize, typename T>
-requires CppIntegral<T>
+requires Integral<T>
 #else
-template <::std::size_t SSize, typename T, ::std::enable_if_t<is_cpp_integral_v<T>, int> = 0>
+template <::std::size_t SSize, typename T, ::std::enable_if_t<is_integral_v<T>, int> = 0>
 #endif
     inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 {
@@ -121,10 +121,10 @@ template <::std::size_t SSize, typename T, ::std::enable_if_t<is_cpp_integral_v<
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-requires CppIntegral<T> && !Const<T>
+requires Integral<T> && !Const<T>
 #else
 template <typename T, ::std::size_t SSize,
-          ::std::enable_if_t<::std::conjunction_v<is_cpp_integral<T>, ::std::negation<is_const<T>>>, int> = 0>
+          ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
 #endif
     inline bool safe_convert(T &n, const ::mppp::integer<SSize> &m)
 {

@@ -47,63 +47,51 @@ PIRANHA_CONCEPT_DECL SameCvref = is_same_cvref_v<T, U>;
 
 // Detect C++ integral types, including GCC-style 128bit integers.
 template <typename T>
-using is_cpp_integral = ::std::disjunction<::std::is_integral<T>
+using is_integral = ::std::disjunction<::std::is_integral<T>
 #if defined(PIRANHA_HAVE_GCC_INT128)
-                                           ,
-                                           ::std::is_same<::std::remove_cv_t<T>, __int128_t>,
-                                           ::std::is_same<::std::remove_cv_t<T>, __uint128_t>
+                                       ,
+                                       ::std::is_same<::std::remove_cv_t<T>, __int128_t>,
+                                       ::std::is_same<::std::remove_cv_t<T>, __uint128_t>
 #endif
-                                           >;
+                                       >;
 
 template <typename T>
-inline constexpr bool is_cpp_integral_v = is_cpp_integral<T>::value;
+inline constexpr bool is_integral_v = is_integral<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CppIntegral = is_cpp_integral_v<T>;
+PIRANHA_CONCEPT_DECL Integral = is_integral_v<T>;
 
 #endif
 
-// Detect C++ FP types.
-template <typename T>
-using is_cpp_floating_point = ::std::is_floating_point<T>;
-
-template <typename T>
-inline constexpr bool is_cpp_floating_point_v = is_cpp_floating_point<T>::value;
-
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
+// Concept for detecting C++ FP types.
 template <typename T>
-PIRANHA_CONCEPT_DECL CppFloatingPoint = is_cpp_floating_point_v<T>;
+PIRANHA_CONCEPT_DECL FloatingPoint = ::std::is_floating_point_v<T>;
 
 #endif
 
 // Detect C++ arithmetic types, including GCC-style 128bit integers.
 template <typename T>
-using is_cpp_arithmetic = ::std::disjunction<is_cpp_integral<T>, is_cpp_floating_point<T>>;
+using is_arithmetic = ::std::disjunction<is_integral<T>, ::std::is_floating_point<T>>;
 
 template <typename T>
-inline constexpr bool is_cpp_arithmetic_v = is_cpp_arithmetic<T>::value;
+inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CppArithmetic = is_cpp_arithmetic_v<T>;
+PIRANHA_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
 
 #endif
 
-// Detect const-qualified types.
-template <typename T>
-using is_const = ::std::is_const<T>;
-
-template <typename T>
-inline constexpr bool is_const_v = is_const<T>::value;
-
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
+// Concept for detecting const-qualified types.
 template <typename T>
-PIRANHA_CONCEPT_DECL Const = is_const_v<T>;
+PIRANHA_CONCEPT_DECL Const = ::std::is_const_v<T>;
 
 #endif
 

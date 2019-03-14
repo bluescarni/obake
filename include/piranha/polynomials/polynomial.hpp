@@ -55,10 +55,10 @@ PIRANHA_CONCEPT_DECL CvrPolynomial = is_cvr_polynomial_v<T>;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires CvrPolynomial<T> &&CppFloatingPoint<U>
+requires CvrPolynomial<T> &&FloatingPoint<U>
 #else
 template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<is_cvr_polynomial<T>, is_cpp_floating_point<U>>, int> = 0>
+          ::std::enable_if_t<::std::conjunction_v<is_cvr_polynomial<T>, ::std::is_floating_point<U>>, int> = 0>
 #endif
     inline auto pow(const T &, const U &)
 {
