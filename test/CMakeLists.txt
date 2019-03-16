@@ -14,8 +14,14 @@ function(ADD_PIRANHA_TESTCASE arg1)
   # Add the path to the piranha DLL on windows, otherwise
   # running the tests will fail.
   if(WIN32)
-    message(STATUS "Adding the project's binary dir, '${PROJECT_BINARY_DIR}', to the PATH variable.")
-    set_tests_properties(${arg1} PROPERTIES ENVIRONMENT "PATH=${PROJECT_BINARY_DIR};$ENV{PATH}" )
+    file(TO_NATIVE_PATH "${PROJECT_BINARY_DIR}" PIRANHA_TEST_NATIVE_BINARY_DIR)
+    message(STATUS "Test native binary dir: ${PIRANHA_TEST_NATIVE_BINARY_DIR}")
+    if(GENERATOR_IS_MULTI_CONFIG)
+      message(STATUS "Barduffo: ${PIRANHA_TEST_NATIVE_BINARY_DIR}\\$<CONFIG>")
+      set_tests_properties(${arg1} PROPERTIES ENVIRONMENT "PATH=${PIRANHA_TEST_NATIVE_BINARY_DIR}\\$<CONFIG>;$ENV{PATH}")
+    else()
+      set_tests_properties(${arg1} PROPERTIES ENVIRONMENT "PATH=${PIRANHA_TEST_NATIVE_BINARY_DIR};$ENV{PATH}")
+    endif()
   endif()
 endfunction()
 
