@@ -36,10 +36,12 @@ build_script:
 - if [%BUILD_TYPE%]==[MSVC17_64] cmake --build . --config Debug
 
 test_script:
+# NOTE: ensure the PATH variable contains the path to the piranha dll,
+# otherwise the tests will fail to run.
 - if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
 - if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
 
-- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
+- if [%BUILD_TYPE%]==[MSVC17_64] set PATH=%PATH%;%CD%\Debug
 - if [%BUILD_TYPE%]==[MSVC17_64] ctest -V -C Debug
 
 # Enable this to be able to login to the build worker. You can use the
