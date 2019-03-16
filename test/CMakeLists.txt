@@ -11,6 +11,11 @@ function(ADD_PIRANHA_TESTCASE arg1)
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
   add_test(${arg1} ${arg1})
+  # Add the path to the piranha DLL on windows, otherwise
+  # running the tests will fail.
+  if(WIN32)
+    set_tests_properties(${arg1} PROPERTIES ENVIRONMENT "PATH=${PROJECT_BINARY_DIR};$ENV{PATH}" )
+  endif()
 endfunction()
 
 ADD_PIRANHA_TESTCASE(math_is_zero)
