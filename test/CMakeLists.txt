@@ -14,6 +14,7 @@ function(ADD_PIRANHA_TESTCASE arg1)
   # Add the path to the piranha DLL on windows, otherwise
   # running the tests will fail.
   if(WIN32)
+    message(STATUS "Adding the project's binary dir, '${PROJECT_BINARY_DIR}', to the PATH variable.")
     set_tests_properties(${arg1} PROPERTIES ENVIRONMENT "PATH=${PROJECT_BINARY_DIR};$ENV{PATH}" )
   endif()
 endfunction()
