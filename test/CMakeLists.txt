@@ -21,3 +21,7 @@ ADD_PIRANHA_TESTCASE(series)
 ADD_PIRANHA_TESTCASE(type_traits)
 ADD_PIRANHA_TESTCASE(utils_demangle)
 
+if(PIRANHA_WITH_STACK_TRACES)
+  ADD_PIRANHA_TESTCASE(utils_stacktrace)
+endif()
+

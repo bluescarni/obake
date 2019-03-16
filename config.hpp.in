@@ -9,6 +9,15 @@
 #ifndef PIRANHA_CONFIG_HPP
 #define PIRANHA_CONFIG_HPP
 
+// Start of defines instantiated by CMake.
+// clang-format off
+#define PIRANHA_VERSION_STRING "@piranha_VERSION@"
+#define PIRANHA_VERSION_MAJOR @piranha_VERSION_MAJOR@
+#define PIRANHA_VERSION_MINOR @piranha_VERSION_MINOR@
+@PIRANHA_ENABLE_STACK_TRACES@
+// clang-format on
+// End of defines instantiated by CMake.
+
 // Detect compilers.
 // NOTE: clang has to go first, as it might define __GNUC__ internally.
 #if defined(__clang__)
