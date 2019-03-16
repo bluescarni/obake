@@ -6,6 +6,9 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+// NOTE: for the demangler, we keep everything in a single file
+// as the implementation is rather short.
+
 #include <string>
 
 #if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
