@@ -39,16 +39,23 @@ endif()
 find_package(mp++ 0.13 REQUIRED)
 
 # Initial setup of the piranha target.
-add_library(piranha INTERFACE)
+add_library(piranha SHARED ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp)
+
+target_compile_options(piranha PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>")
+set_target_properties(piranha PROPERTIES CXX_VISIBILITY_PRESET hidden)
+set_target_properties(piranha PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
+set_property(TARGET piranha PROPERTY CXX_STANDARD 17)
+set_property(TARGET piranha PROPERTY CXX_STANDARD_REQUIRED YES)
+set_property(TARGET piranha PROPERTY CXX_EXTENSIONS NO)
 
 # Add the include dirs to the piranha target's interface.
-target_include_directories(piranha INTERFACE
+target_include_directories(piranha PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha INTERFACE mp++::mp++)
+target_link_libraries(piranha PUBLIC mp++::mp++)
 
 # Configure config.hpp.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" @ONLY)
