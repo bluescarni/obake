@@ -36,10 +36,10 @@ build_script:
 - if [%BUILD_TYPE%]==[MSVC17_64] cmake --build . --config Debug
 
 test_script:
-- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%
+- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
 - if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
 
-- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%
+- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
 - if [%BUILD_TYPE%]==[MSVC17_64] ctest -V -C Debug
 
 # Enable this to be able to login to the build worker. You can use the
