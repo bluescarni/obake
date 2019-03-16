@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3.0)
+cmake_minimum_required(VERSION 3.10.0)
 
 project(piranha VERSION 0.19 LANGUAGES CXX)
 
