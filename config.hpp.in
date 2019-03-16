@@ -50,4 +50,17 @@
 
 #endif
 
+// likely/unlikely macros, supported on GCC/clang.
+#if defined(PIRANHA_COMPILER_IS_GCC) || defined(PIRANHA_COMPILER_IS_CLANG)
+
+#define piranha_likely(x) __builtin_expect(static_cast<bool>(x), 1)
+#define piranha_unlikely(x) __builtin_expect(static_cast<bool>(x), 0)
+
+#else
+
+#define piranha_likely(x) (x)
+#define piranha_unlikely(x) (x)
+
+#endif
+
 #endif
