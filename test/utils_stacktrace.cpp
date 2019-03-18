@@ -11,6 +11,9 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <atomic>
+#include <future>
+
 using namespace piranha;
 
 auto foo()
@@ -19,19 +22,46 @@ auto foo()
 }
 
 template <int N>
-auto bar()
+auto bar(unsigned skip = 0)
 {
-    return bar<N - 1>();
+    return bar<N - 1>(skip);
 }
 
 template <>
-auto bar<0>()
+auto bar<0>(unsigned skip)
 {
-    return stack_trace();
+    return stack_trace(skip);
 }
+
+static std::atomic<unsigned> counter{0};
 
 TEST_CASE("utils_stack_trace")
 {
     std::cout << foo() << '\n';
+    REQUIRE(!foo().empty());
     std::cout << bar<100>() << '\n';
+    REQUIRE(!bar<100>().empty());
+    std::cout << bar<100>(30) << '\n';
+    REQUIRE(!bar<100>(30).empty());
+    REQUIRE(bar<100>(200).empty());
+
+    // Try from different threads as well.
+    // Use a barrier in order to make sure
+    // all threads are running when we generate
+    // the stack traces.
+    auto func = []() {
+        ++counter;
+        while (counter.load() != 4u) {
+        }
+        return bar<100>();
+    };
+    auto fut1 = std::async(std::launch::async, func);
+    auto fut2 = std::async(std::launch::async, func);
+    auto fut3 = std::async(std::launch::async, func);
+    auto fut4 = std::async(std::launch::async, func);
+
+    REQUIRE(!fut1.get().empty());
+    REQUIRE(!fut2.get().empty());
+    REQUIRE(!fut3.get().empty());
+    REQUIRE(!fut4.get().empty());
 }

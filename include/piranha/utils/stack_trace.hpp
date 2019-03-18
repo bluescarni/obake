@@ -27,11 +27,15 @@ namespace piranha
 namespace detail
 {
 
-PIRANHA_PUBLIC ::std::string stack_trace_impl();
+PIRANHA_PUBLIC ::std::string stack_trace_impl(unsigned);
 
 }
 
-inline constexpr auto stack_trace = []() { return detail::stack_trace_impl(); };
+// Generate a stack trace starting from the call site of this function.
+// The 'skip' parameter indicates how many stack levels should be skipped
+// (from bottom to top).
+inline constexpr auto stack_trace = [](unsigned skip = 0) { return detail::stack_trace_impl(skip); };
+
 } // namespace piranha
 
 #endif

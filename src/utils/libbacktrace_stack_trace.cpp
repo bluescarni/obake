@@ -9,7 +9,9 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <iostream>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,65 +40,64 @@ namespace piranha::detail
 namespace
 {
 
-// Stack trace data, in string form: file (including line number) and demangled function name.
+// Stack trace data, in string form: level, file (including line number) and demangled function name.
 // Put the alias in an anonymous namespace to prevent accidental ODR violations.
-using stack_trace_data = ::std::vector<::std::array<::std::string, 2>>;
+using stack_trace_data = ::std::vector<::std::array<::std::string, 3>>;
 
 } // namespace
 
-::std::string stack_trace_impl()
+::std::string stack_trace_impl(unsigned skip)
 {
+    // Check the skip parameter.
+    if (piranha_unlikely(skip > static_cast<unsigned>(::std::numeric_limits<int>::max()) - 2u)) {
+        return "The stack trace could not be generated due to an overflow condition.";
+    }
+
     // Prepare the stack trace data we will be writing into.
     stack_trace_data st_data;
 
     // Try to create the backtrace state.
     auto bt_state = ::backtrace_create_state(nullptr, 0, nullptr, nullptr);
     if (piranha_unlikely(!bt_state)) {
-        ::std::cerr
-            << "backtrace_create_state() could not allocate the state structure, returning an empty stacktrace.\n";
-        ::std::cerr.flush();
-        return "";
+        return "The stack trace could not be generated because the backtrace_create_state() function failed to "
+               "allocate the state structure.";
     }
 
     // Fetch the raw backtrace.
-    const auto ret
-        = ::backtrace_full(bt_state, 2, ::piranha_backtrace_callback, nullptr, static_cast<void *>(&st_data));
+    const auto ret = ::backtrace_full(bt_state, 2 + static_cast<int>(skip), ::piranha_backtrace_callback, nullptr,
+                                      static_cast<void *>(&st_data));
     if (piranha_unlikely(ret)) {
-        ::std::cerr << "backtrace_full() failed with error code " << ret << ", returning an empty stacktrace.\n";
-        ::std::cerr.flush();
-        return "";
+        return "The stack trace could not be generated because the backtrace_full() function returned the error code "
+               + std::to_string(ret) + ".";
     }
 
-    // Special case for an empty backtrace. Not sure if possible,
-    // but checking it here simplifies the logic below.
+    // Special case for an empty backtrace. This can happen, e.g., if the value of
+    // 'skip' is large enough.
     if (st_data.empty()) {
-        return "";
+        return ::std::string{};
     }
 
-    // Create a vector of string indices over st_data.
-    ::std::vector<::std::string> v_indices;
+    // Add manually the levels.
     for (decltype(st_data.size()) i = 0; i < st_data.size(); ++i) {
-        v_indices.push_back(::std::to_string(i));
+        st_data[i][0] = ::std::to_string(i);
     }
-
-    // Reverse st_data and the indices vector.
-    ::std::reverse(st_data.begin(), st_data.end());
-    ::std::reverse(v_indices.begin(), v_indices.end());
 
     // Get the max widths of the first 2 table columns
-    const auto max_idx_w = ::std::max_element(v_indices.begin(), v_indices.end(),
-                                              [](const auto &s1, const auto &s2) { return s1.size() < s2.size(); })
-                               ->size();
-    const auto max_file_name_w = (*::std::max_element(
+    const auto max_idx_w = (*::std::max_element(
         st_data.begin(), st_data.end(), [](const auto &a1, const auto &a2) { return a1[0].size() < a2[0].size(); }))[0]
+                               .size();
+    const auto max_file_name_w = (*::std::max_element(
+        st_data.begin(), st_data.end(), [](const auto &a1, const auto &a2) { return a1[1].size() < a2[1].size(); }))[1]
                                      .size();
 
-    // Produce the formatted table.
+    // Produce the formatted table, iterating on st_data in reverse order.
     ::std::string retval;
-    for (decltype(st_data.size()) i = 0; i < st_data.size(); ++i) {
-        retval += "# " + ::std::string(max_idx_w - v_indices[i].size(), ' ') + v_indices[i] + " | " + st_data[i][0]
-                  + ::std::string(max_file_name_w - st_data[i][0].size(), ' ') + " | " + st_data[i][1];
-        if (i != st_data.size() - 1u) {
+    const auto r_end = ::std::make_reverse_iterator(st_data.cbegin());
+    for (auto r_it = ::std::make_reverse_iterator(st_data.cend()); r_it != r_end; ++r_it) {
+        const auto &a = *r_it;
+        retval += "# " + ::std::string(max_idx_w - a[0].size(), ' ') + a[0] + " | " + a[1]
+                  + ::std::string(max_file_name_w - a[1].size(), ' ') + " | " + a[2];
+        if (r_it != r_end - 1) {
             retval += '\n';
         }
     }
@@ -108,13 +109,17 @@ using stack_trace_data = ::std::vector<::std::array<::std::string, 2>>;
 
 int piranha_backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int lineno, const char *funcname)
 {
+    // Catch any exception that might be thrown, as this function
+    // will be called from a C library and throwing in such case is
+    // undefined behaviour.
     try {
         auto &st_data = *static_cast<::piranha::detail::stack_trace_data *>(data);
 
         auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + ::std::to_string(lineno);
         auto func_name = funcname ? ::piranha::detail::demangle_impl(funcname) : "<unknown function>";
 
-        st_data.push_back(::std::array{::std::move(file_name), ::std::move(func_name)});
+        // NOTE: the level is left empty, it will be filled in later.
+        st_data.push_back(::std::array{::std::string{}, ::std::move(file_name), ::std::move(func_name)});
     } catch (...) {
         return -1;
     }
