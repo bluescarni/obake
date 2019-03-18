@@ -56,7 +56,8 @@ namespace piranha::detail
     // Local static init is thread safe in C++11.
     static ::std::mutex mut;
     char undecorated_name[1024];
-    const auto ret = [s, und_name = static_cast<::PSTR>(undecorated_name), size = sizeof(undecorated_name)]() {
+    const auto ret = [s, und_name = static_cast<::PSTR>(undecorated_name),
+                      size = static_cast<::DWORD>(sizeof(undecorated_name))]() {
         ::std::lock_guard lock{mut};
         return ::UnDecorateSymbolName(s, und_name, size, UNDNAME_COMPLETE);
     }();
