@@ -15,8 +15,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # The build options.
-# NOTE: stack traces are only supported on linux/mingw or MSVC at the moment.
-if (YACMA_COMPILER_IS_MSVC OR CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MINGW)
+# NOTE: stack traces are only supported on linux/mingw at the moment.
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MINGW)
     option(PIRANHA_WITH_STACK_TRACES "Enable stack traces." OFF)
 endif()
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
@@ -47,9 +47,7 @@ find_package(mp++ 0.13 REQUIRED)
 # variable is empty and evaluates to false.
 if(PIRANHA_WITH_STACK_TRACES)
     set(PIRANHA_ENABLE_STACK_TRACES "#define PIRANHA_WITH_STACK_TRACES")
-    if(NOT YACMA_COMPILER_IS_MSVC)
-        find_package(libbacktrace REQUIRED)
-    endif()
+    find_package(libbacktrace REQUIRED)
 endif()
 
 # DbgHelp. This is already pulled in by mp++, but for consistency we do it again.
@@ -61,11 +59,7 @@ endif()
 set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp")
 
 if(PIRANHA_WITH_STACK_TRACES)
-    if(YACMA_COMPILER_IS_MSVC)
-        set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/msvc_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
-    else()
-        set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
-    endif()
+    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
 endif()
 
 add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
@@ -88,7 +82,7 @@ target_link_libraries(piranha PUBLIC mp++::mp++)
 if(YACMA_COMPILER_IS_MSVC)
     target_link_libraries(piranha PUBLIC DbgHelp::DbgHelp)
 endif()
-if(PIRANHA_WITH_STACK_TRACES AND NOT YACMA_COMPILER_IS_MSVC)
+if(PIRANHA_WITH_STACK_TRACES)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 endif()
 
