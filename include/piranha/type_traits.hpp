@@ -10,6 +10,8 @@
 #define PIRANHA_TYPE_TRAITS_HPP
 
 #include <limits>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 
@@ -197,7 +199,39 @@ inline constexpr auto limits_minmax<__uint128_t> = ::std::tuple{__uint128_t(0), 
 
 #endif
 
+// NOTE: std::remove_pointer_t removes the top level qualifiers of the pointer as well:
+// http://en.cppreference.com/w/cpp/types/remove_pointer
+// After removal of pointer, we could still have a type which is cv-qualified. Thus,
+// we remove cv-qualifications after pointer removal.
+template <typename T>
+using is_char_pointer
+    = ::std::conjunction<::std::is_pointer<T>, ::std::is_same<::std::remove_cv_t<::std::remove_pointer_t<T>>, char>>;
+
 } // namespace detail
+
+// Detect string-like types.
+template <typename T>
+using is_string_like = ::std::disjunction<
+    // Is it std::string?
+    ::std::is_same<::std::remove_cv_t<T>, ::std::string>,
+    // Is it a char pointer?
+    detail::is_char_pointer<T>,
+    // Is it an array of chars?
+    // NOTE: std::remove_cv_t does remove cv qualifiers from arrays.
+    ::std::conjunction<::std::is_array<::std::remove_cv_t<T>>,
+                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>,
+    // Is it a string view?
+    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>>;
+
+template <typename T>
+inline constexpr bool is_string_like_v = is_string_like<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL StringLike = is_string_like_v<T>;
+
+#endif
 
 } // namespace piranha
 

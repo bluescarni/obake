@@ -12,8 +12,11 @@
 #include "catch.hpp"
 
 #include <memory>
+#include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
+#include <type_traits>
 
 #include <piranha/config.hpp>
 
@@ -291,4 +294,74 @@ TEST_CASE("is_same_cvref")
     REQUIRE(!SameCvref<int, void>);
     REQUIRE(!SameCvref<int *, int &>);
 #endif
+}
+
+template <typename T, std::enable_if_t<is_string_like_v<T>, int> = 0>
+void check_string_like_dispatch(const T &s)
+{
+    std::ostringstream o;
+    o << s;
+    REQUIRE(o.str() == s);
+}
+
+TEST_CASE("is_string_like_v")
+{
+    REQUIRE(!is_string_like_v<void>);
+    REQUIRE(is_string_like_v<char *>);
+    REQUIRE(is_string_like_v<const char *>);
+    REQUIRE(is_string_like_v<char *const>);
+    REQUIRE(is_string_like_v<const char *>);
+    REQUIRE(is_string_like_v<const char *const>);
+    REQUIRE(!is_string_like_v<char *&>);
+    REQUIRE(is_string_like_v<char[]>);
+    REQUIRE(is_string_like_v<const char[]>);
+    REQUIRE(is_string_like_v<char[1]>);
+    REQUIRE(is_string_like_v<const char[1]>);
+    REQUIRE(is_string_like_v<char[2]>);
+    REQUIRE(is_string_like_v<char[10]>);
+    REQUIRE(is_string_like_v<const char[10]>);
+    REQUIRE(!is_string_like_v<const char(&)[10]>);
+    REQUIRE(!is_string_like_v<char(&)[10]>);
+    REQUIRE(!is_string_like_v<char>);
+    REQUIRE(!is_string_like_v<const char>);
+    REQUIRE(!is_string_like_v<int>);
+    REQUIRE(is_string_like_v<std::string>);
+    REQUIRE(!is_string_like_v<std::string &>);
+    REQUIRE(!is_string_like_v<const std::string &>);
+    REQUIRE(is_string_like_v<const std::string>);
+    REQUIRE(!is_string_like_v<char(&)[]>);
+    REQUIRE(!is_string_like_v<char(&)[1]>);
+    REQUIRE(is_string_like_v<const char[2]>);
+    REQUIRE(!is_string_like_v<char(&&)[10]>);
+    REQUIRE(is_string_like_v<std::string_view>);
+    REQUIRE(!is_string_like_v<std::string_view &>);
+    REQUIRE(!is_string_like_v<const std::string_view &>);
+    REQUIRE(is_string_like_v<const std::string_view>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!StringLike<void>);
+    REQUIRE(StringLike<char *>);
+    REQUIRE(StringLike<const char *>);
+    REQUIRE(!StringLike<char *&>);
+    REQUIRE(!StringLike<const char(&)[10]>);
+    REQUIRE(StringLike<std::string>);
+    REQUIRE(StringLike<std::string_view>);
+    REQUIRE(!StringLike<std::string &>);
+#endif
+
+    std::string s{"foo"};
+    check_string_like_dispatch(std::string{"foo"});
+    check_string_like_dispatch(s);
+    check_string_like_dispatch(static_cast<const std::string &>(s));
+    const char s1[] = "blab";
+    check_string_like_dispatch(s1);
+    check_string_like_dispatch(&s1[0]);
+    check_string_like_dispatch("blab");
+    char s2[] = "blab";
+    check_string_like_dispatch(s2);
+    check_string_like_dispatch(&s2[0]);
+    const std::string_view sv1{"bubbbbba"};
+    check_string_like_dispatch(sv1);
+    std::string_view sv2{"bubbbba"};
+    check_string_like_dispatch(sv2);
 }
