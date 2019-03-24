@@ -14,6 +14,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include <mp++/detail/type_traits.hpp>
 
@@ -209,7 +210,7 @@ using is_char_pointer
 
 } // namespace detail
 
-// Detect string-like types.
+// Detect string-like types. As usual, cv qualifiers are ignored.
 template <typename T>
 using is_string_like = ::std::disjunction<
     // Is it std::string?
@@ -230,6 +231,30 @@ inline constexpr bool is_string_like_v = is_string_like<T>::value;
 
 template <typename T>
 PIRANHA_CONCEPT_DECL StringLike = is_string_like_v<T>;
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using add_t = decltype(::std::declval<T>() + ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_addable = is_detected<detail::add_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_addable_v = is_addable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) + ::std::forward<U>(y);
+};
 
 #endif
 

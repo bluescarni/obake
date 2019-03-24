@@ -365,3 +365,28 @@ TEST_CASE("is_string_like_v")
     std::string_view sv2{"bubbbba"};
     check_string_like_dispatch(sv2);
 }
+
+TEST_CASE("is_addable")
+{
+    REQUIRE(!is_addable_v<void, void>);
+    REQUIRE(!is_addable_v<void, int>);
+    REQUIRE(!is_addable_v<int, void>);
+    REQUIRE(is_addable_v<int, int>);
+    REQUIRE(is_addable_v<const int, int &>);
+    REQUIRE(is_addable_v<int &&, volatile int &>);
+    REQUIRE(is_addable_v<std::string, char *>);
+    REQUIRE(is_addable_v<std::string, char *>);
+    REQUIRE(!is_addable_v<std::string, int>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Addable<void, void>);
+    REQUIRE(!Addable<void, int>);
+    REQUIRE(!Addable<int, void>);
+    REQUIRE(Addable<int, int>);
+    REQUIRE(Addable<const int, int &>);
+    REQUIRE(Addable<int &&, volatile int &>);
+    REQUIRE(Addable<std::string, char *>);
+    REQUIRE(Addable<std::string, char *>);
+    REQUIRE(!Addable<std::string, int>);
+#endif
+}
