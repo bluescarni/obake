@@ -18,7 +18,7 @@
 using namespace piranha;
 
 // Make sure we can go constexpr, when the types and values allow.
-constexpr auto cint = piranha::safe_cast<int>(5u);
+[[maybe_unused]] constexpr auto cint = piranha::safe_cast<int>(5u);
 
 TEST_CASE("safe_cast_test")
 {
@@ -57,6 +57,6 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!SafelyCastable<long, int &&>);
 #endif
 
-    //piranha::safe_cast<unsigned>(-5);
+    // piranha::safe_cast<unsigned>(-5);
     // piranha::safe_cast<double>(5u);
 }
