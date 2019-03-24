@@ -25,6 +25,13 @@
     piranha_throw(std::bad_alloc, );
 }
 
+#if defined(_MSC_VER)
+
+#pragma warning(push)
+#pragma warning(disable : 4702)
+
+#endif
+
 TEST_CASE("exceptions_test")
 {
     using Catch::Matchers::Contains;
@@ -40,3 +47,9 @@ TEST_CASE("exceptions_test")
         std::cout << "Example of decorated exception message:\n\n\n" << ia.what() << '\n';
     }
 }
+
+#if defined(_MSC_VER)
+
+#pragma warning(pop)
+
+#endif
