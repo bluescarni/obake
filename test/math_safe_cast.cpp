@@ -61,6 +61,8 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!SafelyCastable<long, int &&>);
 #endif
 
+    piranha::safe_cast<int>(5);
+
     // piranha::safe_cast<unsigned>(-5);
     // piranha::safe_cast<double>(5u);
 }
