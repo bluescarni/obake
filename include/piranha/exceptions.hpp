@@ -9,14 +9,17 @@
 #ifndef PIRANHA_EXCEPTIONS_HPP
 #define PIRANHA_EXCEPTIONS_HPP
 
+#include <string>
 #include <type_traits>
+#include <utility>
 
 #include <piranha/config.hpp>
 #include <piranha/type_traits.hpp>
+#include <piranha/utils/demangle.hpp>
 
 #if defined(PIRANHA_WITH_STACK_TRACES)
 
-#include <piranha/detail/stack_trace.hpp>
+#include <piranha/utils/stack_trace.hpp>
 
 #endif
 
@@ -33,30 +36,31 @@ struct ex_thrower {
     {
         throw Exception(::std::forward<Args>(args)...);
     }
-    // The decorating version of the call operator. This is preferred to the above wrt overload resolution
+    // The decorating version of the call operator. This is a better match during overload resolution
     // if there is at least one argument (the previous overload is "more" variadic), but it is disabled
-    // if Str is not a string type or the construction of the decorated exception is not possible.
+    // if Str is not a string-like type or the construction of the decorated exception is not possible.
     template <typename Str, typename... Args,
-              enable_if_t<conjunction<is_string_type<uncvref_t<Str>>,
-                                      std::is_constructible<Exception, std::string, Args &&...>>::value,
-                          int> = 0>
+              ::std::enable_if_t<::std::conjunction_v<is_string_like<::std::remove_reference_t<Str>>,
+                                                      ::std::is_constructible<Exception, ::std::string, Args...>>,
+                                 int> = 0>
     [[noreturn]] void operator()(Str &&desc, Args &&... args) const
     {
-        std::ostringstream oss;
-#if defined(PIRANHA_WITH_BOOST_STACKTRACE)
-        if (m_st) {
-            stream_stacktrace(oss, *m_st);
-        } else {
+        ::std::string str =
+#if defined(PIRANHA_WITH_STACK_TRACES)
+            ::piranha::stack_trace(1) + '\n'
+#else
+            ::std::string("Function name    : ") + m_func + "\nLocation         : " + m_file + ", line "
+            + ::std::to_string(m_line)
 #endif
-            // This is what is printed if stacktraces are not available/disabled.
-            oss << "\nFunction name    : " << m_func;
-            oss << "\nLocation         : " << m_file << ", line " << m_line;
-#if defined(PIRANHA_WITH_BOOST_STACKTRACE)
-        }
-#endif
-        oss << "\nException type   : " << piranha::demangle<Exception>();
-        oss << "\nException message: " << std::forward<Str>(desc) << "\n";
-        throw Exception(oss.str(), std::forward<Args>(args)...);
+            ;
+
+        str += "\nException type   : ";
+        str += ::piranha::demangle<Exception>();
+        str += "\nException message: ";
+        str += ::std::forward<Str>(desc);
+        str += '\n';
+
+        throw Exception(::std::move(str), ::std::forward<Args>(args)...);
     }
     const char *m_file;
     const line_type m_line;
