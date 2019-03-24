@@ -10,6 +10,7 @@
 #define PIRANHA_MATH_SAFE_CAST_HPP
 
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include <piranha/config.hpp>
@@ -17,6 +18,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/math/safe_convert.hpp>
 #include <piranha/utils/demangle.hpp>
+#include <piranha/type_traits.hpp>
 
 namespace piranha
 {
@@ -42,8 +44,13 @@ namespace detail
 //   an lvalue reference to T.
 // This works as long as we are adding the && in the concept definition (or we
 // are using std::declval<>() in the emulation layer).
+#if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename To, typename From>
-requires DefaultConstructible<To> &&SafelyConvertible<From, To &> &&Returnable<To> constexpr To safe_cast_impl(From &&x)
+requires DefaultConstructible<To> &&SafelyConvertible<From, To &> &&Returnable<To>
+#else
+template <typename To, typename From, ::std::enable_if_t<::std::conjunction_v<::std::is_default_constructible<To>, is_safely_convertible<From, To &>, is_returnable<To>>,int> = 0>
+#endif
+constexpr To safe_cast_impl(From &&x)
 {
     // NOTE: value-initialisation allows us to use this function
     // in constexpr contexts. Note that in theory this may result in some overhead
