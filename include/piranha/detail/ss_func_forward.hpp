@@ -9,6 +9,8 @@
 #ifndef PIRANHA_DETAIL_SS_FUNC_FORWARD_HPP
 #define PIRANHA_DETAIL_SS_FUNC_FORWARD_HPP
 
+#include <piranha/config.hpp>
+
 // Small macros to reduce typing when implementing single-statement
 // function templates that perfectly forward their arguments.
 // These are functions which look like this:
@@ -20,28 +22,46 @@
 // }
 //
 // That is, func will call some other function in body while perfecty forwarding
-// x and y, we want to make sure that func is constexpr/noexcept is the body
-// is too and we want SFINAE to kick in to detect if body is malformed (hence the
+// x and y, we want to make sure that func is constexpr/noexcept if the body
+// is too, and we want SFINAE to kick in to detect if body is malformed (hence the
 // trailing return type). This pattern requires to type body 3 times, hence
 // these macros.
 //
 // We need 2 macros, one for free functions and the other one for generic lambdas
 // (which place the constexpr specifier differently).
-
+//
+// NOTE: on GCC before version 8, noexcept forwarding often triggers ICEs. Disable it.
+#if defined(PIRANHA_COMPILER_IS_GCC) && __GNUC__ < 8
+#define PIRANHA_SS_FORWARD_LAMBDA(body)                                                                                \
+    constexpr->decltype(body)                                                                                          \
+    {                                                                                                                  \
+        return body;                                                                                                   \
+    }
+#else
 #define PIRANHA_SS_FORWARD_LAMBDA(body)                                                                                \
     constexpr noexcept(noexcept(body))->decltype(body)                                                                 \
     {                                                                                                                  \
         return body;                                                                                                   \
     }
+#endif
 
 // NOTE: the bit with the useless namespace is to allow to use this macro with a closing semicolon
 // (otherwise clang-format goes berserk).
+#if defined(PIRANHA_COMPILER_IS_GCC) && __GNUC__ < 8
+#define PIRANHA_SS_FORWARD_FUNCTION(body)                                                                              \
+    ->decltype(body)                                                                                                   \
+    {                                                                                                                  \
+        return body;                                                                                                   \
+    }                                                                                                                  \
+    namespace _piranha_unused = ::piranha::_unused
+#else
 #define PIRANHA_SS_FORWARD_FUNCTION(body)                                                                              \
     noexcept(noexcept(body))->decltype(body)                                                                           \
     {                                                                                                                  \
         return body;                                                                                                   \
     }                                                                                                                  \
     namespace _piranha_unused = ::piranha::_unused
+#endif
 
 namespace piranha::_unused
 {
