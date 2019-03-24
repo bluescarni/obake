@@ -35,8 +35,20 @@ auto bar<0>(unsigned skip)
 
 static std::atomic<unsigned> counter{0};
 
+constexpr bool release_build =
+#if !defined(NDEBUG)
+    false
+#else
+    true
+#endif
+    ;
+
 TEST_CASE("utils_stack_trace")
 {
+    if (release_build) {
+        // NOTE: don't run tests in non-debug builds.
+        return;
+    }
     std::cout << foo() << '\n';
     REQUIRE(!foo().empty());
     std::cout << bar<100>() << '\n';
