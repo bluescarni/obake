@@ -73,7 +73,7 @@ template <typename T, typename U,
     // Promote n to unsigned, if it is of type bool, in order
     // to avoid compiler warnings.
     const auto n = [&n_orig]() {
-        if constexpr (std::is_same_v<U, bool>) {
+        if constexpr (::std::is_same_v<U, bool>) {
             return static_cast<unsigned>(n_orig);
         } else {
             return n_orig;
@@ -143,7 +143,6 @@ constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
 
 // Lowest priority: it will assign y to x, but only if T and U are the same type,
 // after the removal of reference and cv qualifiers.
-// TODO write tests.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires Same<remove_cvref_t<T>, remove_cvref_t<U>>
@@ -151,7 +150,7 @@ requires Same<remove_cvref_t<T>, remove_cvref_t<U>>
 template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>, int> = 0>
 #endif
     constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
-        PIRANHA_SS_FORWARD_FUNCTION((void(std::forward<T>(x) = std::forward<U>(y)), true));
+        PIRANHA_SS_FORWARD_FUNCTION((void(::std::forward<T>(x) = ::std::forward<U>(y)), true));
 
 } // namespace detail
 

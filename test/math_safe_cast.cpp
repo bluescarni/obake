@@ -22,6 +22,8 @@ using namespace piranha;
 
 TEST_CASE("safe_cast_test")
 {
+    using Catch::Matchers::Contains;
+
     REQUIRE(!is_safely_castable_v<void, void>);
     REQUIRE(!is_safely_castable_v<int, void>);
     REQUIRE(!is_safely_castable_v<void, int>);
@@ -57,8 +59,7 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!SafelyCastable<long, int &&>);
 #endif
 
-    piranha::safe_cast<int>(5);
-
-    // piranha::safe_cast<unsigned>(-5);
-    // piranha::safe_cast<double>(5u);
+    REQUIRE(piranha::safe_cast<int>(5u) == 5);
+    REQUIRE_THROWS_WITH(piranha::safe_cast<unsigned>(-5), Contains("A value of type '"));
+    REQUIRE_THROWS_WITH(piranha::safe_cast<unsigned>(-5), Contains("' could not be safely converted to the type '"));
 }

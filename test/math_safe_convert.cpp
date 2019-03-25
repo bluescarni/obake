@@ -12,6 +12,7 @@
 #include "catch.hpp"
 
 #include <limits>
+#include <string>
 #include <type_traits>
 
 #include <piranha/config.hpp>
@@ -256,4 +257,59 @@ TEST_CASE("safe_convert_custom")
     REQUIRE(piranha::is_safely_convertible_v<foo0, foo0>);
 
     REQUIRE(piranha::safe_convert(foo0{}, foo0{}));
+}
+
+struct foo1 {
+};
+
+// A non-assignable struct.
+struct foo2 {
+    foo2 operator=(const foo2 &) = delete;
+    foo2 operator=(foo2 &&) = delete;
+};
+
+// Default implementation for conversion to the same type.
+TEST_CASE("safe_convert_same")
+{
+    REQUIRE(piranha::is_safely_convertible_v<std::string, std::string &>);
+    REQUIRE(piranha::is_safely_convertible_v<const std::string &, std::string &>);
+    REQUIRE(piranha::is_safely_convertible_v<std::string &&, std::string &>);
+    REQUIRE(!piranha::is_safely_convertible_v<std::string &&, const std::string &>);
+    REQUIRE(piranha::is_safely_convertible_v<std::string &&, std::string &&>);
+
+    REQUIRE(piranha::is_safely_convertible_v<foo1, foo1 &>);
+    REQUIRE(piranha::is_safely_convertible_v<const foo1 &, foo1 &>);
+    REQUIRE(piranha::is_safely_convertible_v<foo1 &&, foo1 &>);
+    REQUIRE(!piranha::is_safely_convertible_v<foo1 &&, const foo1 &>);
+    REQUIRE(piranha::is_safely_convertible_v<foo1 &&, foo1 &&>);
+
+    REQUIRE(!piranha::is_safely_convertible_v<foo2, foo2 &>);
+    REQUIRE(!piranha::is_safely_convertible_v<const foo2 &, foo2 &>);
+    REQUIRE(!piranha::is_safely_convertible_v<foo2 &&, foo2 &>);
+    REQUIRE(!piranha::is_safely_convertible_v<foo2 &&, const foo2 &>);
+    REQUIRE(!piranha::is_safely_convertible_v<foo2 &&, foo2 &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(piranha::SafelyConvertible<std::string, std::string &>);
+    REQUIRE(piranha::SafelyConvertible<const std::string &, std::string &>);
+    REQUIRE(piranha::SafelyConvertible<std::string &&, std::string &>);
+    REQUIRE(!piranha::SafelyConvertible<std::string &&, const std::string &>);
+    REQUIRE(piranha::SafelyConvertible<std::string &&, std::string &&>);
+
+    REQUIRE(piranha::SafelyConvertible<foo1, foo1 &>);
+    REQUIRE(piranha::SafelyConvertible<const foo1 &, foo1 &>);
+    REQUIRE(piranha::SafelyConvertible<foo1 &&, foo1 &>);
+    REQUIRE(!piranha::SafelyConvertible<foo1 &&, const foo1 &>);
+    REQUIRE(piranha::SafelyConvertible<foo1 &&, foo1 &&>);
+
+    REQUIRE(!piranha::SafelyConvertible<foo2, foo2 &>);
+    REQUIRE(!piranha::SafelyConvertible<const foo2 &, foo2 &>);
+    REQUIRE(!piranha::SafelyConvertible<foo2 &&, foo2 &>);
+    REQUIRE(!piranha::SafelyConvertible<foo2 &&, const foo2 &>);
+    REQUIRE(!piranha::SafelyConvertible<foo2 &&, foo2 &&>);
+#endif
+
+    std::string s = "hello";
+    REQUIRE(piranha::safe_convert(s, std::string{"world"}));
+    REQUIRE(s == "world");
 }
