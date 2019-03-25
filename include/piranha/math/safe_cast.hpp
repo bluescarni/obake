@@ -14,7 +14,6 @@
 #include <utility>
 
 #include <piranha/config.hpp>
-#include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/math/safe_convert.hpp>
 #include <piranha/type_traits.hpp>
@@ -23,28 +22,12 @@
 namespace piranha
 {
 
-// https://stackoverflow.com/questions/5207765/c4275-warning-in-visual-studio
-#if defined(_MSC_VER)
-
-#pragma warning(push)
-#pragma warning(disable : 4275)
-
-#endif
-
 // Exception to signal failure in piranha::safe_cast().
-// NOTE: it is important to ensure that piranha's exceptions are all marked as visible:
-// https://gcc.gnu.org/wiki/Visibility
-class PIRANHA_PUBLIC safe_cast_failure final : public ::std::invalid_argument
+class safe_cast_failure final : public ::std::invalid_argument
 {
 public:
     using ::std::invalid_argument::invalid_argument;
 };
-
-#if defined(_MSC_VER)
-
-#pragma warning(pop)
-
-#endif
 
 namespace detail
 {
@@ -87,9 +70,21 @@ template <typename To, typename From,
 
 } // namespace detail
 
+// NOTE: at least some earlier versions of MSVC do not like the templated constexpr
+// functor, so we just replace it with a regular function. Need to check if this
+// has been fixed in MSVC 2019.
+#if defined(_MSC_VER) && !defined(__clang__)
+
+template <typename To, typename From>
+constexpr auto safe_cast(From &&x) PIRANHA_SS_FORWARD_FUNCTION(detail::safe_cast_impl<To>(::std::forward<From>(x)));
+
+#else
+
 template <typename To>
 inline constexpr auto safe_cast
     = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::safe_cast_impl<To>(::std::forward<decltype(x)>(x)));
+
+#endif
 
 namespace detail
 {
