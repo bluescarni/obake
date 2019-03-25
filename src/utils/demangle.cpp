@@ -61,12 +61,8 @@ namespace piranha::detail
         ::std::lock_guard lock{mut};
         return ::UnDecorateSymbolName(s, und_name, size, UNDNAME_COMPLETE);
     }();
-    if (ret) {
-        // Nonzero retval means success.
-        return ::std::string(undecorated_name);
-    }
-    // Otherwise, return the mangled name.
-    return ::std::string(s);
+    // Nonzero retval means success. Otherwise, return the mangled name.
+    return ret ? ::std::string(undecorated_name) : ::std::string(s);
 #else
     return ::std::string(s);
 #endif
