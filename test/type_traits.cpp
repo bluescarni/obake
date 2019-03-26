@@ -366,27 +366,133 @@ TEST_CASE("is_string_like_v")
     check_string_like_dispatch(sv2);
 }
 
+struct nonaddable_0 {
+};
+
+struct addable_0 {
+    friend addable_0 operator+(addable_0, addable_0);
+};
+
+struct addable_1 {
+    friend addable_1 operator+(addable_1, addable_0);
+    friend addable_1 operator+(addable_0, addable_1);
+};
+
+struct nonaddable_1 {
+    friend nonaddable_1 operator+(nonaddable_1, addable_0);
+};
+
+struct nonaddable_2 {
+    friend nonaddable_2 operator+(nonaddable_2, addable_0);
+    friend nonaddable_1 operator+(addable_0, nonaddable_2);
+};
+
 TEST_CASE("is_addable")
 {
+    REQUIRE(!is_addable_v<void>);
     REQUIRE(!is_addable_v<void, void>);
     REQUIRE(!is_addable_v<void, int>);
     REQUIRE(!is_addable_v<int, void>);
+    REQUIRE(is_addable_v<int>);
     REQUIRE(is_addable_v<int, int>);
     REQUIRE(is_addable_v<const int, int &>);
     REQUIRE(is_addable_v<int &&, volatile int &>);
     REQUIRE(is_addable_v<std::string, char *>);
     REQUIRE(is_addable_v<std::string, char *>);
     REQUIRE(!is_addable_v<std::string, int>);
+    REQUIRE(!is_addable_v<nonaddable_0>);
+    REQUIRE(is_addable_v<addable_0>);
+    REQUIRE(is_addable_v<addable_1, addable_0>);
+    REQUIRE(!is_addable_v<nonaddable_1, addable_0>);
+    REQUIRE(!is_addable_v<nonaddable_2, addable_0>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Addable<void>);
     REQUIRE(!Addable<void, void>);
     REQUIRE(!Addable<void, int>);
     REQUIRE(!Addable<int, void>);
+    REQUIRE(Addable<int>);
     REQUIRE(Addable<int, int>);
     REQUIRE(Addable<const int, int &>);
     REQUIRE(Addable<int &&, volatile int &>);
     REQUIRE(Addable<std::string, char *>);
     REQUIRE(Addable<std::string, char *>);
     REQUIRE(!Addable<std::string, int>);
+    REQUIRE(!Addable<nonaddable_0>);
+    REQUIRE(Addable<addable_0>);
+    REQUIRE(Addable<addable_1, addable_0>);
+    REQUIRE(!Addable<nonaddable_1, addable_0>);
+    REQUIRE(!Addable<nonaddable_2, addable_0>);
+#endif
+}
+
+struct noncomp_0 {
+};
+
+struct noncomp_1 {
+    friend void operator==(const noncomp_1 &, const noncomp_1 &) {}
+    friend void operator!=(const noncomp_1 &, const noncomp_1 &) {}
+};
+
+struct noncomp_2 {
+    friend int operator==(const noncomp_2 &, const noncomp_2 &)
+    {
+        return 1;
+    }
+};
+
+struct comp_0 {
+    friend int operator==(const comp_0 &, const comp_0 &)
+    {
+        return 1;
+    }
+    friend int operator!=(const comp_0 &, const comp_0 &)
+    {
+        return 0;
+    }
+    friend int operator==(const comp_0 &, const noncomp_0 &)
+    {
+        return 1;
+    }
+    friend int operator!=(const comp_0 &, const noncomp_0 &)
+    {
+        return 0;
+    }
+};
+
+TEST_CASE("is_equality_comparable")
+{
+    REQUIRE(!is_equality_comparable_v<void>);
+    REQUIRE(!is_equality_comparable_v<void, void>);
+    REQUIRE(!is_equality_comparable_v<int, void>);
+    REQUIRE(!is_equality_comparable_v<void, int>);
+    REQUIRE(is_equality_comparable_v<int>);
+    REQUIRE(is_equality_comparable_v<int, int>);
+    REQUIRE(is_equality_comparable_v<int, long>);
+    REQUIRE(is_equality_comparable_v<std::string, std::string>);
+    REQUIRE(!is_equality_comparable_v<std::string, int>);
+    REQUIRE(!is_equality_comparable_v<int, std::string>);
+    REQUIRE(!is_equality_comparable_v<noncomp_0>);
+    REQUIRE(!is_equality_comparable_v<noncomp_1>);
+    REQUIRE(!is_equality_comparable_v<noncomp_2>);
+    REQUIRE(is_equality_comparable_v<comp_0>);
+    REQUIRE(!is_equality_comparable_v<comp_0, noncomp_0>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!EqualityComparable<void>);
+    REQUIRE(!EqualityComparable<void, void>);
+    REQUIRE(!EqualityComparable<int, void>);
+    REQUIRE(!EqualityComparable<void, int>);
+    REQUIRE(EqualityComparable<int>);
+    REQUIRE(EqualityComparable<int, int>);
+    REQUIRE(EqualityComparable<int, long>);
+    REQUIRE(EqualityComparable<std::string, std::string>);
+    REQUIRE(!EqualityComparable<std::string, int>);
+    REQUIRE(!EqualityComparable<int, std::string>);
+    REQUIRE(!EqualityComparable<noncomp_0>);
+    REQUIRE(!EqualityComparable<noncomp_1>);
+    REQUIRE(!EqualityComparable<noncomp_2>);
+    REQUIRE(EqualityComparable<comp_0>);
+    REQUIRE(!EqualityComparable<comp_0, noncomp_0>);
 #endif
 }

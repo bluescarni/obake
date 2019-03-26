@@ -242,18 +242,70 @@ using add_t = decltype(::std::declval<T>() + ::std::declval<U>());
 
 }
 
-template <typename T, typename U>
-using is_addable = is_detected<detail::add_t, T, U>;
+template <typename T, typename U = T>
+using is_addable = ::std::conjunction<is_detected<detail::add_t, T, U>, is_detected<detail::add_t, U, T>,
+                                      ::std::is_same<detected_t<detail::add_t, T, U>, detected_t<detail::add_t, U, T>>>;
 
-template <typename T, typename U>
+template <typename T, typename U = T>
 inline constexpr bool is_addable_v = is_addable<T, U>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
-template <typename T, typename U>
+template <typename T, typename U = T>
 PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) + ::std::forward<U>(y);
+    ::std::forward<U>(y) + ::std::forward<T>(x);
+    requires Same<decltype(::std::forward<T>(x) + ::std::forward<U>(y)),
+                  decltype(::std::forward<U>(y) + ::std::forward<T>(x))>;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using eq_t = decltype(::std::declval<T>() == ::std::declval<U>());
+
+template <typename T, typename U>
+using ineq_t = decltype(::std::declval<T>() != ::std::declval<U>());
+
+} // namespace detail
+
+// Equality-comparable type trait.
+// NOTE: if the expressions above for eq/ineq return a type which is not bool,
+// the decltype() will also check that the returned type is destructible.
+template <typename T, typename U = T>
+using is_equality_comparable = ::std::conjunction<::std::is_convertible<detected_t<detail::eq_t, T, U>, bool>,
+                                                  ::std::is_convertible<detected_t<detail::eq_t, U, T>, bool>,
+                                                  ::std::is_convertible<detected_t<detail::ineq_t, T, U>, bool>,
+                                                  ::std::is_convertible<detected_t<detail::ineq_t, U, T>, bool>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_equality_comparable_v = is_equality_comparable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+PIRANHA_CONCEPT_DECL EqualityComparable = requires(T &&x, U &&y)
+{
+    {
+        ::std::forward<T>(x) == ::std::forward<U>(y)
+    }
+    ->bool;
+    {
+        ::std::forward<U>(y) == ::std::forward<T>(x)
+    }
+    ->bool;
+    {
+        ::std::forward<T>(x) != ::std::forward<U>(y)
+    }
+    ->bool;
+    {
+        ::std::forward<U>(y) != ::std::forward<T>(x)
+    }
+    ->bool;
 };
 
 #endif
