@@ -100,13 +100,15 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
         st_data[i][0] = ::std::to_string(i);
     }
 
-    // Get the max widths of the first 2 table columns
-    const auto max_idx_w = (*::std::max_element(
-        st_data.begin(), st_data.end(), [](const auto &a1, const auto &a2) { return a1[0].size() < a2[0].size(); }))[0]
-                               .size();
-    const auto max_file_name_w = (*::std::max_element(
-        st_data.begin(), st_data.end(), [](const auto &a1, const auto &a2) { return a1[1].size() < a2[1].size(); }))[1]
-                                     .size();
+    // Get the max widths of the first 2 table columns.
+    const auto [max_idx_w, max_file_name_w] = [&st_data]() {
+        ::std::array<::std::string::size_type, 2> retval{0, 0};
+        for (const auto &a : st_data) {
+            retval[0] = ::std::max(a[0].size(), retval[0]);
+            retval[1] = ::std::max(a[1].size(), retval[1]);
+        }
+        return retval;
+    }();
 
     // Produce the formatted table, iterating on st_data in reverse order.
     ::std::string retval;
