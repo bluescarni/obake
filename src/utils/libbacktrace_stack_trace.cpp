@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -95,25 +94,21 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
         return ::std::string{};
     }
 
-    // Add manually the levels.
-    for (decltype(st_data.size()) i = 0; i < st_data.size(); ++i) {
-        st_data[i][0] = ::std::to_string(i);
-    }
-
-    // Get the max widths of the first 2 table columns.
+    // Add manually the levels, and get the max widths of the first 2 table columns.
     const auto [max_idx_w, max_file_name_w] = [&st_data]() {
         ::std::array<::std::string::size_type, 2> retval{0, 0};
-        for (const auto &a : st_data) {
-            retval[0] = ::std::max(a[0].size(), retval[0]);
-            retval[1] = ::std::max(a[1].size(), retval[1]);
+        for (decltype(st_data.size()) i = 0; i < st_data.size(); ++i) {
+            st_data[i][0] = ::std::to_string(i);
+            retval[0] = ::std::max(st_data[i][0].size(), retval[0]);
+            retval[1] = ::std::max(st_data[i][1].size(), retval[1]);
         }
         return retval;
     }();
 
     // Produce the formatted table, iterating on st_data in reverse order.
     ::std::string retval;
-    const auto r_end = ::std::make_reverse_iterator(st_data.cbegin());
-    for (auto r_it = ::std::make_reverse_iterator(st_data.cend()); r_it != r_end; ++r_it) {
+    const auto r_end = st_data.crend();
+    for (auto r_it = st_data.crbegin(); r_it != r_end; ++r_it) {
         const auto &a = *r_it;
         retval += "# " + ::std::string(max_idx_w - a[0].size(), ' ') + a[0] + " | " + a[1]
                   + ::std::string(max_file_name_w - a[1].size(), ' ') + " | " + a[2];
