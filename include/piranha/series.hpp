@@ -52,7 +52,7 @@ PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
 namespace detail
 {
 
-template <typename T>
+template <typename>
 struct series_cf_t_impl {
 };
 
@@ -64,7 +64,7 @@ struct series_cf_t_impl<series<Cf, Key, Tag>> {
 } // namespace detail
 
 template <typename T>
-using series_cf_t = typename detail::series_cf_t_impl<T>::type;
+using series_cf_t = typename detail::series_cf_t_impl<::std::remove_cv_t<T>>::type;
 
 namespace customisation::internal
 {
