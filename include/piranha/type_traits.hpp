@@ -371,11 +371,13 @@ using deref_t = decltype(*::std::declval<T>());
 
 // Check if the type T derives from one of the standard iterator tags.
 template <typename T>
-inline constexpr bool derives_from_it_tag_v = ::std::apply(
-    [](auto... tag) constexpr noexcept { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
+struct derives_from_it_tag {
+    static constexpr bool value = ::std::apply(
+        [](auto... tag) constexpr noexcept { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
+};
 
 template <typename T>
-using derives_from_it_tag = ::std::integral_constant<bool, derives_from_it_tag_v<T>>;
+inline constexpr bool derives_from_it_tag_v = derives_from_it_tag<T>::value;
 
 } // namespace detail
 
