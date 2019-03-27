@@ -390,8 +390,8 @@ using derives_from_it_tag = derives_from_it_tag_impl<T, ::std::remove_const_t<de
 
 template <typename T>
 struct derives_from_it_tag {
-    static constexpr bool value = ::std::apply(
-        [](auto... tag) constexpr noexcept { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
+    static constexpr bool value
+        = ::std::apply([](auto... tag) { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
 };
 
 #endif
