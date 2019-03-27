@@ -496,3 +496,20 @@ TEST_CASE("is_equality_comparable")
     REQUIRE(!EqualityComparable<comp_0, noncomp_0>);
 #endif
 }
+
+TEST_CASE("is_pre_incrementable")
+{
+    REQUIRE(!is_pre_incrementable_v<void>);
+    REQUIRE(is_pre_incrementable_v<int &>);
+    REQUIRE(!is_pre_incrementable_v<const int &>);
+    REQUIRE(!is_pre_incrementable_v<int &&>);
+    REQUIRE(!is_pre_incrementable_v<std::string &>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!PreIncrementable<void>);
+    REQUIRE(PreIncrementable<int &>);
+    REQUIRE(!PreIncrementable<const int &>);
+    REQUIRE(!PreIncrementable<int &&>);
+    REQUIRE(!PreIncrementable<std::string &>);
+#endif
+}

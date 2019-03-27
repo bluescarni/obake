@@ -265,6 +265,31 @@ PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 namespace detail
 {
 
+template <typename T>
+using preinc_t = decltype(++::std::declval<T>());
+
+}
+
+// Pre-incrementable type-trait.
+template <typename T>
+using is_pre_incrementable = is_detected<detail::preinc_t, T>;
+
+template <typename T>
+inline constexpr bool is_pre_incrementable_v = is_pre_incrementable<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL PreIncrementable = requires(T &&x)
+{
+    ++::std::forward<T>(x);
+};
+
+#endif
+
+namespace detail
+{
+
 template <typename T, typename U>
 using eq_t = decltype(::std::declval<T>() == ::std::declval<U>());
 
