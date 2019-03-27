@@ -29,20 +29,38 @@
 #include <piranha/utils/demangle.hpp>
 #include <piranha/utils/stack_trace.hpp>
 
-// The callback for the main backtrace function. Needs to have C linkage.
-extern "C" {
-int piranha_backtrace_callback(void *, ::std::uintptr_t, const char *, int, const char *);
-}
-
 namespace piranha::detail
 {
 
+// NOTE: put local names in an anonymous namespace, in order to pre-empt
+// potential ODR violations.
 namespace
 {
 
 // Stack trace data, in string form: level, file (including line number) and demangled function name.
-// Put the alias in an anonymous namespace to prevent accidental ODR violations.
 using stack_trace_data = ::std::vector<::std::array<::std::string, 3>>;
+
+// The callback for the main backtrace function. Needs to have C linkage.
+extern "C" {
+static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int lineno, const char *funcname)
+{
+    // Catch any exception that might be thrown, as this function
+    // will be called from a C library and throwing in such case is
+    // undefined behaviour.
+    try {
+        auto &st_data = *static_cast<stack_trace_data *>(data);
+
+        auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + ::std::to_string(lineno);
+        auto func_name = funcname ? demangle_impl(funcname) : "<unknown function>";
+
+        // NOTE: the level is left empty, it will be filled in later.
+        st_data.push_back(::std::array{::std::string{}, ::std::move(file_name), ::std::move(func_name)});
+    } catch (...) {
+        return -1;
+    }
+    return 0;
+}
+}
 
 } // namespace
 
@@ -64,7 +82,7 @@ using stack_trace_data = ::std::vector<::std::array<::std::string, 3>>;
     }
 
     // Fetch the raw backtrace.
-    const auto ret = ::backtrace_full(bt_state, 2 + static_cast<int>(skip), ::piranha_backtrace_callback, nullptr,
+    const auto ret = ::backtrace_full(bt_state, 2 + static_cast<int>(skip), backtrace_callback, nullptr,
                                       static_cast<void *>(&st_data));
     if (piranha_unlikely(ret)) {
         return "The stack trace could not be generated because the backtrace_full() function returned the error code "
@@ -106,22 +124,3 @@ using stack_trace_data = ::std::vector<::std::array<::std::string, 3>>;
 }
 
 } // namespace piranha::detail
-
-int piranha_backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int lineno, const char *funcname)
-{
-    // Catch any exception that might be thrown, as this function
-    // will be called from a C library and throwing in such case is
-    // undefined behaviour.
-    try {
-        auto &st_data = *static_cast<::piranha::detail::stack_trace_data *>(data);
-
-        auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + ::std::to_string(lineno);
-        auto func_name = funcname ? ::piranha::detail::demangle_impl(funcname) : "<unknown function>";
-
-        // NOTE: the level is left empty, it will be filled in later.
-        st_data.push_back(::std::array{::std::string{}, ::std::move(file_name), ::std::move(func_name)});
-    } catch (...) {
-        return -1;
-    }
-    return 0;
-}
