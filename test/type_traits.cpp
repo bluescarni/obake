@@ -11,6 +11,8 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <cstddef>
+#include <iterator>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -511,5 +513,400 @@ TEST_CASE("is_pre_incrementable")
     REQUIRE(!PreIncrementable<const int &>);
     REQUIRE(!PreIncrementable<int &&>);
     REQUIRE(!PreIncrementable<std::string &>);
+#endif
+}
+
+// Boilerplate to test the arrow op type trait.
+struct arrow01 {
+    int *operator->();
+};
+
+struct arrow02 {
+    arrow01 operator->();
+    // NOTE: calling -> on a const instance will fail,
+    // as it returns a non pointer type which does not
+    // provide an operator->() member function.
+    void operator->() const;
+};
+
+struct arrow03 {
+    int operator->();
+};
+
+struct arrow03a {
+    arrow02 operator->();
+};
+
+struct arrow04 {
+    arrow03 operator->();
+};
+
+// Good forward iterator.
+template <typename T>
+struct fake_it_traits_forward {
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using pointer = T *;
+    using reference = T &;
+    using iterator_category = std::forward_iterator_tag;
+};
+
+// Broken reference type for forward it.
+template <typename T>
+struct fake_it_traits_forward_broken_ref {
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using pointer = T *;
+    using reference = void;
+    using iterator_category = std::forward_iterator_tag;
+};
+
+// Good output iterator.
+template <typename T>
+struct fake_it_traits_output {
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using pointer = T *;
+    using reference = T &;
+    using iterator_category = std::output_iterator_tag;
+};
+
+// Good input iterator.
+template <typename T>
+struct fake_it_traits_input {
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using pointer = T *;
+    using reference = T &;
+    using iterator_category = std::input_iterator_tag;
+};
+
+// Broken trait, incorrect category.
+template <typename T>
+struct fake_it_traits_wrong_tag {
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using pointer = T *;
+    using reference = T &;
+    using iterator_category = void;
+};
+
+// Broken trait, missing typedefs.
+template <typename T>
+struct fake_it_traits_missing {
+    using value_type = void;
+    using pointer = void;
+    using iterator_category = void;
+};
+
+#define PIRANHA_DECL_ITT_SPEC(it_type, trait_class)                                                                    \
+    namespace std                                                                                                      \
+    {                                                                                                                  \
+    template <>                                                                                                        \
+    struct iterator_traits<it_type> : trait_class {                                                                    \
+    };                                                                                                                 \
+    }
+
+// Good input iterator.
+struct iter01 {
+    int &operator*() const;
+    int *operator->() const;
+    iter01 &operator++();
+    iter01 &operator++(int);
+    bool operator==(const iter01 &) const;
+    bool operator!=(const iter01 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter01, fake_it_traits_input<int>)
+
+// Good iterator, minimal requirements.
+struct iter02 {
+    int &operator*();
+    iter02 &operator++();
+};
+
+PIRANHA_DECL_ITT_SPEC(iter02, fake_it_traits_input<int>)
+
+// Broken iterator, minimal requirements.
+struct iter03 {
+    // int &operator*();
+    iter03 &operator++();
+};
+
+PIRANHA_DECL_ITT_SPEC(iter03, fake_it_traits_input<int>)
+
+// Broken iterator, minimal requirements.
+struct iter04 {
+    iter04 &operator=(const iter04 &) = delete;
+    ~iter04() = delete;
+    int &operator*();
+    iter04 &operator++();
+};
+
+PIRANHA_DECL_ITT_SPEC(iter04, fake_it_traits_input<int>)
+
+// Broken iterator, missing itt spec.
+struct iter05 {
+    int &operator*();
+    iter05 &operator++();
+};
+
+// PIRANHA_DECL_ITT_SPEC(iter05,fake_it_traits_input<int>)
+
+// Good input iterator: missing arrow, but the value type is not a class.
+struct iter06 {
+    int &operator*() const;
+    // int *operator->();
+    iter06 &operator++();
+    iter06 &operator++(int);
+    bool operator==(const iter06 &) const;
+    bool operator!=(const iter06 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter06, fake_it_traits_input<int>)
+
+struct iter06a_v {
+};
+
+// Bad input iterator: missing arrow, and the value type is a class.
+struct iter06a {
+    iter06a_v &operator*() const;
+    // int *operator->();
+    iter06a &operator++();
+    iter06a &operator++(int);
+    bool operator==(const iter06a &) const;
+    bool operator!=(const iter06a &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter06a, fake_it_traits_input<iter06a_v>)
+
+// Broken input iterator: missing equality.
+struct iter07 {
+    int &operator*() const;
+    int *operator->() const;
+    iter07 &operator++();
+    iter07 &operator++(int);
+    // bool operator==(const iter07 &) const;
+    bool operator!=(const iter07 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter07, fake_it_traits_input<int>)
+
+// Broken input iterator: missing itt spec.
+struct iter08 {
+    int &operator*() const;
+    int *operator->() const;
+    iter08 &operator++();
+    iter08 &operator++(int);
+    bool operator==(const iter08 &) const;
+    bool operator!=(const iter08 &) const;
+};
+
+// PIRANHA_DECL_ITT_SPEC(iter08,fake_it_traits_input<int>)
+
+// Good input iterator: broken arrow, but non-class.
+struct iter09 {
+    int &operator*() const;
+    int operator->() const;
+    iter09 &operator++();
+    iter09 &operator++(int);
+    bool operator==(const iter09 &) const;
+    bool operator!=(const iter09 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter09, fake_it_traits_input<int>)
+
+struct iter09a_v {
+};
+
+// Bad input iterator: broken arrow, and class value type.
+struct iter09a {
+    iter09a_v &operator*() const;
+    iter09a_v operator->() const;
+    iter09a &operator++();
+    iter09a &operator++(int);
+    bool operator==(const iter09a &) const;
+    bool operator!=(const iter09a &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter09a, fake_it_traits_input<iter09a_v>)
+
+// Good input iterator: multiple arrow.
+struct iter10 {
+    int &operator*() const;
+    arrow03a operator->() const;
+    iter10 &operator++();
+    iter10 &operator++(int);
+    bool operator==(const iter10 &) const;
+    bool operator!=(const iter10 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter10, fake_it_traits_input<int>)
+
+// Good input iterator: multiple broken arrow, but non-class.
+struct iter11 {
+    int &operator*() const;
+    arrow04 operator->() const;
+    iter11 &operator++();
+    iter11 &operator++(int);
+    bool operator==(const iter11 &) const;
+    bool operator!=(const iter11 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter11, fake_it_traits_input<int>)
+
+// Bad input iterator: inconsistent arrow / star, and class value.
+struct foo_it_12 {
+};
+
+struct iter12_v {
+};
+
+struct iter12 {
+    iter12_v &operator*() const;
+    foo_it_12 *operator->() const;
+    iter12 &operator++();
+    iter12 &operator++(int);
+    bool operator==(const iter12 &) const;
+    bool operator!=(const iter12 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter12, fake_it_traits_input<iter12_v>)
+
+// Good input iterator: different but compatible arrow / star.
+struct iter13 {
+    int operator*() const;
+    int *operator->() const;
+    iter13 &operator++();
+    iter13 &operator++(int);
+    bool operator==(const iter13 &) const;
+    bool operator!=(const iter13 &) const;
+};
+
+// Specialise the it_traits for iter13 manually, as we need
+// a custom reference type.
+namespace std
+{
+template <>
+struct iterator_traits<iter13> {
+    using difference_type = std::ptrdiff_t;
+    using value_type = int;
+    using pointer = int *;
+    using reference = int;
+    using iterator_category = std::input_iterator_tag;
+};
+} // namespace std
+
+// Good forward iterator.
+struct iter14 {
+    int &operator*() const;
+    int *operator->() const;
+    iter14 &operator++();
+    iter14 &operator++(int);
+    bool operator==(const iter14 &) const;
+    bool operator!=(const iter14 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter14, fake_it_traits_forward<int>)
+
+// Bad forward iterator: missing def ctor.
+struct iter15 {
+    iter15() = delete;
+    int &operator*() const;
+    int *operator->() const;
+    iter15 &operator++();
+    iter15 &operator++(int);
+    bool operator==(const iter15 &) const;
+    bool operator!=(const iter15 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter15, fake_it_traits_forward<int>)
+
+// Bad forward iterator: not having reference types as reference in traits.
+struct iter16 {
+    int &operator*() const;
+    int *operator->() const;
+    iter16 &operator++();
+    iter16 &operator++(int);
+    bool operator==(const iter16 &) const;
+    bool operator!=(const iter16 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter16, fake_it_traits_forward_broken_ref<int>)
+
+// Bad forward iterator: broken tag in traits.
+struct iter17 {
+    int &operator*() const;
+    int *operator->() const;
+    iter17 &operator++();
+    iter17 &operator++(int);
+    bool operator==(const iter17 &) const;
+    bool operator!=(const iter17 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter17, fake_it_traits_output<int>)
+
+// Bad forward iterator: broken traits.
+struct iter18 {
+    int &operator*() const;
+    int *operator->() const;
+    iter18 &operator++();
+    iter18 &operator++(int);
+    bool operator==(const iter18 &) const;
+    bool operator!=(const iter18 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter18, fake_it_traits_missing<int>)
+
+// Bad forward iterator: broken ++.
+struct iter19 {
+    int &operator*() const;
+    int *operator->() const;
+    iter19 &operator++();
+    void operator++(int);
+    bool operator==(const iter19 &) const;
+    bool operator!=(const iter19 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter19, fake_it_traits_forward<int>)
+
+// Bad forward iterator: broken ++.
+struct iter20 {
+    int &operator*() const;
+    int *operator->() const;
+    void operator++();
+    iter20 &operator++(int);
+    bool operator==(const iter20 &) const;
+    bool operator!=(const iter20 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter20, fake_it_traits_forward<int>)
+
+struct iter21_v {
+};
+
+// Bad forward iterator: arrow returns type with different constness from star operator,
+// and class value.
+struct iter21 {
+    iter21_v &operator*() const;
+    const iter21_v *operator->() const;
+    iter21 &operator++();
+    iter21 &operator++(int);
+    bool operator==(const iter21 &) const;
+    bool operator!=(const iter21 &) const;
+};
+
+PIRANHA_DECL_ITT_SPEC(iter21, fake_it_traits_forward<iter21_v>)
+
+#undef PIRANHA_DECL_ITT_SPEC
+
+TEST_CASE("is_iterator")
+{
+    REQUIRE(!is_iterator_v<void>);
+    REQUIRE(!is_iterator_v<int>);
+    REQUIRE(is_iterator_v<int *>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Iterator<void>);
 #endif
 }

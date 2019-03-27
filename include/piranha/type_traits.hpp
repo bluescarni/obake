@@ -9,6 +9,7 @@
 #ifndef PIRANHA_TYPE_TRAITS_HPP
 #define PIRANHA_TYPE_TRAITS_HPP
 
+#include <iterator>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -332,6 +333,77 @@ PIRANHA_CONCEPT_DECL EqualityComparable = requires(T &&x, U &&y)
     }
     ->bool;
 };
+
+#endif
+
+namespace detail
+{
+
+// Helpers for the detection of the typedefs in std::iterator_traits.
+// Use a macro (yuck) to reduce typing.
+#define PIRANHA_DECLARE_IT_TRAITS_TYPE(type)                                                                           \
+    template <typename T>                                                                                              \
+    using it_traits_##type = typename ::std::iterator_traits<T>::type;
+
+PIRANHA_DECLARE_IT_TRAITS_TYPE(difference_type)
+PIRANHA_DECLARE_IT_TRAITS_TYPE(value_type)
+PIRANHA_DECLARE_IT_TRAITS_TYPE(pointer)
+PIRANHA_DECLARE_IT_TRAITS_TYPE(reference)
+PIRANHA_DECLARE_IT_TRAITS_TYPE(iterator_category)
+
+#undef PIRANHA_DECLARE_IT_TRAITS_TYPE
+
+// Detect the availability of std::iterator_traits on type It.
+template <typename It>
+using has_iterator_traits
+    = ::std::conjunction<is_detected<it_traits_reference, It>, is_detected<it_traits_value_type, It>,
+                         is_detected<it_traits_pointer, It>, is_detected<it_traits_difference_type, It>,
+                         is_detected<it_traits_iterator_category, It>>;
+
+// All standard iterator tags packed in a tuple.
+inline constexpr ::std::tuple<::std::input_iterator_tag, ::std::output_iterator_tag, ::std::forward_iterator_tag,
+                              ::std::bidirectional_iterator_tag, ::std::random_access_iterator_tag>
+    all_it_tags;
+
+// Type resulting from the dereferencing operation.
+template <typename T>
+using deref_t = decltype(*::std::declval<T>());
+
+// Check if the type T derives from one of the standard iterator tags.
+template <typename T>
+inline constexpr bool derives_from_it_tag_v = ::std::apply(
+    [](auto... tag) constexpr noexcept { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
+
+template <typename T>
+using derives_from_it_tag = ::std::integral_constant<bool, derives_from_it_tag_v<T>>;
+
+} // namespace detail
+
+// Detect iterator types.
+template <typename T>
+using is_iterator = ::std::conjunction<
+    // Copy constr/ass, destructible.
+    ::std::is_copy_constructible<T>, ::std::is_copy_assignable<T>, ::std::is_destructible<T>,
+    // Lvalue swappable.
+    ::std::is_swappable_with<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<T>>,
+    // Valid std::iterator_traits.
+    detail::has_iterator_traits<T>,
+    // Lvalue dereferenceable.
+    is_detected<detail::deref_t, ::std::add_lvalue_reference_t<T>>,
+    // Lvalue preincrementable, returning T &.
+    ::std::is_same<detected_t<detail::preinc_t, ::std::add_lvalue_reference_t<T>>, ::std::add_lvalue_reference_t<T>>,
+    // Add a check that the iterator category is one of the standard ones
+    // or at least derives from it. This allows Boost.iterator iterators
+    // (which have their own tags) to satisfy this type trait.
+    detail::derives_from_it_tag<detected_t<detail::it_traits_iterator_category, T>>>;
+
+template <typename T>
+inline constexpr bool is_iterator_v = is_iterator<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL Iterator = is_iterator_v<T>;
 
 #endif
 
