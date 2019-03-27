@@ -396,9 +396,6 @@ struct derives_from_it_tag {
 
 #endif
 
-template <typename T>
-inline constexpr bool derives_from_it_tag_v = derives_from_it_tag<T>::value;
-
 } // namespace detail
 
 // Detect iterator types.
