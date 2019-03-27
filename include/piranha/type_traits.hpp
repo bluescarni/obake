@@ -370,11 +370,31 @@ template <typename T>
 using deref_t = decltype(*::std::declval<T>());
 
 // Check if the type T derives from one of the standard iterator tags.
+// NOTE: MSVC has issues with the pattern below, adopt another implementation.
+#if defined(_MSC_VER)
+
+// NOTE: default empty for hard error (the default implementation is unused).
+template <typename, typename>
+struct derives_from_it_tag_impl {
+};
+
+template <typename T, typename... Args>
+struct derives_from_it_tag_impl<T, ::std::tuple<Args...>> : ::std::disjunction<::std::is_base_of<Args, T>...> {
+    static_assert(sizeof...(Args) > 0u, "Invalid parameter pack.");
+};
+
+template <typename T>
+using derives_from_it_tag = derives_from_it_tag_impl<T, ::std::remove_const_t<decltype(all_it_tags)>>;
+
+#else
+
 template <typename T>
 struct derives_from_it_tag {
     static constexpr bool value = ::std::apply(
         [](auto... tag) constexpr noexcept { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
 };
+
+#endif
 
 template <typename T>
 inline constexpr bool derives_from_it_tag_v = derives_from_it_tag<T>::value;
