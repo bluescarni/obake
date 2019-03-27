@@ -902,6 +902,16 @@ PIRANHA_DECL_ITT_SPEC(iter21, fake_it_traits_forward<iter21_v>)
 
 TEST_CASE("is_iterator")
 {
+    // Check the arrow operator type trait.
+    REQUIRE((!is_detected<detail::arrow_operator_t, void>::value));
+    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, int *&>>::value));
+    REQUIRE((!is_detected<detail::arrow_operator_t, int &>::value));
+    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, arrow01 &>>::value));
+    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, arrow02 &>>::value));
+    REQUIRE((!is_detected<detail::arrow_operator_t, const arrow02 &>::value));
+    REQUIRE((!is_detected<detail::arrow_operator_t, arrow03 &>::value));
+    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, arrow03a &>>::value));
+
     REQUIRE(!is_iterator_v<void>);
     REQUIRE(!is_iterator_v<int>);
     REQUIRE(is_iterator_v<int *>);

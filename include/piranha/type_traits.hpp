@@ -426,6 +426,52 @@ PIRANHA_CONCEPT_DECL Iterator = is_iterator_v<T>;
 
 #endif
 
+namespace detail
+{
+
+// The purpose of these bits is to check whether U correctly implements the arrow operator.
+// A correct implementation will return a pointer, after potentially calling
+// the operator recursively as many times as needed. See:
+// http://stackoverflow.com/questions/10677804/how-arrow-operator-overloading-works-internally-in-c
+
+// The expression x->m is either:
+// - equivalent to (*x).m, if x is a pointer, or
+// - equivalent to (x.operator->())->m otherwise. That is, if operator->()
+//   returns a pointer, then the member "m" of the pointee is returned,
+//   otherwise there's a recursion to call again operator->() on the returned
+//   value.
+// This type trait will extract the final pointer type whose pointee type
+// contains the "m" member.
+template <typename, typename = void>
+struct arrow_operator_type {
+};
+
+// Handy alias.
+template <typename T>
+using arrow_operator_t = typename arrow_operator_type<T>::type;
+
+// If T is a pointer (after ref removal), we don't need to do anything: the final pointer type
+// will be T itself (unreffed).
+template <typename T>
+struct arrow_operator_type<T, ::std::enable_if_t<::std::is_pointer_v<::std::remove_reference_t<T>>>> {
+    using type = ::std::remove_reference_t<T>;
+};
+
+// Type resulting from the invocation of the member function operator->().
+template <typename T>
+using mem_arrow_op_t = decltype(::std::declval<T>().operator->());
+
+// T is not a pointer, it is a class whose operator->() returns some type U.
+// We call again arrow_operator_type on that U: if that leads eventually to a pointer
+// (possibly by calling this specialisation recursively) then we define that pointer
+// as the internal "type" member, otherwise we will SFINAE out.
+template <typename T>
+struct arrow_operator_type<T, ::std::enable_if_t<is_detected_v<arrow_operator_t, mem_arrow_op_t<T>>>> {
+    using type = arrow_operator_t<mem_arrow_op_t<T>>;
+};
+
+} // namespace detail
+
 } // namespace piranha
 
 #endif
