@@ -291,6 +291,31 @@ PIRANHA_CONCEPT_DECL PreIncrementable = requires(T &&x)
 namespace detail
 {
 
+template <typename T>
+using postinc_t = decltype(::std::declval<T>()++);
+
+}
+
+// Post-incrementable type-trait.
+template <typename T>
+using is_post_incrementable = is_detected<detail::postinc_t, T>;
+
+template <typename T>
+inline constexpr bool is_post_incrementable_v = is_post_incrementable<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL PostIncrementable = requires(T &&x)
+{
+    ::std::forward<T>(x)++;
+};
+
+#endif
+
+namespace detail
+{
+
 template <typename T, typename U>
 using eq_t = decltype(::std::declval<T>() == ::std::declval<U>());
 

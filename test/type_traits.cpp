@@ -516,6 +516,23 @@ TEST_CASE("is_pre_incrementable")
 #endif
 }
 
+TEST_CASE("is_post_incrementable")
+{
+    REQUIRE(!is_post_incrementable_v<void>);
+    REQUIRE(is_post_incrementable_v<int &>);
+    REQUIRE(!is_post_incrementable_v<const int &>);
+    REQUIRE(!is_post_incrementable_v<int &&>);
+    REQUIRE(!is_post_incrementable_v<std::string &>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!PostIncrementable<void>);
+    REQUIRE(PostIncrementable<int &>);
+    REQUIRE(!PostIncrementable<const int &>);
+    REQUIRE(!PostIncrementable<int &&>);
+    REQUIRE(!PostIncrementable<std::string &>);
+#endif
+}
+
 // Boilerplate to test the arrow op type trait.
 struct arrow01 {
     int *operator->();
