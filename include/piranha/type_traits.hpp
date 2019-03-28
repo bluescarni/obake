@@ -495,7 +495,88 @@ struct arrow_operator_type<T, ::std::enable_if_t<is_detected_v<arrow_operator_t,
     using type = arrow_operator_t<mem_arrow_op_t<T>>;
 };
 
+// *it++ expression, used below.
+template <typename T>
+using it_inc_deref_t = decltype(*::std::declval<T>()++);
+
+// The type resulting from dereferencing an lvalue of T,
+// or nonesuch. Shortcut useful below.
+template <typename T>
+using det_deref_t = detected_t<deref_t, ::std::add_lvalue_reference_t<T>>;
+
+// Deferred conditional. It will check the value of the
+// compile-time boolean constant C, and derive from T if
+// C is true, from F otherwise.
+template <typename C, typename T, typename F>
+struct dcond : ::std::conditional_t<C::value != false, T, F> {
+};
+
 } // namespace detail
+
+// Input iterator type trait.
+template <typename T>
+using is_input_iterator = ::std::conjunction<
+    // Must be a class or pointer.
+    ::std::disjunction<::std::is_class<T>, ::std::is_pointer<T>>,
+    // Base iterator requirements.
+    is_iterator<T>,
+    // Lvalue equality-comparable (just test the const-const variant).
+    is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
+    // Quoting the standard:
+    // """
+    // For every iterator type X for which equality is defined, there is a corresponding signed integer type called the
+    // difference type of the iterator.
+    // """
+    // http://eel.is/c++draft/iterator.requirements#general-1
+    // The equality comparable requirement appears in the input iterator requirements,
+    // and it is then inherited by all the other iterator types (i.e., forward iterator,
+    // bidir iterator, etc.).
+    ::std::is_integral<detected_t<detail::it_traits_difference_type, T>>,
+    ::std::is_signed<detected_t<detail::it_traits_difference_type, T>>,
+    // *it returns it_traits::reference_type, both in mutable and const forms.
+    // NOTE: it_traits::reference_type is never nonesuch, we tested its availability
+    // in is_iterator.
+    ::std::is_same<detail::det_deref_t<T>, detected_t<detail::it_traits_reference, T>>,
+    ::std::is_same<detail::det_deref_t<const T>, detected_t<detail::it_traits_reference, T>>,
+    // *it is convertible to it_traits::value_type.
+    // NOTE: as above, it_traits::value_type does exist.
+    ::std::is_convertible<detail::det_deref_t<T>, detected_t<detail::it_traits_value_type, T>>,
+    ::std::is_convertible<detail::det_deref_t<const T>, detected_t<detail::it_traits_value_type, T>>,
+    // it->m must be the same as (*it).m. What we test here is that the pointee type of the pointer type
+    // yielded eventually by the arrow operator is the same as *it, but minus references: the arrow operator
+    // always returns a pointer, but *it could return a new object (e.g., a transform iterator).
+    // NOTE: we already verified earlier that T is dereferenceable, so deref_t will not be nonesuch.
+    // NOTE: make this check conditional on whether the ref type is a class or not. If it's not a class,
+    // no expression such as (*it).m is possible, and apparently some input iterators which are not
+    // expected to point to classes do *not* implement the arrow operator as a consequence (e.g.,
+    // see std::istreambuf_iterator).
+    detail::dcond<
+        ::std::is_class<::std::remove_reference_t<detail::det_deref_t<T>>>,
+        ::std::conjunction<::std::is_same<::std::remove_reference_t<detail::det_deref_t<
+                                              detected_t<detail::arrow_operator_t, ::std::add_lvalue_reference_t<T>>>>,
+                                          ::std::remove_reference_t<detail::det_deref_t<T>>>,
+                           ::std::is_same<::std::remove_reference_t<detail::det_deref_t<detected_t<
+                                              detail::arrow_operator_t, ::std::add_lvalue_reference_t<const T>>>>,
+                                          ::std::remove_reference_t<detail::det_deref_t<const T>>>>,
+        ::std::true_type>,
+    // ++it returns &it. Only non-const needed.
+    ::std::is_same<detected_t<detail::preinc_t, ::std::add_lvalue_reference_t<T>>, ::std::add_lvalue_reference_t<T>>,
+    // it is post-incrementable. Only non-const needed.
+    is_post_incrementable<::std::add_lvalue_reference_t<T>>,
+    // *it++ is convertible to the value type. Only non-const needed.
+    ::std::is_convertible<detected_t<detail::it_inc_deref_t, ::std::add_lvalue_reference_t<T>>,
+                          detected_t<detail::it_traits_value_type, T>>,
+    // Check that the iterator category of T derives from the standard
+    // input iterator tag. This accommodates the Boost iterators as well, who have
+    // custom categories derived from the standard ones.
+    ::std::is_base_of<::std::input_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL InputIterator = is_input_iterator<T>::value;
+
+#endif
 
 } // namespace piranha
 
