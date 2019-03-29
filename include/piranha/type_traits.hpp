@@ -571,10 +571,112 @@ using is_input_iterator = ::std::conjunction<
     // custom categories derived from the standard ones.
     ::std::is_base_of<::std::input_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>;
 
+template <typename T>
+inline constexpr bool is_input_iterator_v = is_input_iterator<T>::value;
+
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL InputIterator = is_input_iterator<T>::value;
+PIRANHA_CONCEPT_DECL InputIterator = is_input_iterator_v<T>;
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using out_iter_assign_t = decltype(*::std::declval<T>() = ::std::declval<U>());
+
+template <typename T, typename U>
+using out_iter_pia_t = decltype(*::std::declval<T>()++ = ::std::declval<U>());
+
+} // namespace detail
+
+// Output iterator type trait.
+template <typename T, typename U>
+using is_output_iterator = ::std::conjunction<
+    // Must be a class or pointer.
+    ::std::disjunction<::std::is_class<T>, ::std::is_pointer<T>>,
+    // Must be an iterator.
+    is_iterator<T>,
+    // *r = o must be valid (r is an lvalue T, o is an U).
+    is_detected<detail::out_iter_assign_t, ::std::add_lvalue_reference_t<T>, U>,
+    // Lvalue pre-incrementable and returning lref to T.
+    ::std::is_same<detected_t<detail::preinc_t, ::std::add_lvalue_reference_t<T>>, ::std::add_lvalue_reference_t<T>>,
+    // Lvalue post-incrementable and returning convertible to const T &.
+    ::std::is_convertible<detected_t<detail::postinc_t, ::std::add_lvalue_reference_t<T>>,
+                          ::std::add_lvalue_reference_t<const T>>,
+    // Can post-increment-assign on lvalue.
+    is_detected<detail::out_iter_pia_t, ::std::add_lvalue_reference_t<T>, U>,
+    // NOTE: if T is an input iterator, its category tag must *not* derive from std::output_iterator_tag
+    // (the fact that it is an input iterator takes the precedence in the category tagging).
+    // If T is a pure output iterator, its category tag must derive from std::output_iterator_tag.
+    detail::dcond<is_input_iterator<T>,
+                  ::std::negation<::std::is_base_of<::std::output_iterator_tag,
+                                                    detected_t<detail::it_traits_iterator_category, T>>>,
+                  ::std::is_base_of<::std::output_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>>;
+
+template <typename T, typename U>
+inline constexpr bool is_output_iterator_v = is_output_iterator<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL OutputIterator = is_output_iterator_v<T, U>;
+
+#endif
+
+template <typename T>
+using is_forward_iterator = ::std::conjunction<
+    // Must be an input iterator.
+    // NOTE: the pointer or class requirement is already in the input iterator.
+    is_input_iterator<T>,
+    // Must be def-ctible.
+    ::std::is_default_constructible<T>,
+    // If it is a mutable (i.e., output) iterator, it_traits::reference
+    // must be a reference to the value type. Otherwise, it_traits::reference
+    // must be a reference to const value type.
+    // NOTE: we do not do the is_output_iterator check here, as we don't really know
+    // what to put as a second template parameter.
+    // NOTE: if the ref type is a mutable reference, then a forward iterator satisfies
+    // also all the reqs of an output iterator.
+    ::std::disjunction<
+        ::std::is_same<detected_t<detail::it_traits_reference, T>,
+                       ::std::add_lvalue_reference_t<detected_t<detail::it_traits_value_type, T>>>,
+        ::std::is_same<detected_t<detail::it_traits_reference, T>,
+                       ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_value_type, T>>>>,
+    // Post-incrementable lvalue returns convertible to const T &.
+    ::std::is_convertible<detected_t<detail::postinc_t, ::std::add_lvalue_reference_t<T>>,
+                          ::std::add_lvalue_reference_t<const T>>,
+    // *r++ returns it_traits::reference.
+    ::std::is_same<detected_t<detail::it_inc_deref_t, ::std::add_lvalue_reference_t<T>>,
+                   detected_t<detail::it_traits_reference, T>>,
+    // Category check.
+    ::std::is_base_of<::std::forward_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>;
+
+template <typename T>
+inline constexpr bool is_forward_iterator_v = is_forward_iterator<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL ForwardIterator = is_forward_iterator_v<T>;
+
+#endif
+
+template <typename T>
+using is_mutable_forward_iterator
+    = ::std::conjunction<is_forward_iterator<T>,
+                         ::std::is_same<detected_t<detail::it_traits_reference, T>,
+                                        ::std::add_lvalue_reference_t<detected_t<detail::it_traits_value_type, T>>>>;
+
+template <typename T>
+inline constexpr bool is_mutable_forward_iterator_v = is_mutable_forward_iterator<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
 
 #endif
 

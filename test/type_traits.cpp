@@ -13,12 +13,16 @@
 
 #include <cstddef>
 #include <iterator>
+#include <list>
+#include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <type_traits>
+#include <vector>
 
 #include <piranha/config.hpp>
 
@@ -917,23 +921,195 @@ PIRANHA_DECL_ITT_SPEC(iter21, fake_it_traits_forward<iter21_v>)
 
 #undef PIRANHA_DECL_ITT_SPEC
 
-TEST_CASE("is_iterator")
+TEST_CASE("iterators")
 {
     // Check the arrow operator type trait.
-    REQUIRE((!is_detected<detail::arrow_operator_t, void>::value));
-    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, int *&>>::value));
-    REQUIRE((!is_detected<detail::arrow_operator_t, int &>::value));
-    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, arrow01 &>>::value));
-    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, arrow02 &>>::value));
-    REQUIRE((!is_detected<detail::arrow_operator_t, const arrow02 &>::value));
-    REQUIRE((!is_detected<detail::arrow_operator_t, arrow03 &>::value));
-    REQUIRE((std::is_same<int *, detected_t<detail::arrow_operator_t, arrow03a &>>::value));
+    REQUIRE((!is_detected_v<detail::arrow_operator_t, void>));
+    REQUIRE((std::is_same_v<int *, detected_t<detail::arrow_operator_t, int *&>>));
+    REQUIRE((!is_detected_v<detail::arrow_operator_t, int &>));
+    REQUIRE((std::is_same_v<int *, detected_t<detail::arrow_operator_t, arrow01 &>>));
+    REQUIRE((std::is_same_v<int *, detected_t<detail::arrow_operator_t, arrow02 &>>));
+    REQUIRE((!is_detected_v<detail::arrow_operator_t, const arrow02 &>));
+    REQUIRE((!is_detected_v<detail::arrow_operator_t, arrow03 &>));
+    REQUIRE((std::is_same_v<int *, detected_t<detail::arrow_operator_t, arrow03a &>>));
 
+    // Iterator.
+    REQUIRE(detail::has_iterator_traits<int *>::value);
+    REQUIRE(detail::has_iterator_traits<const int *>::value);
+    REQUIRE(!detail::has_iterator_traits<int>::value);
+    REQUIRE(!detail::has_iterator_traits<double>::value);
+    REQUIRE(detail::has_iterator_traits<std::vector<int>::iterator>::value);
+    REQUIRE(detail::has_iterator_traits<std::vector<int>::const_iterator>::value);
     REQUIRE(!is_iterator_v<void>);
-    REQUIRE(!is_iterator_v<int>);
     REQUIRE(is_iterator_v<int *>);
+    REQUIRE(is_iterator_v<const int *>);
+    REQUIRE(is_iterator_v<std::vector<int>::iterator>);
+    REQUIRE(is_iterator_v<std::vector<int>::const_iterator>);
+    REQUIRE(!is_iterator_v<std::vector<int>::iterator &>);
+    REQUIRE(!is_iterator_v<int>);
+    REQUIRE(!is_iterator_v<std::string>);
+    REQUIRE(is_iterator_v<iter01>);
+    REQUIRE(!is_iterator_v<iter01 &>);
+    REQUIRE(!is_iterator_v<const iter01>);
+    REQUIRE(is_iterator_v<iter02>);
+    REQUIRE(!is_iterator_v<iter02 &>);
+    REQUIRE(!is_iterator_v<const iter02>);
+    REQUIRE(!is_iterator_v<iter03>);
+    REQUIRE(!is_iterator_v<iter03 &>);
+    REQUIRE(!is_iterator_v<const iter03>);
+    REQUIRE(is_iterator_v<std::istreambuf_iterator<char>>);
+    REQUIRE(!is_iterator_v<iter04>);
+    REQUIRE(!is_iterator_v<iter04 &>);
+    REQUIRE(!is_iterator_v<const iter04>);
+    REQUIRE(!is_iterator_v<iter05>);
+    REQUIRE(!is_iterator_v<iter05 &>);
+    REQUIRE(!is_iterator_v<const iter05>);
+    REQUIRE(is_iterator_v<std::ostream_iterator<int>>);
+    REQUIRE(is_iterator_v<std::insert_iterator<std::list<int>>>);
+
+    // Input iterator.
+    REQUIRE(!is_input_iterator_v<void>);
+    REQUIRE(is_input_iterator_v<int *>);
+    REQUIRE(is_input_iterator_v<const int *>);
+    REQUIRE(is_input_iterator_v<std::vector<int>::iterator>);
+    REQUIRE(is_input_iterator_v<std::vector<int>::const_iterator>);
+    REQUIRE(!is_input_iterator_v<std::vector<int>::iterator &>);
+    REQUIRE(is_input_iterator_v<std::istream_iterator<char>>);
+    REQUIRE(is_input_iterator_v<std::istreambuf_iterator<char>>);
+    REQUIRE(is_input_iterator_v<iter01>);
+    REQUIRE((is_output_iterator_v<iter01, int &>));
+    REQUIRE((!is_output_iterator_v<iter01, void>));
+    REQUIRE(!is_input_iterator_v<iter01 &>);
+    REQUIRE(!is_input_iterator_v<const iter01>);
+    REQUIRE(!is_input_iterator_v<iter02>);
+    REQUIRE(!is_input_iterator_v<iter02 &>);
+    REQUIRE(!is_input_iterator_v<const iter02>);
+    REQUIRE(is_input_iterator_v<iter06>);
+    REQUIRE(!is_input_iterator_v<iter06 &>);
+    REQUIRE(!is_input_iterator_v<const iter06>);
+    REQUIRE(is_iterator_v<iter06>);
+    REQUIRE(!is_iterator_v<iter06 &>);
+    REQUIRE(!is_iterator_v<const iter06>);
+    REQUIRE(!is_input_iterator_v<iter06a>);
+    REQUIRE(!is_input_iterator_v<iter07>);
+    REQUIRE(!is_input_iterator_v<iter07 &>);
+    REQUIRE(!is_input_iterator_v<const iter07>);
+    REQUIRE(is_iterator_v<iter07>);
+    REQUIRE(!is_iterator_v<iter07 &>);
+    REQUIRE(!is_iterator_v<const iter07>);
+    REQUIRE(!is_input_iterator_v<iter08>);
+    REQUIRE(!is_input_iterator_v<iter08 &>);
+    REQUIRE(!is_input_iterator_v<const iter08>);
+    REQUIRE(!is_iterator_v<iter08>);
+    REQUIRE(!is_iterator_v<iter08 &>);
+    REQUIRE(!is_iterator_v<const iter08>);
+    REQUIRE(is_input_iterator_v<iter09>);
+    REQUIRE(!is_input_iterator_v<iter09 &>);
+    REQUIRE(!is_input_iterator_v<const iter09>);
+    REQUIRE(!is_input_iterator_v<iter09a>);
+    REQUIRE(is_input_iterator_v<iter10>);
+    REQUIRE((is_output_iterator_v<iter10, int &>));
+    REQUIRE(!is_input_iterator_v<iter10 &>);
+    REQUIRE(!is_input_iterator_v<const iter10>);
+    REQUIRE(is_input_iterator_v<iter11>);
+    REQUIRE(!is_input_iterator_v<iter11 &>);
+    REQUIRE(!is_input_iterator_v<const iter11>);
+    REQUIRE(is_iterator_v<iter11>);
+    REQUIRE(!is_iterator_v<iter11 &>);
+    REQUIRE(!is_iterator_v<const iter11>);
+    REQUIRE(!is_input_iterator_v<iter12>);
+    REQUIRE(!is_input_iterator_v<iter12 &>);
+    REQUIRE(!is_input_iterator_v<const iter12>);
+    REQUIRE(is_iterator_v<iter12>);
+    REQUIRE(!is_iterator_v<iter12 &>);
+    REQUIRE(!is_iterator_v<const iter12>);
+    REQUIRE(is_input_iterator_v<iter13>);
+    // NOTE: cannot use iter13 for writing, as it dereferences
+    // to an int rather than int &.
+    REQUIRE((!is_output_iterator_v<iter13, int &>));
+    REQUIRE(!is_input_iterator_v<iter13 &>);
+    REQUIRE(!is_input_iterator_v<const iter13>);
+
+    // Forward iterator.
+    REQUIRE(!is_forward_iterator_v<void>);
+    REQUIRE(is_forward_iterator_v<int *>);
+    REQUIRE((is_output_iterator_v<int *, int &>));
+    REQUIRE(is_forward_iterator_v<const int *>);
+    REQUIRE(is_forward_iterator_v<std::vector<int>::iterator>);
+    REQUIRE((is_output_iterator_v<std::vector<int>::iterator, int &>));
+    REQUIRE((is_output_iterator_v<std::vector<int>::iterator, double &>));
+    REQUIRE((!is_output_iterator_v<std::vector<int>::iterator, std::string &>));
+    REQUIRE(is_forward_iterator_v<std::vector<int>::const_iterator>);
+    REQUIRE(!is_forward_iterator_v<std::vector<int>::iterator &>);
+    REQUIRE(!is_forward_iterator_v<std::istream_iterator<char>>);
+    REQUIRE((is_forward_iterator_v<std::map<int, int>::iterator>));
+    REQUIRE(is_forward_iterator_v<iter14>);
+    REQUIRE((is_output_iterator_v<iter14, int>));
+    REQUIRE(!is_forward_iterator_v<iter14 &>);
+    REQUIRE(!is_forward_iterator_v<const iter14>);
+    REQUIRE(!is_forward_iterator_v<iter15>);
+    REQUIRE(!is_forward_iterator_v<iter15 &>);
+    REQUIRE(!is_forward_iterator_v<const iter15>);
+    REQUIRE(is_input_iterator_v<iter15>);
+    REQUIRE(!is_input_iterator_v<iter15 &>);
+    REQUIRE(!is_input_iterator_v<const iter15>);
+    REQUIRE(!is_forward_iterator_v<iter17>);
+    REQUIRE(!is_forward_iterator_v<iter17 &>);
+    REQUIRE(!is_forward_iterator_v<const iter17>);
+    REQUIRE(is_iterator_v<iter17>);
+    REQUIRE(!is_iterator_v<iter17 &>);
+    REQUIRE(!is_iterator_v<const iter17>);
+    REQUIRE(!is_forward_iterator_v<iter18>);
+    REQUIRE(!is_forward_iterator_v<iter18 &>);
+    REQUIRE(!is_forward_iterator_v<const iter18>);
+    REQUIRE(!is_iterator_v<iter18>);
+    REQUIRE(!is_iterator_v<iter18 &>);
+    REQUIRE(!is_iterator_v<const iter18>);
+    REQUIRE(!is_forward_iterator_v<iter19>);
+    REQUIRE(!is_forward_iterator_v<iter19 &>);
+    REQUIRE(!is_forward_iterator_v<const iter19>);
+    REQUIRE(!is_input_iterator_v<iter19>);
+    REQUIRE(!is_input_iterator_v<iter19 &>);
+    REQUIRE(!is_input_iterator_v<const iter19>);
+    REQUIRE(!is_forward_iterator_v<iter20>);
+    REQUIRE(!is_forward_iterator_v<iter20 &>);
+    REQUIRE(!is_forward_iterator_v<const iter20>);
+    REQUIRE(!is_input_iterator_v<iter20>);
+    REQUIRE(!is_input_iterator_v<iter20 &>);
+    REQUIRE(!is_input_iterator_v<const iter20>);
+    REQUIRE(!is_forward_iterator_v<iter21>);
+    REQUIRE(!is_forward_iterator_v<iter21 &>);
+    REQUIRE(!is_forward_iterator_v<const iter21>);
+    REQUIRE(!is_input_iterator_v<iter21>);
+    REQUIRE(!is_input_iterator_v<iter21 &>);
+    REQUIRE(!is_input_iterator_v<const iter21>);
+    REQUIRE(is_iterator_v<iter21>);
+    REQUIRE(!is_iterator_v<iter21 &>);
+    REQUIRE(!is_iterator_v<const iter21>);
+
+    // Mutable forward iterator.
+    REQUIRE((!is_mutable_forward_iterator_v<void>));
+    REQUIRE((is_mutable_forward_iterator_v<int *>));
+    REQUIRE((is_mutable_forward_iterator_v<std::vector<int>::iterator>));
+    REQUIRE((is_mutable_forward_iterator_v<std::list<int>::iterator>));
+    REQUIRE((!is_mutable_forward_iterator_v<const int *>));
+    REQUIRE((!is_mutable_forward_iterator_v<std::vector<int>::const_iterator>));
+    REQUIRE((!is_mutable_forward_iterator_v<std::istreambuf_iterator<char>>));
+    REQUIRE((!is_mutable_forward_iterator_v<std::list<int>::const_iterator>));
+    REQUIRE((!is_mutable_forward_iterator_v<std::set<int>::iterator>));
+    REQUIRE((is_mutable_forward_iterator_v<std::map<int, int>::iterator>));
+    REQUIRE((!is_mutable_forward_iterator_v<std::map<int, int>::const_iterator>));
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
+    // Just a few concept checks, as currently the concepts
+    // are based on the type traits.
     REQUIRE(!Iterator<void>);
+    REQUIRE(Iterator<char *>);
+    REQUIRE(!InputIterator<void>);
+    REQUIRE(InputIterator<int *>);
+    REQUIRE(!ForwardIterator<void>);
+    REQUIRE(ForwardIterator<int *>);
+    REQUIRE(!MutableForwardIterator<void>);
+    REQUIRE(MutableForwardIterator<int *>);
 #endif
 }
