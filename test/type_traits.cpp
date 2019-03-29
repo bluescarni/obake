@@ -1100,6 +1100,21 @@ TEST_CASE("iterators")
     REQUIRE((is_mutable_forward_iterator_v<std::map<int, int>::iterator>));
     REQUIRE((!is_mutable_forward_iterator_v<std::map<int, int>::const_iterator>));
 
+    // Output iterator.
+    REQUIRE((!is_output_iterator_v<void, void>));
+    REQUIRE((!is_output_iterator_v<void, double>));
+    REQUIRE((!is_output_iterator_v<double, void>));
+    REQUIRE((is_output_iterator_v<std::ostream_iterator<double>, double &>));
+    REQUIRE((is_output_iterator_v<std::ostream_iterator<double>, int>));
+    REQUIRE((!is_output_iterator_v<std::ostream_iterator<double>, std::string &>));
+    REQUIRE((!is_input_iterator_v<std::ostream_iterator<double>>));
+    REQUIRE((is_output_iterator_v<int *, int &>));
+    REQUIRE((is_output_iterator_v<int *, int &&>));
+    REQUIRE((is_output_iterator_v<int *, double &&>));
+    REQUIRE((!is_output_iterator_v<int *, std::string &>));
+    REQUIRE((is_output_iterator_v<std::list<int>::iterator, int &>));
+    REQUIRE((!is_output_iterator_v<std::list<int>::const_iterator, int &>));
+
 #if defined(PIRANHA_HAVE_CONCEPTS)
     // Just a few concept checks, as currently the concepts
     // are based on the type traits.
@@ -1111,5 +1126,10 @@ TEST_CASE("iterators")
     REQUIRE(ForwardIterator<int *>);
     REQUIRE(!MutableForwardIterator<void>);
     REQUIRE(MutableForwardIterator<int *>);
+    REQUIRE(!OutputIterator<void, void>);
+    REQUIRE((!OutputIterator<void, double>));
+    REQUIRE((!OutputIterator<double, void>));
+    REQUIRE((OutputIterator<int *, int &>));
+    REQUIRE((!OutputIterator<int *, std::string &>));
 #endif
 }
