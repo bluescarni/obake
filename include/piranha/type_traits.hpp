@@ -201,6 +201,20 @@ inline constexpr auto limits_minmax<__uint128_t> = ::std::tuple{__uint128_t(0), 
 
 #endif
 
+// Small wrapper to fetch the number of digits of a builtin numerical type. Works on 128bit integrals as well.
+template <typename T>
+inline constexpr auto limits_digits = ::std::numeric_limits<T>::digits;
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+template <>
+inline constexpr auto limits_digits<__int128_t> = 127;
+
+template <>
+inline constexpr auto limits_digits<__uint128_t> = 128;
+
+#endif
+
 // NOTE: std::remove_pointer_t removes the top level qualifiers of the pointer as well:
 // http://en.cppreference.com/w/cpp/types/remove_pointer
 // After removal of pointer, we could still have a type which is cv-qualified. Thus,

@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <map>
 #include <memory>
@@ -1131,5 +1132,20 @@ TEST_CASE("iterators")
     REQUIRE((!OutputIterator<double, void>));
     REQUIRE((OutputIterator<int *, int &>));
     REQUIRE((!OutputIterator<int *, std::string &>));
+#endif
+}
+
+TEST_CASE("limits_digits")
+{
+    REQUIRE(std::numeric_limits<int>::digits == detail::limits_digits<int>);
+    REQUIRE(std::numeric_limits<unsigned>::digits == detail::limits_digits<unsigned>);
+    REQUIRE(std::numeric_limits<signed char>::digits == detail::limits_digits<signed char>);
+    REQUIRE(std::numeric_limits<long long>::digits == detail::limits_digits<long>);
+    REQUIRE(std::numeric_limits<float>::digits == detail::limits_digits<float>);
+    REQUIRE(std::numeric_limits<double>::digits == detail::limits_digits<double>);
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+    REQUIRE(128 == detail::limits_digits<__uint128_t>);
+    REQUIRE(127 == detail::limits_digits<__int128_t>);
 #endif
 }
