@@ -1140,7 +1140,8 @@ TEST_CASE("limits_digits")
     REQUIRE(std::numeric_limits<int>::digits == detail::limits_digits<int>);
     REQUIRE(std::numeric_limits<unsigned>::digits == detail::limits_digits<unsigned>);
     REQUIRE(std::numeric_limits<signed char>::digits == detail::limits_digits<signed char>);
-    REQUIRE(std::numeric_limits<long long>::digits == detail::limits_digits<long>);
+    REQUIRE(std::numeric_limits<unsigned short>::digits == detail::limits_digits<unsigned short>);
+    REQUIRE(std::numeric_limits<long long>::digits == detail::limits_digits<long long>);
     REQUIRE(std::numeric_limits<float>::digits == detail::limits_digits<float>);
     REQUIRE(std::numeric_limits<double>::digits == detail::limits_digits<double>);
 

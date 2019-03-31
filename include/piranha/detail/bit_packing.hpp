@@ -49,9 +49,8 @@ template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
 #endif
     class bit_packer
 {
-    using value_type = make_unsigned_t<T>;
-
 public:
+    using value_type = make_unsigned_t<T>;
     explicit bit_packer(unsigned size)
         : m_value(0), m_max(0), m_s_offset(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
