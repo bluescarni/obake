@@ -22,6 +22,7 @@ ADD_PIRANHA_TESTCASE(math_safe_convert)
 ADD_PIRANHA_TESTCASE(polynomials_polynomial)
 ADD_PIRANHA_TESTCASE(ranges)
 ADD_PIRANHA_TESTCASE(series)
+ADD_PIRANHA_TESTCASE(to_string)
 ADD_PIRANHA_TESTCASE(type_traits)
 ADD_PIRANHA_TESTCASE(utils_demangle)
 

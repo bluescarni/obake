@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/type_traits.hpp>
 #include <piranha/utils/demangle.hpp>
 
@@ -50,7 +51,7 @@ struct ex_thrower {
             ::piranha::stack_trace(1) + '\n'
 #else
             ::std::string("Function name    : ") + m_func + "\nLocation         : " + m_file + ", line "
-            + ::std::to_string(m_line)
+            + detail::to_string(m_line)
 #endif
             ;
 

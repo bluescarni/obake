@@ -25,6 +25,7 @@
 #endif
 
 #include <piranha/config.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/utils/demangle.hpp>
 #include <piranha/utils/stack_trace.hpp>
 
@@ -49,7 +50,7 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
     try {
         auto &st_data = *static_cast<stack_trace_data *>(data);
 
-        auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + ::std::to_string(lineno);
+        auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + detail::to_string(lineno);
         auto func_name = funcname ? demangle_impl(funcname) : "<unknown function>";
 
         // NOTE: the level is left empty, it will be filled in later.
@@ -85,7 +86,7 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
                                       static_cast<void *>(&st_data));
     if (piranha_unlikely(ret)) {
         return "The stack trace could not be generated because the backtrace_full() function returned the error code "
-               + std::to_string(ret) + ".";
+               + detail::to_string(ret) + ".";
     }
 
     // Special case for an empty backtrace. This can happen, e.g., if the value of
@@ -98,7 +99,7 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
     const auto [max_idx_w, max_file_name_w] = [&st_data]() {
         ::std::array<::std::string::size_type, 2> retval{0, 0};
         for (decltype(st_data.size()) i = 0; i < st_data.size(); ++i) {
-            st_data[i][0] = ::std::to_string(i);
+            st_data[i][0] = detail::to_string(i);
             retval[0] = ::std::max(st_data[i][0].size(), retval[0]);
             retval[1] = ::std::max(st_data[i][1].size(), retval[1]);
         }

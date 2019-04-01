@@ -56,7 +56,7 @@ if(YACMA_COMPILER_IS_MSVC)
 endif()
 
 # Initial setup of the piranha target.
-set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp")
+set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp")
 
 if(PIRANHA_WITH_STACK_TRACES)
     set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")

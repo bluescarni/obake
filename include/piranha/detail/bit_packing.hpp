@@ -11,10 +11,10 @@
 
 #include <cstddef>
 #include <stdexcept>
-#include <string>
 #include <type_traits>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/type_traits.hpp>
 
@@ -72,7 +72,7 @@ public:
             piranha_throw(::std::out_of_range,
                           "Cannot push any more values to this bit packer: the number of "
                           "values already pushed to the packer is equal to the size used for construction ("
-                              + ::std::to_string(m_size) + ")");
+                              + detail::to_string(m_size) + ")");
         }
         const auto shift_n = [&n, this]() {
             if constexpr (is_signed_v<T>) {
