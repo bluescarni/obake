@@ -108,21 +108,13 @@ public:
         }();
 
         // Check the range of the input value. We can do the check
-        // directly on the unsigned counterpart of n, and against the
+        // directly on the unsigned counterpart of n against the
         // unsigned max value.
         if (piranha_unlikely(shift_n > m_max)) {
             if constexpr (is_signed_v<T>) {
                 // Convert the unsigned range to its signed counterpart.
-                const auto [range_min, range_max] = [this]() {
-                    constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<value_type>);
-                    // NOTE: we have to special case if we are packing a single value: in that
-                    // case we cannot use the bit shifting operators as we would be shifting too much,
-                    // so instead we get the limits of T directly.
-                    return (nbits == m_pbits)
-                               ? detail::limits_minmax<T>
-                               : ::std::tuple{-(T(1) << (m_pbits - 1u)), (T(1) << (m_pbits - 1u)) - T(1)};
-                }();
-
+                const auto range_max = static_cast<T>((value_type(1) << (m_pbits - 1u)) - 1u),
+                           range_min = -range_max - T(1);
                 piranha_throw(::std::overflow_error, "The signed value being pushed to this bit packer ("
                                                          + detail::to_string(n) + ") is outside the allowed range ["
                                                          + detail::to_string(range_min) + ", "
@@ -134,7 +126,8 @@ public:
             }
         }
 
-        // Do the actual packing.
+        // Do the actual packing (the new value will be
+        // appended in the MSB direction).
         m_value += shift_n << m_cur_shift;
         ++m_index;
         m_cur_shift += m_pbits;
@@ -157,6 +150,80 @@ public:
 private:
     value_type m_value, m_max, m_s_offset;
     unsigned m_index, m_size, m_pbits, m_cur_shift;
+};
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T>
+requires BitPackable<T>
+#else
+template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
+#endif
+    class bit_unpacker
+{
+public:
+    using value_type = make_unsigned_t<T>;
+    explicit bit_unpacker(const value_type &n, unsigned size)
+        : m_value(n), m_mask(0), m_s_offset(0), m_index(0), m_size(size), m_pbits(0)
+    {
+        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<value_type>);
+        if (piranha_unlikely(size > nbits)) {
+            piranha_throw(::std::overflow_error, "The number of values to be extracted from this bit unpacker ("
+                                                     + detail::to_string(size) + ") is larger than the bit width ("
+                                                     + detail::to_string(nbits)
+                                                     + ") of the value type of the unpacker");
+        }
+        if (size) {
+            m_pbits = nbits / size;
+            // The maximum decodable value is a sequence of m_pbits * size
+            // one bits (starting from LSB).
+            const auto max_decodable = value_type(-1) >> (nbits % size);
+            if (piranha_unlikely(n > max_decodable)) {
+                piranha_throw(::std::overflow_error, "The value to be unpacked (" + detail::to_string(n)
+                                                         + ") is larger than the maximum allowed value ("
+                                                         + detail::to_string(max_decodable) + ") for a range of size "
+                                                         + detail::to_string(size));
+            }
+            // The mask for extracting the low m_pbits from a value.
+            m_mask = value_type(-1) >> (nbits - m_pbits);
+            if constexpr (is_signed_v<T>) {
+                m_s_offset = value_type(1) << (m_pbits - 1u);
+            }
+        } else {
+            if (piranha_unlikely(!n)) {
+                piranha_throw(::std::invalid_argument,
+                              "Only a value of zero can be unpacked into an empty output range, but a value of "
+                                  + detail::to_string(n) + " was provided instead");
+            }
+        }
+    }
+    bit_unpacker &operator>>(T &out)
+    {
+        if (piranha_unlikely(m_index == m_size)) {
+            piranha_throw(::std::out_of_range, "Cannot unpack any more values from this bit unpacker: the number of "
+                                               "values already unpacked is equal to the size used for construction ("
+                                                   + detail::to_string(m_size) + ")");
+        }
+
+        // Unpack the current value and write it out.
+        out = [this]() {
+            if constexpr (is_signed_v<T>) {
+                const auto un = (m_value & m_mask) - m_s_offset;
+                return static_cast<T>(un);
+            } else {
+                return m_value & m_mask;
+            }
+        }();
+
+        // Shift down the current value, increase the index.
+        m_value >>= m_pbits;
+        ++m_index;
+
+        return *this;
+    }
+
+private:
+    value_type m_value, m_mask, m_s_offset;
+    unsigned m_index, m_size, m_pbits;
 };
 
 } // namespace piranha
