@@ -16,6 +16,6 @@ using namespace piranha::detail;
 TEST_CASE("bit_packer")
 {
     bit_packer<int> bp0(5);
-    bp0 << -1 << -2 << -3 << -4 << -5;
+    bp0 << -1 << -2 << -3 << -4 << -50000;
     std::cout << bp0.get() << '\n';
 }

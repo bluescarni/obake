@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 
 #include <piranha/config.hpp>
@@ -57,9 +58,10 @@ public:
         constexpr auto nbits = static_cast<unsigned>(limits_digits<value_type>);
         if (piranha_unlikely(size > nbits)) {
             piranha_throw(::std::overflow_error, "The number of values to be pushed to this bit packer ("
-                                                     + detail::to_string(size) + ") is larger than the bit width ("
-                                                     + detail::to_string(nbits) + ") of the value type of the packer");
+                                                     + to_string(size) + ") is larger than the bit width ("
+                                                     + to_string(nbits) + ") of the value type of the packer");
         }
+
         if (size) {
             // NOTE: compute these values only if we are actually going
             // to pack values (if size is zero, no packing ever happens).
@@ -90,8 +92,13 @@ public:
             piranha_throw(::std::out_of_range,
                           "Cannot push any more values to this bit packer: the number of "
                           "values already pushed to the packer is equal to the size used for construction ("
-                              + detail::to_string(m_size) + ")");
+                              + to_string(m_size) + ")");
         }
+
+        // Compute the shifted n: this is just n if T is unsigned,
+        // otherwise we cast n to the unsigned counterpart and add the offset.
+        // This will always lead to a shift_n value in the [0, 2**m_pbits - 1]
+        // range.
         const auto shift_n = [&n, this]() {
             if constexpr (is_signed_v<T>) {
                 return static_cast<value_type>(n) + m_s_offset;
@@ -99,14 +106,38 @@ public:
                 return n;
             }
         }();
+
+        // Check the range of the input value. We can do the check
+        // directly on the unsigned counterpart of n, and against the
+        // unsigned max value.
         if (piranha_unlikely(shift_n > m_max)) {
-            piranha_throw(::std::overflow_error,
-                          "The value being pushed to this bit packer (" + detail::to_string(shift_n)
-                              + ") is larger than the maximum allowed value (" + detail::to_string(m_max) + ")");
+            if constexpr (is_signed_v<T>) {
+                // Convert the unsigned range to its signed counterpart.
+                const auto [range_min, range_max] = [this]() {
+                    constexpr auto nbits = static_cast<unsigned>(limits_digits<value_type>);
+                    // NOTE: we have to special case if we are packing a single value: in that
+                    // case we cannot use the bit shifting operators as we would be shifting too much,
+                    // so instead we get the limits of T directly.
+                    return (nbits == m_pbits)
+                               ? limits_minmax<T>
+                               : ::std::tuple{-(T(1) << (m_pbits - 1u)), (T(1) << (m_pbits - 1u)) - T(1)};
+                }();
+
+                piranha_throw(::std::overflow_error, "The signed value being pushed to this bit packer (" + to_string(n)
+                                                         + ") is outside the allowed range [" + to_string(range_min)
+                                                         + ", " + to_string(range_max) + "]");
+            } else {
+                piranha_throw(::std::overflow_error,
+                              "The unsigned value being pushed to this bit packer (" + to_string(shift_n)
+                                  + ") is larger than the maximum allowed value (" + to_string(m_max) + ")");
+            }
         }
+
+        // Do the actual packing.
         m_value += shift_n << m_cur_shift;
         ++m_index;
         m_cur_shift += m_pbits;
+
         return *this;
     }
     // Get the encoded value.
@@ -115,9 +146,9 @@ public:
         if (piranha_unlikely(m_index < m_size)) {
             piranha_throw(::std::out_of_range, "Cannot fetch the packed value from this bit packer: the number of "
                                                "values pushed to the packer ("
-                                                   + detail::to_string(m_index)
+                                                   + to_string(m_index)
                                                    + ") is less than the size used for construction ("
-                                                   + detail::to_string(m_size) + ")");
+                                                   + to_string(m_size) + ")");
         }
         return m_value;
     }
