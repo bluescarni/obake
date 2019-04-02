@@ -11,8 +11,10 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <random>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/tuple_for_each.hpp>
@@ -26,6 +28,10 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
                              __int128_t, __uint128_t
 #endif
                              >;
+
+static std::mt19937 rng;
+
+constexpr auto ntrials = 100;
 
 TEST_CASE("bit_packer_unpacker")
 {
@@ -76,5 +82,22 @@ TEST_CASE("bit_packer_unpacker")
         bu1 = bu_t(bp1.get(), 1);
         bu1 >> out;
         REQUIRE(out == lim_max);
+
+        // Random testing.
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>) {
+#endif
+            std::uniform_int_distribution<int_t> idist(lim_min, lim_max);
+            for (auto i = 0; i < ntrials; ++i) {
+                const auto tmp = idist(rng);
+                bp1 = bp_t(1);
+                bp1 << tmp;
+                bu1 = bu_t(bp1.get(), 1);
+                bu1 >> out;
+                REQUIRE(tmp == out);
+            }
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        }
+#endif
     });
 }
