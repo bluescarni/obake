@@ -191,7 +191,7 @@ inline constexpr auto limits_minmax = ::std::tuple{::std::numeric_limits<T>::min
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-inline constexpr auto max_int128_t = (((__int128_t(1) << 126) - 1) << 1) + 1;
+inline constexpr auto max_int128_t = static_cast<__int128_t>((__uint128_t(1) << 127u) - 1u);
 
 template <>
 inline constexpr auto limits_minmax<__int128_t> = ::std::tuple{-max_int128_t - 1, max_int128_t};
