@@ -6,12 +6,12 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/detail/bit_packing.hpp>
+#include <piranha/utils/bit_packing.hpp>
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-using namespace piranha::detail;
+using namespace piranha;
 
 TEST_CASE("bit_packer")
 {

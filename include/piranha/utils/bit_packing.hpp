@@ -6,8 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_BIT_PACKING_HPP
-#define PIRANHA_DETAIL_BIT_PACKING_HPP
+#ifndef PIRANHA_UTILS_BIT_PACKING_HPP
+#define PIRANHA_UTILS_BIT_PACKING_HPP
 
 #include <cstddef>
 #include <stdexcept>
@@ -19,7 +19,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/type_traits.hpp>
 
-namespace piranha::detail
+namespace piranha
 {
 
 template <typename T>
@@ -55,11 +55,11 @@ public:
     explicit bit_packer(unsigned size)
         : m_value(0), m_max(0), m_s_offset(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
-        constexpr auto nbits = static_cast<unsigned>(limits_digits<value_type>);
+        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<value_type>);
         if (piranha_unlikely(size > nbits)) {
             piranha_throw(::std::overflow_error, "The number of values to be pushed to this bit packer ("
-                                                     + to_string(size) + ") is larger than the bit width ("
-                                                     + to_string(nbits) + ") of the value type of the packer");
+                                                     + detail::to_string(size) + ") is larger than the bit width ("
+                                                     + detail::to_string(nbits) + ") of the value type of the packer");
         }
 
         if (size) {
@@ -92,7 +92,7 @@ public:
             piranha_throw(::std::out_of_range,
                           "Cannot push any more values to this bit packer: the number of "
                           "values already pushed to the packer is equal to the size used for construction ("
-                              + to_string(m_size) + ")");
+                              + detail::to_string(m_size) + ")");
         }
 
         // Compute the shifted n: this is just n if T is unsigned,
@@ -114,22 +114,23 @@ public:
             if constexpr (is_signed_v<T>) {
                 // Convert the unsigned range to its signed counterpart.
                 const auto [range_min, range_max] = [this]() {
-                    constexpr auto nbits = static_cast<unsigned>(limits_digits<value_type>);
+                    constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<value_type>);
                     // NOTE: we have to special case if we are packing a single value: in that
                     // case we cannot use the bit shifting operators as we would be shifting too much,
                     // so instead we get the limits of T directly.
                     return (nbits == m_pbits)
-                               ? limits_minmax<T>
+                               ? detail::limits_minmax<T>
                                : ::std::tuple{-(T(1) << (m_pbits - 1u)), (T(1) << (m_pbits - 1u)) - T(1)};
                 }();
 
-                piranha_throw(::std::overflow_error, "The signed value being pushed to this bit packer (" + to_string(n)
-                                                         + ") is outside the allowed range [" + to_string(range_min)
-                                                         + ", " + to_string(range_max) + "]");
+                piranha_throw(::std::overflow_error, "The signed value being pushed to this bit packer ("
+                                                         + detail::to_string(n) + ") is outside the allowed range ["
+                                                         + detail::to_string(range_min) + ", "
+                                                         + detail::to_string(range_max) + "]");
             } else {
                 piranha_throw(::std::overflow_error,
-                              "The unsigned value being pushed to this bit packer (" + to_string(shift_n)
-                                  + ") is larger than the maximum allowed value (" + to_string(m_max) + ")");
+                              "The unsigned value being pushed to this bit packer (" + detail::to_string(shift_n)
+                                  + ") is larger than the maximum allowed value (" + detail::to_string(m_max) + ")");
             }
         }
 
@@ -146,9 +147,9 @@ public:
         if (piranha_unlikely(m_index < m_size)) {
             piranha_throw(::std::out_of_range, "Cannot fetch the packed value from this bit packer: the number of "
                                                "values pushed to the packer ("
-                                                   + to_string(m_index)
+                                                   + detail::to_string(m_index)
                                                    + ") is less than the size used for construction ("
-                                                   + to_string(m_size) + ")");
+                                                   + detail::to_string(m_size) + ")");
         }
         return m_value;
     }
@@ -158,6 +159,6 @@ private:
     unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
-} // namespace piranha::detail
+} // namespace piranha
 
 #endif
