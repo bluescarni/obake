@@ -207,8 +207,7 @@ public:
         // Unpack the current value and write it out.
         out = [this]() {
             if constexpr (is_signed_v<T>) {
-                const auto un = (m_value & m_mask) - m_s_offset;
-                return static_cast<T>(un);
+                return static_cast<T>((m_value & m_mask) - m_s_offset);
             } else {
                 return m_value & m_mask;
             }
