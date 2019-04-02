@@ -188,8 +188,18 @@ public:
             if constexpr (is_signed_v<T>) {
                 m_s_offset = value_type(1) << (m_pbits - 1u);
             }
+
+            // NOTE: if size == 1 we set m_pbits back to zero.
+            // The reason is that for size == 1 we would end up
+            // downshifting m_value by nbits in operator>>() below,
+            // which is undefined behaviour. Note that m_pbits
+            // is only used in the downshifting from this point
+            // onwards.
+            if (size == 1u) {
+                m_pbits = 0;
+            }
         } else {
-            if (piranha_unlikely(!n)) {
+            if (piranha_unlikely(n)) {
                 piranha_throw(::std::invalid_argument,
                               "Only a value of zero can be unpacked into an empty output range, but a value of "
                                   + detail::to_string(n) + " was provided instead");
@@ -213,9 +223,9 @@ public:
             }
         }();
 
-        // Shift down the current value, increase the index.
-        m_value >>= m_pbits;
+        // Increase the index, shift down the current value.
         ++m_index;
+        m_value >>= m_pbits;
 
         return *this;
     }
