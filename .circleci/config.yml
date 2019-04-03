@@ -1,11 +1,17 @@
 version: 2.1
 
 jobs:
-  build:
+  cosmic:
     docker:
       - image: circleci/buildpack-deps:cosmic
     steps:
       - checkout
       - run:
           name: Installing deps
-          command: 'sh ./tools/circleci_install_deps.sh'
+          command: 'sh ./tools/circleci_cosmic_install_deps.sh'
+
+workflows:
+  version: 2.1
+  all_builds:
+    jobs:
+      - cosmic
