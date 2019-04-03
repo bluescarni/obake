@@ -6,7 +6,10 @@ set -x
 # Exit on error.
 set -e
 
-apt-get install build-essential libgmp-dev libmpfr-dev
+sudo apt-get install build-essential libgmp-dev libmpfr-dev
+
+gcc --version
+g++ --version
 
 set +e
 set +x
