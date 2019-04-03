@@ -6,7 +6,7 @@ set -x
 # Exit on error.
 set -e
 
-echo "Hello World!"
+sudo apt-get install build-essential libgmp-dev libmpfr-dev
 
 set +e
 set +x
