@@ -17,7 +17,7 @@ cd build
 sh ../tools/circleci_install_mppp.sh
 
 # GCC build.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=undefined"
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=undefined" -DPIRANHA_WITH_STACK_TRACES=YES
 make -j2 VERBOSE=1
 # Run the tests.
 ctest -V
