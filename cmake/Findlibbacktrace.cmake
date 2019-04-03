@@ -52,7 +52,7 @@ if(NOT libbacktrace_INCLUDE_DIR OR NOT libbacktrace_LIBRARY)
     endif()
 endif()
 
-find_package_handle_standard_args(libbacktrace DEFAULT_MSG libbacktrace_INCLUDE_DIR libbacktrace_LIBRARY)
+find_package_handle_standard_args(libbacktrace DEFAULT_MSG libbacktrace_LIBRARY libbacktrace_INCLUDE_DIR)
 
 mark_as_advanced(libbacktrace_INCLUDE_DIR libbacktrace_LIBRARY)
 
