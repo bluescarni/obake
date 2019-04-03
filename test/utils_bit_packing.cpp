@@ -35,6 +35,13 @@ static std::mt19937 rng;
 
 constexpr auto ntrials = 100;
 
+#if defined(_MSC_VER)
+
+#pragma warning(push)
+#pragma warning(disable : 4146)
+
+#endif
+
 TEST_CASE("bit_packer_unpacker")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
@@ -166,3 +173,9 @@ TEST_CASE("bit_packer_unpacker")
         REQUIRE_THROWS_AS(bp1 << int_t(0), std::out_of_range);
     });
 }
+
+#if defined(_MSC_VER)
+
+#pragma warning(pop)
+
+#endif
