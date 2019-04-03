@@ -20,9 +20,18 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/type_traits.hpp>
 
+// NOTE:
+// - in these classes, we are exploiting two's complement representation when dealing with signed
+//   integers. This is not guaranteed by the standard before C++20, but in practice even before
+//   C++20 essentially all C++ implementations support only two's complement;
+// - we have a few integral divisions/modulo operations in these classes which could probably
+//   be replaced with lookup tables, should the need arise in terms of performance.
+
 namespace piranha
 {
 
+// Only allow certain integral types to be packable (this is due to the complications arising
+// from integral promotion rules for short ints and char types).
 template <typename T>
 using is_bit_packable = ::std::disjunction<::std::is_same<T, int>, ::std::is_same<T, unsigned>, ::std::is_same<T, long>,
                                            ::std::is_same<T, unsigned long>, ::std::is_same<T, long long>,
@@ -51,7 +60,9 @@ template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
 class bit_packer
 {
 public:
+    // Use the unsigned counterpart of T for storage.
     using value_type = make_unsigned_t<T>;
+    // Constructor from a number of values to be packed.
     explicit bit_packer(unsigned size)
         : m_value(0), m_max(0), m_s_offset(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
@@ -162,6 +173,7 @@ class bit_unpacker
 {
 public:
     using value_type = make_unsigned_t<T>;
+    // Constructor from a packed value and a number of values to be unpacked.
     explicit bit_unpacker(const value_type &n, unsigned size)
         : m_value(n), m_mask(0), m_s_offset(0), m_index(0), m_size(size), m_pbits(0)
     {
@@ -217,6 +229,10 @@ public:
         // Unpack the current value and write it out.
         out = [this]() {
             if constexpr (is_signed_v<T>) {
+                // NOTE: for signed values, we subtract the offset. Two's complement
+                // conversion rules ensure that, if the original packed value was negative,
+                // the wrap-around unsigned offset subtraction followed by a conversion
+                // to signed recovers the original negative packed value.
                 return static_cast<T>((m_value & m_mask) - m_s_offset);
             } else {
                 return m_value & m_mask;

@@ -74,6 +74,19 @@ TEST_CASE("bit_packer_unpacker")
                                      "values already unpacked is equal to the size used for construction (0)"));
         REQUIRE_THROWS_AS(bu0 >> out, std::out_of_range);
 
+        // Empty unpacker with nonzero value.
+        REQUIRE_THROWS_WITH(bu_t(42, 0), Contains("Only a value of zero can be unpacked into an empty output range, "
+                                                  "but a value of 42 was provided instead"));
+        REQUIRE_THROWS_AS(bu_t(42, 0), ::std::invalid_argument);
+
+        // Test the error thrown if we try to init an unpacker whose size is larger
+        // than the bit width.
+        REQUIRE_THROWS_WITH(bu_t(0, nbits + 1u),
+                            Contains("The number of values to be extracted from this bit unpacker ("
+                                     + detail::to_string(nbits + 1u) + ") is larger than the bit width ("
+                                     + detail::to_string(nbits) + ") of the value type of the unpacker"));
+        REQUIRE_THROWS_AS(bu_t(0, nbits + 1u), std::overflow_error);
+
         // Unitary packing/unpacking.
         bp_t bp1(1);
         REQUIRE_THROWS_WITH(
@@ -115,7 +128,8 @@ TEST_CASE("bit_packer_unpacker")
 #endif
         {
             for (auto i = 2u; i < nbits; ++i) {
-                const auto [cur_min, cur_max] = [pbits = nbits / i]() {
+                const auto pbits = nbits / i;
+                const auto [cur_min, cur_max] = [pbits]() {
                     if constexpr (is_signed_v<int_t>) {
                         return std::tuple{-(int_t(1) << (pbits - 1u)), (int_t(1) << (pbits - 1u)) - int_t(1)};
                     } else {
@@ -153,6 +167,32 @@ TEST_CASE("bit_packer_unpacker")
                                                  + ", " + detail::to_string(cur_max) + "]"));
                     REQUIRE_THROWS_AS(bp1 << (cur_max + int_t(1)), std::overflow_error);
                 } else {
+                    REQUIRE_THROWS_WITH(bp1 << (cur_max + int_t(1)),
+                                        Contains("The unsigned value being pushed to this bit packer ("
+                                                 + detail::to_string(cur_max + int_t(1))
+                                                 + ") is larger than the maximum allowed value ("
+                                                 + detail::to_string(cur_max) + ")"));
+                    REQUIRE_THROWS_AS(bp1 << (cur_max + int_t(1)), std::overflow_error);
+                }
+
+                // If the current size does not divide nbits exactly, we can
+                // construct a value which is larger than the max decodable value.
+                if (nbits % i) {
+                    const auto max_decodable = value_t(-1) >> (nbits % i);
+
+                    REQUIRE_THROWS_WITH(bu_t(max_decodable + 1u, i),
+                                        Contains("The value to be unpacked (" + detail::to_string(max_decodable + 1u)
+                                                 + ") is larger than the maximum allowed value ("
+                                                 + detail::to_string(max_decodable) + ") for a range of size "
+                                                 + detail::to_string(i)));
+                    REQUIRE_THROWS_AS(bu_t(max_decodable + 1u, i), std::overflow_error);
+
+                    REQUIRE_THROWS_WITH(bu_t(max_decodable + 2u, i),
+                                        Contains("The value to be unpacked (" + detail::to_string(max_decodable + 2u)
+                                                 + ") is larger than the maximum allowed value ("
+                                                 + detail::to_string(max_decodable) + ") for a range of size "
+                                                 + detail::to_string(i)));
+                    REQUIRE_THROWS_AS(bu_t(max_decodable + 2u, i), std::overflow_error);
                 }
             }
         }
