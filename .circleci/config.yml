@@ -21,6 +21,12 @@ jobs:
 workflows:
   version: 2
   all_builds:
+    triggers:
+      - schedule:
+          filters:
+            branches:
+               ignore:
+                 - /pr\/.*/
     jobs:
     - cosmic
     - bionic
