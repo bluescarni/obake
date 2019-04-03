@@ -27,7 +27,7 @@ cd ..
 rm -fr mppp-${MPPP_VERSION}
 
 # Configure and build piranha.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts -fsanitize=address"
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=undefined"
 make -j2
 
 # Run the tests.

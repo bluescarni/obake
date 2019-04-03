@@ -9,9 +9,18 @@ jobs:
     - run:
         name: Build and test
         command: sh ./tools/circleci_cosmic.sh
+  bionic:
+    docker:
+    - image: circleci/buildpack-deps:bionic
+    steps:
+    - checkout
+    - run:
+        name: Build and test
+        command: sh ./tools/circleci_bionic.sh
 
 workflows:
   version: 2
   all_builds:
     jobs:
     - cosmic
+    - bionic
