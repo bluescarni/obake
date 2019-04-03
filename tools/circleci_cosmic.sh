@@ -26,7 +26,7 @@ ctest -V
 cd ..
 mkdir build_clang
 cd build_clang
-CC=clang CXX=clang++ cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DQuadmath_INCLUDE_DIR=/usr/lib/gcc/x86_64-linux-gnu/8/include/ -DQuadmath_LIBRARY=/usr/lib/gcc/x86_64-linux-gnu/8/libquadmath.so
+CC=clang CXX=clang++ cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=thread -stdlib=libc++" -DQuadmath_INCLUDE_DIR=/usr/lib/gcc/x86_64-linux-gnu/8/include/ -DQuadmath_LIBRARY=/usr/lib/gcc/x86_64-linux-gnu/8/libquadmath.so
 make -j2 VERBOSE=1
 # Run the tests.
 ctest -V
