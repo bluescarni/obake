@@ -119,14 +119,14 @@ TEST_CASE("bit_packer_unpacker")
                 std::vector<int_t> v(i);
                 for (auto k = 0; k < ntrials; ++k) {
                     bp1 = bp_t(i);
-                    for (auto &n : v) {
-                        n = idist(rng);
-                        bp1 << n;
+                    for (auto &x : v) {
+                        x = idist(rng);
+                        bp1 << x;
                     }
                     bu1 = bu_t(bp1.get(), i);
-                    for (const auto &n : v) {
+                    for (const auto &x : v) {
                         bu1 >> out;
-                        REQUIRE(out == n);
+                        REQUIRE(out == x);
                     }
                 }
 
