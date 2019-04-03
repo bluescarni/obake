@@ -22,7 +22,7 @@ make -j2 VERBOSE=1
 # Run the tests.
 ctest -V
 # Upload coverage data.
-bash <(curl -s https://codecov.io/bash) -x gcov-8 > /dev/null
+bash <(curl -s https://codecov.io/bash) -x gcov-8
 
 # clang build.
 cd ..
