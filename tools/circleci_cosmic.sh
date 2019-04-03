@@ -7,7 +7,7 @@ set -x
 set -e
 
 # Core deps.
-sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang
+sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang curl
 
 # Create the build dir and cd into it.
 mkdir build
@@ -17,10 +17,12 @@ cd build
 sh ../tools/circleci_install_mppp.sh
 
 # GCC build.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts -fsanitize=address" -DPIRANHA_WITH_STACK_TRACES=YES
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts -fsanitize=address --coverage" -DPIRANHA_WITH_STACK_TRACES=YES
 make -j2 VERBOSE=1
 # Run the tests.
 ctest -V
+# Upload coverage data.
+bash <(curl -s https://codecov.io/bash) -x gcov-8 > /dev/null
 
 # clang build.
 cd ..
