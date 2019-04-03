@@ -44,12 +44,11 @@ PIRANHA_CONCEPT_DECL BitPackable = is_bit_packable_v<T>;
 #endif
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-template <typename T>
-requires BitPackable<T>
+template <BitPackable T>
 #else
 template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
 #endif
-    class bit_packer
+class bit_packer
 {
 public:
     using value_type = make_unsigned_t<T>;
@@ -155,12 +154,11 @@ private:
 };
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-template <typename T>
-requires BitPackable<T>
+template <BitPackable T>
 #else
 template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
 #endif
-    class bit_unpacker
+class bit_unpacker
 {
 public:
     using value_type = make_unsigned_t<T>;

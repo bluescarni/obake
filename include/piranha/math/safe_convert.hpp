@@ -108,12 +108,11 @@ template <typename T, typename U,
 
 // Implementations for mppp::integer - C++ integrals.
 #if defined(PIRANHA_HAVE_CONCEPTS)
-template <::std::size_t SSize, typename T>
-requires Integral<T>
+template <::std::size_t SSize, Integral T>
 #else
 template <::std::size_t SSize, typename T, ::std::enable_if_t<is_integral_v<T>, int> = 0>
 #endif
-    inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
+inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 {
     n = m;
     return true;
