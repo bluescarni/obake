@@ -7,8 +7,8 @@ jobs:
     steps:
     - checkout
     - run:
-        name: Installing deps
-        command: sh ./tools/circleci_cosmic_install_deps.sh
+        name: Build and test
+        command: sh ./tools/circleci_cosmic.sh
 
 workflows:
   version: 2
