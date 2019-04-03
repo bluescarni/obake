@@ -75,7 +75,12 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
     stack_trace_data st_data;
 
     // Try to create the backtrace state.
-    auto bt_state = ::backtrace_create_state(nullptr, 0, nullptr, nullptr);
+    // NOTE: apparently this can be created once and then re-used in future invocations.
+    // This also drastically reduces memory usage and increases runtime performance.
+    // We create this as a thread_local static so that we can call backtrace_create_state()
+    // in single-threaded mode. See also:
+    // https://github.com/boostorg/stacktrace/commit/4123beb4af6ff4e36769905b87c206da39190847
+    thread_local auto bt_state = ::backtrace_create_state(nullptr, 0, nullptr, nullptr);
     if (piranha_unlikely(!bt_state)) {
         return "The stack trace could not be generated because the backtrace_create_state() function failed to "
                "allocate the state structure.";
