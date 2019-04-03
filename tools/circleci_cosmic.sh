@@ -14,21 +14,11 @@ mkdir build
 cd build
 
 # Download and install mppp.
-MPPP_VERSION="0.13"
-wget https://github.com/bluescarni/mppp/archive/v${MPPP_VERSION}.tar.gz -O mppp.tar.gz
-tar xzf mppp.tar.gz
-cd mppp-${MPPP_VERSION}
-mkdir build
-cd build
-cmake ../ -DMPPP_WITH_MPFR=YES -DMPPP_WITH_QUADMATH=YES -DCMAKE_INSTALL_PREFIX=~/.local
-make install
-cd ..
-cd ..
-rm -fr mppp-${MPPP_VERSION}
+sh ../tools/circleci_install_mppp.sh
 
 # Configure and build piranha.
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts -fsanitize=address"
-make -j2
+make -j2 VERBOSE=1
 
 # Run the tests.
 ctest -V
