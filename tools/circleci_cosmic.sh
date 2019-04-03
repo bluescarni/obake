@@ -24,8 +24,14 @@ cmake ../ -DMPPP_WITH_MPFR=YES -DMPPP_WITH_QUADMATH=YES -DCMAKE_INSTALL_PREFIX=~
 make install
 cd ..
 cd ..
+rm -fr mppp-${MPPP_VERSION}
 
+# Configure and build piranha.
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts -fsanitize=address"
+make -j2
 
+# Run the tests.
+ctest .
 
 set +e
 set +x
