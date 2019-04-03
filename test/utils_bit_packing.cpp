@@ -88,8 +88,9 @@ TEST_CASE("bit_packer_unpacker")
 
         // Random testing.
 #if defined(PIRANHA_HAVE_GCC_INT128)
-        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>) {
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
 #endif
+        {
             std::uniform_int_distribution<int_t> idist(lim_min, lim_max);
             for (auto i = 0; i < ntrials; ++i) {
                 const auto tmp = idist(rng);
@@ -99,14 +100,13 @@ TEST_CASE("bit_packer_unpacker")
                 bu1 >> out;
                 REQUIRE(tmp == out);
             }
-#if defined(PIRANHA_HAVE_GCC_INT128)
         }
-#endif
 
         // Random testing with variable sizes.
 #if defined(PIRANHA_HAVE_GCC_INT128)
-        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>) {
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
 #endif
+        {
             for (auto i = 2u; i < nbits; ++i) {
                 const auto [cur_min, cur_max] = [pbits = nbits / i]() {
                     if constexpr (is_signed_v<int_t>) {
@@ -148,9 +148,7 @@ TEST_CASE("bit_packer_unpacker")
                 } else {
                 }
             }
-#if defined(PIRANHA_HAVE_GCC_INT128)
         }
-#endif
 
         // Error checking.
         REQUIRE_THROWS_WITH(bp_t(nbits + 1u),
