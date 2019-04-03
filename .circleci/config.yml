@@ -8,7 +8,7 @@ jobs:
     - checkout
     - run:
         name: Build and test
-        command: sh ./tools/circleci_cosmic.sh
+        command: bash ./tools/circleci_cosmic.sh
   bionic:
     docker:
     - image: circleci/buildpack-deps:bionic
@@ -16,7 +16,7 @@ jobs:
     - checkout
     - run:
         name: Build and test
-        command: sh ./tools/circleci_bionic.sh
+        command: bash ./tools/circleci_bionic.sh
 
 workflows:
   version: 2

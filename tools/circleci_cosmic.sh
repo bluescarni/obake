@@ -14,7 +14,7 @@ mkdir build
 cd build
 
 # Download and install mppp.
-sh ../tools/circleci_install_mppp.sh
+bash ../tools/circleci_install_mppp.sh
 
 # GCC build.
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts -fsanitize=address --coverage" -DPIRANHA_WITH_STACK_TRACES=YES
