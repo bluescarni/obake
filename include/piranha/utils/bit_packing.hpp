@@ -15,6 +15,7 @@
 #include <type_traits>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/ignore.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/type_traits.hpp>
@@ -103,6 +104,7 @@ public:
             if constexpr (is_signed_v<T>) {
                 return static_cast<value_type>(n) + m_s_offset;
             } else {
+                detail::ignore(this);
                 return n;
             }
         }();
