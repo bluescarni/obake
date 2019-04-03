@@ -55,9 +55,11 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
 
         // NOTE: the level is left empty, it will be filled in later.
         st_data.push_back(::std::array{::std::string{}, ::std::move(file_name), ::std::move(func_name)});
+        // LCOV_EXCL_START
     } catch (...) {
         return -1;
     }
+    // LCOV_EXCL_STOP
     return 0;
 }
 }
@@ -68,7 +70,9 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
 {
     // Check the skip parameter.
     if (piranha_unlikely(skip > static_cast<unsigned>(::std::numeric_limits<int>::max()) - 2u)) {
+        // LCOV_EXCL_START
         return "The stack trace could not be generated due to an overflow condition.";
+        // LCOV_EXCL_STOP
     }
 
     // Prepare the stack trace data we will be writing into.
@@ -82,16 +86,20 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
     // https://github.com/boostorg/stacktrace/commit/4123beb4af6ff4e36769905b87c206da39190847
     thread_local auto bt_state = ::backtrace_create_state(nullptr, 0, nullptr, nullptr);
     if (piranha_unlikely(!bt_state)) {
+        // LCOV_EXCL_START
         return "The stack trace could not be generated because the backtrace_create_state() function failed to "
                "allocate the state structure.";
+        // LCOV_EXCL_STOP
     }
 
     // Fetch the raw backtrace.
     const auto ret = ::backtrace_full(bt_state, 2 + static_cast<int>(skip), backtrace_callback, nullptr,
                                       static_cast<void *>(&st_data));
     if (piranha_unlikely(ret)) {
+        // LCOV_EXCL_START
         return "The stack trace could not be generated because the backtrace_full() function returned the error code "
                + detail::to_string(ret) + ".";
+        // LCOV_EXCL_STOP
     }
 
     // Special case for an empty backtrace. This can happen, e.g., if the value of

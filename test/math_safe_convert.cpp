@@ -40,6 +40,8 @@ TEST_CASE("safe_convert_integrals")
     REQUIRE(u == 54u);
     REQUIRE(!piranha::safe_convert(u, -54));
     REQUIRE(u == 54u);
+    REQUIRE(!piranha::safe_convert(n, std::numeric_limits<unsigned>::max()));
+    REQUIRE(n == 55);
 
     // Different types with different ranges.
     if constexpr (std::numeric_limits<int>::max() < std::numeric_limits<long>::max()
@@ -66,6 +68,9 @@ TEST_CASE("safe_convert_integrals")
         // Ulong to unsigned, failure.
         REQUIRE(!piranha::safe_convert(u, std::numeric_limits<unsigned long>::max()));
         REQUIRE(u == 36u);
+        // Ulong to long, failure.
+        REQUIRE(!piranha::safe_convert(l, std::numeric_limits<unsigned long>::max()));
+        REQUIRE(l == 42);
     }
 
     // Couple of tests with bool.
