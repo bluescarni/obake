@@ -13,20 +13,9 @@ matrix:
     - env: PIRANHA_BUILD="xcode10.2"
       os: osx
       osx_image: xcode10.2
-    - env: PIRANHA_BUILD="xcode10.1"
-      os: osx
-      osx_image: xcode10.1
-    - env: PIRANHA_BUILD="xcode10.0"
-      os: osx
-      osx_image: xcode10.0
 script:
     - mkdir build
     - cd build
-    # NOTE: currently, travis does not stop automatically if one of these
-    # 2 scripts returns an error code. Thus, we run them together as a single
-    # command, so that if install_deps.sh fails the whole build fails immediately
-    # rather than executing install_travis.sh as well. See
-    # https://github.com/travis-ci/travis-ci/issues/1066
     - ../tools/travis_osx.sh
 
 notifications:
