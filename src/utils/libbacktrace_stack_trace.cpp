@@ -69,11 +69,11 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
 ::std::string stack_trace_impl(unsigned skip)
 {
     // Check the skip parameter.
+    // LCOV_EXCL_START
     if (piranha_unlikely(skip > static_cast<unsigned>(::std::numeric_limits<int>::max()) - 2u)) {
-        // LCOV_EXCL_START
         return "The stack trace could not be generated due to an overflow condition.";
-        // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_STOP
 
     // Prepare the stack trace data we will be writing into.
     stack_trace_data st_data;
