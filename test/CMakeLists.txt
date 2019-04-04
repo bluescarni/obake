@@ -29,4 +29,3 @@ ADD_PIRANHA_TESTCASE(utils_demangle)
 if(PIRANHA_WITH_STACK_TRACES)
   ADD_PIRANHA_TESTCASE(utils_stacktrace)
 endif()
-
