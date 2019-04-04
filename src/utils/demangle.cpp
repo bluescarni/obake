@@ -41,13 +41,16 @@ namespace piranha::detail
 ::std::string demangle_impl(const char *s)
 {
 #if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
-    int status = -4;
+    // NOTE: wrap std::free() in a local lambda, so we avoid
+    // potential ambiguities when taking the address of ::std::free().
+    // See:
+    // https://stackoverflow.com/questions/27440953/stdunique-ptr-for-c-functions-that-need-free
+    auto deleter = [](void *ptr) { ::std::free(ptr); };
+
     // NOTE: abi::__cxa_demangle will return a pointer allocated by std::malloc, which we will delete via std::free.
-    ::std::unique_ptr<char, void (*)(void *)> res{::abi::__cxa_demangle(s, nullptr, nullptr, &status), ::std::free};
-    // NOTE: it seems like clang with libc++ does not set the status variable properly.
-    // We then check if anything was allocated by __cxa_demangle(), as here it mentions
-    // that in case of failure the pointer will be set to null:
-    // https://gcc.gnu.org/onlinedocs/libstdc++/libstdc++-html-USERS-4.3/a01696.html
+    ::std::unique_ptr<char, decltype(deleter)> res{::abi::__cxa_demangle(s, nullptr, nullptr, nullptr), deleter};
+
+    // NOTE: return the original string if demangling fails.
     return res ? ::std::string(res.get()) : ::std::string(s);
 #elif defined(_MSC_VER)
     // NOTE: the Windows function for demangling is not thread safe, we will have
