@@ -23,20 +23,29 @@
 
 #elif defined(__apple_build_version__)
 
+// This definition is needed for building on OSX.
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
 #include <boost/stacktrace.hpp>
 #undef BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
 
 #else
 
-// Otherwise, we go with whatever platform-specific default
-// Boost stacktrace picks.
+// Default case, no special definitions required.
 #include <boost/stacktrace.hpp>
 
 #endif
 
+#include <piranha/config.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/utils/stack_trace.hpp>
+
+#if defined(PIRANHA_COMPILER_IS_CLANG)
+
+// Silence clang warning when doing overflow checking below.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
+
+#endif
 
 namespace piranha::detail
 {
@@ -87,3 +96,9 @@ namespace piranha::detail
 }
 
 } // namespace piranha::detail
+
+#if defined(PIRANHA_COMPILER_IS_CLANG)
+
+#pragma clang diagnostic pop
+
+#endif

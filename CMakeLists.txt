@@ -59,6 +59,7 @@ endif()
 set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp")
 
 if(PIRANHA_WITH_STACK_TRACES)
+    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp" "${PIRANHA_SRC_FILES}")
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
     else()
