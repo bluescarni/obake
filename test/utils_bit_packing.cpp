@@ -22,6 +22,8 @@
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/type_traits.hpp>
 
+#include "test_utils.hpp"
+
 using namespace piranha;
 
 using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
@@ -44,6 +46,10 @@ constexpr auto ntrials = 100;
 
 TEST_CASE("bit_packer_unpacker")
 {
+#if defined(_WIN32)
+    piranha_test::disable_stack_traces();
+#endif
+
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
         using bp_t = bit_packer<int_t>;
