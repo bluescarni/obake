@@ -42,6 +42,9 @@ endif()
 # mp++.
 find_package(mp++ 0.13 REQUIRED)
 
+# Boost setup.
+include(PiranhaFindBoost)
+
 # libbacktrace.
 # NOTE: if stack traces are not supported, then the PIRANHA_WITH_STACK_TRACES
 # variable is empty and evaluates to false.
