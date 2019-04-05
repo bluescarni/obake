@@ -94,6 +94,9 @@ endif()
 # Configure config.hpp.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" @ONLY)
 
+# Configure the sphinx config file.
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py.in" "${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py" @ONLY)
+
 if(PIRANHA_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)

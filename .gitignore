@@ -7,3 +7,7 @@ build*
 
 # .orig files from patch.
 *.orig
+
+# Docs.
+doc/conf.py
+doc/_build
