@@ -1,0 +1,83 @@
+// Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
+//
+// This file is part of the piranha library.
+//
+// This Source Code Form is subject to the terms of the Mozilla
+// Public License v. 2.0. If a copy of the MPL was not distributed
+// with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <limits>
+#include <string>
+#include <vector>
+
+#if defined(_WIN32)
+
+// NOTE: setting the backend explicitly is needed for
+// proper support for clang-cl.
+#define BOOST_STACKTRACE_USE_WINDBG
+#include <boost/stacktrace.hpp>
+#undef BOOST_STACKTRACE_USE_WINDBG
+
+#else
+
+// Otherwise, we go with whatever platform-specific default
+// Boost stacktrace picks.
+#include <boost/stacktrace.hpp>
+
+#endif
+
+#include <piranha/detail/to_string.hpp>
+#include <piranha/utils/stack_trace.hpp>
+
+namespace piranha::detail
+{
+
+::std::string stack_trace_impl(unsigned skip)
+{
+    // Check the skip parameter.
+    // LCOV_EXCL_START
+    if (piranha_unlikely(skip > ::std::numeric_limits<::std::size_t>::max() - 2u)) {
+        return "The stack trace could not be generated due to an overflow condition.";
+    }
+    // LCOV_EXCL_STOP
+
+    // Generate the stack trace.
+    const auto tot_skip = static_cast<::std::size_t>(2u + static_cast<::std::size_t>(skip));
+    ::boost::stacktrace::stacktrace st(tot_skip, ::std::numeric_limits<::std::size_t>::max() - tot_skip);
+
+    // Special case an empty backtrace.
+    if (!st.size()) {
+        return "";
+    }
+
+    // Generate the first two columns of the table, and compute
+    // the max column widths.
+    ::std::string::size_type max_idx_width = 0, max_fname_width = 0;
+    ::std::vector<::std::array<::std::string, 2>> indices_fnames;
+    indices_fnames.reserve(static_cast<decltype(indices_fnames.size())>(st.size()));
+    for (decltype(st.size()) i = 0; i < st.size(); ++i) {
+        indices_fnames.push_back(
+            ::std::array{to_string(i), st[i].source_file() + ":" + to_string(st[i].source_line())});
+        max_idx_width = ::std::max(max_idx_width, indices_fnames.back()[0].size());
+        max_fname_width = ::std::max(max_fname_width, indices_fnames.back()[1].size());
+    }
+
+    // Assemble the formatted table.
+    ::std::string retval;
+    auto it_indices_fnames = indices_fnames.crbegin();
+    for (auto it = st.crbegin(); it != st.crend(); ++it, ++it_indices_fnames) {
+        retval += "# " + ::std::string(max_idx_width - (*it_indices_fnames)[0].size(), ' ') + (*it_indices_fnames)[0]
+                  + " | " + ::std::string(max_fname_width - (*it_indices_fnames)[1].size(), ' ')
+                  + (*it_indices_fnames)[1] + " | " + it->name();
+        if (it != st.crend() - 1) {
+            retval += '\n';
+        }
+    }
+
+    return retval;
+}
+
+} // namespace piranha::detail
