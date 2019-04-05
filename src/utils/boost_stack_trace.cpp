@@ -52,15 +52,28 @@ namespace piranha::detail
 
 ::std::string stack_trace_impl(unsigned skip)
 {
+    // The fixed number of frames we need to skip in order
+    // to generate the stack trace from the point of invocation
+    // of the top level function. It *should* be 2, but on Windows
+    // we need 4 for some reason. Not sure if this is a Boost
+    // issue or not.
+    constexpr unsigned fixed_skip =
+#if defined(_WIN32)
+        4u
+#else
+        2u
+#endif
+        ;
+
     // Check the skip parameter.
     // LCOV_EXCL_START
-    if (piranha_unlikely(skip > ::std::numeric_limits<::std::size_t>::max() - 2u)) {
+    if (piranha_unlikely(skip > ::std::numeric_limits<::std::size_t>::max() - fixed_skip)) {
         return "The stack trace could not be generated due to an overflow condition.";
     }
     // LCOV_EXCL_STOP
 
     // Generate the stack trace.
-    const auto tot_skip = static_cast<::std::size_t>(2u + static_cast<::std::size_t>(skip));
+    const auto tot_skip = static_cast<::std::size_t>(fixed_skip + static_cast<::std::size_t>(skip));
     ::boost::stacktrace::stacktrace st(tot_skip, ::std::numeric_limits<::std::size_t>::max() - tot_skip);
 
     // Special case an empty backtrace.

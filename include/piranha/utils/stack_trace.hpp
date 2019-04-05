@@ -35,8 +35,10 @@ PIRANHA_PUBLIC ::std::string stack_trace_impl(unsigned);
 } // namespace detail
 
 // Test/set whether stack trace generation is enabled.
-inline constexpr auto is_stack_trace_enabled = []() { return detail::stack_trace_enabled.load(); };
-inline constexpr auto set_stack_trace_enabled = [](bool status) { detail::stack_trace_enabled.store(status); };
+inline constexpr auto is_stack_trace_enabled
+    = []() { return detail::stack_trace_enabled.load(::std::memory_order_relaxed); };
+inline constexpr auto set_stack_trace_enabled
+    = [](bool status) { detail::stack_trace_enabled.store(status, ::std::memory_order_relaxed); };
 
 // Generate a stack trace starting from the call site of this function.
 // The 'skip' parameter indicates how many stack levels should be skipped
