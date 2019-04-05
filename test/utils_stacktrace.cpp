@@ -54,7 +54,19 @@ TEST_CASE("utils_stack_trace")
     std::cout << foo() << '\n';
     REQUIRE(!foo().empty());
     REQUIRE(bar<100>(200).empty());
+
+    // Disable/re-enable.
+    REQUIRE(stack_trace_enabled());
+    set_stack_trace_enabled(false);
+    REQUIRE(!stack_trace_enabled());
+    REQUIRE(foo() == "<Stack trace generation has been disabled at runtime>");
+    set_stack_trace_enabled(true);
+    REQUIRE(stack_trace_enabled());
+    REQUIRE(foo() != "<Stack trace generation has been disabled at runtime>");
+
+    // Disable slow stack trace generation from now on.
     piranha_test::disable_slow_stack_traces();
+
     std::cout << bar<100>() << '\n';
     REQUIRE(!bar<100>().empty());
     std::cout << bar<100>(30) << '\n';
