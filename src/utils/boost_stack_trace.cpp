@@ -21,6 +21,12 @@
 #include <boost/stacktrace.hpp>
 #undef BOOST_STACKTRACE_USE_WINDBG
 
+#elif defined(__apple_build_version__)
+
+#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
+#include <boost/stacktrace.hpp>
+#undef BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
+
 #else
 
 // Otherwise, we go with whatever platform-specific default
@@ -70,8 +76,8 @@ namespace piranha::detail
     auto it_indices_fnames = indices_fnames.crbegin();
     for (auto it = st.crbegin(); it != st.crend(); ++it, ++it_indices_fnames) {
         retval += "# " + ::std::string(max_idx_width - (*it_indices_fnames)[0].size(), ' ') + (*it_indices_fnames)[0]
-                  + " | " + ::std::string(max_fname_width - (*it_indices_fnames)[1].size(), ' ')
-                  + (*it_indices_fnames)[1] + " | " + it->name();
+                  + " | " + (*it_indices_fnames)[1]
+                  + ::std::string(max_fname_width - (*it_indices_fnames)[1].size(), ' ') + " | " + it->name();
         if (it != st.crend() - 1) {
             retval += '\n';
         }
