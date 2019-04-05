@@ -17,12 +17,7 @@
 #include <piranha/detail/to_string.hpp>
 #include <piranha/type_traits.hpp>
 #include <piranha/utils/demangle.hpp>
-
-#if defined(PIRANHA_WITH_STACK_TRACES)
-
 #include <piranha/utils/stack_trace.hpp>
-
-#endif
 
 namespace piranha::detail
 {
