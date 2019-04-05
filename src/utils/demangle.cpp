@@ -47,7 +47,7 @@ namespace piranha::detail
     // https://stackoverflow.com/questions/27440953/stdunique-ptr-for-c-functions-that-need-free
     auto deleter = [](void *ptr) { ::std::free(ptr); };
 
-    // NOTE: abi::__cxa_demangle will return a pointer allocated by std::malloc, which we will delete via std::free.
+    // NOTE: abi::__cxa_demangle will return a pointer allocated by std::malloc, which we will delete via std::free().
     ::std::unique_ptr<char, decltype(deleter)> res{::abi::__cxa_demangle(s, nullptr, nullptr, nullptr), deleter};
 
     // NOTE: return the original string if demangling fails.
