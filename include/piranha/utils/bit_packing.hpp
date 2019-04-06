@@ -165,7 +165,9 @@ constexpr auto compute_minmax_packed()
 }
 
 template <typename T>
-PIRANHA_PUBLIC extern const decltype(compute_minmax_packed<T>()) minmax_signed_packed;
+struct foo_cont {
+    PIRANHA_PUBLIC static const decltype(compute_minmax_packed<T>()) value;
+};
 
 } // namespace detail
 
