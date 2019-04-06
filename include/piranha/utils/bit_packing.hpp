@@ -169,6 +169,9 @@ struct foo_cont {
     PIRANHA_PUBLIC static const decltype(compute_minmax_packed<T>()) value;
 };
 
+template <>
+const decltype(compute_minmax_packed<int>()) foo_cont<int>::value;
+
 } // namespace detail
 
 #if defined(PIRANHA_HAVE_CONCEPTS)

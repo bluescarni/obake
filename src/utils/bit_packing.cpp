@@ -20,6 +20,11 @@ constexpr auto mmsp = compute_minmax_packed<T>();
 
 }
 
+template <>
+const decltype(compute_minmax_packed<int>()) foo_cont<int>::value = mmsp<int>;
+
+#if 0
+
 template <typename T>
 const decltype(compute_minmax_packed<T>()) foo_cont<T>::value = mmsp<T>;
 
@@ -30,6 +35,8 @@ template struct foo_cont<long long>;
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
 template struct foo_cont<__int128_t>;
+
+#endif
 
 #endif
 
