@@ -49,7 +49,7 @@ TEST_CASE("bit_packer_unpacker")
     piranha_test::disable_slow_stack_traces();
 
     // constexpr bit_packer_<int> bbg(5);
-    auto bar = detail::foo_cont<int>::value[0];
+    auto bar = detail::get_mmp<int>()[0];
     (void)bar;
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {

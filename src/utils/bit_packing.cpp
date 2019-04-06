@@ -20,8 +20,9 @@ constexpr auto mmsp = compute_minmax_packed<T>();
 
 }
 
-template <>
-const decltype(compute_minmax_packed<int>()) foo_cont<int>::value = mmsp<int>;
+const minmax_packed_t<int> mmp_int = mmsp<int>;
+const minmax_packed_t<long> mmp_long = mmsp<long>;
+const minmax_packed_t<long long> mmp_long_long = mmsp<long long>;
 
 #if 0
 

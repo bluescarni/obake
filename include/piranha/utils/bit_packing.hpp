@@ -165,12 +165,23 @@ constexpr auto compute_minmax_packed()
 }
 
 template <typename T>
-struct foo_cont {
-    PIRANHA_PUBLIC static const decltype(compute_minmax_packed<T>()) value;
-};
+using minmax_packed_t = decltype(compute_minmax_packed<T>());
 
-template <>
-const decltype(compute_minmax_packed<int>()) foo_cont<int>::value;
+PIRANHA_PUBLIC extern const minmax_packed_t<int> mmp_int;
+PIRANHA_PUBLIC extern const minmax_packed_t<long> mmp_long;
+PIRANHA_PUBLIC extern const minmax_packed_t<long long> mmp_long_long;
+
+template <typename T>
+inline const auto &get_mmp()
+{
+    if constexpr (::std::is_same_v<T, int>) {
+        return mmp_int;
+    } else if constexpr (::std::is_same_v<T, long>) {
+        return mmp_long;
+    } else if constexpr (::std::is_same_v<T, long long>) {
+        return mmp_long_long;
+    }
+}
 
 } // namespace detail
 
