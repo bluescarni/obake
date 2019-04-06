@@ -48,6 +48,10 @@ TEST_CASE("bit_packer_unpacker")
 {
     piranha_test::disable_slow_stack_traces();
 
+    // constexpr bit_packer_<int> bbg(5);
+    constexpr auto bar = detail::minmax_signed_packed<int>[0];
+    (void)bar;
+
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
         using bp_t = bit_packer<int_t>;

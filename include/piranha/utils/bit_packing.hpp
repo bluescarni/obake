@@ -9,6 +9,8 @@
 #ifndef PIRANHA_UTILS_BIT_PACKING_HPP
 #define PIRANHA_UTILS_BIT_PACKING_HPP
 
+#include <array>
+#include <cassert>
 #include <cstddef>
 #include <stdexcept>
 #include <tuple>
@@ -51,6 +53,110 @@ template <typename T>
 PIRANHA_CONCEPT_DECL BitPackable = is_bit_packable_v<T>;
 
 #endif
+
+template <BitPackable T>
+class bit_packer_
+{
+};
+
+template <BitPackable T>
+requires Signed<T> class bit_packer_<T>
+{
+public:
+    constexpr explicit bit_packer_(unsigned size)
+        : m_value(0), m_min(0), m_max(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
+    {
+        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
+        if (piranha_unlikely(size >= nbits)) {
+            // TODO
+            piranha_throw(::std::overflow_error, "The number of values to be pushed to this bit packer ("
+                                                     + detail::to_string(size) + ") is larger than the bit width ("
+                                                     + detail::to_string(nbits) + ") of the value type of the packer");
+        }
+
+        if (size) {
+            if (size == 1u) {
+                m_pbits = nbits;
+                ::std::tie(m_min, m_max) = detail::limits_minmax<T>;
+            } else {
+                m_pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+                assert(m_pbits);
+                m_min = -(T(1) << (m_pbits - 1u));
+                m_max = (T(1) << (m_pbits - 1u)) - T(1);
+            }
+        }
+    }
+    constexpr bit_packer_ &operator<<(const T &n)
+    {
+        if (piranha_unlikely(m_index == m_size)) {
+            piranha_throw(::std::out_of_range,
+                          "Cannot push any more values to this bit packer: the number of "
+                          "values already pushed to the packer is equal to the size used for construction ("
+                              + detail::to_string(m_size) + ")");
+        }
+
+        if (piranha_unlikely(n < m_min || n > m_max)) {
+            // TODO
+            piranha_throw(::std::overflow_error, "");
+        }
+
+        const auto tmp = (T(1) << m_cur_shift);
+        m_value += n * tmp;
+        ++m_index;
+        m_cur_shift += m_pbits;
+
+        return *this;
+    }
+    constexpr const T &get() const
+    {
+        if (piranha_unlikely(m_index < m_size)) {
+            piranha_throw(::std::out_of_range, "Cannot fetch the packed value from this bit packer: the number of "
+                                               "values pushed to the packer ("
+                                                   + detail::to_string(m_index)
+                                                   + ") is less than the size used for construction ("
+                                                   + detail::to_string(m_size) + ")");
+        }
+        return m_value;
+    }
+
+private:
+    T m_value, m_min, m_max;
+    unsigned m_index, m_size, m_pbits, m_cur_shift;
+};
+
+namespace detail
+{
+
+template <typename T>
+constexpr auto compute_minmax_packed()
+{
+    constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
+
+    ::std::array<::std::array<T, 2>, static_cast<unsigned>(detail::limits_digits<T>)> retval{};
+
+    retval[0][0] = ::std::get<0>(detail::limits_minmax<T>);
+    retval[0][1] = ::std::get<1>(detail::limits_minmax<T>);
+
+    for (auto i = 1u; i < retval.size(); ++i) {
+        const auto size = i + 1u;
+        bit_packer_<T> bp_min(size), bp_max(size);
+        const auto pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+        const auto min = -(T(1) << (pbits - 1u)), max = (T(1) << (pbits - 1u)) - T(1);
+        for (auto j = 0u; j < size; ++j) {
+            bp_min << min;
+            bp_max << max;
+        }
+        retval[i][0] = bp_min.get();
+        retval[i][1] = bp_max.get();
+    }
+
+    return retval;
+}
+
+template <typename T>
+inline constexpr auto minmax_signed_packed = compute_minmax_packed<T>();
+
+} // namespace detail
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <BitPackable T>
@@ -162,6 +268,18 @@ public:
 private:
     value_type m_value, m_max, m_s_offset;
     unsigned m_index, m_size, m_pbits, m_cur_shift;
+};
+
+template <BitPackable T>
+class bit_unpacker_
+{
+};
+
+template <BitPackable T>
+requires Signed<T> class bit_unpacker_<T>
+{
+public:
+    constexpr explicit bit_unpacker_(const T &n, unsigned size) {}
 };
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
