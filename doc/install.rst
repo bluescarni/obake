@@ -42,7 +42,8 @@ tested in Piranha's continuous integration setup:
 * Visual Studio 2017 on Windows,
 * Xcode 10.2 on OSX 10.14.
 
-See also the :ref:`compiler and platform specific notes <platform_specific_notes>`.
+See also the
+:ref:`compiler and platform specific notes <platform_specific_notes>`.
 
 In order to install Piranha from source, `CMake <https://cmake.org/>`_ is
 required (at least version 3.3). After downloading and unpacking Piranha's
