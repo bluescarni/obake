@@ -24,20 +24,9 @@ const minmax_packed_t<int> mmp_int = mmsp<int>;
 const minmax_packed_t<long> mmp_long = mmsp<long>;
 const minmax_packed_t<long long> mmp_long_long = mmsp<long long>;
 
-#if 0
-
-template <typename T>
-const decltype(compute_minmax_packed<T>()) foo_cont<T>::value = mmsp<T>;
-
-template struct foo_cont<int>;
-template struct foo_cont<long>;
-template struct foo_cont<long long>;
-
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-template struct foo_cont<__int128_t>;
-
-#endif
+const minmax_packed_t<__int128_t> mmp_int128 = mmsp<__int128_t>;
 
 #endif
 

@@ -171,6 +171,12 @@ PIRANHA_PUBLIC extern const minmax_packed_t<int> mmp_int;
 PIRANHA_PUBLIC extern const minmax_packed_t<long> mmp_long;
 PIRANHA_PUBLIC extern const minmax_packed_t<long long> mmp_long_long;
 
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+PIRANHA_PUBLIC extern const minmax_packed_t<__int128_t> mmp_int128;
+
+#endif
+
 template <typename T>
 inline const auto &get_mmp()
 {
@@ -181,6 +187,11 @@ inline const auto &get_mmp()
     } else if constexpr (::std::is_same_v<T, long long>) {
         return mmp_long_long;
     }
+#if defined(PIRANHA_HAVE_GCC_INT128)
+    else if constexpr (::std::is_same_v<T, __int128_t>) {
+        return mmp_int128;
+    }
+#endif
 }
 
 } // namespace detail
