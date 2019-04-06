@@ -54,13 +54,23 @@ PIRANHA_CONCEPT_DECL BitPackable = is_bit_packable_v<T>;
 
 #endif
 
-template <BitPackable T>
-class bit_packer_
+#if 0
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T>
+requires BitPackable<T>
+#else
+template <typename T, typename = void,
+          typename = ::std::enable_if_t<::std::conjunction_v<is_bit_packable<T>, ::std::negation<is_signed<T>>>>>
+#endif
+    class bit_packer_
 {
 };
 
-template <BitPackable T>
-requires Signed<T> class bit_packer_<T>
+#endif
+
+template <typename T>
+class bit_packer_
 {
 public:
     constexpr explicit bit_packer_(unsigned size)
@@ -270,6 +280,8 @@ private:
     unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
+#if 0
+
 template <BitPackable T>
 class bit_unpacker_
 {
@@ -281,6 +293,8 @@ requires Signed<T> class bit_unpacker_<T>
 public:
     constexpr explicit bit_unpacker_(const T &n, unsigned size) {}
 };
+
+#endif
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <BitPackable T>
