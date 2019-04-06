@@ -9,6 +9,8 @@
 // NOTE: for the demangler, we keep everything in a single file
 // as the implementation is rather short.
 
+#include <piranha/config.hpp>
+
 #include <string>
 
 #if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
@@ -18,7 +20,7 @@
 #include <cxxabi.h>
 #include <memory>
 
-#elif defined(_MSC_VER)
+#elif defined(PIRANHA_WITH_DBGHELP)
 
 // Disable some warnings for MSVC.
 #pragma warning(push)
@@ -52,7 +54,7 @@ namespace piranha::detail
 
     // NOTE: return the original string if demangling fails.
     return res ? ::std::string(res.get()) : ::std::string(s);
-#elif defined(_MSC_VER)
+#elif defined(PIRANHA_WITH_DBGHELP)
     // NOTE: the Windows function for demangling is not thread safe, we will have
     // to protect it with a mutex.
     // https://msdn.microsoft.com/ru-ru/library/windows/desktop/ms681400(v=vs.85).aspx
@@ -73,7 +75,7 @@ namespace piranha::detail
 
 } // namespace piranha::detail
 
-#if defined(_MSC_VER)
+#if defined(PIRANHA_WITH_DBGHELP)
 
 #pragma warning(pop)
 

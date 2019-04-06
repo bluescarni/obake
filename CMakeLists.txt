@@ -17,6 +17,9 @@ endif()
 # The build options.
 option(PIRANHA_WITH_STACK_TRACES "Enable stack traces." OFF)
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
+if(YACMA_COMPILER_IS_MSVC)
+    option(PIRANHA_WITH_DBGHELP "Use the DbgHelp library to improve error messages when using MSVC." ON)
+endif()
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -51,7 +54,8 @@ if(PIRANHA_WITH_STACK_TRACES)
 endif()
 
 # DbgHelp. This is already pulled in by mp++, but for consistency we do it again.
-if(YACMA_COMPILER_IS_MSVC)
+if(PIRANHA_WITH_DBGHELP)
+    set(PIRANHA_ENABLE_DBGHELP "#define PIRANHA_WITH_DBGHELP")
     find_package(DbgHelp REQUIRED)
 endif()
 
@@ -84,7 +88,7 @@ target_include_directories(piranha PUBLIC
 
 # Link the deps.
 target_link_libraries(piranha PUBLIC mp++::mp++)
-if(YACMA_COMPILER_IS_MSVC)
+if(PIRANHA_WITH_DBGHELP)
     target_link_libraries(piranha PUBLIC DbgHelp::DbgHelp)
 endif()
 if(PIRANHA_WITH_STACK_TRACES AND CMAKE_SYSTEM_NAME STREQUAL "Linux")

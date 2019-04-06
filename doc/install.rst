@@ -15,7 +15,7 @@ Piranha has the following mandatory dependencies:
 
 Piranha also depends on other libraries for optional features:
 
-* on Windows, Piranha can use the
+* on Windows when using Visual Studio, Piranha can use the
   `DbgHelp <https://docs.microsoft.com/en-us/windows/desktop/debug/debug-help-library>`_
   library to provide more descriptive error message. DbgHelp is typically
   included with the operating system;
