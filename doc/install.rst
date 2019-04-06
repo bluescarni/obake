@@ -15,7 +15,7 @@ Piranha has the following mandatory dependencies:
 
 Piranha also depends on other libraries for optional features:
 
-* on Windows when using Visual Studio, Piranha can use the
+* when using Visual Studio, Piranha can employ the
   `DbgHelp <https://docs.microsoft.com/en-us/windows/desktop/debug/debug-help-library>`_
   library to provide more descriptive error message. DbgHelp is typically
   included with the operating system;
@@ -26,6 +26,8 @@ Piranha also depends on other libraries for optional features:
 
 Installing Piranha
 ------------------
+
+.. _installation_from_source:
 
 Installation from source
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +42,7 @@ tested in Piranha's continuous integration setup:
 * Visual Studio 2017 on Windows,
 * Xcode 10.2 on OSX 10.14.
 
-See also the :ref:`platform-specific notes <platform_specific_notes>`.
+See also the :ref:`compiler and platform specific notes <platform_specific_notes>`.
 
 In order to install Piranha from source, `CMake <https://cmake.org/>`_ is
 required (at least version 3.3). After downloading and unpacking Piranha's
@@ -62,6 +64,9 @@ are currently recognised by Piranha's build system:
   this option requires the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   library.
 * ``PIRANHA_BUILD_TESTS``: build the test suite. Defaults to ``OFF``.
+* ``PIRANHA_WITH_DBGHELP``: use the DbgHelp library to provide more informative
+  error messages. This option is
+  available only when using Visual Studio. Defaults to ``ON``.
 
 Additionally, there are various useful CMake variables you can set, such as:
 
@@ -125,15 +130,16 @@ For those dependencies not available from the system's
 package manager (e.g., mp++ or libbacktrace), the best course of action
 is to install them by hand in the user's home directory under the
 ``.local`` subdirectory, and then set the CMake variable
-``CMAKE_PREFIX_PATH`` to ``~/.local``. This should be enough for the
-Piranha build system to successfully locate the dependencies.
+``CMAKE_PREFIX_PATH`` to ``~/.local``. This should be enough for
+Piranha's build system to successfully locate the dependencies in most
+cases.
 
 On Windows and OSX, the dependencies are best handled with a 3rd party
 package manager, such as `Conda <https://docs.conda.io/en/latest/>`_
 (for both OSX and Windows) or `Homebrew <https://brew.sh/>`_ (only
 for OSX). When using 3rd party package managers, it might be necessary
 to set the ``CMAKE_PREFIX_PATH`` variable to the root path of the
-package manager's installation tree in order
+package manager's install tree in order
 for Piranha's build system to correctly locate the dependencies.
 
 .. _platform_specific_notes:
@@ -141,6 +147,15 @@ for Piranha's build system to correctly locate the dependencies.
 Compiler and platform specific notes
 """"""""""""""""""""""""""""""""""""
 
+* The DbgHelp library, which can optionally be employed by Piranha
+  when using Visual Studio, is *not* thread safe.
+  Piranha does ensure that DbgHelp functions are never used concurrently
+  from multiple threads; if, however, Piranha is used in conjunction
+  with another library which also calls DbgHelp functions, it is the user's
+  responsibility to ensure that the DbgHelp API is never called
+  concurrently from multiple threads. Alternatively, DbgHelp support
+  in Piranha can be turned off altogether via the ``PIRANHA_WITH_DBGHELP``
+  build option.
 * Due to a compiler bug, when using GCC 7 Piranha's customisable functors
   do not have any ``noexcept`` specifier.
 * Due to a compiler bug, Clang 8 is unable to compile Piranha's test suite
@@ -152,3 +167,36 @@ Compiler and platform specific notes
 * Due to compiler bugs, when using Visual Studio 2017 some of Piranha's
   customisation points are implemented as plain functions rather than
   functors (the specifics are available in the API documentation).
+
+Building the documentation
+""""""""""""""""""""""""""
+
+Piranha's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/>`_,
+and it uses a `custom theme <https://github.com/myyasuda/sphinx_materialdesign_theme>`_.
+Sphinx can typically be installed from a variety of package managers,
+while the custom theme can easily be installed with ``pip``:
+
+.. code-block:: console
+
+   $ pip install --user sphinx_materialdesign_theme
+
+Before attempting to build the documentation, you must ensure
+to run CMake from the ``build`` directory at least once
+(see the :ref:`source installation instructions <installation_from_source>`):
+
+.. code-block:: console
+
+   $ cmake ../
+
+Running CMake is necessary to generate the configuration files required
+to build the documentation.
+
+After having run CMake, you can move to the ``doc`` directory and proceed
+to build the documentation. Executing the command
+
+.. code-block:: console
+
+   $ make html
+
+will produce the documentation in HTML format. The documentation will be
+generated in the ``doc/_build`` directory.
