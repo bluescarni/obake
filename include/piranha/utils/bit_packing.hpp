@@ -19,6 +19,7 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/to_string.hpp>
+#include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/type_traits.hpp>
 
@@ -164,7 +165,7 @@ constexpr auto compute_minmax_packed()
 }
 
 template <typename T>
-inline constexpr auto minmax_signed_packed = compute_minmax_packed<T>();
+PIRANHA_PUBLIC extern const decltype(compute_minmax_packed<T>()) minmax_signed_packed;
 
 } // namespace detail
 
