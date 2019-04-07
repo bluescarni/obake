@@ -107,14 +107,10 @@ public:
                               + detail::to_string(m_min) + ", " + detail::to_string(m_max) + "]");
         }
 
-        // NOTE: don't bit shift directly a signed value as,
-        // before C++20, this is implementation-defined behaviour.
-        // Also, go through a separate tmp variable because otherwise
-        // some compilers are too eager in transforming this operation
-        // into a direct bit shift, and this causes problems in constexpr
-        // contexts.
-        const auto tmp = T(1) << m_cur_shift;
-        m_value += n * tmp;
+        // NOTE: go through an unsigned conversion in order to do the bit shifting,
+        // as shifting negative values is still UB before C++20 and it trips up
+        // compilers/sanitizers.
+        m_value += static_cast<T>(static_cast<make_unsigned_t<T>>(n) << m_cur_shift);
         ++m_index;
         m_cur_shift += m_pbits;
     }
