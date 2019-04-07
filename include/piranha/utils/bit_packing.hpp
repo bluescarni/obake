@@ -55,77 +55,77 @@ PIRANHA_CONCEPT_DECL BitPackable = is_bit_packable_v<T>;
 
 #endif
 
-#if 0
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-template <typename T>
-requires BitPackable<T>
-#else
-template <typename T, typename = void,
-          typename = ::std::enable_if_t<::std::conjunction_v<is_bit_packable<T>, ::std::negation<is_signed<T>>>>>
-#endif
-    class bit_packer_
+namespace detail
 {
-};
 
-#endif
-
+// Implementation details for the signed/unsigned packers.
 template <typename T>
-class bit_packer_
+class signed_bit_packer_impl
 {
 public:
-    constexpr explicit bit_packer_(unsigned size)
+    constexpr explicit signed_bit_packer_impl(unsigned size)
         : m_value(0), m_min(0), m_max(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
         constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
         if (piranha_unlikely(size >= nbits)) {
-            // TODO
-            piranha_throw(::std::overflow_error, "The number of values to be pushed to this bit packer ("
-                                                     + detail::to_string(size) + ") is larger than the bit width ("
-                                                     + detail::to_string(nbits) + ") of the value type of the packer");
+            piranha_throw(::std::overflow_error,
+                          "The size of a signed bit packer must be smaller than the bit width of the integral type ("
+                              + detail::to_string(nbits) + "), but a size of " + detail::to_string(size)
+                              + " was specified");
         }
 
         if (size) {
             if (size == 1u) {
+                // Special case size 1 (use the full range of the type).
                 m_pbits = nbits;
                 ::std::tie(m_min, m_max) = detail::limits_minmax<T>;
             } else {
+                // In the general case we cannot use the full bit width,
+                // and we need at least one extra bit. Otherwise, we can run
+                // into overflow errors during packing.
                 m_pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
                 assert(m_pbits);
+                // Compute the limits.
                 m_min = -(T(1) << (m_pbits - 1u));
                 m_max = (T(1) << (m_pbits - 1u)) - T(1);
             }
         }
     }
-    constexpr bit_packer_ &operator<<(const T &n)
+    constexpr void operator<<(const T &n)
     {
         if (piranha_unlikely(m_index == m_size)) {
             piranha_throw(::std::out_of_range,
-                          "Cannot push any more values to this bit packer: the number of "
+                          "Cannot push any more values to this signed bit packer: the number of "
                           "values already pushed to the packer is equal to the size used for construction ("
                               + detail::to_string(m_size) + ")");
         }
 
         if (piranha_unlikely(n < m_min || n > m_max)) {
-            // TODO
-            piranha_throw(::std::overflow_error, "");
+            piranha_throw(::std::overflow_error,
+                          "Cannot push the value " + detail::to_string(n)
+                              + " to this signed bit packer: the value is outside the allowed range ["
+                              + detail::to_string(m_min) + ", " + detail::to_string(m_max) + "]");
         }
 
-        const auto tmp = (T(1) << m_cur_shift);
+        // NOTE: don't bit shift directly a signed value as,
+        // before C++20, this is implementation-defined behaviour.
+        // Also, go through a separate tmp variable because otherwise
+        // some compilers are too eager in transforming this operation
+        // into a direct bit shift, and this causes problems in constexpr
+        // contexts.
+        const auto tmp = T(1) << m_cur_shift;
         m_value += n * tmp;
         ++m_index;
         m_cur_shift += m_pbits;
-
-        return *this;
     }
     constexpr const T &get() const
     {
         if (piranha_unlikely(m_index < m_size)) {
-            piranha_throw(::std::out_of_range, "Cannot fetch the packed value from this bit packer: the number of "
-                                               "values pushed to the packer ("
-                                                   + detail::to_string(m_index)
-                                                   + ") is less than the size used for construction ("
-                                                   + detail::to_string(m_size) + ")");
+            piranha_throw(::std::out_of_range,
+                          "Cannot fetch the packed value from this signed bit packer: the number of "
+                          "values pushed to the packer ("
+                              + detail::to_string(m_index) + ") is less than the size used for construction ("
+                              + detail::to_string(m_size) + ")");
         }
         return m_value;
     }
@@ -135,20 +135,63 @@ private:
     unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
+template <typename T>
+class unsigned_bit_packer_impl
+{
+};
+
+} // namespace detail
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <BitPackable T>
+#else
+template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
+#endif
+class bit_packer_
+{
+    using impl_t
+        = ::std::conditional_t<is_signed_v<T>, detail::signed_bit_packer_impl<T>, detail::unsigned_bit_packer_impl<T>>;
+
+public:
+    constexpr explicit bit_packer_(unsigned size) : m_impl(size) {}
+    constexpr bit_packer_ &operator<<(const T &n)
+    {
+        m_impl << n;
+        return *this;
+    }
+    constexpr const T &get() const
+    {
+        return m_impl.get();
+    }
+
+private:
+    impl_t m_impl;
+};
+
 namespace detail
 {
 
+// Helper to compute the min/max packed values for a signed integral T
+// and for all the possible packer sizes.
 template <typename T>
-constexpr auto compute_minmax_packed()
+constexpr auto sbp_compute_minmax_packed()
 {
     constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
 
+    // Init the return value. The max size is the bit width of T minus 1 (which
+    // corresponds to the number of binary digits given by std::numeric_limits).
+    static_assert(static_cast<unsigned>(detail::limits_digits<T>)
+                      <= ::std::get<1>(detail::limits_minmax<::std::size_t>),
+                  "Overflow error.");
     ::std::array<::std::array<T, 2>, static_cast<unsigned>(detail::limits_digits<T>)> retval{};
 
+    // For size 1, we have the special case of using the full range.
     retval[0][0] = ::std::get<0>(detail::limits_minmax<T>);
     retval[0][1] = ::std::get<1>(detail::limits_minmax<T>);
 
+    // Build the remaining sizes.
     for (auto i = 1u; i < retval.size(); ++i) {
+        // Pack vectors of min/max values for this size.
         const auto size = i + 1u;
         bit_packer_<T> bp_min(size), bp_max(size);
         const auto pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
@@ -157,6 +200,7 @@ constexpr auto compute_minmax_packed()
             bp_min << min;
             bp_max << max;
         }
+        // Extract the packed values.
         retval[i][0] = bp_min.get();
         retval[i][1] = bp_max.get();
     }
@@ -164,32 +208,36 @@ constexpr auto compute_minmax_packed()
     return retval;
 }
 
+// Handy alias.
 template <typename T>
-using minmax_packed_t = decltype(compute_minmax_packed<T>());
+using sbp_minmax_packed_t = decltype(sbp_compute_minmax_packed<T>());
 
-PIRANHA_PUBLIC extern const minmax_packed_t<int> mmp_int;
-PIRANHA_PUBLIC extern const minmax_packed_t<long> mmp_long;
-PIRANHA_PUBLIC extern const minmax_packed_t<long long> mmp_long_long;
+// Declare the variables holding the min/max packed values for the
+// supported signed integral types.
+PIRANHA_PUBLIC extern const sbp_minmax_packed_t<int> sbp_mmp_int;
+PIRANHA_PUBLIC extern const sbp_minmax_packed_t<long> sbp_mmp_long;
+PIRANHA_PUBLIC extern const sbp_minmax_packed_t<long long> sbp_mmp_long_long;
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-PIRANHA_PUBLIC extern const minmax_packed_t<__int128_t> mmp_int128;
+PIRANHA_PUBLIC extern const sbp_minmax_packed_t<__int128_t> sbp_mmp_int128;
 
 #endif
 
+// Small generic wrapper to access the above constants.
 template <typename T>
-inline const auto &get_mmp()
+inline const auto &sbp_get_mmp()
 {
     if constexpr (::std::is_same_v<T, int>) {
-        return mmp_int;
+        return sbp_mmp_int;
     } else if constexpr (::std::is_same_v<T, long>) {
-        return mmp_long;
+        return sbp_mmp_long;
     } else if constexpr (::std::is_same_v<T, long long>) {
-        return mmp_long_long;
+        return sbp_mmp_long_long;
     }
 #if defined(PIRANHA_HAVE_GCC_INT128)
     else if constexpr (::std::is_same_v<T, __int128_t>) {
-        return mmp_int128;
+        return sbp_mmp_int128;
     }
 #endif
 }

@@ -15,18 +15,26 @@ namespace piranha::detail
 namespace
 {
 
+// Use a constexpr wrapper for the computation
+// in order to ensure the values are calculated at compile time.
+// This allows us to check at compile time that we are not
+// incurring in undefined behaviour due to excessive
+// shifting, etc.
+// As usual, put the local names in an unnamed namespace
+// in order to preempt ODR violations.
 template <typename T>
-constexpr auto mmsp = compute_minmax_packed<T>();
+constexpr auto sbp_mmp_impl = sbp_compute_minmax_packed<T>();
 
-}
+} // namespace
 
-const minmax_packed_t<int> mmp_int = mmsp<int>;
-const minmax_packed_t<long> mmp_long = mmsp<long>;
-const minmax_packed_t<long long> mmp_long_long = mmsp<long long>;
+// Init the constants with the constexpr-computed values.
+const sbp_minmax_packed_t<int> sbp_mmp_int = sbp_mmp_impl<int>;
+const sbp_minmax_packed_t<long> sbp_mmp_long = sbp_mmp_impl<long>;
+const sbp_minmax_packed_t<long long> sbp_mmp_long_long = sbp_mmp_impl<long long>;
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-const minmax_packed_t<__int128_t> mmp_int128 = mmsp<__int128_t>;
+const sbp_minmax_packed_t<__int128_t> sbp_mmp_int128 = sbp_mmp_impl<__int128_t>;
 
 #endif
 
