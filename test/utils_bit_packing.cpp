@@ -48,9 +48,14 @@ TEST_CASE("bit_packer_unpacker")
 {
     piranha_test::disable_slow_stack_traces();
 
-    // constexpr bit_packer_<int> bbg(5);
-    auto bar = detail::sbp_get_mmp<int>()[0];
-    (void)bar;
+    bit_packer_<int> bbg(3);
+    bbg << -1 << -2 << -3;
+    int n1, n2, n3;
+    bit_unpacker_<int> bba(bbg.get(), 3);
+    bba >> n1 >> n2 >> n3;
+    REQUIRE(n1 == -1);
+    REQUIRE(n2 == -2);
+    REQUIRE(n3 == -3);
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;

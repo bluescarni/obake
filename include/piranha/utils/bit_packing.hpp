@@ -138,6 +138,66 @@ private:
 template <typename T>
 class unsigned_bit_packer_impl
 {
+    constexpr explicit unsigned_bit_packer_impl(unsigned size)
+        : m_value(0), m_max(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
+    {
+        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T>);
+        if (piranha_unlikely(size > nbits)) {
+            piranha_throw(
+                ::std::overflow_error,
+                "The size of an unsigned bit packer must not be larger than the bit width of the integral type ("
+                    + detail::to_string(nbits) + "), but a size of " + detail::to_string(size) + " was specified");
+        }
+
+        if (size) {
+            // NOTE: compute these values only if we are actually going
+            // to pack values (if size is zero, no packing ever happens).
+            //
+            // m_pbits is the number of bits that can be used by each
+            // packed value.
+            m_pbits = nbits / size;
+            // m_max is the maximum packed value (in unsigned format).
+            // It is a sequence of m_pbits 1 bits.
+            m_max = static_cast<T>(-1) >> (nbits - m_pbits);
+        }
+    }
+    constexpr void operator<<(const T &n)
+    {
+        if (piranha_unlikely(m_index == m_size)) {
+            piranha_throw(::std::out_of_range,
+                          "Cannot push any more values to this unsigned bit packer: the number of "
+                          "values already pushed to the packer is equal to the size used for construction ("
+                              + detail::to_string(m_size) + ")");
+        }
+
+        if (piranha_unlikely(n > m_max)) {
+            piranha_throw(::std::overflow_error,
+                          "Cannot push the value " + detail::to_string(n)
+                              + " to this unsigned bit packer: the value is outside the allowed range [9, "
+                              + detail::to_string(m_max) + "]");
+        }
+
+        // Do the actual packing (the new value will be
+        // appended in the MSB direction).
+        m_value += n << m_cur_shift;
+        ++m_index;
+        m_cur_shift += m_pbits;
+    }
+    constexpr const T &get() const
+    {
+        if (piranha_unlikely(m_index < m_size)) {
+            piranha_throw(::std::out_of_range,
+                          "Cannot fetch the packed value from this unsigned bit packer: the number of "
+                          "values pushed to the packer ("
+                              + detail::to_string(m_index) + ") is less than the size used for construction ("
+                              + detail::to_string(m_size) + ")");
+        }
+        return m_value;
+    }
+
+private:
+    T m_value, m_max;
+    unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
 } // namespace detail
@@ -356,21 +416,90 @@ private:
     unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
-#if 0
+namespace detail
+{
 
+template <typename T>
+class signed_bit_unpacker_impl
+{
+    using uint_t = make_unsigned_t<T>;
+
+public:
+    constexpr explicit signed_bit_unpacker_impl(const T &n, unsigned size)
+        : m_value(n), m_min(0), m_s_value(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
+    {
+        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
+        if (piranha_unlikely(size >= nbits)) {
+            piranha_throw(::std::overflow_error,
+                          "The size of a signed bit unpacker must be smaller than the bit width of the integral type ("
+                              + detail::to_string(nbits) + "), but a size of " + detail::to_string(size)
+                              + " was specified");
+        }
+
+        if (size) {
+            const auto [min_n, max_n] = ::piranha::detail::sbp_get_mmp<T>()[size - 1u];
+            if (size == 1u) {
+                m_pbits = nbits;
+                m_min = static_cast<uint_t>(::std::get<0>(detail::limits_minmax<T>));
+            } else {
+                if (piranha_unlikely(n < min_n || n > max_n)) {
+                    piranha_throw(::std::overflow_error,
+                                  "The value " + detail::to_string(n) + " passed to a signed bit unpacker of size "
+                                      + detail::to_string(size) + " is outside the allowed range ["
+                                      + detail::to_string(min_n) + ", " + detail::to_string(max_n) + "]");
+                }
+
+                m_pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+                m_min = static_cast<uint_t>(-(T(1) << (m_pbits - 1u)));
+            }
+            m_s_value = static_cast<uint_t>(n) - static_cast<uint_t>(min_n);
+        } else {
+            if (piranha_unlikely(n)) {
+                piranha_throw(::std::invalid_argument,
+                              "Only a value of zero can be unpacked into an empty output range, but a value of "
+                                  + detail::to_string(n) + " was provided instead");
+            }
+        }
+    }
+    constexpr void operator>>(T &n)
+    {
+        n = static_cast<T>((m_s_value % (uint_t(1) << (m_cur_shift + m_pbits))) / (uint_t(1) << m_cur_shift) + m_min);
+        ++m_index;
+        m_cur_shift += m_pbits;
+    }
+
+private:
+    T m_value;
+    uint_t m_min, m_s_value;
+    unsigned m_index, m_size, m_pbits, m_cur_shift;
+};
+
+template <typename T>
+class unsigned_bit_unpacker_impl;
+
+} // namespace detail
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
 template <BitPackable T>
+#else
+template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
+#endif
 class bit_unpacker_
 {
-};
+    using impl_t = ::std::conditional_t<is_signed_v<T>, detail::signed_bit_unpacker_impl<T>,
+                                        detail::unsigned_bit_unpacker_impl<T>>;
 
-template <BitPackable T>
-requires Signed<T> class bit_unpacker_<T>
-{
 public:
-    constexpr explicit bit_unpacker_(const T &n, unsigned size) {}
-};
+    constexpr explicit bit_unpacker_(const T &n, unsigned size) : m_impl(n, size) {}
+    constexpr bit_unpacker_ &operator>>(T &n)
+    {
+        m_impl >> n;
+        return *this;
+    }
 
-#endif
+private:
+    impl_t m_impl;
+};
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <BitPackable T>
