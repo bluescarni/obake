@@ -267,7 +267,7 @@ constexpr auto sbp_compute_minmax_packed()
 
 // Handy alias.
 template <typename T>
-using sbp_minmax_packed_t = decltype(sbp_compute_minmax_packed<T>());
+using sbp_minmax_packed_t = decltype(detail::sbp_compute_minmax_packed<T>());
 
 // Declare the variables holding the min/max packed values for the
 // supported signed integral types.
@@ -327,7 +327,7 @@ public:
                 m_min = static_cast<uint_t>(n);
             } else {
                 // Get the minimum/maximum values allowed for n
-                const auto [min_n, max_n] = ::piranha::detail::sbp_get_mmp<T>()[size - 1u];
+                const auto [min_n, max_n] = detail::sbp_get_mmp<T>()[size - 1u];
 
                 // Range check for n.
                 if (piranha_unlikely(n < min_n || n > max_n)) {

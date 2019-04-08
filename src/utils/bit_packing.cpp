@@ -23,7 +23,7 @@ namespace
 // As usual, put the local names in an unnamed namespace
 // in order to preempt ODR violations.
 template <typename T>
-constexpr auto sbp_mmp_impl = sbp_compute_minmax_packed<T>();
+constexpr auto sbp_mmp_impl = detail::sbp_compute_minmax_packed<T>();
 
 } // namespace
 
