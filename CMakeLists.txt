@@ -60,7 +60,11 @@ if(PIRANHA_WITH_DBGHELP)
 endif()
 
 # Initial setup of the piranha target.
-set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp")
+set(PIRANHA_SRC_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
+)
 
 if(PIRANHA_WITH_STACK_TRACES)
     set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp" "${PIRANHA_SRC_FILES}")

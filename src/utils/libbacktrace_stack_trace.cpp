@@ -54,7 +54,8 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
         auto func_name = funcname ? demangle_impl(funcname) : "<unknown function>";
 
         // NOTE: the level is left empty, it will be filled in later.
-        st_data.push_back(::std::array{::std::string{}, ::std::move(file_name), ::std::move(func_name)});
+        st_data.push_back(
+            ::std::array<::std::string, 3>{::std::string{}, ::std::move(file_name), ::std::move(func_name)});
         // LCOV_EXCL_START
     } catch (...) {
         return -1;
