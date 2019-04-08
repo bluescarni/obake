@@ -87,8 +87,8 @@ namespace piranha::detail
     ::std::vector<::std::array<::std::string, 2>> indices_fnames;
     indices_fnames.reserve(static_cast<decltype(indices_fnames.size())>(st.size()));
     for (decltype(st.size()) i = 0; i < st.size(); ++i) {
-        indices_fnames.push_back(
-            ::std::array<::std::string, 2>{to_string(i), st[i].source_file() + ":" + to_string(st[i].source_line())});
+        indices_fnames.push_back(::std::array<::std::string, 2>{
+            detail::to_string(i), st[i].source_file() + ":" + detail::to_string(st[i].source_line())});
         max_idx_width = ::std::max(max_idx_width, indices_fnames.back()[0].size());
         max_fname_width = ::std::max(max_fname_width, indices_fnames.back()[1].size());
     }
