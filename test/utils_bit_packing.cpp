@@ -289,7 +289,7 @@ TEST_CASE("homomorphism")
 #endif
             using bp_t = bit_packer<int_t>;
 
-            constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
+            static constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
 
             for (auto i = 1u; i <= nbits; ++i) {
                 std::vector<int_t> a(i), b(i), c(i);

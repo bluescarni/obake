@@ -21,7 +21,7 @@
 #include <boost/stacktrace.hpp>
 #undef BOOST_STACKTRACE_USE_WINDBG
 
-#elif defined(__apple_build_version__)
+#elif defined(__APPLE__)
 
 // This definition is needed for building on OSX.
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED

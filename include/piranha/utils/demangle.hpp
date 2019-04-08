@@ -42,7 +42,7 @@ inline constexpr auto demangle = []() {
         // NOTE: on OSX, it seems like typeid() for 128bit types is not implemented.
         // Thus, we sidestep typeid() and provide directly the demangled
         // names of the bugged types. These are the same names returned on linux.
-#if defined(PIRANHA_HAVE_GCC_INT128) && defined(__apple_build_version__)
+#if defined(PIRANHA_HAVE_GCC_INT128) && defined(__APPLE__)
         if constexpr (::std::is_same_v<uncvref_T, __int128_t>) {
             return "__int128";
         } else if constexpr (::std::is_same_v<uncvref_T, __int128_t *>) {
@@ -58,7 +58,7 @@ inline constexpr auto demangle = []() {
         } else {
 #endif
             return detail::demangle_impl(typeid(uncvref_T).name());
-#if defined(PIRANHA_HAVE_GCC_INT128) && defined(__apple_build_version__)
+#if defined(PIRANHA_HAVE_GCC_INT128) && defined(__APPLE__)
         }
 #endif
     }();
