@@ -278,6 +278,22 @@ TEST_CASE("bit_packer_unpacker")
     });
 }
 
+TEST_CASE("homomorphism")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using bp_t = bit_packer<int_t>;
+        using bu_t = bit_unpacker<int_t>;
+
+        using Catch::Matchers::Contains;
+
+        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
+
+        for (auto i = 1u; i <= nbits; ++i) {
+        }
+    });
+}
+
 #if defined(_MSC_VER)
 
 #pragma warning(pop)
