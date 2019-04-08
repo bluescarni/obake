@@ -293,11 +293,15 @@ inline const auto &sbp_get_mmp()
     } else if constexpr (::std::is_same_v<T, long long>) {
         return sbp_mmp_long_long;
     }
+    // NOTE: this is not currently invoked in the test suite,
+    // due to the lack of 128bit rng.
+    // LCOV_EXCL_START
 #if defined(PIRANHA_HAVE_GCC_INT128)
     else if constexpr (::std::is_same_v<T, __int128_t>) {
         return sbp_mmp_int128;
     }
 #endif
+    // LCOV_EXCL_STOP
 }
 
 // Implementation details for the signed/unsigned unpackers.
