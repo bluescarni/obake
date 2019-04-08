@@ -170,7 +170,7 @@ public:
         if (piranha_unlikely(n > m_max)) {
             piranha_throw(::std::overflow_error,
                           "Cannot push the value " + detail::to_string(n)
-                              + " to this unsigned bit packer: the value is outside the allowed range [9, "
+                              + " to this unsigned bit packer: the value is outside the allowed range [0, "
                               + detail::to_string(m_max) + "]");
         }
 
