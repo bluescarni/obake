@@ -282,15 +282,53 @@ TEST_CASE("homomorphism")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
-        using bp_t = bit_packer<int_t>;
-        using bu_t = bit_unpacker<int_t>;
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (std::is_same_v<int_t, __int128_t> || std::is_same_v<int_t, __uint128_t>) {
+            return;
+        } else {
+#endif
+            using bp_t = bit_packer<int_t>;
 
-        using Catch::Matchers::Contains;
+            constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
 
-        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
-
-        for (auto i = 1u; i <= nbits; ++i) {
+            for (auto i = 1u; i <= nbits; ++i) {
+                std::vector<int_t> a(i), b(i), c(i);
+                const auto [cur_min, cur_max] = [i]() {
+                    if constexpr (is_signed_v<int_t>) {
+                        if (i == 1u) {
+                            return std::tuple{std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
+                                              std::get<1>(detail::limits_minmax<int_t>) / int_t(2)};
+                        } else {
+                            const auto pbits = (nbits + 1u) / i - static_cast<unsigned>((nbits + 1u) % i == 0u);
+                            return std::tuple{-(int_t(1) << (pbits - 1u)) / int_t(2),
+                                              ((int_t(1) << (pbits - 1u)) - int_t(1)) / int_t(2)};
+                        }
+                    } else {
+                        if (i == 1u) {
+                            return std::tuple{int_t(0), int_t(-1) / int_t(2)};
+                        } else {
+                            const auto pbits = nbits / i;
+                            return std::tuple{int_t(0), ((int_t(1) << pbits) - int_t(1)) / int_t(2)};
+                        }
+                    }
+                }();
+                std::uniform_int_distribution<int_t> idist(cur_min, cur_max);
+                for (auto k = 0; k < ntrials; ++k) {
+                    bp_t bp_a(i), bp_b(i), bp_c(i);
+                    for (auto j = 0u; j < i; ++j) {
+                        a[j] = idist(rng);
+                        b[j] = idist(rng);
+                        c[j] = a[j] + b[j];
+                        bp_a << a[j];
+                        bp_b << b[j];
+                        bp_c << c[j];
+                    }
+                    REQUIRE(bp_a.get() + bp_b.get() == bp_c.get());
+                }
+            }
+#if defined(PIRANHA_HAVE_GCC_INT128)
         }
+#endif
     });
 }
 

@@ -346,7 +346,11 @@ public:
                 assert(m_pbits);
                 m_min = static_cast<uint_t>(-(T(1) << (m_pbits - 1u)));
                 // The shifted n value that will be used during unpacking.
-                m_s_value = static_cast<uint_t>(n) - static_cast<uint_t>(min_n);
+                // NOTE: we can do the signed subtraction as the size here
+                // is at least 2, so we are already at half the bit width
+                // for the values of n and min_n.
+                assert(n >= min_n);
+                m_s_value = static_cast<uint_t>(n - min_n);
             }
 
         } else {
