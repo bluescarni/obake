@@ -17,7 +17,6 @@
 #include <type_traits>
 
 #include <piranha/config.hpp>
-#include <piranha/detail/ignore.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
