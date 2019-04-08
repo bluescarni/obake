@@ -252,6 +252,7 @@ constexpr auto sbp_compute_minmax_packed()
         const auto size = i + 1u;
         bit_packer<T> bp_min(size), bp_max(size);
         const auto pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+        assert(pbits);
         const auto min = -(T(1) << (pbits - 1u)), max = (T(1) << (pbits - 1u)) - T(1);
         for (auto j = 0u; j < size; ++j) {
             bp_min << min;
@@ -338,6 +339,7 @@ public:
                 }
 
                 m_pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+                assert(m_pbits);
                 m_min = static_cast<uint_t>(-(T(1) << (m_pbits - 1u)));
                 // The shifted n value that will be used during unpacking.
                 m_s_value = static_cast<uint_t>(n) - static_cast<uint_t>(min_n);
