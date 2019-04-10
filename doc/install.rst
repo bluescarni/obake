@@ -148,6 +148,8 @@ for Piranha's build system to correctly locate the dependencies.
 Compiler and platform specific notes
 """"""""""""""""""""""""""""""""""""
 
+Visual Studio:
+
 * The DbgHelp library, which can optionally be employed by Piranha
   when using Visual Studio, is *not* thread safe.
   Piranha does ensure that DbgHelp functions are never used concurrently
@@ -157,17 +159,32 @@ Compiler and platform specific notes
   concurrently from multiple threads. Alternatively, DbgHelp support
   in Piranha can be turned off altogether via the ``PIRANHA_WITH_DBGHELP``
   build option.
-* Due to a compiler bug, when using GCC 7 Piranha's customisable functors
-  do not have any ``noexcept`` specifier.
-* Due to a compiler bug, Clang 8 is unable to compile Piranha's test suite
-  in debug mode.
-* On OSX, only the most recent versions of Xcode are capable to compile Piranha.
-  As an alternative to Xcode, one can install a modern compiler toolchain using
-  package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
-  `Homebrew <https://brew.sh/>`_.
 * Due to compiler bugs, when using Visual Studio 2017 some of Piranha's
   customisation points are implemented as plain functions rather than
   functors (the specifics are available in the API documentation).
+* When using Visual Studio, the Piranha library is compiled
+  with the ``NOMINMAX`` definition and with the ``/permissive-``
+  compiler flag. If you intend to use Piranha in conjunction with other
+  libraries, you should ensure that the ``NOMINMAX`` definition
+  and the ``/permissive-`` flag are also used for the compilation
+  of these libraries.
+
+GCC:
+
+* Due to a compiler bug, when using GCC 7 Piranha's customisable functors
+  do not have any ``noexcept`` specifier.
+
+Clang:
+
+* Due to a compiler bug, Clang 8 is currently unable to compile Piranha's
+  test suite in debug mode.
+
+OSX:
+
+* On OSX, only the most recent versions of Xcode are capable to compile Piranha.
+  As an alternative to Xcode, one can install a more modern compiler toolchain using
+  package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
+  `Homebrew <https://brew.sh/>`_.
 
 Building the documentation
 """"""""""""""""""""""""""
