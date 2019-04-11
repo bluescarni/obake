@@ -14,7 +14,7 @@ environment:
 install:
 - set PATH=C:\Miniconda36-x64\Scripts;%PATH%
 - conda config --add channels conda-forge --force
-- conda create -y --name piranha cmake boost-cpp
+- conda create -y --name piranha cmake boost-cpp mpir mpfr
 - call activate piranha
 
 build_script:
@@ -22,9 +22,9 @@ build_script:
 - cd build
 
 - set MPPP_VERSION=0.14
-- curl -fsS -o mppp.zip https://github.com/bluescarni/mppp/archive/v%MPPP_VERSION%.zip
+- curl -fsS -o mppp.zip https://github.com/bluescarni/mppp/archive/v"%MPPP_VERSION%".zip
 - 7z x mppp.zip
-- cd mppp-%MPPP_VERSION%
+- cd mppp-"%MPPP_VERSION%"
 - mkdir build
 - cd build
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha -DCMAKE_INSTALL_PREFIX=C:\Miniconda36-x64\envs\piranha
