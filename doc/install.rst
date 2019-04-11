@@ -161,8 +161,8 @@ GCC:
 
 Clang:
 
-* Due to a compiler bug, Clang 8 is currently unable to compile Piranha's
-  test suite in debug mode.
+* Due to a compiler bug, Clang 8 may fail to compile Piranha's
+  test suite with debugging information.
 
 OSX:
 
