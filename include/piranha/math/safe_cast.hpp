@@ -17,7 +17,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/math/safe_convert.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/demangle.hpp>
+#include <piranha/utils/type_name.hpp>
 
 namespace piranha
 {
@@ -61,9 +61,9 @@ template <typename To, typename From,
     // and default-initialisation are equivalent.
     To retval{};
     if (piranha_unlikely(!::piranha::safe_convert(retval, ::std::forward<From>(x)))) {
-        piranha_throw(safe_cast_failure, "A value of type '" + ::piranha::demangle<From &&>()
+        piranha_throw(safe_cast_failure, "A value of type '" + ::piranha::type_name<From &&>()
                                              + "' could not be safely converted to the type '"
-                                             + ::piranha::demangle<To>() + "'.");
+                                             + ::piranha::type_name<To>() + "'.");
     }
     return retval;
 }

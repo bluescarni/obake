@@ -6,7 +6,7 @@ set -x
 # Exit on error.
 set -e
 
-MPPP_VERSION="0.13"
+MPPP_VERSION="0.14"
 wget https://github.com/bluescarni/mppp/archive/v${MPPP_VERSION}.tar.gz -O mppp.tar.gz
 tar xzf mppp.tar.gz
 cd mppp-${MPPP_VERSION}

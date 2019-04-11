@@ -17,9 +17,6 @@ endif()
 # The build options.
 option(PIRANHA_WITH_STACK_TRACES "Enable stack traces." OFF)
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
-if(YACMA_COMPILER_IS_MSVC)
-    option(PIRANHA_WITH_DBGHELP "Use the DbgHelp library to improve error messages when using MSVC." ON)
-endif()
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -32,18 +29,22 @@ if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC.
     list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX")
     list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX")
-    # Enable strict conformance mode, but only when *not* using clang-cl
-    # (which does not have this flag).
-    if(NOT YACMA_COMPILER_IS_CLANGXX)
-        list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/permissive-")
-        list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
+    # Enable strict conformance mode, if supported.
+    set(CMAKE_REQUIRED_QUIET TRUE)
+    check_cxx_compiler_flag("/permissive-" _PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+    unset(CMAKE_REQUIRED_QUIET)
+    if(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+      message(STATUS "The '/permissive-' flag is supported, enabling it.")
+      list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/permissive-")
+      list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
     endif()
+    unset(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
 endif()
 
 # Find the dependencies.
 
 # mp++.
-find_package(mp++ 0.13 REQUIRED)
+find_package(mp++ 0.14 REQUIRED)
 
 # Boost setup.
 include(PiranhaFindBoost)
@@ -56,16 +57,9 @@ if(PIRANHA_WITH_STACK_TRACES)
     endif()
 endif()
 
-# DbgHelp. This is already pulled in by mp++, but for consistency we do it again.
-if(PIRANHA_WITH_DBGHELP)
-    set(PIRANHA_ENABLE_DBGHELP "#define PIRANHA_WITH_DBGHELP")
-    find_package(DbgHelp REQUIRED)
-endif()
-
 # Initial setup of the piranha target.
 set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/demangle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
 )
 
@@ -97,9 +91,6 @@ target_include_directories(piranha PUBLIC
 
 # Link the deps.
 target_link_libraries(piranha PUBLIC mp++::mp++)
-if(PIRANHA_WITH_DBGHELP)
-    target_link_libraries(piranha PUBLIC DbgHelp::DbgHelp)
-endif()
 if(PIRANHA_WITH_STACK_TRACES AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 endif()

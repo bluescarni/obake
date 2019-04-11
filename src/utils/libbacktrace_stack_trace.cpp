@@ -15,6 +15,14 @@
 #include <utility>
 #include <vector>
 
+#if __has_include(<cxxabi.h>)
+
+#include <cstdlib>
+#include <cxxabi.h>
+#include <memory>
+
+#endif
+
 #include <backtrace-supported.h>
 #include <backtrace.h>
 
@@ -26,7 +34,6 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/to_string.hpp>
-#include <piranha/utils/demangle.hpp>
 #include <piranha/utils/stack_trace.hpp>
 
 namespace piranha::detail
@@ -36,6 +43,25 @@ namespace piranha::detail
 // potential ODR violations.
 namespace
 {
+
+static ::std::string demangle_impl(const char *s)
+{
+#if __has_include(<cxxabi.h>)
+    // NOTE: wrap std::free() in a local lambda, so we avoid
+    // potential ambiguities when taking the address of std::free().
+    // See:
+    // https://stackoverflow.com/questions/27440953/stdunique-ptr-for-c-functions-that-need-free
+    auto deleter = [](void *ptr) { ::std::free(ptr); };
+
+    // NOTE: abi::__cxa_demangle will return a pointer allocated by std::malloc, which we will delete via std::free().
+    ::std::unique_ptr<char, decltype(deleter)> res{::abi::__cxa_demangle(s, nullptr, nullptr, nullptr), deleter};
+
+    // NOTE: return the original string if demangling fails.
+    return res ? ::std::string(res.get()) : ::std::string(s);
+#else
+    return ::std::string(s);
+#endif
+}
 
 // Stack trace data, in string form: level, file (including line number) and demangled function name.
 using stack_trace_data = ::std::vector<::std::array<::std::string, 3>>;
@@ -51,7 +77,7 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
         auto &st_data = *static_cast<stack_trace_data *>(data);
 
         auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + detail::to_string(lineno);
-        auto func_name = funcname ? demangle_impl(funcname) : "<unknown function>";
+        auto func_name = funcname ? ::piranha::detail::demangle_impl(funcname) : "<unknown function>";
 
         // NOTE: the level is left empty, it will be filled in later.
         st_data.push_back(

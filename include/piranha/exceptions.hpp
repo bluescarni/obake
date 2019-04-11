@@ -16,8 +16,8 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/demangle.hpp>
 #include <piranha/utils/stack_trace.hpp>
+#include <piranha/utils/type_name.hpp>
 
 namespace piranha::detail
 {
@@ -51,7 +51,7 @@ struct ex_thrower {
             ;
 
         str += "\nException type   : ";
-        str += ::piranha::demangle<Exception>();
+        str += ::piranha::type_name<Exception>();
         str += "\nException message: ";
         str += ::std::forward<Str>(desc);
         str += '\n';

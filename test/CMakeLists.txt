@@ -22,7 +22,7 @@ ADD_PIRANHA_TESTCASE(series)
 ADD_PIRANHA_TESTCASE(to_string)
 ADD_PIRANHA_TESTCASE(type_traits)
 ADD_PIRANHA_TESTCASE(utils_bit_packing)
-ADD_PIRANHA_TESTCASE(utils_demangle)
+ADD_PIRANHA_TESTCASE(utils_type_name)
 
 if(PIRANHA_WITH_STACK_TRACES)
   ADD_PIRANHA_TESTCASE(utils_stacktrace)

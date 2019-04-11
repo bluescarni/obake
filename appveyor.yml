@@ -12,34 +12,38 @@ environment:
       BUILD_TYPE: MSVC17_64
 
 install:
-- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=C:\Miniconda36-x64\Scripts;%PATH%
-- if [%BUILD_TYPE%]==[MSVC19_64] conda config --add channels conda-forge --force
-- if [%BUILD_TYPE%]==[MSVC19_64] conda create -y --name piranha cmake mppp boost-cpp
-- if [%BUILD_TYPE%]==[MSVC19_64] call activate piranha
-
-- if [%BUILD_TYPE%]==[MSVC17_64] set PATH=C:\Miniconda36-x64\Scripts;%PATH%
-- if [%BUILD_TYPE%]==[MSVC17_64] conda config --add channels conda-forge --force
-- if [%BUILD_TYPE%]==[MSVC17_64] conda create -y --name piranha cmake mppp boost-cpp
-- if [%BUILD_TYPE%]==[MSVC17_64] call activate piranha
+- set PATH=C:\Miniconda36-x64\Scripts;%PATH%
+- conda config --add channels conda-forge --force
+- conda create -y --name piranha cmake boost-cpp mpir mpfr
+- call activate piranha
 
 build_script:
 - mkdir build
 - cd build
 
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes -DPIRANHA_WITH_STACK_TRACES=YES
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug
+- set MPPP_VERSION=0.14
+- curl -fsSL -o mppp.zip https://github.com/bluescarni/mppp/archive/v%MPPP_VERSION%.zip
+- 7z x mppp.zip
+- cd mppp-%MPPP_VERSION%
+- mkdir build
+- cd build
+- set MPPP_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%MPPP_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%MPPP_PREFIX_PATH%
+- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%MPPP_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%MPPP_PREFIX_PATH%
+- cmake --build . --config Debug --target install
+- cd ..
+- cd ..
 
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes -DPIRANHA_WITH_STACK_TRACES=YES
 - if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DPIRANHA_BUILD_TESTS=yes -DPIRANHA_WITH_STACK_TRACES=YES
-- if [%BUILD_TYPE%]==[MSVC17_64] cmake --build . --config Debug
+- cmake --build . --config Debug
+
 
 test_script:
 # NOTE: ensure the PATH variable contains the path to the piranha dll,
 # otherwise the tests will fail to run.
-- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
-- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
-
-- if [%BUILD_TYPE%]==[MSVC17_64] set PATH=%PATH%;%CD%\Debug
-- if [%BUILD_TYPE%]==[MSVC17_64] ctest -V -C Debug
+- set PATH=%PATH%;%CD%\Debug
+- ctest -V -C Debug
 
 # Enable this to be able to login to the build worker. You can use the
 # `remmina` program in Ubuntu, use the login information that the line below
