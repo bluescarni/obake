@@ -4,10 +4,6 @@ branches:
   except:
     - /pr\/.+/
 
-environment:
-  global:
-    PLATFORMTOOLSET: "v140"
-
   matrix:
     # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019 Preview
     #   BUILD_TYPE: MSVC19_64
