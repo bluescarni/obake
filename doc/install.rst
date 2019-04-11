@@ -147,7 +147,8 @@ Visual Studio:
   customisation points are implemented as plain functions rather than
   functors (the specifics are available in the API documentation).
 * When using Visual Studio, the Piranha library is compiled
-  with the ``NOMINMAX`` definition and with the ``/permissive-``
+  with the ``NOMINMAX`` definition and, if supported,
+  with the ``/permissive-``
   compiler flag. If you intend to use Piranha in conjunction with other
   libraries, you should ensure that the ``NOMINMAX`` definition
   and the ``/permissive-`` flag are also used for the compilation
