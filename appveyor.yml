@@ -27,8 +27,9 @@ build_script:
 - cd mppp-%MPPP_VERSION%
 - mkdir build
 - cd build
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha -DCMAKE_INSTALL_PREFIX=C:\Miniconda36-x64\envs\piranha
-- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha -DCMAKE_INSTALL_PREFIX=C:\Miniconda36-x64\envs\piranha
+- set MPPP_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%MPPP_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%MPPP_PREFIX_PATH%
+- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%MPPP_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%MPPP_PREFIX_PATH%
 - cmake --build . --config Debug --target install
 - cd ..
 - cd ..
