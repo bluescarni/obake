@@ -15,10 +15,6 @@ Piranha has the following mandatory dependencies:
 
 Piranha also depends on other libraries for optional features:
 
-* when using Visual Studio, Piranha can employ the
-  `DbgHelp <https://docs.microsoft.com/en-us/windows/desktop/debug/debug-help-library>`_
-  library to provide more descriptive error message. DbgHelp is typically
-  included with the operating system;
 * on Linux, Piranha can use `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   to add stack traces to the error messages. On some distributions, such as
   Ubuntu, libbacktrace is built into the GCC compiler; otherwise, it can be
@@ -65,9 +61,6 @@ are currently recognised by Piranha's build system:
   this option requires the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   library.
 * ``PIRANHA_BUILD_TESTS``: build the test suite. Defaults to ``OFF``.
-* ``PIRANHA_WITH_DBGHELP``: use the DbgHelp library to provide more informative
-  error messages. This option is
-  available only when using Visual Studio. Defaults to ``ON``.
 
 Additionally, there are various useful CMake variables you can set, such as:
 
@@ -150,15 +143,6 @@ Compiler and platform specific notes
 
 Visual Studio:
 
-* The DbgHelp library, which can optionally be employed by Piranha
-  when using Visual Studio, is *not* thread safe.
-  Piranha does ensure that DbgHelp functions are never used concurrently
-  from multiple threads; if, however, Piranha is used in conjunction
-  with another library which also calls DbgHelp functions, it is the user's
-  responsibility to ensure that the DbgHelp API is never called
-  concurrently from multiple threads. Alternatively, DbgHelp support
-  in Piranha can be turned off altogether via the ``PIRANHA_WITH_DBGHELP``
-  build option.
 * Due to compiler bugs, when using Visual Studio 2017 some of Piranha's
   customisation points are implemented as plain functions rather than
   functors (the specifics are available in the API documentation).
@@ -182,8 +166,8 @@ Clang:
 OSX:
 
 * On OSX, only the most recent versions of Xcode are capable to compile Piranha.
-  As an alternative to Xcode, one can install a more modern compiler toolchain using
-  package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
+  As an alternative to Xcode, one can install a more modern compiler toolchain
+  using package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
   `Homebrew <https://brew.sh/>`_.
 
 Building the documentation
