@@ -166,7 +166,7 @@ Clang:
 
 OSX:
 
-* On OSX, only the most recent versions of Xcode are capable to compile Piranha.
+* On OSX, only the most recent versions of Xcode are capable of compiling Piranha.
   As an alternative to Xcode, one can install a more modern compiler toolchain
   using package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
   `Homebrew <https://brew.sh/>`_.
