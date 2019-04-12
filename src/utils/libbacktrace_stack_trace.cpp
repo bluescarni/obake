@@ -77,7 +77,7 @@ static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename
         auto &st_data = *static_cast<stack_trace_data *>(data);
 
         auto file_name = ::std::string(filename ? filename : "<unknown file>") + ":" + detail::to_string(lineno);
-        auto func_name = funcname ? ::piranha::detail::demangle_impl(funcname) : "<unknown function>";
+        auto func_name = funcname ? detail::demangle_impl(funcname) : "<unknown function>";
 
         // NOTE: the level is left empty, it will be filled in later.
         st_data.push_back(

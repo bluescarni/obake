@@ -24,8 +24,8 @@
 #include <piranha/type_traits.hpp>
 
 // NOTE:
-// - in these classes, we are exploiting two's complement representation when dealing with signed
-//   integers. This is not guaranteed by the standard before C++20, but in practice even before
+// - in these classes, we are exploiting two's complement representation when converting between signed
+//   and unsigned integers. This is not guaranteed by the standard before C++20, but in practice even before
 //   C++20 essentially all C++ implementations support only two's complement;
 // - we have a few integral divisions/modulo operations in these classes which could probably
 //   be replaced with lookup tables, should the need arise in terms of performance.
@@ -66,7 +66,7 @@ public:
     constexpr explicit signed_bit_packer_impl(unsigned size)
         : m_value(0), m_min(0), m_max(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
-        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
+        constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
         if (piranha_unlikely(size >= nbits)) {
             piranha_throw(::std::overflow_error,
                           "The size of a signed bit packer must be smaller than the bit width of the integral type ("
@@ -78,7 +78,7 @@ public:
             if (size == 1u) {
                 // Special case size 1 (use the full range of the type).
                 m_pbits = nbits;
-                ::std::tie(m_min, m_max) = detail::limits_minmax<T>;
+                ::std::tie(m_min, m_max) = limits_minmax<T>;
             } else {
                 // In the general case we cannot use the full bit width,
                 // and we need at least one extra bit. Otherwise, we run
@@ -138,7 +138,7 @@ public:
     constexpr explicit unsigned_bit_packer_impl(unsigned size)
         : m_value(0), m_max(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
-        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T>);
+        constexpr auto nbits = static_cast<unsigned>(limits_digits<T>);
         if (piranha_unlikely(size > nbits)) {
             piranha_throw(
                 ::std::overflow_error,
@@ -233,18 +233,17 @@ namespace detail
 template <typename T>
 constexpr auto sbp_compute_minmax_packed()
 {
-    constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
+    constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
 
     // Init the return value. The max size is the bit width of T minus 1 (which
     // corresponds to the number of binary digits given by std::numeric_limits).
-    static_assert(static_cast<unsigned>(detail::limits_digits<T>)
-                      <= ::std::get<1>(detail::limits_minmax<::std::size_t>),
+    static_assert(static_cast<unsigned>(limits_digits<T>) <= ::std::get<1>(limits_minmax<::std::size_t>),
                   "Overflow error.");
-    ::std::array<::std::array<T, 2>, static_cast<unsigned>(detail::limits_digits<T>)> retval{};
+    ::std::array<::std::array<T, 2>, static_cast<unsigned>(limits_digits<T>)> retval{};
 
     // For size 1, we have the special case of using the full range.
-    retval[0][0] = ::std::get<0>(detail::limits_minmax<T>);
-    retval[0][1] = ::std::get<1>(detail::limits_minmax<T>);
+    retval[0][0] = ::std::get<0>(limits_minmax<T>);
+    retval[0][1] = ::std::get<1>(limits_minmax<T>);
 
     // Build the remaining sizes.
     for (auto i = 1u; i < retval.size(); ++i) {
@@ -314,7 +313,7 @@ public:
     constexpr explicit signed_bit_unpacker_impl(const T &n, unsigned size)
         : m_value(n), m_min(0), m_s_value(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
-        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T> + 1);
+        constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
         if (piranha_unlikely(size >= nbits)) {
             piranha_throw(::std::overflow_error,
                           "The size of a signed bit unpacker must be smaller than the bit width of the integral type ("
@@ -388,7 +387,7 @@ public:
     constexpr explicit unsigned_bit_unpacker_impl(const T &n, unsigned size)
         : m_value(n), m_mask(0), m_index(0), m_size(size), m_pbits(0)
     {
-        constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<T>);
+        constexpr auto nbits = static_cast<unsigned>(limits_digits<T>);
         if (piranha_unlikely(size > nbits)) {
             piranha_throw(
                 ::std::overflow_error,
