@@ -58,14 +58,16 @@ constexpr sbp_minmax_packed_t<T> sbp_compute_minmax_packed()
 // This allows us to check at compile time that we are not
 // incurring in undefined behaviour due to excessive
 // shifting, etc.
-// As usual, put the local names in an unnamed namespace
-// in order to preempt ODR violations.
 template <typename T>
 constexpr auto sbp_mmp_impl = detail::sbp_compute_minmax_packed<T>();
 
 } // namespace
 
 // Init the constants with the constexpr-computed values.
+// NOTE: because sbp_minmax_packed_t has a constexpr ctor, and because we use
+// constexpr variables for initialisation, these values will be precomputed at compile
+// time and they are guaranteed to be available before the dynamic initialisation
+// of other global variables.
 const sbp_minmax_packed_t<int> sbp_mmp_int = sbp_mmp_impl<int>;
 const sbp_minmax_packed_t<long> sbp_mmp_long = sbp_mmp_impl<long>;
 const sbp_minmax_packed_t<long long> sbp_mmp_long_long = sbp_mmp_impl<long long>;
