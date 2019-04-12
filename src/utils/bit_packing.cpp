@@ -6,7 +6,11 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cassert>
+#include <tuple>
+
 #include <piranha/config.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/utils/bit_packing.hpp>
 
 namespace piranha::detail
@@ -14,6 +18,40 @@ namespace piranha::detail
 
 namespace
 {
+
+// Helper to compute the min/max packed values for a signed integral T
+// and for all the possible packer sizes.
+template <typename T>
+constexpr sbp_minmax_packed_t<T> sbp_compute_minmax_packed()
+{
+    constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
+
+    // Init the return value.
+    sbp_minmax_packed_t<T> retval{};
+
+    // For size 1, we have the special case of using the full range.
+    retval[0][0] = ::std::get<0>(limits_minmax<T>);
+    retval[0][1] = ::std::get<1>(limits_minmax<T>);
+
+    // Build the remaining sizes.
+    for (auto i = 1u; i < retval.size(); ++i) {
+        // Pack vectors of min/max values for this size.
+        const auto size = i + 1u;
+        bit_packer<T> bp_min(size), bp_max(size);
+        const auto pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+        assert(pbits);
+        const auto min = -(T(1) << (pbits - 1u)), max = (T(1) << (pbits - 1u)) - T(1);
+        for (auto j = 0u; j < size; ++j) {
+            bp_min << min;
+            bp_max << max;
+        }
+        // Extract the packed values.
+        retval[i][0] = bp_min.get();
+        retval[i][1] = bp_max.get();
+    }
+
+    return retval;
+}
 
 // Use a constexpr wrapper for the computation
 // in order to ensure the values are calculated at compile time.

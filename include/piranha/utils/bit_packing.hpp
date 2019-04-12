@@ -228,46 +228,23 @@ private:
 namespace detail
 {
 
-// Helper to compute the min/max packed values for a signed integral T
-// and for all the possible packer sizes.
-template <typename T>
-constexpr auto sbp_compute_minmax_packed()
-{
-    constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
+// Machinery for the determination at compile time of the minmax packed values
+// for signed integral types.
 
-    // Init the return value. The max size is the bit width of T minus 1 (which
+// Definition of the array types for storing the minmax values.
+template <typename T>
+struct sbp_minmax_packed {
+    // The max array size we need is the bit width of T minus 1 (which
     // corresponds to the number of binary digits given by std::numeric_limits).
+    // Do paranoid overflow checking as well.
     static_assert(static_cast<unsigned>(limits_digits<T>) <= ::std::get<1>(limits_minmax<::std::size_t>),
                   "Overflow error.");
-    ::std::array<::std::array<T, 2>, static_cast<unsigned>(limits_digits<T>)> retval{};
-
-    // For size 1, we have the special case of using the full range.
-    retval[0][0] = ::std::get<0>(limits_minmax<T>);
-    retval[0][1] = ::std::get<1>(limits_minmax<T>);
-
-    // Build the remaining sizes.
-    for (auto i = 1u; i < retval.size(); ++i) {
-        // Pack vectors of min/max values for this size.
-        const auto size = i + 1u;
-        bit_packer<T> bp_min(size), bp_max(size);
-        const auto pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
-        assert(pbits);
-        const auto min = -(T(1) << (pbits - 1u)), max = (T(1) << (pbits - 1u)) - T(1);
-        for (auto j = 0u; j < size; ++j) {
-            bp_min << min;
-            bp_max << max;
-        }
-        // Extract the packed values.
-        retval[i][0] = bp_min.get();
-        retval[i][1] = bp_max.get();
-    }
-
-    return retval;
-}
+    using type = ::std::array<::std::array<T, 2>, static_cast<unsigned>(limits_digits<T>)>;
+};
 
 // Handy alias.
 template <typename T>
-using sbp_minmax_packed_t = decltype(detail::sbp_compute_minmax_packed<T>());
+using sbp_minmax_packed_t = typename sbp_minmax_packed<T>::type;
 
 // Declare the variables holding the min/max packed values for the
 // supported signed integral types.
