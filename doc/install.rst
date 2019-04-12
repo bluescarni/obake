@@ -10,7 +10,7 @@ Requirements
 
 Piranha has the following mandatory dependencies:
 
-* the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.13),
+* the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.14),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65).
 
 Piranha also depends on other libraries for optional features:
