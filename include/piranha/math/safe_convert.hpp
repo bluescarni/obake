@@ -16,6 +16,7 @@
 #include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>

@@ -29,6 +29,7 @@
 #include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/limits.hpp>
 
 using namespace piranha;
 

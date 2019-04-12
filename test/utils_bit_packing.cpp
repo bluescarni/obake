@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/type_traits.hpp>

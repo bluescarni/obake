@@ -16,6 +16,7 @@
 #include <type_traits>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/type_traits.hpp>
 
 #include <mp++/integer.hpp>
