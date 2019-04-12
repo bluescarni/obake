@@ -12,6 +12,7 @@
 #include "catch.hpp"
 
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <list>
@@ -24,6 +25,8 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+
+#include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
 
@@ -1148,5 +1151,81 @@ TEST_CASE("limits_digits")
 #if defined(PIRANHA_HAVE_GCC_INT128)
     REQUIRE(128 == detail::limits_digits<__uint128_t>);
     REQUIRE(127 == detail::limits_digits<__int128_t>);
+#endif
+}
+
+struct fo1 {
+    void operator()(int = 0) const;
+};
+
+// The non-const overload is deleted.
+struct nofo1 {
+    void operator()(int = 0) const;
+    void operator()(int = 0) = delete;
+};
+
+// Vice-versa.
+struct nofo2 {
+    void operator()(int = 0) const = delete;
+    void operator()(int = 0);
+};
+
+TEST_CASE("function_object")
+{
+    REQUIRE(!is_function_object_v<void>);
+    REQUIRE(!is_function_object_v<const void>);
+    REQUIRE(!is_function_object_v<const volatile void>);
+    REQUIRE(!is_function_object_v<int>);
+    REQUIRE(!is_function_object_v<int &>);
+
+    REQUIRE(is_function_object_v<std::hash<int>, std::size_t>);
+    REQUIRE(is_function_object_v<std::hash<int>, const std::size_t &>);
+    REQUIRE(is_function_object_v<std::hash<int>, std::size_t &>);
+    REQUIRE(is_function_object_v<std::hash<int>, std::size_t &&>);
+    REQUIRE(is_function_object_v<std::hash<int>, int>);
+    REQUIRE(is_function_object_v<std::hash<int>, const int &>);
+    REQUIRE(is_function_object_v<std::hash<int>, int &&>);
+    REQUIRE(!is_function_object_v<std::hash<int> &, int &&>);
+    REQUIRE(!is_function_object_v<std::hash<int> &&, int &&>);
+    REQUIRE(!is_function_object_v<std::hash<int> *, int &&>);
+    REQUIRE(!is_function_object_v<std::hash<int>>);
+    REQUIRE(!is_function_object_v<std::hash<int>, int, int>);
+
+    // Check mp++'s hash specialisation.
+    REQUIRE(is_function_object_v<std::hash<mppp::integer<1>>, const mppp::integer<1> &>);
+
+    REQUIRE(is_function_object_v<fo1>);
+    REQUIRE(is_function_object_v<fo1, int>);
+    REQUIRE(is_function_object_v<fo1, int &>);
+    REQUIRE(is_function_object_v<fo1, const int &>);
+    REQUIRE(is_function_object_v<fo1, int &&>);
+
+    REQUIRE(!is_function_object_v<nofo1>);
+    REQUIRE(!is_function_object_v<nofo1, int>);
+    REQUIRE(!is_function_object_v<nofo1, int &>);
+    REQUIRE(!is_function_object_v<nofo1, const int &>);
+    REQUIRE(!is_function_object_v<nofo1, int &&>);
+
+    REQUIRE(!is_function_object_v<nofo2>);
+    REQUIRE(!is_function_object_v<nofo2, int>);
+    REQUIRE(!is_function_object_v<nofo2, int &>);
+    REQUIRE(!is_function_object_v<nofo2, const int &>);
+    REQUIRE(!is_function_object_v<nofo2, int &&>);
+
+    // NOTE: std::hash for user-defined type without explicit specialisation
+    // is disabled.
+    REQUIRE(!is_function_object_v<std::hash<fo1>, std::size_t>);
+    REQUIRE(!is_function_object_v<std::hash<nofo1>, std::size_t>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    // The concept is based on the type trait currently, just do a few simple tests.
+    REQUIRE(!FunctionObject<void>);
+    REQUIRE(!FunctionObject<int>);
+    REQUIRE(FunctionObject<std::hash<int>, std::size_t>);
+    REQUIRE(!FunctionObject<std::hash<int> &, std::size_t>);
+    REQUIRE(FunctionObject<std::hash<mppp::integer<1>>, const mppp::integer<1> &>);
+    REQUIRE(FunctionObject<fo1>);
+    REQUIRE(!FunctionObject<nofo1>);
+    REQUIRE(!FunctionObject<nofo2>);
 #endif
 }

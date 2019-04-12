@@ -561,6 +561,24 @@ using is_input_iterator = ::std::conjunction<
     // Base iterator requirements.
     is_iterator<T>,
     // Lvalue equality-comparable (just test the const-const variant).
+    // NOTE: it's not clear here if we should test with rvalues as well. It seems like
+    // the standard requires that "values" of T/const T need to be equality comparable:
+    // https://en.cppreference.com/w/cpp/named_req/InputIterator
+    // Which would seem to imply rvalues must be taken into account as well.
+    // However, doing so for a binary operation adds a lot of combinatorial
+    // possibilities. Moreover, according to these,
+    // https://en.cppreference.com/w/cpp/named_req/InputIterator
+    // https://en.cppreference.com/w/cpp/concepts/EqualityComparable
+    // it seems like equality comparability for the C++20 input iterator
+    // concept is being tested only with const lvalue refs on T. This technically
+    // makes it possible to create a type which satisfies EqualityComparable
+    // but fails if rvalues are used, e.g., via deletion of the equality
+    // operator overload with rvalue refs:
+    // https://godbolt.org/z/heaGiT
+    // Thus, at least for the time being, we will be testing in this
+    // and similar type traits only the "canonical" implementations
+    // of a specific functionality and on lvalues, unless rvalues
+    // are specifically required.
     is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
     // Quoting the standard:
     // """
@@ -717,6 +735,34 @@ inline constexpr bool is_mutable_forward_iterator_v = is_mutable_forward_iterato
 
 template <typename T>
 PIRANHA_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename... Args>
+using function_object_call_t = decltype(::std::declval<T>()(::std::declval<Args>()...));
+
+}
+
+// Detect function objects:
+// https://en.cppreference.com/w/cpp/named_req/FunctionObject
+template <typename T, typename... Args>
+using is_function_object
+    = ::std::conjunction<::std::is_object<T>,
+                         // NOTE: as explained in the input iterator type trait, we test lvalues here
+                         // (both const and non-const).
+                         is_detected<detail::function_object_call_t, ::std::add_lvalue_reference_t<T>, Args...>,
+                         is_detected<detail::function_object_call_t, ::std::add_lvalue_reference_t<const T>, Args...>>;
+
+template <typename T, typename... Args>
+inline constexpr bool is_function_object_v = is_function_object<T, Args...>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename... Args>
+PIRANHA_CONCEPT_DECL FunctionObject = is_function_object_v<T, Args...>;
 
 #endif
 
