@@ -9,10 +9,6 @@
 #ifndef PIRANHA_UTILS_STACK_TRACE_HPP
 #define PIRANHA_UTILS_STACK_TRACE_HPP
 
-#include <piranha/config.hpp>
-
-#if defined(PIRANHA_WITH_STACK_TRACES)
-
 #include <atomic>
 #include <string>
 
@@ -47,7 +43,5 @@ inline constexpr auto stack_trace = [](unsigned skip = 0) {
 };
 
 } // namespace piranha
-
-#endif
 
 #endif

@@ -20,7 +20,9 @@ namespace piranha_test
 // at runtime if needed.
 inline void disable_slow_stack_traces()
 {
-#if defined(PIRANHA_WITH_STACK_TRACES) && defined(_WIN32)
+#if !defined(PIRANHA_WITH_LIBBACKTRACE) && defined(_WIN32)
+    // NOTE: stack traces on Windows are very slow (unless using
+    // libbacktrace with MinGW).
     piranha::set_stack_trace_enabled(false);
 #endif
 }

@@ -21,7 +21,7 @@ export deps_dir=$HOME/local
 export PATH="$HOME/miniconda/bin:$PATH"
 export PATH="$deps_dir/bin:$PATH"
 
-CXX=clang++ CC=clang cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes -DPIRANHA_WITH_STACK_TRACES=YES ../
+CXX=clang++ CC=clang cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes ../
 make -j2 VERBOSE=1
 ctest -V
 

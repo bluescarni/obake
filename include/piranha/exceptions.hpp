@@ -13,8 +13,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/to_string.hpp>
 #include <piranha/type_traits.hpp>
 #include <piranha/utils/stack_trace.hpp>
 #include <piranha/utils/type_name.hpp>
@@ -41,14 +39,7 @@ struct ex_thrower {
                                  int> = 0>
     [[noreturn]] void operator()(Str &&desc, Args &&... args) const
     {
-        ::std::string str =
-#if defined(PIRANHA_WITH_STACK_TRACES)
-            ::piranha::stack_trace(1) + '\n'
-#else
-            ::std::string("Function name    : ") + m_func + "\nLocation         : " + m_file + ", line "
-            + detail::to_string(m_line)
-#endif
-            ;
+        ::std::string str = ::piranha::stack_trace(1) + '\n';
 
         str += "\nException type   : ";
         str += ::piranha::type_name<Exception>();

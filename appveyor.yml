@@ -34,8 +34,8 @@ build_script:
 - cd ..
 - cd ..
 
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes -DPIRANHA_WITH_STACK_TRACES=YES
-- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DPIRANHA_BUILD_TESTS=yes -DPIRANHA_WITH_STACK_TRACES=YES
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes
+- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DPIRANHA_BUILD_TESTS=yes
 - cmake --build . --config Debug
 
 
