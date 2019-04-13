@@ -15,10 +15,8 @@ Piranha has the following mandatory dependencies:
 
 Piranha also depends on other libraries for optional features:
 
-* on Linux, Piranha can use `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
-  to add stack traces to the error messages. On some distributions, such as
-  Ubuntu, libbacktrace is built into the GCC compiler; otherwise, it can be
-  installed as a standalone library.
+* on some operating systems, Piranha can use `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
+  to improve the quality of the stack traces.
 
 Installing Piranha
 ------------------
@@ -56,10 +54,13 @@ on a Unix-like system:
 Next, we will invoke ``cmake`` to configure the build. The following options
 are currently recognised by Piranha's build system:
 
-* ``PIRANHA_WITH_STACK_TRACES``: enable the generation of informative
-  stack traces when throwing exceptions. Defaults to ``OFF``, on Linux
-  this option requires the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
-  library.
+* ``PIRANHA_WITH_LIBBACKTRACE``: use the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
+  library to improve the quality of the stack traces. On some Linux
+  distributions, such as Ubuntu, libbacktrace is built into the GCC
+  compiler; otherwise, it can be
+  installed as a standalone library. Note that libbacktrace currently does not
+  work on Windows (unless MinGW is being used as a compiler) and OSX.
+  Defaults to ``OFF``.
 * ``PIRANHA_BUILD_TESTS``: build the test suite. Defaults to ``OFF``.
 
 Additionally, there are various useful CMake variables you can set, such as:
@@ -78,9 +79,9 @@ A typical CMake invocation for Piranha may look something like this:
 
 .. code-block:: console
 
-   $ cmake ../ -DPIRANHA_WITH_STACK_TRACES=ON -DPIRANHA_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=~/.local
+   $ cmake ../ -DPIRANHA_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=~/.local
 
-That is, we enable the support for stack traces, we build the test suite and we
+That is, we build the test suite and we
 will be installing Piranha into our home directory into the ``.local``
 subdirectory. If CMake runs without errors, we can then proceed to actually
 building Piranha:
