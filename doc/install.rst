@@ -55,7 +55,8 @@ Next, we will invoke ``cmake`` to configure the build. The following options
 are currently recognised by Piranha's build system:
 
 * ``PIRANHA_WITH_LIBBACKTRACE``: use the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
-  library to improve the quality of the stack traces. On some Linux
+  library to improve the quality of the stack traces in Unix-like
+  environments. On some Linux
   distributions, such as Ubuntu, libbacktrace is built into the GCC
   compiler; otherwise, it can be
   installed as a standalone library. Note that libbacktrace currently does not
