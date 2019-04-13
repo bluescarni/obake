@@ -15,8 +15,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # The build options.
-option(PIRANHA_WITH_STACK_TRACES "Enable stack traces." OFF)
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
+option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -49,27 +49,23 @@ find_package(mp++ 0.14 REQUIRED)
 # Boost setup.
 include(PiranhaFindBoost)
 
-# Stack trace support setup.
-if(PIRANHA_WITH_STACK_TRACES)
-    set(PIRANHA_ENABLE_STACK_TRACES "#define PIRANHA_WITH_STACK_TRACES")
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        find_package(libbacktrace REQUIRED)
-    endif()
+# libbacktrace.
+if(PIRANHA_WITH_LIBBACKTRACE)
+    set(PIRANHA_ENABLE_LIBBACKTRACE "#define PIRANHA_WITH_LIBBACKTRACE")
+    find_package(libbacktrace REQUIRED)
 endif()
 
 # Initial setup of the piranha target.
 set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp"
 )
 
-if(PIRANHA_WITH_STACK_TRACES)
-    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp" "${PIRANHA_SRC_FILES}")
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
-    else()
-        set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/boost_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
-    endif()
+if(PIRANHA_WITH_LIBBACKTRACE)
+    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
+else()
+    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/boost_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
 endif()
 
 add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
@@ -91,8 +87,16 @@ target_include_directories(piranha PUBLIC
 
 # Link the deps.
 target_link_libraries(piranha PUBLIC mp++::mp++)
-if(PIRANHA_WITH_STACK_TRACES AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
+else()
+    # NOTE: Boost stacktrace sometimes requires linking to the system
+    # DL libs. There's a CMake variable for that, which I hope
+    # behaves gracefully on non-unix platforms.
+    # NOTE: when we enable piranha's installation machinery,
+    # we may have to sort this out (CMAKE_DL_LIBS does not
+    # look like an imported target).
+    target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
 endif()
 
 # Configure config.hpp.
