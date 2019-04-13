@@ -9,6 +9,7 @@
 #ifndef PIRANHA_TYPE_TRAITS_HPP
 #define PIRANHA_TYPE_TRAITS_HPP
 
+#include <cstddef>
 #include <iterator>
 #include <string>
 #include <string_view>
@@ -437,8 +438,10 @@ template <typename T>
 using is_iterator = ::std::conjunction<
     // Copy constr/ass, destructible.
     ::std::is_copy_constructible<T>, ::std::is_copy_assignable<T>, ::std::is_destructible<T>,
-    // Lvalue swappable.
-    ::std::is_swappable_with<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<T>>,
+    // Swappable.
+    // NOTE: this adds lvalue refs to T, and becomes false if
+    // T is void or a function type.
+    ::std::is_swappable<T>,
     // Valid std::iterator_traits.
     detail::has_iterator_traits<T>,
     // Lvalue dereferenceable.
@@ -732,6 +735,40 @@ inline constexpr bool is_function_object_v = is_function_object<T, Args...>::val
 
 template <typename T, typename... Args>
 PIRANHA_CONCEPT_DECL FunctionObject = is_function_object_v<T, Args...>;
+
+#endif
+
+// Detect if T is a hash function object
+// for the type U:
+// https://en.cppreference.com/w/cpp/named_req/Hash
+// We also add the requirements from std::hash specialisations:
+// https://en.cppreference.com/w/cpp/utility/hash
+template <typename T, typename U>
+using is_hash = ::std::conjunction<
+    // T must be a regular-ish type.
+    ::std::is_default_constructible<T>, ::std::is_copy_constructible<T>, ::std::is_move_constructible<T>,
+    ::std::is_copy_assignable<T>, ::std::is_move_assignable<T>, ::std::is_swappable<T>, ::std::is_destructible<T>,
+    // T must be a function object capable of taking an
+    // lvalue of U as argument, and returning std::size_t.
+    // NOTE: the Hash concept specifically talks about
+    // lvalues in the cppreference page above.
+    // NOTE: we have a slight repetition of is_function_object here,
+    // but like this we avoid repeating the same checks multiple times.
+    ::std::is_object<T>,
+    ::std::is_same<
+        detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<U>>,
+        ::std::size_t>,
+    ::std::is_same<detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<const T>,
+                              ::std::add_lvalue_reference_t<U>>,
+                   ::std::size_t>>;
+
+template <typename T, typename U>
+inline constexpr bool is_hash_v = is_hash<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL Hash = is_hash_v<T, U>;
 
 #endif
 

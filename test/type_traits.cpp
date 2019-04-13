@@ -1230,3 +1230,94 @@ TEST_CASE("function_object")
     REQUIRE(!FunctionObject<nofo2>);
 #endif
 }
+
+// Universal hasher.
+struct hash_00 {
+    template <typename T>
+    std::size_t operator()(const T &) const;
+};
+
+// Hashes only mutable Ts.
+struct hash_01 {
+    template <typename T>
+    std::size_t operator()(const T &) const = delete;
+    template <typename T>
+    std::size_t operator()(T &) const;
+};
+
+struct nohash_00 {
+    template <typename T>
+    std::size_t operator()(const T &) const;
+    // Missing def ctor.
+    nohash_00() = delete;
+};
+
+struct nohash_01 {
+    template <typename T>
+    std::size_t operator()(const T &) const;
+    // Missing dtor.
+    nohash_01() = default;
+    ~nohash_01() = delete;
+};
+
+// Not a function object.
+struct nohash_02 {
+};
+
+// Wrong return type.
+struct nohash_03 {
+    template <typename T>
+    int operator()(const T &) const;
+};
+
+// Missing const overload.
+struct nohash_04 {
+    template <typename T>
+    std::size_t operator()(const T &) const = delete;
+    template <typename T>
+    std::size_t operator()(const T &);
+};
+
+TEST_CASE("hash")
+{
+    REQUIRE(!is_hash_v<void, void>);
+    REQUIRE(!is_hash_v<std::hash<int>, void>);
+    REQUIRE(!is_hash_v<void, int>);
+    REQUIRE(is_hash_v<std::hash<int>, int>);
+    REQUIRE(is_hash_v<std::hash<int>, const int>);
+    REQUIRE(is_hash_v<std::hash<int>, short>);
+    REQUIRE(!is_hash_v<std::hash<int>, std::string>);
+
+    REQUIRE(is_hash_v<hash_00, int>);
+    REQUIRE(is_hash_v<hash_00, std::string>);
+    REQUIRE(is_hash_v<hash_01, std::string>);
+    REQUIRE(!is_hash_v<hash_01, const std::string>);
+
+    REQUIRE(!is_hash_v<nohash_00, int>);
+    REQUIRE(!is_hash_v<nohash_01, int>);
+    REQUIRE(!is_hash_v<nohash_02, int>);
+    REQUIRE(!is_hash_v<nohash_03, int>);
+    REQUIRE(!is_hash_v<nohash_04, int>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    // The concept is based on the type trait currently, just do a few simple tests.
+    REQUIRE(!Hash<void, void>);
+    REQUIRE(!Hash<std::hash<int>, void>);
+    REQUIRE(!Hash<void, int>);
+    REQUIRE(Hash<std::hash<int>, int>);
+    REQUIRE(Hash<std::hash<int>, const int>);
+    REQUIRE(Hash<std::hash<int>, short>);
+    REQUIRE(!Hash<std::hash<int>, std::string>);
+
+    REQUIRE(Hash<hash_00, int>);
+    REQUIRE(Hash<hash_00, std::string>);
+    REQUIRE(Hash<hash_01, std::string>);
+    REQUIRE(!Hash<hash_01, const std::string>);
+
+    REQUIRE(!Hash<nohash_00, int>);
+    REQUIRE(!Hash<nohash_01, int>);
+    REQUIRE(!Hash<nohash_02, int>);
+    REQUIRE(!Hash<nohash_03, int>);
+    REQUIRE(!Hash<nohash_04, int>);
+#endif
+}
