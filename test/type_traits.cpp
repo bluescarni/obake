@@ -1237,14 +1237,6 @@ struct hash_00 {
     std::size_t operator()(const T &) const;
 };
 
-// Hashes only mutable Ts.
-struct hash_01 {
-    template <typename T>
-    std::size_t operator()(const T &) const = delete;
-    template <typename T>
-    std::size_t operator()(T &) const;
-};
-
 struct nohash_00 {
     template <typename T>
     std::size_t operator()(const T &) const;
@@ -1278,11 +1270,23 @@ struct nohash_04 {
     std::size_t operator()(const T &);
 };
 
+// Hashes only mutable Ts.
+struct nohash_05 {
+    template <typename T>
+    std::size_t operator()(const T &) const = delete;
+    template <typename T>
+    std::size_t operator()(T &) const;
+};
+
 TEST_CASE("hash")
 {
     REQUIRE(!is_hash_v<void, void>);
     REQUIRE(!is_hash_v<std::hash<int>, void>);
     REQUIRE(!is_hash_v<void, int>);
+    REQUIRE(!is_hash_v<void(int), void(int)>);
+    REQUIRE(!is_hash_v<void(int), int>);
+    REQUIRE(!is_hash_v<int, void(int)>);
+
     REQUIRE(is_hash_v<std::hash<int>, int>);
     REQUIRE(is_hash_v<std::hash<int>, const int>);
     REQUIRE(is_hash_v<std::hash<int>, short>);
@@ -1290,20 +1294,23 @@ TEST_CASE("hash")
 
     REQUIRE(is_hash_v<hash_00, int>);
     REQUIRE(is_hash_v<hash_00, std::string>);
-    REQUIRE(is_hash_v<hash_01, std::string>);
-    REQUIRE(!is_hash_v<hash_01, const std::string>);
 
     REQUIRE(!is_hash_v<nohash_00, int>);
     REQUIRE(!is_hash_v<nohash_01, int>);
     REQUIRE(!is_hash_v<nohash_02, int>);
     REQUIRE(!is_hash_v<nohash_03, int>);
     REQUIRE(!is_hash_v<nohash_04, int>);
+    REQUIRE(!is_hash_v<nohash_05, int>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
     // The concept is based on the type trait currently, just do a few simple tests.
     REQUIRE(!Hash<void, void>);
     REQUIRE(!Hash<std::hash<int>, void>);
     REQUIRE(!Hash<void, int>);
+    REQUIRE(!Hash<void(int), void(int)>);
+    REQUIRE(!Hash<void(int), int>);
+    REQUIRE(!Hash<int, void(int)>);
+
     REQUIRE(Hash<std::hash<int>, int>);
     REQUIRE(Hash<std::hash<int>, const int>);
     REQUIRE(Hash<std::hash<int>, short>);
@@ -1311,13 +1318,47 @@ TEST_CASE("hash")
 
     REQUIRE(Hash<hash_00, int>);
     REQUIRE(Hash<hash_00, std::string>);
-    REQUIRE(Hash<hash_01, std::string>);
-    REQUIRE(!Hash<hash_01, const std::string>);
 
     REQUIRE(!Hash<nohash_00, int>);
     REQUIRE(!Hash<nohash_01, int>);
     REQUIRE(!Hash<nohash_02, int>);
     REQUIRE(!Hash<nohash_03, int>);
     REQUIRE(!Hash<nohash_04, int>);
+    REQUIRE(!Hash<nohash_05, int>);
+#endif
+}
+
+struct nondtible {
+    ~nondtible() = delete;
+};
+
+struct nondfctible {
+    nondfctible() = delete;
+};
+
+TEST_CASE("semi_regular")
+{
+    REQUIRE(!is_semi_regular_v<void>);
+    REQUIRE(!is_semi_regular_v<void(int)>);
+    REQUIRE(is_semi_regular_v<int>);
+    REQUIRE(is_semi_regular_v<int *>);
+    REQUIRE(!is_semi_regular_v<int &>);
+    REQUIRE(!is_semi_regular_v<const int>);
+    REQUIRE(!is_semi_regular_v<const int &>);
+    REQUIRE(!is_semi_regular_v<int &&>);
+    REQUIRE(!is_semi_regular_v<nondtible>);
+    REQUIRE(!is_semi_regular_v<nondfctible>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!SemiRegular<void>);
+    REQUIRE(!SemiRegular<void(int)>);
+    REQUIRE(SemiRegular<int>);
+    REQUIRE(SemiRegular<int *>);
+    REQUIRE(!SemiRegular<int &>);
+    REQUIRE(!SemiRegular<const int>);
+    REQUIRE(!SemiRegular<const int &>);
+    REQUIRE(!SemiRegular<int &&>);
+    REQUIRE(!SemiRegular<nondtible>);
+    REQUIRE(!SemiRegular<nondfctible>);
 #endif
 }

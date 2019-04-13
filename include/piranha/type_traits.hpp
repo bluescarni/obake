@@ -191,6 +191,23 @@ PIRANHA_CONCEPT_DECL DefaultConstructible = ::std::is_default_constructible_v<T>
 
 #endif
 
+// Detect semi-regular types.
+template <typename T>
+using is_semi_regular
+    = ::std::conjunction<::std::is_default_constructible<T>, ::std::is_copy_constructible<T>,
+                         ::std::is_move_constructible<T>, ::std::is_copy_assignable<T>, ::std::is_move_assignable<T>,
+                         ::std::is_swappable<T>, ::std::is_destructible<T>>;
+
+template <typename T>
+inline constexpr bool is_semi_regular_v = is_semi_regular<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
+
+#endif
+
 // Detect if type can be returned from a function.
 // NOTE: constructability implies destructability:
 // https://cplusplus.github.io/LWG/issue2116
@@ -745,21 +762,23 @@ PIRANHA_CONCEPT_DECL FunctionObject = is_function_object_v<T, Args...>;
 // https://en.cppreference.com/w/cpp/utility/hash
 template <typename T, typename U>
 using is_hash = ::std::conjunction<
-    // T must be a regular-ish type.
-    ::std::is_default_constructible<T>, ::std::is_copy_constructible<T>, ::std::is_move_constructible<T>,
-    ::std::is_copy_assignable<T>, ::std::is_move_assignable<T>, ::std::is_swappable<T>, ::std::is_destructible<T>,
+    // T must be a semi-regular type.
+    is_semi_regular<T>,
     // T must be a function object capable of taking an
     // lvalue of U as argument, and returning std::size_t.
     // NOTE: the Hash concept specifically talks about
     // lvalues in the cppreference page above.
-    // NOTE: we have a slight repetition of is_function_object here,
+    // NOTE: we have a slight duplication of is_function_object here,
     // but like this we avoid repeating the same checks multiple times.
+    // NOTE: we ask for a call operator taking a const reference in input,
+    // as that is the most natural implementation of a hash function (see
+    // earlier discussions in is_function_object, is_iterator, etc.).
     ::std::is_object<T>,
-    ::std::is_same<
-        detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<U>>,
-        ::std::size_t>,
+    ::std::is_same<detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<T>,
+                              ::std::add_lvalue_reference_t<const U>>,
+                   ::std::size_t>,
     ::std::is_same<detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<const T>,
-                              ::std::add_lvalue_reference_t<U>>,
+                              ::std::add_lvalue_reference_t<const U>>,
                    ::std::size_t>>;
 
 template <typename T, typename U>
