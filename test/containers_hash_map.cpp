@@ -15,5 +15,5 @@ using namespace piranha;
 
 TEST_CASE("basic")
 {
-    hash_map<int, int> hm0;
+    [[maybe_unused]] hash_map<int, int> hm0;
 }
