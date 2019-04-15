@@ -34,10 +34,8 @@ template <typename K, typename T, typename H = ::std::hash<K>, typename = ::std:
 class hash_map
 {
     static constexpr unsigned group_size =
-#if defined(PIRANHA_HAVE_AVX2)
-        32u
-#elif defined(PIRANHA_HAVE_SSE2)
-        16u
+#if defined(PIRANHA_HAVE_SIMD)
+        detail::simd_byte_size
 #else
         1u
 #endif

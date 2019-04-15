@@ -49,6 +49,8 @@
 
 #if defined(PIRANHA_HAVE_AVX2) || defined(PIRANHA_HAVE_SSE2)
 
+#define PIRANHA_HAVE_SIMD
+
 #if defined(_MSC_VER)
 
 #include <intrin.h>
@@ -64,14 +66,29 @@
 namespace piranha::detail
 {
 
-inline auto simd_load_integral([[maybe_unused]] const void *ptr)
+#if defined(PIRANHA_HAVE_SIMD)
+
+// Size in bytes of a SIMD register.
+inline constexpr ::std::size_t simd_byte_size =
+#if defined(PIRANHA_HAVE_AVX2)
+    32
+#elif defined(PIRANHA_HAVE_SSE2)
+    16
+#endif
+    ;
+
+inline auto simd_load_integral(const void *ptr)
 {
 #if defined(PIRANHA_HAVE_AVX2)
     return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(ptr));
 #elif defined(PIRANHA_HAVE_SSE2)
     return _mm_loadu_si128(reinterpret_cast<const __m128i *>(ptr));
+#else
+    static_assert(false);
 #endif
 }
+
+#endif
 
 } // namespace piranha::detail
 
