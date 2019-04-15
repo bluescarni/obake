@@ -47,6 +47,16 @@
 
 #endif
 
+#if defined(PIRANHA_HAVE_AVX2)
+
+#include <immintrin.h>
+
+#elif defined(PIRANHA_HAVE_SSE2)
+
+#include <emmintrin.h>
+
+#endif
+
 namespace piranha::detail
 {
 

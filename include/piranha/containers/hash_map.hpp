@@ -116,7 +116,7 @@ public:
     {
         return ::std::get<1>(max_size_impl);
     }
-    bool empty() const
+    bool empty() const noexcept
     {
         return ptr() == nullptr;
     }
@@ -126,11 +126,11 @@ private:
     {
         return static_cast<bool>(k1 == k2);
     }
-    unsigned char *ptr()
+    unsigned char *ptr() noexcept
     {
         return ::std::get<0>(m_pack).get();
     }
-    const unsigned char *ptr() const
+    const unsigned char *ptr() const noexcept
     {
         return ::std::get<0>(m_pack).get();
     }
