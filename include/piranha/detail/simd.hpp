@@ -11,12 +11,12 @@
 
 #if !defined(PIRANHA_DISABLE_SIMD)
 
-#if defined(__AVX2__)
-
 // Start checking for AVX2, this macro is defined
 // essentially everywhere:
 // https://stackoverflow.com/questions/28939652/how-to-detect-sse-sse2-avx-avx2-avx-512-avx-128-fma-kcvi-availability-at-compile
 // https://docs.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=vs-2019
+#if defined(__AVX2__)
+
 #define PIRANHA_HAVE_AVX2
 
 #else
@@ -63,6 +63,15 @@
 
 namespace piranha::detail
 {
+
+inline auto simd_load_integral([[maybe_unused]] const void *ptr)
+{
+#if defined(PIRANHA_HAVE_AVX2)
+    return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(ptr));
+#elif defined(PIRANHA_HAVE_SSE2)
+    return _mm_loadu_si128(reinterpret_cast<const __m128i *>(ptr));
+#endif
+}
 
 } // namespace piranha::detail
 
