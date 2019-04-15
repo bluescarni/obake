@@ -11,9 +11,16 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <array>
+
 using namespace piranha;
 
 TEST_CASE("basic")
 {
-    [[maybe_unused]] hash_map<int, int> hm0;
+    hash_map<int, int> hm0;
+    std::cout << hm0.max_size() << '\n';
+    REQUIRE(hm0.empty());
+    hash_map<int, std::array<int, (1ul << 20)>> hm1;
+    std::cout << hm1.max_size() << '\n';
+    REQUIRE(hm1.empty());
 }

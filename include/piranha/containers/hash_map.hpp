@@ -61,49 +61,64 @@ public:
     }
 
 private:
-    // Helper to compute the max possible size for a table.
-    static constexpr size_type compute_max_size()
+    static constexpr auto compute_max_size()
     {
-        // The max number of elements that can be stored taking into account that
-        // only part of the hash value is used for modulo reduction (the upper bits
-        // are used in the metadata).
+        // The max number of elements is limited by the fact that
+        // we use some bits of the hash value for metadata.
         // NOTE: the number of bits in the metadata is the number of bits
-        // in unsigned char minus 1 bit (that is, 7 bits).
+        // in unsigned char minus 1 bit (that is, at least 7 bits).
         constexpr auto max_size_hash
             = static_cast<size_type>(::std::size_t(1) << (::std::numeric_limits<::std::size_t>::digits
                                                           - (::std::numeric_limits<unsigned char>::digits - 1)));
 
-        // The max size in bytes. Need space for the table elements, for the metadata
-        // and padding at the end for SIMD loading of the metadata at the end
-        // of the table:
-        // max_size_bytes * sizeof(value_type) + max_size_bytes + (group_size - 1u);
+        // The max number of elements that can be allocated.
+        // We need space for the table elements, for the metadata,
+        // and padding at the end for SIMD:
+        // max_alloc_size * sizeof(value_type) + max_alloc_size + (group_size - 1u);
         // This must not be larger than the max of std::size_t.
         constexpr auto size_t_max = ::std::numeric_limits<::std::size_t>::max();
+        // Avoid overflow in the expression below.
         static_assert(sizeof(value_type) < size_t_max);
-        static_assert(group_size > 0u && group_size <= 256u);
-        constexpr auto max_size_bytes
+        // Double-check the group_size constant (we want to make
+        // sure it is at least 1 and within the limits of an unsigned
+        // 8-bit integral, so that size_t_max - group_size is always
+        // well-defined).
+        static_assert(group_size > 0u && group_size <= 255u);
+        constexpr auto max_alloc_size
             = static_cast<size_type>((size_t_max - group_size + 1u) / (sizeof(value_type) + 1u));
 
-        constexpr auto candidate = ::std::min(max_size_bytes, max_size_hash);
+        // Determine the candidate result.
+        constexpr auto candidate = ::std::min(max_alloc_size, max_size_hash);
 
-        // In the table, we store 2**n groups. We need to figure
-        // out the highest n_max such that 2**n_max <= candidate.
-        unsigned tmp = 1;
-        size_type tot = group_size_bytes;
-        while (true) {
-
-            group_size_bytes * 2u;
-            ++tmp;
+        // In the table we store 2**n groups. We need then to figure
+        // out the highest n_max such that group_size*2**n_max <= candidate.
+        // NOTE: if candidate is less than the group size, it means
+        // we cannot store even a single group. Bail out in such case.
+        static_assert(!(candidate < group_size));
+        unsigned n = 1;
+        for (;; ++n) {
+            // NOTE: because candidate is not bigger than max_size_hash,
+            // and because max_size_hash removes at least 7 bits from
+            // the width of size_type, we can always compute size_type(1) << n
+            // safely.
+            if ((size_type(1) << n) > size_t_max / group_size || group_size * (size_type(1) << n) > candidate) {
+                break;
+            }
         }
 
-        return candidate;
+        // Return n_max and the computed max size.
+        return ::std::tuple{n - 1u, static_cast<size_type>(group_size * (size_type(1) << (n - 1u)))};
     }
     static constexpr auto max_size_impl = compute_max_size();
 
 public:
     size_type max_size() const noexcept
     {
-        return max_size_impl;
+        return ::std::get<1>(max_size_impl);
+    }
+    bool empty() const
+    {
+        return ptr() == nullptr;
     }
 
 private:

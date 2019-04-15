@@ -9,6 +9,8 @@
 #ifndef PIRANHA_DETAIL_SIMD_HPP
 #define PIRANHA_DETAIL_SIMD_HPP
 
+#if !defined(PIRANHA_DISABLE_SIMD)
+
 #if defined(__AVX2__)
 
 // Start checking for AVX2, this macro is defined
@@ -36,6 +38,8 @@
 #if defined(__SSE2__)
 
 #define PIRANHA_HAVE_SSE2
+
+#endif
 
 #endif
 
