@@ -47,13 +47,17 @@
 
 #endif
 
-#if defined(PIRANHA_HAVE_AVX2)
+#if defined(PIRANHA_HAVE_AVX2) || defined(PIRANHA_HAVE_SSE2)
 
-#include <immintrin.h>
+#if defined(_MSC_VER)
 
-#elif defined(PIRANHA_HAVE_SSE2)
+#include <intrin.h>
 
-#include <emmintrin.h>
+#else
+
+#include <x86intrin.h>
+
+#endif
 
 #endif
 
