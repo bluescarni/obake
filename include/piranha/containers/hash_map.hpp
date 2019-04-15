@@ -9,6 +9,7 @@
 #ifndef PIRANHA_CONTAINERS_HASH_MAP_HPP
 #define PIRANHA_CONTAINERS_HASH_MAP_HPP
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -42,13 +43,12 @@ class hash_map
 #endif
         ;
     static_assert(group_size > 0u && (group_size & (group_size - 1u)) == 0u);
-    using KE = ::std::equal_to<K>;
 
 public:
     using value_type = ::std::pair<const K, T>;
     using size_type = ::std::size_t;
     constexpr hash_map() : hash_map(H{}) {}
-    constexpr explicit hash_map(const H &h) : m_pack(nullptr, h, KE{}), m_size(0), m_groups(0) {}
+    constexpr explicit hash_map(const H &h) : m_pack(nullptr, h), m_size(0), m_groups(0) {}
     ~hash_map()
     {
         const auto p = ptr();
@@ -61,34 +61,40 @@ public:
     }
 
 private:
+    // Helper to compute the max possible size for a table.
     static constexpr size_type compute_max_size()
     {
         // The max number of elements that can be stored taking into account that
         // only part of the hash value is used for modulo reduction (the upper bits
         // are used in the metadata).
-        // NOTE: here we take advantage of the fact that
-        // size_type == std::size_t, the same type used for hash values.
         // NOTE: the number of bits in the metadata is the number of bits
         // in unsigned char minus 1 bit (that is, 7 bits).
         constexpr auto max_size_hash
-            = static_cast<size_type>(size_type(1) << (::std::numeric_limits<size_type>::digits
-                                                      - (::std::numeric_limits<unsigned char>::digits - 1)));
+            = static_cast<size_type>(::std::size_t(1) << (::std::numeric_limits<::std::size_t>::digits
+                                                          - (::std::numeric_limits<unsigned char>::digits - 1)));
 
-        // The max size in bytes: max_size_hash values, max_size_hash metadata bytes,
-        // extra padding at the end for SIMD loading of the metadata at the
-        // end of the table:
-        // max_size_hash * sizeof(value_type) + max_size_hash + (group_size - 1u);
+        // The max size in bytes. Need space for the table elements, for the metadata
+        // and padding at the end for SIMD loading of the metadata at the end
+        // of the table:
+        // max_size_bytes * sizeof(value_type) + max_size_bytes + (group_size - 1u);
         // This must not be larger than the max of std::size_t.
-        constexpr auto candidate = []() {
-            constexpr auto size_t_max = ::std::numeric_limits<size_type>::max();
-            static_assert(sizeof(value_type) < size_t_max);
-            static_assert(group_size > 0u && group_size <= 256u);
-            if constexpr (max_size_hash <= (size_t_max - group_size + 1u) / (sizeof(value_type) + 1u)) {
-                return max_size_hash;
-            } else {
-                return static_cast<size_type>((size_t_max - group_size + 1u) / (sizeof(value_type) + 1u));
-            }
-        }();
+        constexpr auto size_t_max = ::std::numeric_limits<::std::size_t>::max();
+        static_assert(sizeof(value_type) < size_t_max);
+        static_assert(group_size > 0u && group_size <= 256u);
+        constexpr auto max_size_bytes
+            = static_cast<size_type>((size_t_max - group_size + 1u) / (sizeof(value_type) + 1u));
+
+        constexpr auto candidate = ::std::min(max_size_bytes, max_size_hash);
+
+        // In the table, we store 2**n groups. We need to figure
+        // out the highest n_max such that 2**n_max <= candidate.
+        unsigned tmp = 1;
+        size_type tot = group_size_bytes;
+        while (true) {
+
+            group_size_bytes * 2u;
+            ++tmp;
+        }
 
         return candidate;
     }
@@ -101,9 +107,9 @@ public:
     }
 
 private:
-    bool cmp_keys(const K &k1, const K &k2) const
+    static bool cmp_keys(const K &k1, const K &k2)
     {
-        return static_cast<bool>(::std::get<2>(m_pack)(k1, k2));
+        return static_cast<bool>(k1 == k2);
     }
     unsigned char *ptr()
     {
@@ -115,9 +121,9 @@ private:
     }
 
 private:
-    // Pack pointer, hasher and comparator in a tuple
+    // Pack pointer and hasher in a tuple
     // to exploit likely EBO.
-    ::std::tuple<::std::unique_ptr<unsigned char[]>, H, KE> m_pack;
+    ::std::tuple<::std::unique_ptr<unsigned char[]>, H> m_pack;
     // The number of elements currently
     // stored in the table.
     size_type m_size;
