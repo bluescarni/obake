@@ -13,7 +13,8 @@
 
 using namespace piranha;
 
-TEST_CASE("pow_test")
+TEST_CASE("ctor_test")
 {
-    [[maybe_unused]] packed_monomial<int> pm0;
+    int arr[] = {1, 2};
+    [[maybe_unused]] packed_monomial<int> pm0(arr, 2), pm1(arr), pm2{1, 2};
 }
