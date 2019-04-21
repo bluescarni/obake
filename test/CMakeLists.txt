@@ -13,6 +13,7 @@ endfunction()
 
 ADD_PIRANHA_TESTCASE(containers_hash_map)
 ADD_PIRANHA_TESTCASE(exceptions)
+ADD_PIRANHA_TESTCASE(key_key_is_zero)
 ADD_PIRANHA_TESTCASE(math_is_zero)
 ADD_PIRANHA_TESTCASE(math_pow)
 ADD_PIRANHA_TESTCASE(math_safe_cast)
