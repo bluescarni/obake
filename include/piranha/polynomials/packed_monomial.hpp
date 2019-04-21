@@ -9,7 +9,6 @@
 #ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
-#include <cstddef>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -50,7 +49,7 @@ public:
         constexpr explicit packed_monomial(It it, unsigned n)
     {
         bit_packer<T> bp(n);
-        for (::std::size_t i = 0; i < n; ++i, ++it) {
+        for (auto i = 0u; i < n; ++i, ++it) {
             bp << ::piranha::safe_cast<T>(*it);
         }
         m_value = bp.get();

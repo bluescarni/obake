@@ -11,10 +11,13 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <initializer_list>
+
 using namespace piranha;
 
 TEST_CASE("ctor_test")
 {
     int arr[] = {1, 2};
-    [[maybe_unused]] packed_monomial<int> pm0(arr, 2), pm1(arr), pm2{1, 2};
+    using pm_t = packed_monomial<int>;
+    [[maybe_unused]] pm_t pm0(arr, 2), pm1(arr), pm2{1, 2};
 }
