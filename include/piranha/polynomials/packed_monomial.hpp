@@ -35,7 +35,9 @@ template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
 class packed_monomial
 {
 public:
+    // Def ctor inits to a monomial with all zero exponents.
     constexpr packed_monomial() : m_value(0) {}
+    // Constructor from input iterator and size.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename It>
     requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
@@ -69,6 +71,7 @@ private:
     }
 
 public:
+    // Ctor from a pair of forward iterators.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename It>
     requires ForwardIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::difference_type, unsigned> &&
@@ -84,6 +87,7 @@ public:
         constexpr explicit packed_monomial(It b, It e) : packed_monomial(fwd_it_ctor_tag{}, b, e)
     {
     }
+    // Ctor from forward range.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename Range>
     requires ForwardRange<Range> &&
@@ -104,6 +108,7 @@ public:
                           ::piranha::end(::std::forward<Range>(r)))
     {
     }
+    // Ctor from init list.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename U>
     requires SafelyCastable<const U &, T>
@@ -114,6 +119,7 @@ public:
         : packed_monomial(fwd_it_ctor_tag{}, l.begin(), l.end())
     {
     }
+    // Getter for the internal value.
     constexpr const T &get_value() const
     {
         return m_value;
@@ -123,6 +129,7 @@ private:
     T m_value;
 };
 
+// Implementation of key_is_zero(). A monomial is never zero.
 template <typename T>
 constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)
 {
