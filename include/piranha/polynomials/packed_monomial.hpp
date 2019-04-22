@@ -114,10 +114,20 @@ public:
         : packed_monomial(fwd_it_ctor_tag{}, l.begin(), l.end())
     {
     }
+    constexpr const T &get_value() const
+    {
+        return m_value;
+    }
 
 private:
     T m_value;
 };
+
+template <typename T>
+constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)
+{
+    return false;
+}
 
 } // namespace polynomials
 

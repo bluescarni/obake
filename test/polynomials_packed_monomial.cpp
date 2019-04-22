@@ -13,6 +13,9 @@
 
 #include <initializer_list>
 
+#include <piranha/key/key_is_zero.hpp>
+#include <piranha/symbols.hpp>
+
 using namespace piranha;
 
 TEST_CASE("ctor_test")
@@ -20,4 +23,7 @@ TEST_CASE("ctor_test")
     int arr[] = {1, 2};
     using pm_t = packed_monomial<int>;
     [[maybe_unused]] pm_t pm0(arr, 2), pm1(arr), pm2{1, 2};
+
+    REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
+    REQUIRE(is_zero_testable_key_v<pm_t>);
 }
