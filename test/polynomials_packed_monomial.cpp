@@ -41,6 +41,8 @@ TEST_CASE("ctor_test")
         using bp_t = bit_packer<int_t>;
         using pm_t = packed_monomial<int_t>;
 
+        REQUIRE(is_semi_regular_v<pm_t>);
+
         pm_t pm0;
         // Default ctor.
         REQUIRE(pm0.get_value() == int_t(0));
@@ -65,6 +67,7 @@ TEST_CASE("ctor_test")
         REQUIRE(pm4.get_value() == bp1.get());
 
         // Test some type traits.
+        REQUIRE(!std::is_constructible_v<pm_t, void>);
         REQUIRE(!std::is_constructible_v<pm_t, int>);
         REQUIRE(std::is_constructible_v<pm_t, std::istream_iterator<char>, unsigned>);
         REQUIRE(!std::is_constructible_v<pm_t, int, unsigned>);
@@ -76,7 +79,15 @@ TEST_CASE("ctor_test")
         REQUIRE(!std::is_constructible_v<pm_t, std::vector<std::string>::const_iterator,
                                          std::vector<std::string>::const_iterator>);
     });
+}
 
-    // REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
-    // REQUIRE(is_zero_testable_key_v<pm_t>);
+TEST_CASE("key_is_zero_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
+        REQUIRE(is_zero_testable_key_v<pm_t>);
+    });
 }
