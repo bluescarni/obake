@@ -161,6 +161,18 @@ TEST_CASE("bit_packer_unpacker")
                         }
                     }
 
+                    // Check that packing zeroes gives a zero value.
+                    bp1 = bp_t(i);
+                    for (auto j = 0u; j < i; ++j) {
+                        bp1 << int_t(0);
+                    }
+                    REQUIRE(bp1.get() == int_t(0));
+                    bu1 = bu_t(bp1.get(), i);
+                    for (auto j = 0u; j < i; ++j) {
+                        bu1 >> out;
+                        REQUIRE(out == int_t(0));
+                    }
+
                     // Check out of range packing.
                     bp1 = bp_t(i);
                     REQUIRE_THROWS_WITH(
