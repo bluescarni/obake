@@ -46,6 +46,9 @@ endif()
 # mp++.
 find_package(mp++ 0.14 REQUIRED)
 
+# abseil.
+find_package(absl REQUIRED)
+
 # Boost setup.
 include(PiranhaFindBoost)
 
@@ -86,7 +89,7 @@ target_include_directories(piranha PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha PUBLIC mp++::mp++)
+target_link_libraries(piranha PUBLIC mp++::mp++ absl::container Boost::boost)
 if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 else()

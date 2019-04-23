@@ -10,6 +10,9 @@
 #define PIRANHA_SERIES_HPP
 
 #include <type_traits>
+#include <vector>
+
+#include <absl/container/flat_hash_map.h>
 
 #include <piranha/config.hpp>
 #include <piranha/math/pow.hpp>
@@ -21,6 +24,10 @@ namespace piranha
 template <typename Cf, typename Key, typename Tag>
 class series
 {
+private:
+    using container_t = ::std::vector<::absl::flat_hash_map<Key, Cf>>;
+
+    container_t m_container;
 };
 
 namespace detail
