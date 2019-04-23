@@ -50,10 +50,21 @@ constexpr auto key_is_zero_impl(T &&x, const symbol_set &ss, priority_tag<0>)
 
 } // namespace detail
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+template <typename T>
+constexpr auto key_is_zero(T &&x, const symbol_set &ss)
+    PIRANHA_SS_FORWARD_FUNCTION(static_cast<bool>(detail::key_is_zero_impl(::std::forward<T>(x), ss,
+                                                                           detail::priority_tag<1>{})));
+
+#else
+
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
 inline constexpr auto key_is_zero = [](auto &&x, const symbol_set &ss) PIRANHA_SS_FORWARD_LAMBDA(
     static_cast<bool>(detail::key_is_zero_impl(::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
+
+#endif
 
 namespace detail
 {
