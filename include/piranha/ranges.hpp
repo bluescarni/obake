@@ -72,20 +72,15 @@ inline constexpr auto begin =
 
 inline constexpr auto end = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::end_impl(::std::forward<decltype(x)>(x)));
 
-namespace detail
-{
+template <typename T>
+using range_begin_t = decltype(::piranha::begin(::std::declval<T>()));
 
 template <typename T>
-using begin_t = decltype(::piranha::begin(::std::declval<T>()));
+using range_end_t = decltype(::piranha::end(::std::declval<T>()));
 
 template <typename T>
-using end_t = decltype(::piranha::end(::std::declval<T>()));
-
-} // namespace detail
-
-template <typename T>
-using is_range = ::std::conjunction<is_detected<detail::begin_t, T>, is_detected<detail::end_t, T>,
-                                    ::std::is_same<detected_t<detail::begin_t, T>, detected_t<detail::end_t, T>>>;
+using is_range = ::std::conjunction<is_detected<range_begin_t, T>, is_detected<range_end_t, T>,
+                                    ::std::is_same<detected_t<range_begin_t, T>, detected_t<range_end_t, T>>>;
 
 template <typename T>
 inline constexpr bool is_range_v = is_range<T>::value;
@@ -93,12 +88,12 @@ inline constexpr bool is_range_v = is_range<T>::value;
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Range = Same<detail::begin_t<T>, detail::end_t<T>>;
+PIRANHA_CONCEPT_DECL Range = Same<range_begin_t<T>, range_end_t<T>>;
 
 #endif
 
 template <typename T>
-using is_input_range = ::std::conjunction<is_range<T>, is_input_iterator<detected_t<detail::begin_t, T>>>;
+using is_input_range = ::std::conjunction<is_range<T>, is_input_iterator<detected_t<range_begin_t, T>>>;
 
 template <typename T>
 inline constexpr bool is_input_range_v = is_input_range<T>::value;
@@ -106,12 +101,12 @@ inline constexpr bool is_input_range_v = is_input_range<T>::value;
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL InputRange = Range<T> &&InputIterator<detail::begin_t<T>>;
+PIRANHA_CONCEPT_DECL InputRange = Range<T> &&InputIterator<range_begin_t<T>>;
 
 #endif
 
 template <typename T>
-using is_forward_range = ::std::conjunction<is_range<T>, is_forward_iterator<detected_t<detail::begin_t, T>>>;
+using is_forward_range = ::std::conjunction<is_range<T>, is_forward_iterator<detected_t<range_begin_t, T>>>;
 
 template <typename T>
 inline constexpr bool is_forward_range_v = is_forward_range<T>::value;
@@ -119,13 +114,13 @@ inline constexpr bool is_forward_range_v = is_forward_range<T>::value;
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL ForwardRange = Range<T> &&ForwardIterator<detail::begin_t<T>>;
+PIRANHA_CONCEPT_DECL ForwardRange = Range<T> &&ForwardIterator<range_begin_t<T>>;
 
 #endif
 
 template <typename T>
 using is_mutable_forward_range
-    = ::std::conjunction<is_range<T>, is_mutable_forward_iterator<detected_t<detail::begin_t, T>>>;
+    = ::std::conjunction<is_range<T>, is_mutable_forward_iterator<detected_t<range_begin_t, T>>>;
 
 template <typename T>
 inline constexpr bool is_mutable_forward_range_v = is_mutable_forward_range<T>::value;
@@ -133,7 +128,7 @@ inline constexpr bool is_mutable_forward_range_v = is_mutable_forward_range<T>::
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL MutableForwardRange = Range<T> &&MutableForwardIterator<detail::begin_t<T>>;
+PIRANHA_CONCEPT_DECL MutableForwardRange = Range<T> &&MutableForwardIterator<range_begin_t<T>>;
 
 #endif
 
