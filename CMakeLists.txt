@@ -86,7 +86,7 @@ target_include_directories(piranha PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha PUBLIC mp++::mp++)
+target_link_libraries(piranha PUBLIC mp++::mp++ Boost::boost)
 if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 else()
