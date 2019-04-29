@@ -9,23 +9,42 @@
 #ifndef PIRANHA_SERIES_HPP
 #define PIRANHA_SERIES_HPP
 
+#include <cstddef>
 #include <type_traits>
 #include <vector>
 
 #include <absl/container/flat_hash_map.h>
 
 #include <piranha/config.hpp>
+#include <piranha/hash.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
 {
 
-template <typename Cf, typename Key, typename Tag>
+namespace detail
+{
+
+// A small hashing wrapper for keys. It accomplishes the task
+// of forcing the evaluation of a key through const reference,
+// so that, in the Key requirements, we can request hashability
+// through const lvalue ref.
+struct key_hasher {
+    template <typename K>
+    constexpr ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
+    {
+        return ::piranha::hash(k);
+    }
+};
+
+} // namespace detail
+
+template <typename Cf, typename K, typename Tag>
 class series
 {
 private:
-    using container_t = ::std::vector<::absl::flat_hash_map<Key, Cf>>;
+    using container_t = ::std::vector<::absl::flat_hash_map<K, Cf, detail::key_hasher>>;
 
     container_t m_container;
 };
@@ -37,8 +56,8 @@ template <typename T>
 struct is_series_impl : ::std::false_type {
 };
 
-template <typename Cf, typename Key, typename Tag>
-struct is_series_impl<series<Cf, Key, Tag>> : ::std::true_type {
+template <typename Cf, typename K, typename Tag>
+struct is_series_impl<series<Cf, K, Tag>> : ::std::true_type {
 };
 
 } // namespace detail
@@ -63,8 +82,8 @@ template <typename>
 struct series_cf_t_impl {
 };
 
-template <typename Cf, typename Key, typename Tag>
-struct series_cf_t_impl<series<Cf, Key, Tag>> {
+template <typename Cf, typename K, typename Tag>
+struct series_cf_t_impl<series<Cf, K, Tag>> {
     using type = Cf;
 };
 

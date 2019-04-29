@@ -52,7 +52,7 @@ constexpr auto hash_impl(T &&x, priority_tag<1>) PIRANHA_SS_FORWARD_FUNCTION(has
 // Lowest priority: try to use std::hash.
 template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(hash(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x))));
+    PIRANHA_SS_FORWARD_FUNCTION(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x)));
 
 // Machinery to enable the hash implementation only if the return
 // type is std::size_t.
@@ -65,29 +65,29 @@ constexpr auto hash_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-inline constexpr auto hash = [](auto &&x)
-    PIRANHA_SS_FORWARD_LAMBDA(detail::hash_impl(::std::forward<decltype(x)>(x), detail::priority_tag<2>{}));
+inline constexpr auto hash =
+    [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::hash_impl_with_ret_check(::std::forward<decltype(x)>(x)));
 
 namespace detail
 {
 
 template <typename T>
-using key_is_zero_t = decltype(::piranha::key_is_zero(::std::declval<T>(), ::std::declval<const symbol_set &>()));
+using hash_t = decltype(::piranha::hash(::std::declval<T>()));
 
 }
 
 template <typename T>
-using is_zero_testable_key = is_detected<detail::key_is_zero_t, T>;
+using is_hashable = is_detected<detail::hash_t, T>;
 
 template <typename T>
-inline constexpr bool is_zero_testable_key_v = is_zero_testable_key<T>::value;
+inline constexpr bool is_hashable_v = is_hashable<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL ZeroTestableKey = requires(T &&x, const symbol_set &ss)
+PIRANHA_CONCEPT_DECL Hashable = requires(T &&x)
 {
-    ::piranha::key_is_zero(::std::forward<T>(x), ss);
+    ::piranha::hash(::std::forward<T>(x));
 };
 
 #endif
