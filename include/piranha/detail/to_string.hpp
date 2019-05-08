@@ -26,10 +26,10 @@ inline ::std::string to_string(const T &x)
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
 template <>
-PIRANHA_PUBLIC ::std::string to_string(const __uint128_t &);
+PIRANHA_DLL_PUBLIC ::std::string to_string(const __uint128_t &);
 
 template <>
-PIRANHA_PUBLIC ::std::string to_string(const __int128_t &);
+PIRANHA_DLL_PUBLIC ::std::string to_string(const __int128_t &);
 
 #endif
 
