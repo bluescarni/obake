@@ -20,9 +20,9 @@ namespace piranha
 namespace detail
 {
 
-PIRANHA_PUBLIC extern ::std::atomic_bool stack_trace_enabled;
+PIRANHA_DLL_PUBLIC extern ::std::atomic_bool stack_trace_enabled;
 
-PIRANHA_PUBLIC ::std::string stack_trace_impl(unsigned);
+PIRANHA_DLL_PUBLIC ::std::string stack_trace_impl(unsigned);
 
 } // namespace detail
 

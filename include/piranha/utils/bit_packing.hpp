@@ -248,13 +248,13 @@ using sbp_minmax_packed_t = typename sbp_minmax_packed<T>::type;
 
 // Declare the variables holding the min/max packed values for the
 // supported signed integral types.
-PIRANHA_PUBLIC extern const sbp_minmax_packed_t<int> sbp_mmp_int;
-PIRANHA_PUBLIC extern const sbp_minmax_packed_t<long> sbp_mmp_long;
-PIRANHA_PUBLIC extern const sbp_minmax_packed_t<long long> sbp_mmp_long_long;
+PIRANHA_DLL_PUBLIC extern const sbp_minmax_packed_t<int> sbp_mmp_int;
+PIRANHA_DLL_PUBLIC extern const sbp_minmax_packed_t<long> sbp_mmp_long;
+PIRANHA_DLL_PUBLIC extern const sbp_minmax_packed_t<long long> sbp_mmp_long_long;
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-PIRANHA_PUBLIC extern const sbp_minmax_packed_t<__int128_t> sbp_mmp_int128;
+PIRANHA_DLL_PUBLIC extern const sbp_minmax_packed_t<__int128_t> sbp_mmp_int128;
 
 #endif
 
