@@ -44,7 +44,7 @@ namespace piranha::detail
 namespace
 {
 
-static ::std::string demangle_impl(const char *s)
+::std::string demangle_impl(const char *s)
 {
 #if __has_include(<cxxabi.h>)
     // NOTE: wrap std::free() in a local lambda, so we avoid
@@ -68,7 +68,7 @@ using stack_trace_data = ::std::vector<::std::array<::std::string, 3>>;
 
 // The callback for the main backtrace function. Needs to have C linkage.
 extern "C" {
-static int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int lineno, const char *funcname)
+int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int lineno, const char *funcname)
 {
     // Catch any exception that might be thrown, as this function
     // will be called from a C library and throwing in such case is
