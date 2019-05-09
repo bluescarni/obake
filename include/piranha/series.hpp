@@ -15,13 +15,42 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include <boost/iterator/iterator_facade.hpp>
+
 #include <piranha/config.hpp>
 #include <piranha/hash.hpp>
+#include <piranha/math/is_zero.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
 {
+
+template <typename T>
+using is_key = ::std::conjunction<::std::is_destructible<T>, is_hashable<T>>;
+
+template <typename T>
+inline constexpr bool is_key_v = is_key<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL Key = is_key_v<T>;
+
+#endif
+
+template <typename T>
+using is_cf = ::std::conjunction<::std::is_destructible<T>, is_zero_testable<T>>;
+
+template <typename T>
+inline constexpr bool is_cf_v = is_cf<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL Cf = is_cf_v<T>;
+
+#endif
 
 namespace detail
 {
@@ -40,12 +69,31 @@ struct key_hasher {
 
 } // namespace detail
 
-template <typename Cf, typename K, typename Tag>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <Cf C, Key K, typename Tag>
+#else
+template <typename C, typename K, typename Tag,
+          typename = ::std::enable_if_t<::std::conjunction_v<is_cf<C>, is_key<K>>>>
+#endif
 class series
 {
-private:
-    using container_t = ::std::vector<::absl::flat_hash_map<K, Cf, detail::key_hasher>>;
+public:
+    using container_t = ::std::vector<::absl::flat_hash_map<K, C, detail::key_hasher>>;
 
+private:
+    template <typename T>
+    class iterator_impl : public ::boost::iterator_facade<iterator_impl<T>, T, ::boost::forward_traversal_tag>
+    {
+        using it_type = ::std::conditional_t<::std::is_const_v<T>, typename container_t::const_iterator,
+                                             typename container_t::iterator>;
+        template <typename U>
+        friend class iterator_impl;
+
+    private:
+        friend class ::boost::iterator_core_access;
+    };
+
+private:
     container_t m_container;
 };
 
@@ -56,8 +104,8 @@ template <typename T>
 struct is_series_impl : ::std::false_type {
 };
 
-template <typename Cf, typename K, typename Tag>
-struct is_series_impl<series<Cf, K, Tag>> : ::std::true_type {
+template <typename C, typename K, typename Tag>
+struct is_series_impl<series<C, K, Tag>> : ::std::true_type {
 };
 
 } // namespace detail
@@ -82,9 +130,9 @@ template <typename>
 struct series_cf_t_impl {
 };
 
-template <typename Cf, typename K, typename Tag>
-struct series_cf_t_impl<series<Cf, K, Tag>> {
-    using type = Cf;
+template <typename C, typename K, typename Tag>
+struct series_cf_t_impl<series<C, K, Tag>> {
+    using type = C;
 };
 
 } // namespace detail
