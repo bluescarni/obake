@@ -111,6 +111,9 @@ int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int l
     // We create this as a thread_local static so that we can call backtrace_create_state()
     // in single-threaded mode. See also:
     // https://github.com/boostorg/stacktrace/commit/4123beb4af6ff4e36769905b87c206da39190847
+    // NOTE: the value returned by backtrace_create_state() needs not to be freed, according
+    // to the docs in the libbacktrace headers. Thus, it *should* be safe to use
+    // also on MinGW's buggy thread_local implementation.
     thread_local auto bt_state = ::backtrace_create_state(nullptr, 0, nullptr, nullptr);
     if (piranha_unlikely(!bt_state)) {
         // LCOV_EXCL_START
