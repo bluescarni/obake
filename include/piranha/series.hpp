@@ -9,12 +9,14 @@
 #ifndef PIRANHA_SERIES_HPP
 #define PIRANHA_SERIES_HPP
 
+#include <cassert>
 #include <cstddef>
 #include <type_traits>
 #include <vector>
 
 #include <absl/container/flat_hash_map.h>
 
+#include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
 #include <piranha/config.hpp>
@@ -84,13 +86,71 @@ private:
     template <typename T>
     class iterator_impl : public ::boost::iterator_facade<iterator_impl<T>, T, ::boost::forward_traversal_tag>
     {
-        using it_type = ::std::conditional_t<::std::is_const_v<T>, typename container_t::const_iterator,
-                                             typename container_t::iterator>;
         template <typename U>
         friend class iterator_impl;
+        friend class ::boost::iterator_core_access;
+
+        using container_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const container_t *, container_t *>;
+        using idx_t = typename container_t::size_type;
+        using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename container_t::value_type::const_iterator,
+                                                typename container_t::value_type::iterator>;
+
+    public:
+        iterator_impl() : m_container_ptr(nullptr), m_idx(0), m_local_it{} {}
+        explicit iterator_impl(container_ptr_t *container_ptr, idx_t idx, local_it_t local_it)
+            : m_container_ptr(container_ptr), m_idx(idx), m_local_it(local_it)
+        {
+        }
 
     private:
-        friend class ::boost::iterator_core_access;
+        void increment()
+        {
+            // Must be pointing to something.
+            assert(m_container_ptr != nullptr);
+            // Cannot be already at the end of the container.
+            assert(m_idx < m_container_ptr->size());
+            // The current table cannot be empty.
+            assert(!m_container_ptr[m_idx].empty());
+            // The local iterator cannot be pointing
+            // at the end of the current table.
+            assert(m_local_it != m_container_ptr[m_idx].end());
+            // Move to the next item in the current table.
+            ++m_local_it;
+            if (m_local_it == m_container_ptr[m_idx].end()) {
+                // We reached the end of the current table.
+                // Keep bumping up m_idx until we either
+                // arrive in a non-empty table, or we reach
+                // the end of the container.
+                const auto c_size = m_container_ptr->size();
+                while (true) {
+                    ++m_idx;
+                    if (m_idx == c_size) {
+                        // End of the container, reset
+                        // m_local_it to def-cted and
+                        // exit.
+                        m_local_it = local_it_t{};
+                        break;
+                    } else if (!m_container_ptr[m_idx].empty()) {
+                        // Local non-empty table, set
+                        // m_local_it to the beginning and
+                        // exit.
+                        m_local_it = m_container_ptr[m_idx].begin();
+                        break;
+                    }
+                }
+            }
+        }
+        bool equal(const iterator_impl &other) const
+        {
+            // Can compare only iterators referring to the same container.
+            assert(m_container_ptr != nullptr && m_container_ptr == other.m_container_ptr);
+            return (m_idx == other.m_idx && m_local_it == other.m_local_it);
+        }
+
+    private:
+        container_ptr_t m_container_ptr;
+        idx_t m_idx;
+        local_it_t m_local_it;
     };
 
 private:
