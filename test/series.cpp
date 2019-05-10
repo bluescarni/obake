@@ -17,9 +17,18 @@
 
 TEST_CASE("pow_test")
 {
-    // using series_t = piranha::series<void, void, void>;
+    using series_t = piranha::series<double, int, void>;
 
-    // REQUIRE(std::is_same_v<decltype(piranha::pow(series_t{}, 0)), int>);
-    // REQUIRE(piranha::pow(series_t{}, 0) == 0);
-    // REQUIRE((!piranha::is_exponentiable_v<series_t, double>));
+    series_t s;
+    REQUIRE(s.begin() == s.end());
+    REQUIRE(s.cbegin() == s.cend());
+
+    REQUIRE(s.cbegin() == s.begin());
+
+    series_t::const_iterator it0(s.begin());
+    // series_t::iterator it1(s.cbegin());
+
+    REQUIRE(std::is_nothrow_swappable_v<series_t>);
+    REQUIRE(std::is_nothrow_swappable_v<series_t::const_iterator>);
+    REQUIRE(std::is_nothrow_swappable_v<series_t::iterator>);
 }
