@@ -31,7 +31,7 @@ build_script:
 - cd mppp-%MPPP_VERSION%
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_BUILD_TYPE=Debug -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- cmake .. -G "%CMAKE_GENERATOR%" -DCMAKE_BUILD_TYPE=Debug -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - cmake --build . --target install -- -v
 - cd ..
 - cd ..
@@ -41,13 +41,13 @@ build_script:
 - cd abseil-cpp
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- cmake .. -G "%CMAKE_GENERATOR%" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - cmake --build . --target install -- -v
 - cd ..
 - cd ..
 
 # piranha
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes
+- cmake .. -G "%CMAKE_GENERATOR%" -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes
 - cmake --build . -- -v
 
 
