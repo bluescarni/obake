@@ -21,7 +21,20 @@ export deps_dir=$HOME/local
 export PATH="$HOME/miniconda/bin:$PATH"
 export PATH="$deps_dir/bin:$PATH"
 
-CXX=clang++ CC=clang cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes ../
+export CXX=clang++
+export CC=clang
+
+git clone https://github.com/abseil/abseil-cpp.git
+cd abseil-cpp
+mkdir build
+cd build
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$deps_dir
+make install -j2 VERBOSE=1
+cd ..
+cd ..
+rm -fr abseil-cpp
+
+cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes ../
 make -j2 VERBOSE=1
 ctest -V
 
