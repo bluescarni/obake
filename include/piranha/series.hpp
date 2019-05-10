@@ -16,13 +16,12 @@
 #include <type_traits>
 #include <utility>
 
-#include <absl/container/flat_hash_map.h>
-
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/abseil.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/pow.hpp>
