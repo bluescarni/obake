@@ -19,8 +19,8 @@ install:
 
 build_script:
 - set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
-#- if [%BUILD_TYPE%]==[MSVC17_64] set CMAKE_GENERATOR="Visual Studio 15 2017"
-#- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR="Visual Studio 16 2019"
+- if [%BUILD_TYPE%]==[MSVC17_64] set CMAKE_GENERATOR=Visual Studio 15 2017
+- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR=Visual Studio 16 2019
 
 - mkdir build
 - cd build
@@ -32,7 +32,7 @@ build_script:
 - cd mppp-%MPPP_VERSION%
 - mkdir build
 - cd build
-- cmake .. -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH%
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH%
 - cmake --build . --config Debug --target install
 - cd ..
 - cd ..
@@ -42,13 +42,13 @@ build_script:
 - cd abseil-cpp
 - mkdir build
 - cd build
-- cmake .. -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH%
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH%
 - cmake --build . --config Debug --target install
 - cd ..
 - cd ..
 
 # piranha
-- cmake .. -A x64 -DPIRANHA_BUILD_TESTS=yes
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DPIRANHA_BUILD_TESTS=yes
 - cmake --build . --config Debug
 
 
