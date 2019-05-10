@@ -9,6 +9,8 @@
 #ifndef PIRANHA_SERIES_HPP
 #define PIRANHA_SERIES_HPP
 
+#include <x86intrin.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
