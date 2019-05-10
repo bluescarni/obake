@@ -25,14 +25,14 @@ build_script:
 - mkdir build
 - cd build
 
-# MPPP setup.
+# mp++ setup.
 - set MPPP_VERSION=0.14
 - curl -fsSL -o mppp.zip https://github.com/bluescarni/mppp/archive/v%MPPP_VERSION%.zip
 - 7z x mppp.zip
 - cd mppp-%MPPP_VERSION%
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH%
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - cmake --build . --config Debug --target install
 - cd ..
 - cd ..
@@ -42,7 +42,7 @@ build_script:
 - cd abseil-cpp
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH%
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - cmake --build . --config Debug --target install
 - cd ..
 - cd ..
