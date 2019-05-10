@@ -14,6 +14,7 @@ mkdir build
 cd build
 
 # Download and install mppp and abseil
+export MPPP_WITH_QUADMATH=YES
 bash ../tools/circleci_install_mppp.sh
 bash ../tools/circleci_install_abseil.sh
 
