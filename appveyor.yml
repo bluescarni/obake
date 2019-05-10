@@ -14,13 +14,12 @@ environment:
 install:
 - set PATH=C:\Miniconda36-x64\Scripts;%PATH%
 - conda config --add channels conda-forge --force
-- conda create -y --name piranha cmake boost-cpp mpir mpfr
+- conda create -y --name piranha cmake boost-cpp mpir mpfr ninja
 - call activate piranha
 
 build_script:
 - set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
-- if [%BUILD_TYPE%]==[MSVC17_64] set CMAKE_GENERATOR=Visual Studio 15 2017
-- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR=Visual Studio 16 2019
+- set CMAKE_GENERATOR=Ninja
 
 - mkdir build
 - cd build
@@ -32,8 +31,8 @@ build_script:
 - cd mppp-%MPPP_VERSION%
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- cmake --build . --config Debug --target install
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_BUILD_TYPE=Debug -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- cmake --build . --target install -- -v
 - cd ..
 - cd ..
 
@@ -42,21 +41,21 @@ build_script:
 - cd abseil-cpp
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- cmake --build . --config Debug --target install
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- cmake --build . --target install -- -v
 - cd ..
 - cd ..
 
 # piranha
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DPIRANHA_BUILD_TESTS=yes
-- cmake --build . --config Debug
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes
+- cmake --build . -- -v
 
 
 test_script:
 # NOTE: ensure the PATH variable contains the path to the piranha dll,
 # otherwise the tests will fail to run.
-- set PATH=%PATH%;%CD%\Debug
-- ctest -V -C Debug
+- set PATH=%PATH%;%CD%
+- ctest -V
 
 # Enable this to be able to login to the build worker. You can use the
 # `remmina` program in Ubuntu, use the login information that the line below
