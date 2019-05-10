@@ -20,6 +20,7 @@ TEST_CASE("pow_test")
     using series_t = piranha::series<double, int, void>;
 
     series_t s;
+    REQUIRE(s.empty());
     REQUIRE(s.begin() == s.end());
     REQUIRE(s.cbegin() == s.cend());
 

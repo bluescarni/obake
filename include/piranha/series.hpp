@@ -9,6 +9,7 @@
 #ifndef PIRANHA_SERIES_HPP
 #define PIRANHA_SERIES_HPP
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <iterator>
@@ -25,6 +26,7 @@
 #include <piranha/hash.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/pow.hpp>
+#include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
@@ -82,8 +84,10 @@ template <typename C, typename K, typename Tag,
 class series
 {
 public:
-    using hash_map_t = ::absl::flat_hash_map<K, C, detail::key_hasher>;
-    using container_t = ::boost::container::small_vector<hash_map_t, 1>;
+    using cf_type = C;
+    using key_type = K;
+    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher>;
+    using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
     series() : m_container(1), m_log2_size(0) {}
     series(const series &) = default;
@@ -101,17 +105,23 @@ public:
         using ::std::swap;
         swap(m_container, other.m_container);
         swap(m_log2_size, other.m_log2_size);
+        swap(m_symbol_set, other.m_symbol_set);
+    }
+
+    bool empty() const noexcept
+    {
+        return ::std::all_of(m_container.begin(), m_container.end(), [](const auto &map) { return map.empty(); });
     }
 
 private:
     // Shortcut for the container size type.
-    using c_size_t = typename container_t::size_type;
+    using c_size_t = typename container_type::size_type;
 
-    // A small helper to select the (const) iterator of container_t, depending on whether
+    // A small helper to select the (const) iterator of container_type, depending on whether
     // T is const or not. Used in the iterator implementation below.
     template <typename T>
-    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename container_t::value_type::const_iterator,
-                                            typename container_t::value_type::iterator>;
+    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename container_type::value_type::const_iterator,
+                                            typename container_type::value_type::iterator>;
 
     // NOTE: this is mostly taken from:
     // https://www.boost.org/doc/libs/1_70_0/libs/iterator/doc/iterator_facade.html
@@ -127,8 +137,11 @@ private:
         friend class iterator_impl;
         // Make friends with boost's iterator machinery.
         friend class ::boost::iterator_core_access;
+        // Make friends also with the series class, as sometimes
+        // we need to poke the internals of the iterator from there.
+        friend class series;
 
-        using container_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const container_t *, container_t *>;
+        using container_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const container_type *, container_type *>;
 
     public:
         // Defaul constructor.
@@ -249,8 +262,8 @@ private:
     };
 
 public:
-    using iterator = iterator_impl<typename hash_map_t::value_type>;
-    using const_iterator = iterator_impl<const typename hash_map_t::value_type>;
+    using iterator = iterator_impl<typename hash_map_type::value_type>;
+    using const_iterator = iterator_impl<const typename hash_map_type::value_type>;
 
 private:
     template <typename It, typename Container>
@@ -301,9 +314,43 @@ public:
         return iterator(&m_container, m_container.size());
     }
 
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    // TODO flip around T and U.
+    // TODO SameCvref -> SameCvr.
+    template <SameCvref<key_type> T, SameCvref<cf_type> U>
+#else
+    template <typename T, typename U,
+              ::std::enable_if_t<::std::conjunction_v<is_same_cvref<T, key_type>, is_same_cvref<U, cf_type>>, int> = 0>
+#endif
+    void add_term(T &&key, U &&cf)
+    {
+        // Check early if the coefficient is zero. We want
+        // to optimise for the case in which we are inserting
+        // nonzero elements.
+        // TODO: key zero check.
+        // TODO: key compat check.
+        if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(::std::forward<U>(cf))))) {
+            return;
+        }
+        if (m_log2_size == 0u) {
+            auto &hm = m_container[0];
+            const auto res = hm.try_emplace(::std::forward<T>(key), ::std::forward<U>(cf));
+            if (!res.second) {
+                // Insertion did not take place because a term with
+                // the same key exists already. Add the input coefficient
+                // to the existing one.
+                res.first->second += ::std::forward<U>(cf);
+                // Now check that the updated coefficient is not zero.
+                // TODO.
+            }
+        } else {
+        }
+    }
+
 private:
-    container_t m_container;
+    container_type m_container;
     c_size_t m_log2_size;
+    symbol_set m_symbol_set;
 };
 
 // Free function implementation of the swapping primitive.
