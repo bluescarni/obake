@@ -13,7 +13,7 @@ cd mppp-${MPPP_VERSION}
 mkdir build
 cd build
 cmake ../ -DMPPP_WITH_MPFR=YES -DMPPP_WITH_QUADMATH=YES -DCMAKE_INSTALL_PREFIX=~/.local
-make install
+make install -j2
 cd ..
 cd ..
 rm -fr mppp-${MPPP_VERSION}

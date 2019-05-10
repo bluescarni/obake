@@ -13,8 +13,9 @@ sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang lib
 mkdir build
 cd build
 
-# Download and install mppp.
+# Download and install mppp and abseil.
 bash ../tools/circleci_install_mppp.sh
+bash ../tools/circleci_install_abseil.sh
 
 # clang build.
 CC=clang CXX=clang++ cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=undefined" -DQuadmath_INCLUDE_DIR=/usr/lib/gcc/x86_64-linux-gnu/8/include/ -DQuadmath_LIBRARY=/usr/lib/gcc/x86_64-linux-gnu/8/libquadmath.so
