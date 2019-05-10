@@ -13,11 +13,12 @@ sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang lib
 mkdir build
 cd build
 
+# Download and install mppp and abseil.
+bash ../tools/circleci_install_mppp.sh
+
 export CC=clang
 export CXX=clang++
 
-# Download and install mppp and abseil.
-bash ../tools/circleci_install_mppp.sh
 bash ../tools/circleci_install_abseil.sh
 
 # clang build.
