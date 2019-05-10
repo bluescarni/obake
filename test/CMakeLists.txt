@@ -1,9 +1,6 @@
-# We have some multithreaded tests, so let's activate threading support.
-include(YACMAThreadingSetup)
-
 function(ADD_PIRANHA_TESTCASE arg1)
   add_executable(${arg1} ${arg1}.cpp)
-  target_link_libraries(${arg1} piranha Threads::Threads)
+  target_link_libraries(${arg1} piranha)
   target_compile_options(${arg1} PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>")
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)

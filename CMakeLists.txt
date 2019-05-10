@@ -20,6 +20,8 @@ option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." O
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
+# Also the threading setup.
+include(YACMAThreadingSetup)
 
 # Assemble the flags.
 set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
@@ -89,7 +91,7 @@ target_include_directories(piranha PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha PUBLIC mp++::mp++ absl::flat_hash_map Boost::boost)
+target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map Boost::boost)
 if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 else()
