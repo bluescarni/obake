@@ -17,6 +17,9 @@ export CC=clang
 export CXX=clang++
 
 # Download and install mppp and abseil.
+# NOTE: disable quadmath in the clang builds, because
+# the inclusion of the quadmath paths from gcc breaks
+# the implementation of clang's SIMD intrinsics.
 export MPPP_WITH_QUADMATH=NO
 bash ../tools/circleci_install_mppp.sh
 bash ../tools/circleci_install_abseil.sh

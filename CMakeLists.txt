@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.3.0)
 
+# NOTE: piranha is C++, however we are linking to C
+# libraries (e.g., libbacktrace). Moreover, if we don't
+# enable C here, on some configurations (e.g., Ubuntu
+# + clang) the threading detection/setup seems to break
+# down.
 project(piranha VERSION 0.19 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
