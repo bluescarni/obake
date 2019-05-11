@@ -91,3 +91,12 @@ TEST_CASE("key_is_zero_test")
         REQUIRE(is_zero_testable_key_v<pm_t>);
     });
 }
+
+TEST_CASE("key_hash_test")
+{
+    using pm_t = packed_monomial<int>;
+    std::cout << std::bitset<64>(hash(pm_t{1, 2, 3})) << '\n';
+    std::cout << std::bitset<64>(hash(pm_t{4, 5, 6})) << '\n';
+    std::cout << std::bitset<64>(hash(pm_t{-1, 2, -3})) << '\n';
+    std::cout << std::bitset<64>(hash(pm_t{4, -5, 6})) << '\n';
+}

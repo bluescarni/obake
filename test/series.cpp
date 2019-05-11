@@ -14,10 +14,11 @@
 #include <type_traits>
 
 #include <piranha/math/pow.hpp>
+#include <piranha/polynomials/packed_monomial.hpp>
 
 TEST_CASE("pow_test")
 {
-    using series_t = piranha::series<double, int, void>;
+    using series_t = piranha::series<double, piranha::packed_monomial<int>, void>;
 
     series_t s;
     REQUIRE(s.empty());

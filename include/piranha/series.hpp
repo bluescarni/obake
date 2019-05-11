@@ -23,6 +23,7 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
 #include <piranha/hash.hpp>
+#include <piranha/key/key_is_zero.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/symbols.hpp>
@@ -32,7 +33,9 @@ namespace piranha
 {
 
 template <typename T>
-using is_key = ::std::conjunction<is_semi_regular<T>, is_hashable<T>>;
+using is_key = ::std::conjunction<is_semi_regular<T>, is_hashable<::std::add_lvalue_reference_t<const T>>,
+                                  is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
+                                  is_zero_testable_key<::std::add_lvalue_reference_t<const T>>>;
 
 template <typename T>
 inline constexpr bool is_key_v = is_key<T>::value;
@@ -45,7 +48,7 @@ PIRANHA_CONCEPT_DECL Key = is_key_v<T>;
 #endif
 
 template <typename T>
-using is_cf = ::std::conjunction<is_semi_regular<T>, is_zero_testable<T>>;
+using is_cf = ::std::conjunction<is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>>;
 
 template <typename T>
 inline constexpr bool is_cf_v = is_cf<T>::value;
@@ -72,6 +75,15 @@ struct key_hasher {
     }
 };
 
+// Same as above for key comparisons.
+struct key_comparer {
+    template <typename K>
+    constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
+    {
+        return k1 == k2;
+    }
+};
+
 } // namespace detail
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
@@ -85,7 +97,7 @@ class series
 public:
     using cf_type = C;
     using key_type = K;
-    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher>;
+    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
     series() : m_container(1), m_log2_size(0) {}
