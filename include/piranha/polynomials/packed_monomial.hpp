@@ -9,8 +9,10 @@
 #ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
+#include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -134,6 +136,31 @@ template <typename T>
 constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)
 {
     return false;
+}
+
+// Comparison operators.
+// TODO test.
+template <typename T>
+constexpr bool operator==(const packed_monomial<T> &m1, const packed_monomial<T> &m2)
+{
+    return m1.get_value() == m2.get_value();
+}
+
+template <typename T>
+constexpr bool operator!=(const packed_monomial<T> &m1, const packed_monomial<T> &m2)
+{
+    return m1.get_value() != m2.get_value();
+}
+
+// Hash implementation.
+// TODO check
+// TODO test.
+template <typename T>
+constexpr ::std::size_t hash(const packed_monomial<T> &m)
+{
+    const auto h1 = static_cast<::std::size_t>(m.get_value());
+    const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
+    return h1 + (h2 << (::std::numeric_limits<::std::size_t>::digits - 7));
 }
 
 } // namespace polynomials
