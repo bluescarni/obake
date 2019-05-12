@@ -75,7 +75,10 @@ struct key_hasher {
     static_assert(mix_width < ::std::numeric_limits<::std::size_t>::digits, "The key hasher mix width is too large.");
     static constexpr ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
     {
-        if constexpr (mix_width) {
+        if constexpr (mix_width == 0) {
+            // Mix width is zero, return the original hash.
+            return h1;
+        } else {
             // Determine the mask for mixing.
             constexpr auto mix_mask = ::std::size_t(-1) >> (::std::numeric_limits<::std::size_t>::digits - mix_width);
             // NOTE: the mixing is based on Boost's hash_combine
@@ -89,9 +92,6 @@ struct key_hasher {
             // Thus, we lose the upper bits of h1 but we keep the (shifted)
             // rest of it.
             return (h1 << mix_width) + (h2 & mix_mask);
-        } else {
-            // Mix width is zero, return the original hash.
-            return h1;
         }
     }
     template <typename K>
