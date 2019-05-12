@@ -11,12 +11,9 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include <bitset>
 #include <cstddef>
 #include <initializer_list>
-#include <iostream>
 #include <iterator>
-#include <limits>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -127,9 +124,7 @@ TEST_CASE("hash_test")
         REQUIRE(is_hashable_v<const pm_t &>);
         REQUIRE(is_hashable_v<pm_t &&>);
 
-        constexpr auto width = std::numeric_limits<std::size_t>::digits;
-
-        std::cout << std::bitset<width>(hash(pm_t{1, 2, 3})) << '\n';
-        std::cout << std::bitset<width>(hash(pm_t{4, 5, 6})) << '\n';
+        REQUIRE(hash(pm_t{1, 2, 3}) == static_cast<std::size_t>(pm_t{1, 2, 3}.get_value()));
+        REQUIRE(hash(pm_t{4, 5, 6}) == static_cast<std::size_t>(pm_t{4, 5, 6}.get_value()));
     });
 }

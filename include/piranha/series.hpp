@@ -63,19 +63,34 @@ PIRANHA_CONCEPT_DECL Cf = is_cf_v<T>;
 namespace detail
 {
 
-// A small hashing wrapper for keys. It accomplishes the task
-// of forcing the evaluation of a key through const reference,
-// so that, in the Key requirements, we can request hashability
-// through const lvalue ref.
+// A small hashing wrapper for keys. It accomplishes two tasks:
+// - force the evaluation of a key through const reference,
+//   so that, in the Key requirements, we can request hashability
+//   through const lvalue ref;
+// - provide additional mixing in the lower bits of h1.
 struct key_hasher {
+    static constexpr ::std::size_t hash_mixer(const std::size_t &h1) noexcept
+    {
+        // NOTE: the mixing is based on Boost's hash_combine
+        // implementation, perhaps we can investigate some other
+        // mixing techniques. Abseil's hash looks promising, but
+        // it is not stable across program invocations due to
+        // random seeding and I am not sure we want that.
+        const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
+        // NOTE: the mixed bits are taken from the bottom of h2
+        // and added on the bottom of h1, after shifting up the existing hash.
+        // Thus, we lose the upper bits of h1 but we keep the (shifted)
+        // rest of it.
+        return (h1 << 7) + (h2 & 127u);
+    }
     template <typename K>
     constexpr ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
     {
-        return ::piranha::hash(k);
+        return key_hasher::hash_mixer(::piranha::hash(k));
     }
 };
 
-// Same as above for key comparisons.
+// Wrapper to force key comparison via const lvalue refs.
 struct key_comparer {
     template <typename K>
     constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
