@@ -13,6 +13,7 @@
 #include <cassert>
 #include <cstddef>
 #include <iterator>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -69,19 +70,29 @@ namespace detail
 //   through const lvalue ref;
 // - provide additional mixing in the lower bits of h1.
 struct key_hasher {
+    // How many bits will be mixed.
+    static constexpr int mix_width = 7;
+    static_assert(mix_width < ::std::numeric_limits<::std::size_t>::digits, "The key hasher mix width is too large.");
     static constexpr ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
     {
-        // NOTE: the mixing is based on Boost's hash_combine
-        // implementation, perhaps we can investigate some other
-        // mixing techniques. Abseil's hash looks promising, but
-        // it is not stable across program invocations due to
-        // random seeding and I am not sure we want that.
-        const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
-        // NOTE: the mixed bits are taken from the bottom of h2
-        // and added on the bottom of h1, after shifting up the existing hash.
-        // Thus, we lose the upper bits of h1 but we keep the (shifted)
-        // rest of it.
-        return (h1 << 7) + (h2 & 127u);
+        if constexpr (mix_width) {
+            // Determine the mask for mixing.
+            constexpr auto mix_mask = ::std::size_t(-1) >> (::std::numeric_limits<::std::size_t>::digits - mix_width);
+            // NOTE: the mixing is based on Boost's hash_combine
+            // implementation, perhaps we can investigate some other
+            // mixing techniques. Abseil's hash looks promising, but
+            // it is not stable across program invocations due to
+            // random seeding and I am not sure we want that.
+            const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
+            // NOTE: the mixed bits are taken from the bottom of h2
+            // and added on the bottom of h1, after shifting up the existing hash.
+            // Thus, we lose the upper bits of h1 but we keep the (shifted)
+            // rest of it.
+            return (h1 << mix_width) + (h2 & mix_mask);
+        } else {
+            // Mix width is zero, return the original hash.
+            return h1;
+        }
     }
     template <typename K>
     constexpr ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
@@ -115,6 +126,11 @@ public:
     using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
+private:
+    // Shortcut for the container size type.
+    using c_size_t = typename container_type::size_type;
+
+public:
     series() : m_container(1), m_log2_size(0) {}
     series(const series &) = default;
     series(series &&) = default;
@@ -140,9 +156,6 @@ public:
     }
 
 private:
-    // Shortcut for the container size type.
-    using c_size_t = typename container_type::size_type;
-
     // A small helper to select the (const) iterator of container_type, depending on whether
     // T is const or not. Used in the iterator implementation below.
     template <typename T>
@@ -167,6 +180,8 @@ private:
         // we need to poke the internals of the iterator from there.
         friend class series;
 
+        // Select the type of the pointer to the container with the
+        // correct constness.
         using container_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const container_type *, container_type *>;
 
     public:
@@ -295,7 +310,6 @@ private:
     template <typename It, typename Container>
     static It begin_impl(Container &c)
     {
-        // NOTE: this could take a while in case of an empty set with lots of buckets.
         It retval(&c, 0);
         // Look for a non-empty map.
         for (auto &map : c) {

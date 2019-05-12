@@ -11,14 +11,22 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <bitset>
+#include <cstddef>
+#include <iostream>
+#include <limits>
 #include <type_traits>
 
+#include <piranha/hash.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 
+using namespace piranha;
+
 TEST_CASE("pow_test")
 {
-    using series_t = piranha::series<double, piranha::packed_monomial<int>, void>;
+    using pm_t = packed_monomial<int>;
+    using series_t = series<double, pm_t, void>;
 
     series_t s;
     REQUIRE(s.empty());
@@ -33,4 +41,11 @@ TEST_CASE("pow_test")
     REQUIRE(std::is_nothrow_swappable_v<series_t>);
     REQUIRE(std::is_nothrow_swappable_v<series_t::const_iterator>);
     REQUIRE(std::is_nothrow_swappable_v<series_t::iterator>);
+
+    constexpr auto width = std::numeric_limits<std::size_t>::digits;
+
+    std::cout << std::bitset<width>(detail::key_hasher{}(pm_t{1, 2, 3})) << " vs "
+              << std::bitset<width>(hash(pm_t{1, 2, 3})) << '\n';
+    std::cout << std::bitset<width>(detail::key_hasher{}(pm_t{4, 5, 6})) << " vs "
+              << std::bitset<width>(hash(pm_t{4, 5, 6})) << '\n';
 }
