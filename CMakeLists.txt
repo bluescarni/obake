@@ -46,6 +46,11 @@ if(YACMA_COMPILER_IS_MSVC)
         list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
     endif()
     unset(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+    if(NOT YACMA_COMPILER_IS_CLANGXX)
+        # Problematic MSVC cl warnings.
+        list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/wd4459")
+        list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/wd4459")
+    endif()
 endif()
 
 # Find the dependencies.
