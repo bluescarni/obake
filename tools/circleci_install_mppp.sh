@@ -12,8 +12,8 @@ tar xzf mppp.tar.gz
 cd mppp-${MPPP_VERSION}
 mkdir build
 cd build
-cmake ../ -DMPPP_WITH_MPFR=YES -DMPPP_WITH_QUADMATH=YES -DCMAKE_INSTALL_PREFIX=~/.local
-make install
+cmake ../ -DMPPP_WITH_MPFR=YES -DMPPP_WITH_QUADMATH=${MPPP_WITH_QUADMATH} -DCMAKE_INSTALL_PREFIX=~/.local -DCMAKE_CXX_STANDARD=17
+make install -j2
 cd ..
 cd ..
 rm -fr mppp-${MPPP_VERSION}

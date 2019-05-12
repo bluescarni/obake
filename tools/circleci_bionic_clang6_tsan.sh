@@ -13,11 +13,19 @@ sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang lib
 mkdir build
 cd build
 
-# Download and install mppp.
+export CC=clang
+export CXX=clang++
+
+# Download and install mppp and abseil.
+# NOTE: disable quadmath in the clang builds, because
+# the inclusion of the quadmath paths from gcc breaks
+# the implementation of clang's SIMD intrinsics.
+export MPPP_WITH_QUADMATH=NO
 bash ../tools/circleci_install_mppp.sh
+bash ../tools/circleci_install_abseil.sh
 
 # clang build.
-CC=clang CXX=clang++ cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=thread" -DQuadmath_INCLUDE_DIR=/usr/lib/gcc/x86_64-linux-gnu/7/include/ -DQuadmath_LIBRARY=/usr/lib/gcc/x86_64-linux-gnu/7/libquadmath.so
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=thread"
 make -j2 VERBOSE=1
 # Run the tests.
 ctest -V

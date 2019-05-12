@@ -11,6 +11,7 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <cstddef>
 #include <initializer_list>
 #include <iterator>
 #include <string>
@@ -20,6 +21,7 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/tuple_for_each.hpp>
+#include <piranha/hash.hpp>
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
@@ -89,5 +91,40 @@ TEST_CASE("key_is_zero_test")
 
         REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
         REQUIRE(is_zero_testable_key_v<pm_t>);
+    });
+}
+
+TEST_CASE("compare_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(is_equality_comparable_v<pm_t>);
+        REQUIRE(is_equality_comparable_v<pm_t &>);
+        REQUIRE(is_equality_comparable_v<const pm_t &>);
+        REQUIRE(is_equality_comparable_v<pm_t &&>);
+
+        REQUIRE(pm_t{} == pm_t{});
+        REQUIRE(!(pm_t{} != pm_t{}));
+
+        REQUIRE(pm_t{1, 2, 3} == pm_t{1, 2, 3});
+        REQUIRE(pm_t{3, 2, 1} != pm_t{1, 2, 3});
+    });
+}
+
+TEST_CASE("hash_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(is_hashable_v<pm_t>);
+        REQUIRE(is_hashable_v<pm_t &>);
+        REQUIRE(is_hashable_v<const pm_t &>);
+        REQUIRE(is_hashable_v<pm_t &&>);
+
+        REQUIRE(hash(pm_t{1, 2, 3}) == static_cast<std::size_t>(pm_t{1, 2, 3}.get_value()));
+        REQUIRE(hash(pm_t{4, 5, 6}) == static_cast<std::size_t>(pm_t{4, 5, 6}.get_value()));
     });
 }

@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.3.0)
 
-project(piranha VERSION 0.19 LANGUAGES CXX)
+# NOTE: piranha is C++, however we are linking to C
+# libraries (e.g., libbacktrace). Moreover, if we don't
+# enable C here, on some configurations (e.g., Ubuntu
+# + clang) the threading detection/setup seems to break
+# down.
+project(piranha VERSION 0.19 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
 
@@ -20,6 +25,8 @@ option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." O
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
+# Also the threading setup.
+include(YACMAThreadingSetup)
 
 # Assemble the flags.
 set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
@@ -39,12 +46,20 @@ if(YACMA_COMPILER_IS_MSVC)
         list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
     endif()
     unset(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+    if(NOT YACMA_COMPILER_IS_CLANGXX)
+        # Problematic MSVC cl warnings.
+        list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/wd4459")
+        list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/wd4459")
+    endif()
 endif()
 
 # Find the dependencies.
 
 # mp++.
 find_package(mp++ 0.14 REQUIRED)
+
+# abseil.
+find_package(absl REQUIRED)
 
 # Boost setup.
 include(PiranhaFindBoost)
@@ -86,7 +101,7 @@ target_include_directories(piranha PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha PUBLIC mp++::mp++ Boost::boost)
+target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map Boost::boost)
 if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 else()

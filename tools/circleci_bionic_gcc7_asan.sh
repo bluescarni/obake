@@ -13,8 +13,10 @@ sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget libboost-
 mkdir build
 cd build
 
-# Download and install mppp.
+# Download and install mppp and abseil.
+export MPPP_WITH_QUADMATH=YES
 bash ../tools/circleci_install_mppp.sh
+bash ../tools/circleci_install_abseil.sh
 
 # GCC build.
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=address" -DPIRANHA_WITH_LIBBACKTRACE=YES

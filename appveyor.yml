@@ -18,24 +18,37 @@ install:
 - call activate piranha
 
 build_script:
+- set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
+- if [%BUILD_TYPE%]==[MSVC17_64] set CMAKE_GENERATOR=Visual Studio 15 2017
+- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR=Visual Studio 16 2019
+
 - mkdir build
 - cd build
 
+# mp++ setup.
 - set MPPP_VERSION=0.14
 - curl -fsSL -o mppp.zip https://github.com/bluescarni/mppp/archive/v%MPPP_VERSION%.zip
 - 7z x mppp.zip
 - cd mppp-%MPPP_VERSION%
 - mkdir build
 - cd build
-- set MPPP_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%MPPP_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%MPPP_PREFIX_PATH%
-- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%MPPP_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%MPPP_PREFIX_PATH%
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - cmake --build . --config Debug --target install
 - cd ..
 - cd ..
 
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes
-- if [%BUILD_TYPE%]==[MSVC17_64] cmake .. -G "Visual Studio 15 2017" -A x64 -DPIRANHA_BUILD_TESTS=yes
+# abseil setup.
+- git clone https://github.com/abseil/abseil-cpp.git
+- cd abseil-cpp
+- mkdir build
+- cd build
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- cmake --build . --config Debug --target install
+- cd ..
+- cd ..
+
+# piranha
+- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DPIRANHA_BUILD_TESTS=yes
 - cmake --build . --config Debug
 
 
