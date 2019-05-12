@@ -9,6 +9,7 @@
 #ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
+#include <cstddef>
 #include <initializer_list>
 #include <iterator>
 #include <type_traits>
@@ -134,6 +135,40 @@ template <typename T>
 constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)
 {
     return false;
+}
+
+// Comparison operators.
+template <typename T>
+constexpr bool operator==(const packed_monomial<T> &m1, const packed_monomial<T> &m2)
+{
+    return m1.get_value() == m2.get_value();
+}
+
+template <typename T>
+constexpr bool operator!=(const packed_monomial<T> &m1, const packed_monomial<T> &m2)
+{
+    return m1.get_value() != m2.get_value();
+}
+
+// Hash implementation.
+template <typename T>
+constexpr ::std::size_t hash(const packed_monomial<T> &m)
+{
+    // NOTE: the current implementation does the usual
+    // casting to std::size_t, and adds some mixing on the
+    // low 7 bits to decrease the chance of collisions in
+    // the metadata portion of the swiss table. We'll have to
+    // test in practice how well this works.
+    const auto h1 = static_cast<::std::size_t>(m.get_value());
+    // NOTE: the mixing is based on Boost's hash_combine
+    // implementation, perhaps we can investigate some other
+    // mixing techniques. Abseil's hash looks promising, but
+    // it is not stable across program invocations due to
+    // random seeding and I am not sure we want that.
+    const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
+    // NOTE: the mixed bits are added on the bottom,
+    // after shifting up the existing hash.
+    return (h1 << 7) + (h2 & 127u);
 }
 
 } // namespace polynomials
