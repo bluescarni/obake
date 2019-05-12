@@ -69,7 +69,7 @@ namespace detail
 //   through const lvalue ref;
 // - provide additional mixing in the lower bits of h1.
 struct key_hasher {
-    static constexpr ::std::size_t hash_mixer(const std::size_t &h1) noexcept
+    static constexpr ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
     {
         // NOTE: the mixing is based on Boost's hash_combine
         // implementation, perhaps we can investigate some other
