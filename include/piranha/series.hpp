@@ -83,7 +83,7 @@ struct key_hasher {
             constexpr auto mix_mask = ::std::size_t(-1) >> (::std::numeric_limits<::std::size_t>::digits - mix_width);
             // NOTE: the mixing is based on Boost's hash_combine
             // implementation, perhaps we can investigate some other
-            // mixing techniques. Abseil's hash looks promising, but
+            // mixing technique. Abseil's hash looks promising, but
             // it is not stable across program invocations due to
             // random seeding and I am not sure we want that.
             const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
@@ -243,7 +243,12 @@ private:
             assert(m_local_it != (*m_container_ptr)[m_idx].end());
             // Move to the next item in the current table.
             const auto &c = *m_container_ptr;
-            if (++m_local_it == c[m_idx].end()) {
+            ++m_local_it;
+            // NOTE: we expect to have many more elements per
+            // table than the total number of tables, hence
+            // moving to the next table should be a relatively
+            // rare occurrence.
+            if (piranha_unlikely(m_local_it == c[m_idx].end())) {
                 // We reached the end of the current table.
                 // Keep bumping m_idx until we either
                 // arrive in a non-empty table, or we reach
@@ -307,6 +312,8 @@ public:
     using const_iterator = iterator_impl<const typename hash_map_type::value_type>;
 
 private:
+    // Abstract out the begin implementation to accommodate
+    // const and non-const variants.
     template <typename It, typename Container>
     static It begin_impl(Container &c)
     {
