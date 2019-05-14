@@ -287,7 +287,7 @@ class signed_bit_unpacker_impl
     using uint_t = make_unsigned_t<T>;
 
 public:
-    constexpr explicit signed_bit_unpacker_impl(const T &n, unsigned size)
+    explicit signed_bit_unpacker_impl(const T &n, unsigned size)
         : m_value(n), m_min(0), m_s_value(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
         constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
@@ -328,7 +328,6 @@ public:
                 assert(n >= min_n);
                 m_s_value = static_cast<uint_t>(n - min_n);
             }
-
         } else {
             if (piranha_unlikely(n)) {
                 piranha_throw(::std::invalid_argument,
@@ -337,7 +336,7 @@ public:
             }
         }
     }
-    constexpr void operator>>(T &n)
+    void operator>>(T &n)
     {
         if (piranha_unlikely(m_index == m_size)) {
             piranha_throw(::std::out_of_range,
@@ -361,7 +360,7 @@ template <typename T>
 class unsigned_bit_unpacker_impl
 {
 public:
-    constexpr explicit unsigned_bit_unpacker_impl(const T &n, unsigned size)
+    explicit unsigned_bit_unpacker_impl(const T &n, unsigned size)
         : m_value(n), m_mask(0), m_index(0), m_size(size), m_pbits(0)
     {
         constexpr auto nbits = static_cast<unsigned>(limits_digits<T>);
@@ -403,7 +402,7 @@ public:
             }
         }
     }
-    constexpr void operator>>(T &out)
+    void operator>>(T &out)
     {
         if (piranha_unlikely(m_index == m_size)) {
             piranha_throw(::std::out_of_range,
@@ -426,6 +425,10 @@ private:
 
 } // namespace detail
 
+// NOTE: the bit_unpacker currently cannot be constexpr because in the constructor
+// for the signed implementation we reference non-constexpr global data arrays
+// implemented elsewhere (rather than inline). If we ever need constexpr unpacking,
+// we can move those arrays inline, at the price of increased compilation times.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <BitPackable T>
 #else
@@ -437,8 +440,8 @@ class bit_unpacker
                                         detail::unsigned_bit_unpacker_impl<T>>;
 
 public:
-    constexpr explicit bit_unpacker(const T &n, unsigned size) : m_impl(n, size) {}
-    constexpr bit_unpacker &operator>>(T &n)
+    explicit bit_unpacker(const T &n, unsigned size) : m_impl(n, size) {}
+    bit_unpacker &operator>>(T &n)
     {
         m_impl >> n;
         return *this;
