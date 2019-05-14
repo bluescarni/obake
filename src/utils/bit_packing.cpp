@@ -22,7 +22,7 @@ namespace
 // Helper to compute the min/max packed values for a signed integral T
 // and for all the possible packer sizes.
 template <typename T>
-constexpr sbp_minmax_packed_t<T> sbp_compute_minmax_packed()
+constexpr auto sbp_compute_minmax_packed()
 {
     constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
 
@@ -61,6 +61,29 @@ constexpr sbp_minmax_packed_t<T> sbp_compute_minmax_packed()
 template <typename T>
 constexpr auto sbp_mmp_impl = detail::sbp_compute_minmax_packed<T>();
 
+// Same as above, but for unsigned types.
+template <typename T>
+constexpr auto ubp_compute_max_packed()
+{
+    constexpr auto nbits = static_cast<unsigned>(limits_digits<T>);
+
+    // Init the return value.
+    ubp_max_packed_t<T> retval{};
+
+    for (auto i = 0u; i < retval.size(); ++i) {
+        const auto size = i + 1u;
+        // The maximum decodable value is a sequence of
+        // N one bits (starting from LSB), where N is the
+        // largest multiple of size fitting in nbits.
+        retval[i] = T(-1) >> (nbits % size);
+    }
+
+    return retval;
+}
+
+template <typename T>
+constexpr auto ubp_max_impl = detail::ubp_compute_max_packed<T>();
+
 } // namespace
 
 // Init the constants with the constexpr-computed values.
@@ -75,6 +98,16 @@ const sbp_minmax_packed_t<long long> sbp_mmp_long_long = sbp_mmp_impl<long long>
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
 const sbp_minmax_packed_t<__int128_t> sbp_mmp_int128 = sbp_mmp_impl<__int128_t>;
+
+#endif
+
+const ubp_max_packed_t<unsigned> ubp_max_unsigned = ubp_max_impl<unsigned>;
+const ubp_max_packed_t<unsigned long> ubp_max_ulong = ubp_max_impl<unsigned long>;
+const ubp_max_packed_t<unsigned long long> ubp_max_ulonglong = ubp_max_impl<unsigned long long>;
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+const ubp_max_packed_t<__uint128_t> ubp_max_uint128 = ubp_max_impl<__uint128_t>;
 
 #endif
 
