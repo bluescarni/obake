@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -25,6 +26,7 @@
 #include <piranha/hash.hpp>
 #include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_zero.hpp>
+#include <piranha/key/key_stream_insert.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
 #include <piranha/utils/bit_packing.hpp>
@@ -202,6 +204,70 @@ TEST_CASE("key_is_compatible_test")
                 p._set_value(umax_arr[2] + int_t(1));
                 REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
             }
+        }
+    });
+}
+
+TEST_CASE("key_stream_insert_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        auto oss_wrap = [](const pm_t &p, const symbol_set &s) {
+            std::ostringstream oss;
+            key_stream_insert(oss, p, s);
+            return oss.str();
+        };
+
+        REQUIRE(is_stream_insertable_key_v<pm_t>);
+        REQUIRE(is_stream_insertable_key_v<pm_t &>);
+        REQUIRE(is_stream_insertable_key_v<pm_t &&>);
+        REQUIRE(is_stream_insertable_key_v<const pm_t &>);
+
+        REQUIRE(oss_wrap(pm_t{}, symbol_set{}) == "1");
+        REQUIRE(oss_wrap(pm_t{0}, symbol_set{"x"}) == "1");
+        REQUIRE(oss_wrap(pm_t{0, 0}, symbol_set{"x", "y"}) == "1");
+        REQUIRE(oss_wrap(pm_t{1}, symbol_set{"x"}) == "x");
+        REQUIRE(oss_wrap(pm_t{1, 2}, symbol_set{"x", "y"}) == "x*y**2");
+        REQUIRE(oss_wrap(pm_t{2, 1}, symbol_set{"x", "y"}) == "x**2*y");
+        REQUIRE(oss_wrap(pm_t{0, 1}, symbol_set{"x", "y"}) == "y");
+        REQUIRE(oss_wrap(pm_t{0, 2}, symbol_set{"x", "y"}) == "y**2");
+        REQUIRE(oss_wrap(pm_t{1, 0}, symbol_set{"x", "y"}) == "x");
+        REQUIRE(oss_wrap(pm_t{2, 0}, symbol_set{"x", "y"}) == "x**2");
+        REQUIRE(oss_wrap(pm_t{0, 0, 1}, symbol_set{"x", "y", "z"}) == "z");
+        REQUIRE(oss_wrap(pm_t{0, 1, 0}, symbol_set{"x", "y", "z"}) == "y");
+        REQUIRE(oss_wrap(pm_t{1, 0, 0}, symbol_set{"x", "y", "z"}) == "x");
+        REQUIRE(oss_wrap(pm_t{1, 0, 1}, symbol_set{"x", "y", "z"}) == "x*z");
+        REQUIRE(oss_wrap(pm_t{0, 1, 1}, symbol_set{"x", "y", "z"}) == "y*z");
+        REQUIRE(oss_wrap(pm_t{1, 1, 0}, symbol_set{"x", "y", "z"}) == "x*y");
+        REQUIRE(oss_wrap(pm_t{0, 0, 2}, symbol_set{"x", "y", "z"}) == "z**2");
+        REQUIRE(oss_wrap(pm_t{0, 2, 0}, symbol_set{"x", "y", "z"}) == "y**2");
+        REQUIRE(oss_wrap(pm_t{2, 0, 0}, symbol_set{"x", "y", "z"}) == "x**2");
+        REQUIRE(oss_wrap(pm_t{2, 0, 1}, symbol_set{"x", "y", "z"}) == "x**2*z");
+        REQUIRE(oss_wrap(pm_t{0, 2, 3}, symbol_set{"x", "y", "z"}) == "y**2*z**3");
+        REQUIRE(oss_wrap(pm_t{1, 1, 4}, symbol_set{"x", "y", "z"}) == "x*y*z**4");
+
+        if constexpr (is_signed_v<int_t>) {
+            REQUIRE(oss_wrap(pm_t{-1}, symbol_set{"x"}) == "x**-1");
+            REQUIRE(oss_wrap(pm_t{-1, 2}, symbol_set{"x", "y"}) == "x**-1*y**2");
+            REQUIRE(oss_wrap(pm_t{-2, 1}, symbol_set{"x", "y"}) == "x**-2*y");
+            REQUIRE(oss_wrap(pm_t{0, -1}, symbol_set{"x", "y"}) == "y**-1");
+            REQUIRE(oss_wrap(pm_t{0, -2}, symbol_set{"x", "y"}) == "y**-2");
+            REQUIRE(oss_wrap(pm_t{-1, 0}, symbol_set{"x", "y"}) == "x**-1");
+            REQUIRE(oss_wrap(pm_t{-2, 0}, symbol_set{"x", "y"}) == "x**-2");
+            REQUIRE(oss_wrap(pm_t{0, 0, -1}, symbol_set{"x", "y", "z"}) == "z**-1");
+            REQUIRE(oss_wrap(pm_t{0, -1, 0}, symbol_set{"x", "y", "z"}) == "y**-1");
+            REQUIRE(oss_wrap(pm_t{-1, 0, 0}, symbol_set{"x", "y", "z"}) == "x**-1");
+            REQUIRE(oss_wrap(pm_t{-1, 0, 1}, symbol_set{"x", "y", "z"}) == "x**-1*z");
+            REQUIRE(oss_wrap(pm_t{0, 1, -1}, symbol_set{"x", "y", "z"}) == "y*z**-1");
+            REQUIRE(oss_wrap(pm_t{1, -1, 0}, symbol_set{"x", "y", "z"}) == "x*y**-1");
+            REQUIRE(oss_wrap(pm_t{0, 0, -2}, symbol_set{"x", "y", "z"}) == "z**-2");
+            REQUIRE(oss_wrap(pm_t{0, -2, 0}, symbol_set{"x", "y", "z"}) == "y**-2");
+            REQUIRE(oss_wrap(pm_t{-2, 0, 0}, symbol_set{"x", "y", "z"}) == "x**-2");
+            REQUIRE(oss_wrap(pm_t{2, 0, -1}, symbol_set{"x", "y", "z"}) == "x**2*z**-1");
+            REQUIRE(oss_wrap(pm_t{0, -2, 3}, symbol_set{"x", "y", "z"}) == "y**-2*z**3");
+            REQUIRE(oss_wrap(pm_t{1, 1, -4}, symbol_set{"x", "y", "z"}) == "x*y*z**-4");
         }
     });
 }

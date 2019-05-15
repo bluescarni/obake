@@ -9,13 +9,16 @@
 #ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
+#include <cassert>
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <ostream>
 #include <type_traits>
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
@@ -194,6 +197,52 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
         const auto &umax_arr = detail::ubp_get_max<T>();
         using size_type = decltype(umax_arr.size());
         return idx < umax_arr.size() && m.get_value() <= umax_arr[static_cast<size_type>(idx)];
+    }
+}
+
+// Implementation of stream insertion.
+// NOTE: requires that m is compatible with s.
+template <typename T>
+inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, const symbol_set &s)
+{
+    assert(::piranha::polynomials::key_is_compatible(m, s));
+
+    // NOTE: we know s is not too large from the assert.
+    const auto s_size = static_cast<unsigned>(s.size());
+    bool wrote_something = false;
+    bit_unpacker bu(m.get_value(), s_size);
+    T tmp;
+
+    for (const auto &var : s) {
+        bu >> tmp;
+        if (tmp != T(0)) {
+            // The exponent of the current variable
+            // is nonzero.
+            if (wrote_something) {
+                // We already printed something
+                // earlier, make sure we put
+                // the multiplication sign
+                // in front of the variable
+                // name.
+                os << '*';
+            }
+            // Print the variable name.
+            os << var;
+            wrote_something = true;
+            if (tmp != T(1)) {
+                // The exponent is not unitary,
+                // print it.
+                os << "**" << detail::to_string(tmp);
+            }
+        }
+    }
+
+    if (!wrote_something) {
+        // We did not write anything to the stream.
+        // It means that all variables have zero
+        // exponent, thus we print only "1".
+        assert(m.get_value() == T(0));
+        os << '1';
     }
 }
 
