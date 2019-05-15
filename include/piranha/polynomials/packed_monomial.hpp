@@ -125,6 +125,11 @@ public:
     {
         return m_value;
     }
+    // Setter for the internal value
+    constexpr void _set_value(const T &n)
+    {
+        m_value = n;
+    }
 
 private:
     T m_value;
@@ -155,6 +160,41 @@ template <typename T>
 constexpr ::std::size_t hash(const packed_monomial<T> &m)
 {
     return static_cast<::std::size_t>(m.get_value());
+}
+
+// Symbol set compatibility implementation.
+template <typename T>
+inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
+{
+    const auto s_size = s.size();
+    if (s_size == 0u) {
+        // In case of an empty symbol set,
+        // the only valid value for the monomial
+        // is zero.
+        return m.get_value() == T(0);
+    }
+
+    // The index for looking into the limits vectors
+    // for the packed value. The elements at index
+    // 0 in the limits vectors refer to size 1,
+    // hence we must decrease by 1 the size.
+    const auto idx = s_size - 1u;
+
+    if constexpr (is_signed_v<T>) {
+        const auto &mmp_arr = detail::sbp_get_mmp<T>();
+        using size_type = decltype(mmp_arr.size());
+        // Check that the size of the symbol set is not
+        // too large for the current integral type,
+        // and that the value of the monomial fits
+        // within the boundaries of the packed
+        // value for the given symbol set size.
+        return idx < mmp_arr.size() && m.get_value() >= mmp_arr[static_cast<size_type>(idx)][0]
+               && m.get_value() <= mmp_arr[static_cast<size_type>(idx)][1];
+    } else {
+        const auto &umax_arr = detail::ubp_get_max<T>();
+        using size_type = decltype(umax_arr.size());
+        return idx < umax_arr.size() && m.get_value() <= umax_arr[static_cast<size_type>(idx)];
+    }
 }
 
 } // namespace polynomials
