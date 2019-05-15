@@ -1362,3 +1362,73 @@ TEST_CASE("semi_regular")
     REQUIRE(!SemiRegular<nondfctible>);
 #endif
 }
+
+struct non_si_00 {
+};
+
+struct non_si_01 {
+};
+
+// Wrong ret type.
+int operator<<(std::ostream &, const non_si_01 &);
+
+struct part_si {
+};
+
+std::ostream &operator<<(std::ostream &, part_si &&);
+
+struct yes_si {
+};
+
+std::ostream &operator<<(std::ostream &, const yes_si &);
+
+TEST_CASE("stream_insertable")
+{
+    REQUIRE(!is_stream_insertable_v<void>);
+
+    REQUIRE(is_stream_insertable_v<int>);
+    REQUIRE(is_stream_insertable_v<int &>);
+    REQUIRE(is_stream_insertable_v<const int &>);
+    REQUIRE(is_stream_insertable_v<int &&>);
+
+    REQUIRE(is_stream_insertable_v<std::string>);
+    REQUIRE(is_stream_insertable_v<std::string &>);
+    REQUIRE(is_stream_insertable_v<std::string &>);
+    REQUIRE(is_stream_insertable_v<std::string &&>);
+
+    REQUIRE(!is_stream_insertable_v<const non_si_00 &>);
+    REQUIRE(!is_stream_insertable_v<const non_si_01 &>);
+
+    REQUIRE(!is_stream_insertable_v<const part_si &>);
+    REQUIRE(is_stream_insertable_v<part_si &&>);
+
+    REQUIRE(is_stream_insertable_v<yes_si>);
+    REQUIRE(is_stream_insertable_v<yes_si &>);
+    REQUIRE(is_stream_insertable_v<yes_si &>);
+    REQUIRE(is_stream_insertable_v<yes_si &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!StreamInsertable<void>);
+
+    REQUIRE(StreamInsertable<int>);
+    REQUIRE(StreamInsertable<int &>);
+    REQUIRE(StreamInsertable<const int &>);
+    REQUIRE(StreamInsertable<int &&>);
+
+    REQUIRE(StreamInsertable<std::string>);
+    REQUIRE(StreamInsertable<std::string &>);
+    REQUIRE(StreamInsertable<std::string &>);
+    REQUIRE(StreamInsertable<std::string &&>);
+
+    REQUIRE(!StreamInsertable<const non_si_00 &>);
+    REQUIRE(!StreamInsertable<const non_si_01 &>);
+
+    REQUIRE(!StreamInsertable<const part_si &>);
+    REQUIRE(StreamInsertable<part_si &&>);
+
+    REQUIRE(StreamInsertable<yes_si>);
+    REQUIRE(StreamInsertable<yes_si &>);
+    REQUIRE(StreamInsertable<yes_si &>);
+    REQUIRE(StreamInsertable<yes_si &&>);
+#endif
+}

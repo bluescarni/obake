@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -794,6 +795,29 @@ inline constexpr bool is_hash_v = is_hash<T, U>::value;
 
 template <typename T, typename U>
 PIRANHA_CONCEPT_DECL Hash = is_hash_v<T, U>;
+
+#endif
+
+namespace detail
+{
+
+template <typename T>
+using stream_insertion_t = decltype(::std::declval<::std::ostream &>() << ::std::declval<T>());
+
+}
+
+// Test if T can be inserted into an ostream.
+// Needs to support operator<<() with the correct return type.
+template <typename T>
+using is_stream_insertable = ::std::is_same<detected_t<detail::stream_insertion_t, T>, ::std::ostream &>;
+
+template <typename T>
+inline constexpr bool is_stream_insertable_v = is_stream_insertable<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
 
 #endif
 
