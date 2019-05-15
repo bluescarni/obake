@@ -162,6 +162,10 @@ TEST_CASE("key_is_compatible_test")
 
             // Test with maximal values for the packed value.
             pm_t p;
+            p._set_value(std::get<0>(detail::limits_minmax<int_t>));
+            REQUIRE(key_is_compatible(p, symbol_set{"a"}));
+            p._set_value(std::get<1>(detail::limits_minmax<int_t>));
+            REQUIRE(key_is_compatible(p, symbol_set{"a"}));
             p._set_value(mmp_arr[2][0]);
             REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
             p._set_value(mmp_arr[2][1]);
@@ -188,6 +192,10 @@ TEST_CASE("key_is_compatible_test")
             REQUIRE(!key_is_compatible(pm_t{}, s));
 
             pm_t p;
+            p._set_value(std::get<0>(detail::limits_minmax<int_t>));
+            REQUIRE(key_is_compatible(p, symbol_set{"a"}));
+            p._set_value(std::get<1>(detail::limits_minmax<int_t>));
+            REQUIRE(key_is_compatible(p, symbol_set{"a"}));
             p._set_value(umax_arr[2]);
             REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
             if (umax_arr[2] < std::get<1>(detail::limits_minmax<int_t>)) {
