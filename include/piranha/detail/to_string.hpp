@@ -23,6 +23,11 @@ inline ::std::string to_string(const T &x)
     return ::std::to_string(x);
 }
 
+// NOTE: provide specialised implementations for
+// common integral types. These implementations
+// ensure that the string representations are
+// locale-agnostic.
+
 // Char types.
 template <>
 PIRANHA_DLL_PUBLIC ::std::string to_string(const char &);
