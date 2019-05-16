@@ -25,7 +25,7 @@ using namespace piranha;
 
 static std::mt19937 rng;
 
-constexpr auto ntrials = 1000;
+constexpr auto ntrials = 10;
 
 using int_types = std::tuple<char, signed char, unsigned char, short, unsigned short, int, unsigned, long,
                              unsigned long, long long, unsigned long long>;
