@@ -65,6 +65,15 @@ template <typename T>
     }
 }
 
+// NOTE: MSVC warns about using the negation operator
+// on unsigned integrals.
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4146)
+
+#endif
+
 template <typename T>
 ::std::string to_string_signed_integral_impl(const T &n_)
 {
@@ -116,6 +125,12 @@ template <typename T>
         return "0";
     }
 }
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
 
 template <typename T>
 ::std::string to_string_integral_impl(const T &n)
