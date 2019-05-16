@@ -23,8 +23,47 @@ inline ::std::string to_string(const T &x)
     return ::std::to_string(x);
 }
 
+// Char types.
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const char &);
+
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const signed char &);
+
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const unsigned char &);
+
+// Shorts.
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const short &);
+
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const unsigned short &);
+
+// Ints.
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const int &);
+
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const unsigned &);
+
+// Longs.
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const long &);
+
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const unsigned long &);
+
+// Longlongs.
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const long long &);
+
+template <>
+PIRANHA_DLL_PUBLIC ::std::string to_string(const unsigned long long &);
+
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
+// 128bit ints.
 template <>
 PIRANHA_DLL_PUBLIC ::std::string to_string(const __uint128_t &);
 
