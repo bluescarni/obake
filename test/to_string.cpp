@@ -41,15 +41,15 @@ TEST_CASE("to_string_test")
 
         REQUIRE(detail::to_string(int_t(0)) == "0");
 
-        int_t min, max;
-        std::tie(min, max) = detail::limits_minmax<int_t>;
-        REQUIRE(detail::to_string(min) == std::to_string(min));
-        REQUIRE(detail::to_string(max) == std::to_string(max));
-
         // NOTE: for short ints, promote the distribution's
         // int type to int/unsigned.
         using dist_int_t = std::conditional_t<std::is_same_v<decltype(+n), int_t>, int_t,
                                               std::conditional_t<std::is_signed_v<int_t>, int, unsigned>>;
+
+        dist_int_t min, max;
+        std::tie(min, max) = detail::limits_minmax<int_t>;
+        REQUIRE(detail::to_string(static_cast<int_t>(min)) == std::to_string(static_cast<int_t>(min)));
+        REQUIRE(detail::to_string(static_cast<int_t>(max)) == std::to_string(static_cast<int_t>(max)));
 
         std::uniform_int_distribution<dist_int_t> dist(min, max);
 
