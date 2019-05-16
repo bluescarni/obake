@@ -6,11 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/config.hpp>
-
-// Don't include any header if we don't have 128-bit integer support.
-#if defined(PIRANHA_HAVE_GCC_INT128)
-
 #include <cassert>
 #include <cstddef>
 #include <iterator>
@@ -18,11 +13,10 @@
 #include <tuple>
 #include <type_traits>
 
+#include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/type_traits.hpp>
-
-#endif
 
 namespace piranha::detail
 {
