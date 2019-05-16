@@ -51,9 +51,20 @@ constexpr auto key_stream_insert_impl(::std::ostream &os, T &&x, const symbol_se
 
 } // namespace detail
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+template <typename T>
+constexpr auto key_stream_insert(::std::ostream &os, T &&x, const symbol_set &ss)
+    PIRANHA_SS_FORWARD_FUNCTION(detail::key_stream_insert_impl(os, ::std::forward<T>(x), ss,
+                                                               detail::priority_tag<1>{}));
+
+#else
+
 inline constexpr auto key_stream_insert =
     [](::std::ostream & os, auto &&x, const symbol_set &ss) PIRANHA_SS_FORWARD_LAMBDA(
         detail::key_stream_insert_impl(os, ::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{}));
+
+#endif
 
 namespace detail
 {
