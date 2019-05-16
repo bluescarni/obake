@@ -46,17 +46,12 @@ TEST_CASE("to_string_test")
         REQUIRE(detail::to_string(min) == std::to_string(min));
         REQUIRE(detail::to_string(max) == std::to_string(max));
 
-        auto dist = [min, max]() {
-            if constexpr (std::is_same_v<decltype(+n), int_t>) {
-                return std::uniform_int_distribution<int_t>(min, max);
-            } else {
-                if constexpr (std::is_signed_v<int_t>) {
-                    return std::uniform_int_distribution<int>(min, max);
-                } else {
-                    return std::uniform_int_distribution<unsigned>(min, max);
-                }
-            }
-        }();
+        // NOTE: for short ints, promote the distribution's
+        // int type to int/unsigned.
+        using dist_int_t = std::conditional_t<std::is_same_v<decltype(+n), int_t>, int_t,
+                                              std::conditional_t<std::is_signed_v<int_t>, int, unsigned>>;
+
+        std::uniform_int_distribution<dist_int_t> dist(min, max);
 
         for (auto i = 0; i < ntrials; ++i) {
             const auto tmp = static_cast<int_t>(dist(rng));

@@ -91,12 +91,13 @@ template <typename T>
         if constexpr (::std::is_same_v<decltype(+n_), T>) {
             // No integral promotions, compute abs using
             // the original type and its unsigned counterpart.
-            return negative ? -static_cast<make_unsigned_t<T>>(n_) : static_cast<make_unsigned_t<T>>(n_);
+            const auto un = static_cast<make_unsigned_t<T>>(n_);
+            return negative ? -un : un;
         } else {
-            // Integral promotions: cast to int, compute abs, cast
+            // Integral promotions: compute abs via unsigned, then cast
             // back to the unsigned counterpart of T.
-            return static_cast<make_unsigned_t<T>>(negative ? -static_cast<unsigned>(static_cast<int>(n_))
-                                                            : static_cast<unsigned>(static_cast<int>(n_)));
+            const auto un = static_cast<unsigned>(n_);
+            return static_cast<make_unsigned_t<T>>(negative ? -un : un);
         }
     }();
 
