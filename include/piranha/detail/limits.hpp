@@ -48,6 +48,21 @@ inline constexpr auto limits_digits<__uint128_t> = 128;
 
 #endif
 
+template <typename T>
+inline constexpr auto limits_digits10 = ::std::numeric_limits<T>::digits10;
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+// NOTE: these can be calculated as digits * log10(2), rounded down:
+// https://en.cppreference.com/w/cpp/types/numeric_limits/digits10
+template <>
+inline constexpr auto limits_digits10<__int128_t> = 38;
+
+template <>
+inline constexpr auto limits_digits10<__uint128_t> = 38;
+
+#endif
+
 } // namespace piranha::detail
 
 #endif
