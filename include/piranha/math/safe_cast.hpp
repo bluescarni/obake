@@ -63,7 +63,7 @@ template <typename To, typename From,
     if (piranha_unlikely(!::piranha::safe_convert(retval, ::std::forward<From>(x)))) {
         piranha_throw(safe_cast_failure, "A value of type '" + ::piranha::type_name<From &&>()
                                              + "' could not be safely converted to the type '"
-                                             + ::piranha::type_name<To>() + "'.");
+                                             + ::piranha::type_name<To>() + "'");
     }
     return retval;
 }
