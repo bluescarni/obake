@@ -88,7 +88,12 @@ template <typename T>
     // could bite us.
     auto n = [negative, &n_]() {
         // Check if T is subject to integral promotions.
-        if constexpr (::std::is_same_v<decltype(+n_), T>) {
+        // NOTE: MSVC seems to have a bug, returning a const
+        // qualified type from the builtin unary operator+() if
+        // the operand is const:
+        // https://www.reddit.com/r/cpp/comments/bpirh0/is_this_an_msvc_bug_or_implementationdefined/
+        // Hence, we forcibly remove constness.
+        if constexpr (::std::is_same_v<::std::remove_const_t<decltype(+n_)>, T>) {
             // No integral promotions, compute abs using
             // the original type and its unsigned counterpart.
             const auto un = static_cast<make_unsigned_t<T>>(n_);

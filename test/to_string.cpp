@@ -25,7 +25,7 @@ using namespace piranha;
 
 static std::mt19937 rng;
 
-constexpr auto ntrials = 10;
+constexpr auto ntrials = 1000;
 
 using int_types = std::tuple<char, signed char, unsigned char, short, unsigned short, int, unsigned, long,
                              unsigned long, long long, unsigned long long>;
@@ -43,7 +43,9 @@ TEST_CASE("to_string_test")
 
         // NOTE: for short ints, promote the distribution's
         // int type to int/unsigned.
-        using dist_int_t = std::conditional_t<std::is_same_v<decltype(+n), int_t>, int_t,
+        // NOTE: see explanation in the to_string() implementation
+        // about why remove_const_t is necessary.
+        using dist_int_t = std::conditional_t<std::is_same_v<std::remove_const_t<decltype(+n)>, int_t>, int_t,
                                               std::conditional_t<std::is_signed_v<int_t>, int, unsigned>>;
 
         const auto min = static_cast<dist_int_t>(std::get<0>(detail::limits_minmax<int_t>));
