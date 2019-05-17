@@ -282,28 +282,28 @@ TEST_CASE("same")
 }
 #endif
 
-TEST_CASE("is_same_cvref")
+TEST_CASE("is_same_cvr")
 {
-    REQUIRE(is_same_cvref_v<int, int>);
-    REQUIRE(is_same_cvref_v<int, int &>);
-    REQUIRE(is_same_cvref_v<volatile int, int &>);
-    REQUIRE(is_same_cvref_v<int &&, int &>);
-    REQUIRE(is_same_cvref_v<const int &&, const int>);
-    REQUIRE(is_same_cvref_v<int &, const int &>);
-    REQUIRE(!is_same_cvref_v<void, int>);
-    REQUIRE(!is_same_cvref_v<int, int *>);
-    REQUIRE(!is_same_cvref_v<int *, int>);
-    REQUIRE(is_same_cvref_v<void, void>);
-    REQUIRE(is_same_cvref_v<void, const void>);
-    REQUIRE(is_same_cvref_v<volatile void, const void>);
-    REQUIRE(is_same_cvref_v<const volatile void, const void>);
+    REQUIRE(is_same_cvr_v<int, int>);
+    REQUIRE(is_same_cvr_v<int, int &>);
+    REQUIRE(is_same_cvr_v<volatile int, int &>);
+    REQUIRE(is_same_cvr_v<int &&, int &>);
+    REQUIRE(is_same_cvr_v<const int &&, const int>);
+    REQUIRE(is_same_cvr_v<int &, const int &>);
+    REQUIRE(!is_same_cvr_v<void, int>);
+    REQUIRE(!is_same_cvr_v<int, int *>);
+    REQUIRE(!is_same_cvr_v<int *, int>);
+    REQUIRE(is_same_cvr_v<void, void>);
+    REQUIRE(is_same_cvr_v<void, const void>);
+    REQUIRE(is_same_cvr_v<volatile void, const void>);
+    REQUIRE(is_same_cvr_v<const volatile void, const void>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    REQUIRE(SameCvref<int, int>);
-    REQUIRE(SameCvref<int, int &>);
-    REQUIRE(SameCvref<const int, int &>);
-    REQUIRE(!SameCvref<int, void>);
-    REQUIRE(!SameCvref<int *, int &>);
+    REQUIRE(SameCvr<int, int>);
+    REQUIRE(SameCvr<int, int &>);
+    REQUIRE(SameCvr<const int, int &>);
+    REQUIRE(!SameCvr<int, void>);
+    REQUIRE(!SameCvr<int *, int &>);
 #endif
 }
 

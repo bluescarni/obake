@@ -209,9 +209,9 @@ namespace piranha::customisation
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, is_zero_1> inline constexpr auto is_zero<T>
+requires SameCvr<T, is_zero_1> inline constexpr auto is_zero<T>
 #else
-inline constexpr auto is_zero<T, std::enable_if_t<is_same_cvref_v<T, is_zero_1>>>
+inline constexpr auto is_zero<T, std::enable_if_t<is_same_cvr_v<T, is_zero_1>>>
 #endif
     = [](auto &&) constexpr noexcept
 {

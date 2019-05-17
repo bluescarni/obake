@@ -64,9 +64,9 @@ namespace piranha::customisation
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, hash_ext> inline constexpr auto hash<T>
+requires SameCvr<T, hash_ext> inline constexpr auto hash<T>
 #else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, hash_ext>>>
+inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, hash_ext>>>
 #endif
     = [](auto &&) constexpr noexcept
 {
@@ -75,9 +75,9 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, hash_ext>>>
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, nohash_ext_00> inline constexpr auto hash<T>
+requires SameCvr<T, nohash_ext_00> inline constexpr auto hash<T>
 #else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, nohash_ext_00>>>
+inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_00>>>
 #endif
     = [](auto &&) constexpr noexcept
 {
@@ -86,9 +86,9 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, nohash_ext_00>
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, nohash_ext_01> inline constexpr auto hash<T>
+requires SameCvr<T, nohash_ext_01> inline constexpr auto hash<T>
 #else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, nohash_ext_01>>>
+inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_01>>>
 #endif
     = [](nohash_ext_01 &) constexpr noexcept
 {

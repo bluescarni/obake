@@ -57,9 +57,9 @@ namespace piranha::customisation
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_ct00> inline constexpr auto key_is_compatible<T>
+requires SameCvr<T, ext_ct00> inline constexpr auto key_is_compatible<T>
 #else
-inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvref_v<T, ext_ct00>>>
+inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvr_v<T, ext_ct00>>>
 #endif
     = [](auto &&, const symbol_set &) constexpr noexcept
 {
@@ -68,9 +68,9 @@ inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvref_v<T, e
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_ct01> inline constexpr auto key_is_compatible<T>
+requires SameCvr<T, ext_ct01> inline constexpr auto key_is_compatible<T>
 #else
-inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvref_v<T, ext_ct01>>>
+inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvr_v<T, ext_ct01>>>
 #endif
     = [](auto &, const symbol_set &) constexpr noexcept
 {
@@ -79,9 +79,9 @@ inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvref_v<T, e
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_nct00> inline constexpr auto key_is_compatible<T>
+requires SameCvr<T, ext_nct00> inline constexpr auto key_is_compatible<T>
 #else
-inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvref_v<T, ext_nct00>>>
+inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvr_v<T, ext_nct00>>>
 #endif
     = [](auto &&, const symbol_set &) constexpr noexcept
 {

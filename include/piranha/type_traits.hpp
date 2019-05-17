@@ -71,15 +71,15 @@ PIRANHA_CONCEPT_DECL Same = ::std::is_same_v<T, U>;
 
 // Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
 template <typename T, typename U>
-using is_same_cvref = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
+using is_same_cvr = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
 
 template <typename T, typename U>
-inline constexpr bool is_same_cvref_v = is_same_cvref<T, U>::value;
+inline constexpr bool is_same_cvr_v = is_same_cvr<T, U>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL SameCvref = is_same_cvref_v<T, U>;
+PIRANHA_CONCEPT_DECL SameCvr = is_same_cvr_v<T, U>;
 
 #endif
 

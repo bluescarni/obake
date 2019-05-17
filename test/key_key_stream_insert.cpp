@@ -65,9 +65,9 @@ namespace piranha::customisation
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_si00> inline constexpr auto key_stream_insert<T>
+requires SameCvr<T, ext_si00> inline constexpr auto key_stream_insert<T>
 #else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, ext_si00>>>
+inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
 #endif
     = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
 {
@@ -76,9 +76,9 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, e
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_si01> inline constexpr auto key_stream_insert<T>
+requires SameCvr<T, ext_si01> inline constexpr auto key_stream_insert<T>
 #else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, ext_si01>>>
+inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
 #endif
     = [](std::ostream &, auto &, const symbol_set &) constexpr noexcept
 {
@@ -87,9 +87,9 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, e
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_nsi00> inline constexpr auto key_stream_insert<T>
+requires SameCvr<T, ext_nsi00> inline constexpr auto key_stream_insert<T>
 #else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, ext_nsi00>>>
+inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_nsi00>>>
 #endif
     = [](std::ostream &, auto &&, symbol_set &) constexpr noexcept
 {
@@ -98,9 +98,9 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, e
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ns::nsi01> inline constexpr auto key_stream_insert<T>
+requires SameCvr<T, ns::nsi01> inline constexpr auto key_stream_insert<T>
 #else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvref_v<T, ns::nsi01>>>
+inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::nsi01>>>
 #endif
     = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
 {

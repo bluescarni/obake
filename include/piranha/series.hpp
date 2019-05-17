@@ -370,11 +370,10 @@ public:
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
     // TODO flip around T and U.
-    // TODO SameCvref -> SameCvr.
-    template <SameCvref<key_type> T, SameCvref<cf_type> U>
+    template <SameCvr<key_type> T, SameCvr<cf_type> U>
 #else
     template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<is_same_cvref<T, key_type>, is_same_cvref<U, cf_type>>, int> = 0>
+              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, key_type>, is_same_cvr<U, cf_type>>, int> = 0>
 #endif
     void add_term(T &&key, U &&cf)
     {
