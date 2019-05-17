@@ -15,6 +15,9 @@
 #include <functional>
 #include <string>
 
+#include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
+
 #include <piranha/config.hpp>
 #include <piranha/type_traits.hpp>
 
@@ -113,6 +116,11 @@ TEST_CASE("hash_test")
     REQUIRE(is_hashable_v<std::string &&>);
     REQUIRE(hash(std::string{"hello world"}) == std::hash<std::string>{}(std::string{"hello world"}));
 
+    REQUIRE(is_hashable_v<mppp::integer<1>>);
+    REQUIRE(is_hashable_v<mppp::rational<1>>);
+    REQUIRE(hash(mppp::integer<1>{123}) == mppp::hash(mppp::integer<1>{123}));
+    REQUIRE(hash(mppp::rational<1>{123, -456}) == mppp::hash(mppp::rational<1>{123, -456}));
+
     REQUIRE(!is_hashable_v<nohash_00>);
     REQUIRE(!is_hashable_v<nohash_00 &>);
     REQUIRE(!is_hashable_v<const nohash_00 &>);
@@ -166,6 +174,9 @@ TEST_CASE("hash_test")
     REQUIRE(Hashable<std::string &>);
     REQUIRE(Hashable<const std::string &>);
     REQUIRE(Hashable<std::string &&>);
+
+    REQUIRE(Hashable<mppp::integer<1>>);
+    REQUIRE(Hashable<mppp::rational<1>>);
 
     REQUIRE(!Hashable<nohash_00>);
     REQUIRE(!Hashable<nohash_00 &>);
