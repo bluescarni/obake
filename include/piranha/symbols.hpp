@@ -13,12 +13,21 @@
 
 #include <boost/container/flat_set.hpp>
 
+#include <piranha/detail/visibility.hpp>
+
 namespace piranha
 {
 
 using symbol_set = ::boost::container::flat_set<::std::string>;
 
 using symbol_idx = symbol_set::size_type;
+
+namespace detail
+{
+
+PIRANHA_DLL_PUBLIC ::std::string to_string(const symbol_set &);
+
+}
 
 } // namespace piranha
 
