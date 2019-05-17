@@ -24,8 +24,8 @@ namespace polynomials
 struct tag {
 };
 
-template <typename C, typename K>
-using polynomial = series<C, K, tag>;
+template <typename K, typename C>
+using polynomial = series<K, C, tag>;
 
 namespace detail
 {
@@ -34,8 +34,8 @@ template <typename T>
 struct is_polynomial_impl : ::std::false_type {
 };
 
-template <typename C, typename K>
-struct is_polynomial_impl<polynomial<C, K>> : ::std::true_type {
+template <typename K, typename C>
+struct is_polynomial_impl<polynomial<K, C>> : ::std::true_type {
 };
 
 } // namespace detail

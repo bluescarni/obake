@@ -26,7 +26,7 @@ using namespace piranha;
 TEST_CASE("pow_test")
 {
     using pm_t = packed_monomial<int>;
-    using series_t = series<double, pm_t, void>;
+    using series_t = series<pm_t, double, void>;
 
     series_t s;
     REQUIRE(s.empty());

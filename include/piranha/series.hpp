@@ -120,16 +120,16 @@ struct key_comparer {
 } // namespace detail
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-template <Cf C, Key K, typename Tag>
+template <Key K, Cf C, typename Tag>
 #else
-template <typename C, typename K, typename Tag,
-          typename = ::std::enable_if_t<::std::conjunction_v<is_cf<C>, is_key<K>>>>
+template <typename K, typename C, typename Tag,
+          typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
 #endif
 class series
 {
 public:
-    using cf_type = C;
     using key_type = K;
+    using cf_type = C;
     using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher<>, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
@@ -406,8 +406,8 @@ private:
 };
 
 // Free function implementation of the swapping primitive.
-template <typename C, typename K, typename Tag>
-inline void swap(series<C, K, Tag> &s1, series<C, K, Tag> &s2) noexcept
+template <typename K, typename C, typename Tag>
+inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
 {
     s1.swap(s2);
 }
@@ -419,8 +419,8 @@ template <typename T>
 struct is_series_impl : ::std::false_type {
 };
 
-template <typename C, typename K, typename Tag>
-struct is_series_impl<series<C, K, Tag>> : ::std::true_type {
+template <typename K, typename C, typename Tag>
+struct is_series_impl<series<K, C, Tag>> : ::std::true_type {
 };
 
 } // namespace detail
@@ -445,8 +445,8 @@ template <typename>
 struct series_cf_t_impl {
 };
 
-template <typename C, typename K, typename Tag>
-struct series_cf_t_impl<series<C, K, Tag>> {
+template <typename K, typename C, typename Tag>
+struct series_cf_t_impl<series<K, C, Tag>> {
     using type = C;
 };
 
