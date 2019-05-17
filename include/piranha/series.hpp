@@ -24,7 +24,9 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
 #include <piranha/hash.hpp>
+#include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_zero.hpp>
+#include <piranha/key/key_stream_insert.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/symbols.hpp>
@@ -36,7 +38,9 @@ namespace piranha
 template <typename T>
 using is_key = ::std::conjunction<is_semi_regular<T>, is_hashable<::std::add_lvalue_reference_t<const T>>,
                                   is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
-                                  is_zero_testable_key<::std::add_lvalue_reference_t<const T>>>;
+                                  is_zero_testable_key<::std::add_lvalue_reference_t<const T>>,
+                                  is_compatibility_testable_key<::std::add_lvalue_reference_t<const T>>,
+                                  is_stream_insertable_key<::std::add_lvalue_reference_t<const T>>>;
 
 template <typename T>
 inline constexpr bool is_key_v = is_key<T>::value;
@@ -49,7 +53,8 @@ PIRANHA_CONCEPT_DECL Key = is_key_v<T>;
 #endif
 
 template <typename T>
-using is_cf = ::std::conjunction<is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>>;
+using is_cf = ::std::conjunction<is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>,
+                                 is_stream_insertable<::std::add_lvalue_reference_t<const T>>>;
 
 template <typename T>
 inline constexpr bool is_cf_v = is_cf<T>::value;
@@ -69,18 +74,20 @@ namespace detail
 //   so that, in the Key requirements, we can request hashability
 //   through const lvalue ref;
 // - provide additional mixing in the lower bits of h1.
+// MixWidth represents how many bits will be mixed.
+// NOTE: set the default mix width to 7 bits for the swiss table.
+template <int MixWidth = 7>
 struct key_hasher {
-    // How many bits will be mixed.
-    static constexpr int mix_width = 7;
-    static_assert(mix_width < ::std::numeric_limits<::std::size_t>::digits, "The key hasher mix width is too large.");
+    static_assert(MixWidth >= 0, "The key hasher mix width must not be negative.");
+    static_assert(MixWidth < ::std::numeric_limits<::std::size_t>::digits, "The key hasher mix width is too large.");
     static constexpr ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
     {
-        if constexpr (mix_width == 0) {
+        if constexpr (MixWidth == 0) {
             // Mix width is zero, return the original hash.
             return h1;
         } else {
             // Determine the mask for mixing.
-            constexpr auto mix_mask = ::std::size_t(-1) >> (::std::numeric_limits<::std::size_t>::digits - mix_width);
+            constexpr auto mix_mask = ::std::size_t(-1) >> (::std::numeric_limits<::std::size_t>::digits - MixWidth);
             // NOTE: the mixing is based on Boost's hash_combine
             // implementation, perhaps we can investigate some other
             // mixing technique. Abseil's hash looks promising, but
@@ -91,7 +98,7 @@ struct key_hasher {
             // and added on the bottom of h1, after shifting up the existing hash.
             // Thus, we lose the upper bits of h1 but we keep the (shifted)
             // rest of it.
-            return (h1 << mix_width) + (h2 & mix_mask);
+            return (h1 << MixWidth) + (h2 & mix_mask);
         }
     }
     template <typename K>
@@ -123,7 +130,7 @@ class series
 public:
     using cf_type = C;
     using key_type = K;
-    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
+    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher<>, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
 private:
