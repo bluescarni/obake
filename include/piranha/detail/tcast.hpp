@@ -22,22 +22,24 @@ namespace piranha::detail
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
-template <typename T,
-          ::std::enable_if_t<::std::conjunction_v<::std::is_rvalue_reference<T &&>,
-                                                  ::std::negation<::std::is_const<::std::remove_reference_t<T &&>>>>,
-                             int> = 0>
-constexpr T &&tcast(T &&x) noexcept
+template <typename T>
+constexpr T &&tcast_impl(T &&x, ::std::true_type) noexcept
 {
     return static_cast<T &&>(x);
 }
 
-template <typename T,
-          ::std::enable_if_t<!::std::conjunction_v<::std::is_rvalue_reference<T &&>,
-                                                   ::std::negation<::std::is_const<::std::remove_reference_t<T &&>>>>,
-                             int> = 0>
-constexpr const remove_cvref_t<T> &tcast(T &&x) noexcept
+template <typename T>
+constexpr const remove_cvref_t<T> &tcast_impl(T &&x, ::std::false_type) noexcept
 {
     return static_cast<const remove_cvref_t<T> &>(x);
+}
+
+template <typename T>
+constexpr decltype(auto) tcast(T &&x) noexcept
+{
+    return detail::tcast_impl(::std::forward<T>(x),
+                              ::std::conjunction<::std::is_rvalue_reference<T &&>,
+                                                 ::std::negation<::std::is_const<::std::remove_reference_t<T &&>>>>{});
 }
 
 #else
