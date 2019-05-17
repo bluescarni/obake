@@ -119,6 +119,8 @@ struct key_comparer {
 
 } // namespace detail
 
+// NOTE: document that moved-from series are destructible and assignable.
+// NOTE: test singular iterators.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -140,12 +142,54 @@ private:
 public:
     series() : m_container(1), m_log2_size(0) {}
     series(const series &) = default;
-    series(series &&) = default;
+    series(series &&other) noexcept
+        : m_container(::std::move(other.m_container)), m_log2_size(::std::move(other.m_log2_size)),
+          m_symbol_set(::std::move(other.m_symbol_set))
+    {
+#if !defined(NDEBUG)
+        // In debug mode, clear the other container
+        // in order to flag that other was moved from.
+        // This allows to run debug checks in the
+        // destructor, if we know the series is in
+        // a valid state.
+        other.m_container.clear();
+#endif
+    }
     series &operator=(const series &) = default;
-    series &operator=(series &&) = default;
+    series &operator=(series &&other) noexcept
+    {
+        // NOTE: assuming self-assignment is handled
+        // correctly by the members.
+        m_container = ::std::move(other.m_container);
+        m_log2_size = ::std::move(other.m_log2_size);
+        m_symbol_set = ::std::move(other.m_symbol_set);
+
+#if !defined(NDEBUG)
+        // NOTE: see above.
+        other.m_container.clear();
+#endif
+
+        return *this;
+    }
     ~series()
     {
-        assert(!m_container.empty() && m_container.size() == (c_size_t(1) << m_log2_size));
+#if !defined(NDEBUG)
+        // Don't run the checks if this
+        // series was moved-from.
+        if (!m_container.empty()) {
+            // Make sure the number of tables is consistent
+            // with the log2 size.
+            assert(m_container.size() == (c_size_t(1) << m_log2_size));
+
+            for (const auto &p : *this) {
+                // No zero terms.
+                assert(!::piranha::is_zero(static_cast<const cf_type &>(p.second))
+                       && !::piranha::key_is_zero(static_cast<const key_type &>(p.first), m_symbol_set));
+                // No incompatible keys.
+                assert(::piranha::key_is_compatible(static_cast<const key_type &>(p.first), m_symbol_set));
+            }
+        }
+#endif
     }
 
     // Member function implementation of the swap primitive.
@@ -249,7 +293,7 @@ private:
             // at the end of the current table.
             assert(m_local_it != (*m_container_ptr)[m_idx].end());
             // Move to the next item in the current table.
-            const auto &c = *m_container_ptr;
+            auto &c = *m_container_ptr;
             ++m_local_it;
             // NOTE: we expect to have many more elements per
             // table than the total number of tables, hence
@@ -286,8 +330,16 @@ private:
                   ::std::enable_if_t<is_equality_comparable_v<const local_it_t<T> &, const local_it_t<U> &>, int> = 0>
         bool equal(const iterator_impl<U> &other) const
         {
-            // Can compare only iterators referring to the same container.
-            assert(m_container_ptr != nullptr);
+            // NOTE: comparison is defined either for singular iterators,
+            // or for iterators referring to the same underlying sequence.
+            //
+            // Singular iterators are signalled by a null container pointer,
+            // zero index and a singular local iterator. Thus, using this
+            // comparison operator with two singular iterators will always
+            // yield true, as required.
+            //
+            // Non-singular iterators must refer to the same container.
+            // If they don't, we have UB (assertion failure in debug mode).
             assert(m_container_ptr == other.m_container_ptr);
             // NOTE: this is fine when comparing end() with itself,
             // as m_local_it as a unique representation for end
@@ -366,6 +418,10 @@ public:
     iterator end() noexcept
     {
         return iterator(&m_container, m_container.size());
+    }
+    const symbol_set &get_symbol_set() const
+    {
+        return m_symbol_set;
     }
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
