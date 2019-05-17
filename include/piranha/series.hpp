@@ -369,7 +369,6 @@ public:
     }
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    // TODO flip around T and U.
     template <SameCvr<key_type> T, SameCvr<cf_type> U>
 #else
     template <typename T, typename U,
@@ -382,7 +381,7 @@ public:
         // nonzero elements.
         // TODO: key zero check.
         // TODO: key compat check.
-        if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(::std::forward<U>(cf))))) {
+        if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(cf)))) {
             return;
         }
         if (m_log2_size == 0u) {
