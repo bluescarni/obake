@@ -29,6 +29,7 @@ TEST_CASE("pow_test")
     using series_t = series<pm_t, double, void>;
 
     series_t s;
+    std::cout << s << '\n';
     REQUIRE(s.empty());
     REQUIRE(s.begin() == s.end());
     REQUIRE(s.cbegin() == s.cend());

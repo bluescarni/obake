@@ -25,6 +25,9 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
+#include <piranha/detail/not_implemented.hpp>
+#include <piranha/detail/priority_tag.hpp>
+#include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/tcast.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
@@ -593,6 +596,52 @@ inline constexpr auto
 };
 
 } // namespace customisation::internal
+
+namespace customisation
+{
+
+// External customisation point for piranha::series_stream_insert().
+template <typename T
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_stream_insert = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T>
+constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_stream_insert<T &&>)(os, ::std::forward<T>(x)));
+
+// Unqualified function call implementation.
+template <typename T>
+constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(series_stream_insert(os, ::std::forward<T>(x)));
+
+// Lowest priority: the default implementation for series.
+template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+constexpr auto series_stream_insert_impl(::std::ostream &, T &&, priority_tag<0>)
+{
+}
+
+} // namespace detail
+
+inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) PIRANHA_SS_FORWARD_LAMBDA(
+    detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{}));
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <CvrSeries S>
+#else
+template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
+#endif
+constexpr auto operator<<(::std::ostream &os, S &&s)
+    PIRANHA_SS_FORWARD_FUNCTION((void(::piranha::series_stream_insert(os, ::std::forward<S>(s))), os));
 
 } // namespace piranha
 
