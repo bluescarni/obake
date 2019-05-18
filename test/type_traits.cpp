@@ -409,7 +409,6 @@ TEST_CASE("is_addable")
     REQUIRE(is_addable_v<const int, int &>);
     REQUIRE(is_addable_v<int &&, volatile int &>);
     REQUIRE(is_addable_v<std::string, char *>);
-    REQUIRE(is_addable_v<std::string, char *>);
     REQUIRE(!is_addable_v<std::string, int>);
     REQUIRE(!is_addable_v<nonaddable_0>);
     REQUIRE(is_addable_v<addable_0>);
@@ -426,7 +425,6 @@ TEST_CASE("is_addable")
     REQUIRE(Addable<int, int>);
     REQUIRE(Addable<const int, int &>);
     REQUIRE(Addable<int &&, volatile int &>);
-    REQUIRE(Addable<std::string, char *>);
     REQUIRE(Addable<std::string, char *>);
     REQUIRE(!Addable<std::string, int>);
     REQUIRE(!Addable<nonaddable_0>);
@@ -1430,5 +1428,169 @@ TEST_CASE("stream_insertable")
     REQUIRE(StreamInsertable<yes_si &>);
     REQUIRE(StreamInsertable<yes_si &>);
     REQUIRE(StreamInsertable<yes_si &&>);
+#endif
+}
+
+TEST_CASE("compound_addable")
+{
+    REQUIRE(!is_compound_addable_v<void, void>);
+    REQUIRE(!is_compound_addable_v<void, int>);
+    REQUIRE(!is_compound_addable_v<int, void>);
+
+    REQUIRE(is_compound_addable_v<int &, int>);
+    REQUIRE(is_compound_addable_v<int &, int &>);
+    REQUIRE(is_compound_addable_v<int &, const int &>);
+    REQUIRE(is_compound_addable_v<int &, int &&>);
+
+    REQUIRE(!is_compound_addable_v<int &&, int>);
+    REQUIRE(!is_compound_addable_v<int &&, int &>);
+    REQUIRE(!is_compound_addable_v<int &&, const int &>);
+    REQUIRE(!is_compound_addable_v<int &&, int &&>);
+
+    REQUIRE(!is_compound_addable_v<const int &, int>);
+    REQUIRE(!is_compound_addable_v<const int &, int &>);
+    REQUIRE(!is_compound_addable_v<const int &, const int &>);
+    REQUIRE(!is_compound_addable_v<const int &, int &&>);
+
+    REQUIRE(!is_compound_addable_v<int, int>);
+    REQUIRE(!is_compound_addable_v<int, int &>);
+    REQUIRE(!is_compound_addable_v<int, const int &>);
+    REQUIRE(!is_compound_addable_v<int, int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CompoundAddable<void, void>);
+    REQUIRE(!CompoundAddable<void, int>);
+    REQUIRE(!CompoundAddable<int, void>);
+
+    REQUIRE(CompoundAddable<int &, int>);
+    REQUIRE(CompoundAddable<int &, int &>);
+    REQUIRE(CompoundAddable<int &, const int &>);
+    REQUIRE(CompoundAddable<int &, int &&>);
+
+    REQUIRE(!CompoundAddable<int &&, int>);
+    REQUIRE(!CompoundAddable<int &&, int &>);
+    REQUIRE(!CompoundAddable<int &&, const int &>);
+    REQUIRE(!CompoundAddable<int &&, int &&>);
+
+    REQUIRE(!CompoundAddable<const int &, int>);
+    REQUIRE(!CompoundAddable<const int &, int &>);
+    REQUIRE(!CompoundAddable<const int &, const int &>);
+    REQUIRE(!CompoundAddable<const int &, int &&>);
+
+    REQUIRE(!CompoundAddable<int, int>);
+    REQUIRE(!CompoundAddable<int, int &>);
+    REQUIRE(!CompoundAddable<int, const int &>);
+    REQUIRE(!CompoundAddable<int, int &&>);
+#endif
+}
+
+struct nonsubtractable_0 {
+};
+
+struct subtractable_0 {
+    friend subtractable_0 operator-(subtractable_0, subtractable_0);
+};
+
+struct subtractable_1 {
+    friend subtractable_1 operator-(subtractable_1, subtractable_0);
+    friend subtractable_1 operator-(subtractable_0, subtractable_1);
+};
+
+struct nonsubtractable_1 {
+    friend nonsubtractable_1 operator-(nonsubtractable_1, subtractable_0);
+};
+
+struct nonsubtractable_2 {
+    friend nonsubtractable_2 operator-(nonsubtractable_2, subtractable_0);
+    friend nonsubtractable_1 operator-(subtractable_0, nonsubtractable_2);
+};
+
+TEST_CASE("is_subtractable")
+{
+    REQUIRE(!is_subtractable_v<void>);
+    REQUIRE(!is_subtractable_v<void, void>);
+    REQUIRE(!is_subtractable_v<void, int>);
+    REQUIRE(!is_subtractable_v<int, void>);
+    REQUIRE(is_subtractable_v<int>);
+    REQUIRE(is_subtractable_v<int, int>);
+    REQUIRE(is_subtractable_v<const int, int &>);
+    REQUIRE(is_subtractable_v<int &&, volatile int &>);
+    REQUIRE(!is_subtractable_v<std::string, char *>);
+    REQUIRE(!is_subtractable_v<std::string, int>);
+    REQUIRE(!is_subtractable_v<nonsubtractable_0>);
+    REQUIRE(is_subtractable_v<subtractable_0>);
+    REQUIRE(is_subtractable_v<subtractable_1, subtractable_0>);
+    REQUIRE(!is_subtractable_v<nonsubtractable_1, subtractable_0>);
+    REQUIRE(!is_subtractable_v<nonsubtractable_2, subtractable_0>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Subtractable<void>);
+    REQUIRE(!Subtractable<void, void>);
+    REQUIRE(!Subtractable<void, int>);
+    REQUIRE(!Subtractable<int, void>);
+    REQUIRE(Subtractable<int>);
+    REQUIRE(Subtractable<int, int>);
+    REQUIRE(Subtractable<const int, int &>);
+    REQUIRE(Subtractable<int &&, volatile int &>);
+    REQUIRE(!Subtractable<std::string, char *>);
+    REQUIRE(!Subtractable<std::string, int>);
+    REQUIRE(!Subtractable<nonsubtractable_0>);
+    REQUIRE(Subtractable<subtractable_0>);
+    REQUIRE(Subtractable<subtractable_1, subtractable_0>);
+    REQUIRE(!Subtractable<nonsubtractable_1, subtractable_0>);
+    REQUIRE(!Subtractable<nonsubtractable_2, subtractable_0>);
+#endif
+}
+
+TEST_CASE("compound_subtractable")
+{
+    REQUIRE(!is_compound_subtractable_v<void, void>);
+    REQUIRE(!is_compound_subtractable_v<void, int>);
+    REQUIRE(!is_compound_subtractable_v<int, void>);
+
+    REQUIRE(is_compound_subtractable_v<int &, int>);
+    REQUIRE(is_compound_subtractable_v<int &, int &>);
+    REQUIRE(is_compound_subtractable_v<int &, const int &>);
+    REQUIRE(is_compound_subtractable_v<int &, int &&>);
+
+    REQUIRE(!is_compound_subtractable_v<int &&, int>);
+    REQUIRE(!is_compound_subtractable_v<int &&, int &>);
+    REQUIRE(!is_compound_subtractable_v<int &&, const int &>);
+    REQUIRE(!is_compound_subtractable_v<int &&, int &&>);
+
+    REQUIRE(!is_compound_subtractable_v<const int &, int>);
+    REQUIRE(!is_compound_subtractable_v<const int &, int &>);
+    REQUIRE(!is_compound_subtractable_v<const int &, const int &>);
+    REQUIRE(!is_compound_subtractable_v<const int &, int &&>);
+
+    REQUIRE(!is_compound_subtractable_v<int, int>);
+    REQUIRE(!is_compound_subtractable_v<int, int &>);
+    REQUIRE(!is_compound_subtractable_v<int, const int &>);
+    REQUIRE(!is_compound_subtractable_v<int, int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CompoundSubtractable<void, void>);
+    REQUIRE(!CompoundSubtractable<void, int>);
+    REQUIRE(!CompoundSubtractable<int, void>);
+
+    REQUIRE(CompoundSubtractable<int &, int>);
+    REQUIRE(CompoundSubtractable<int &, int &>);
+    REQUIRE(CompoundSubtractable<int &, const int &>);
+    REQUIRE(CompoundSubtractable<int &, int &&>);
+
+    REQUIRE(!CompoundSubtractable<int &&, int>);
+    REQUIRE(!CompoundSubtractable<int &&, int &>);
+    REQUIRE(!CompoundSubtractable<int &&, const int &>);
+    REQUIRE(!CompoundSubtractable<int &&, int &&>);
+
+    REQUIRE(!CompoundSubtractable<const int &, int>);
+    REQUIRE(!CompoundSubtractable<const int &, int &>);
+    REQUIRE(!CompoundSubtractable<const int &, const int &>);
+    REQUIRE(!CompoundSubtractable<const int &, int &&>);
+
+    REQUIRE(!CompoundSubtractable<int, int>);
+    REQUIRE(!CompoundSubtractable<int, int &>);
+    REQUIRE(!CompoundSubtractable<int, const int &>);
+    REQUIRE(!CompoundSubtractable<int, int &&>);
 #endif
 }
