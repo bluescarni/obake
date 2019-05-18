@@ -725,7 +725,7 @@ constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag
 
 // Lowest priority: the default implementation for series.
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-constexpr auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0>)
+inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0>)
 {
     using series_t = remove_cvref_t<T>;
     using cf_type = series_cf_t<series_t>;
