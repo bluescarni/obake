@@ -14,8 +14,10 @@
 #include <cstddef>
 #include <iterator>
 #include <limits>
+#include <numeric>
 #include <sstream>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -25,10 +27,12 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/tcast.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_is_compatible.hpp>
@@ -38,6 +42,7 @@
 #include <piranha/math/pow.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
+#include <piranha/utils/type_name.hpp>
 
 namespace piranha
 {
@@ -126,10 +131,15 @@ struct key_comparer {
 
 // TODO:
 // - segmented table,
+// - limit tables size in case of segmented setup, in order
+//   to avoid overflows when computing the total size (add boolean
+//   option for that, and always disable the check in case there's
+//   only a single table),
 // - negative insertion,
 // - exception safety in case of negative insertion,
 // - double check exception safety with the old code.
-template <typename S, typename T, typename U, bool CheckZero = true, bool CheckCompatKey = true>
+template <typename S, typename T, typename U, bool CheckZero = true, bool CheckCompatKey = true,
+          bool CheckTableSize = true>
 inline void series_add_term(S &s, T &&key, U &&cf)
 {
     // Determine key/cf types.
@@ -164,8 +174,8 @@ inline void series_add_term(S &s, T &&key, U &&cf)
     }
 
     if constexpr (CheckZero) {
-        if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(cf))
-                             || ::piranha::key_is_zero(static_cast<const key_type &>(key), ss))) {
+        if (piranha_unlikely(::piranha::key_is_zero(static_cast<const key_type &>(key), ss)
+                             || ::piranha::is_zero(static_cast<const cf_type &>(cf)))) {
             // If either key or coefficient are zero, no
             // insertion will take place.
             return;
@@ -174,6 +184,13 @@ inline void series_add_term(S &s, T &&key, U &&cf)
 
     if (log2_size == 0u) {
         auto &hm = s.m_container[0];
+        if constexpr (CheckTableSize) {
+            if (piranha_unlikely(hm.size() == s.get_max_table_size())) {
+                piranha_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
+                                                     "destination table already contains the maximum number of terms ("
+                                                         + detail::to_string(s.get_max_table_size()) + ")");
+            }
+        }
         const auto res = hm.try_emplace(detail::tcast(::std::forward<T>(key)), detail::tcast(::std::forward<U>(cf)));
         if (!res.second) {
             // Insertion did not take place because a term with
@@ -207,6 +224,7 @@ inline void series_add_term(S &s, T &&key, U &&cf)
 
 // NOTE: document that moved-from series are destructible and assignable.
 // NOTE: test singular iterators.
+// Missing requirements on addability/subtractability of cf.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -215,20 +233,24 @@ template <typename K, typename C, typename Tag,
 #endif
 class series
 {
-    template <typename S, typename T, typename U, bool, bool>
+    template <typename S, typename T, typename U, bool, bool, bool>
     friend void detail::series_add_term(S &, T &&, U &&);
 
-public:
-    using key_type = K;
-    using cf_type = C;
     using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher<>, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
-private:
     // Shortcut for the container size type.
     using c_size_t = typename container_type::size_type;
 
+    // The maximum value of the m_log2_size member. Fix
+    // it to the number of bits - 1 so that it's always
+    // safe to bit shift a value of type c_size_t by
+    // this amount.
+    static constexpr c_size_t max_log2_size = static_cast<c_size_t>(detail::limits_digits<c_size_t> - 1);
+
 public:
+    using size_type = typename hash_map_type::size_type;
+
     series() : m_container(1), m_log2_size(0) {}
     series(const series &) = default;
     series(series &&other) noexcept
@@ -260,22 +282,48 @@ public:
 
         return *this;
     }
+
+private:
+    // Get the maximum size of the tables.
+    // This will ensure that size_type can always
+    // represent the total number of terms in the
+    // series.
+    size_type get_max_table_size() const
+    {
+        // NOTE: use a division rather than right shift,
+        // so that we don't have to worry about shifting
+        // too much. This will anyway be optimised into a
+        // shift by the compiler.
+        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (c_size_t(1) << m_log2_size));
+    }
+
+public:
     ~series()
     {
 #if !defined(NDEBUG)
         // Don't run the checks if this
         // series was moved-from.
         if (!m_container.empty()) {
+            // Make sure m_log2_size is within the limit.
+            assert(m_log2_size <= max_log2_size);
+
             // Make sure the number of tables is consistent
             // with the log2 size.
             assert(m_container.size() == (c_size_t(1) << m_log2_size));
 
+            // Make sure the size of each table does not exceed the limit.
+            const auto mts = get_max_table_size();
+            for (const auto &hm : m_container) {
+                assert(hm.size() <= mts);
+            }
+
+            // Check all terms.
             for (const auto &p : *this) {
                 // No zero terms.
-                assert(!::piranha::is_zero(static_cast<const cf_type &>(p.second))
-                       && !::piranha::key_is_zero(static_cast<const key_type &>(p.first), m_symbol_set));
+                assert(!::piranha::key_is_zero(static_cast<const K &>(p.first), m_symbol_set)
+                       && !::piranha::is_zero(static_cast<const C &>(p.second)));
                 // No incompatible keys.
-                assert(::piranha::key_is_compatible(static_cast<const key_type &>(p.first), m_symbol_set));
+                assert(::piranha::key_is_compatible(static_cast<const K &>(p.first), m_symbol_set));
             }
         }
 #endif
@@ -293,6 +341,14 @@ public:
     bool empty() const noexcept
     {
         return ::std::all_of(m_container.begin(), m_container.end(), [](const auto &map) { return map.empty(); });
+    }
+
+    size_type size() const noexcept
+    {
+        // NOTE: this will never overflow, as we enforce the constraint
+        // that the size of each table is small enough.
+        return ::std::accumulate(m_container.begin(), m_container.end(), size_type(0),
+                                 [](const auto &cur, const auto &map) { return cur + map.size(); });
     }
 
 private:
@@ -512,12 +568,21 @@ public:
     {
         return m_symbol_set;
     }
+    void set_symbol_set(const symbol_set &s)
+    {
+        if (piranha_unlikely(!this->empty())) {
+            piranha_throw(::std::invalid_argument,
+                          "A symbol set can be set only in an empty series, but this series has "
+                              + detail::to_string(this->size()) + " terms");
+        }
+        m_symbol_set = s;
+    }
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    template <SameCvr<key_type> T, SameCvr<cf_type> U>
+    template <SameCvr<K> T, SameCvr<C> U>
 #else
     template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, key_type>, is_same_cvr<U, cf_type>>, int> = 0>
+              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, is_same_cvr<U, C>>, int> = 0>
 #endif
     void add_term(T &&key, U &&cf)
     {
@@ -578,7 +643,41 @@ struct series_cf_t_impl<series<K, C, Tag>> {
 } // namespace detail
 
 template <typename T>
-using series_cf_t = typename detail::series_cf_t_impl<::std::remove_cv_t<T>>::type;
+using series_cf_t = typename detail::series_cf_t_impl<T>::type;
+
+namespace detail
+{
+
+template <typename>
+struct series_key_t_impl {
+};
+
+template <typename K, typename C, typename Tag>
+struct series_key_t_impl<series<K, C, Tag>> {
+    using type = K;
+};
+
+} // namespace detail
+
+template <typename T>
+using series_key_t = typename detail::series_key_t_impl<T>::type;
+
+namespace detail
+{
+
+template <typename>
+struct series_tag_t_impl {
+};
+
+template <typename K, typename C, typename Tag>
+struct series_tag_t_impl<series<K, C, Tag>> {
+    using type = Tag;
+};
+
+} // namespace detail
+
+template <typename T>
+using series_tag_t = typename detail::series_tag_t_impl<T>::type;
 
 namespace customisation::internal
 {
@@ -626,8 +725,101 @@ constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag
 
 // Lowest priority: the default implementation for series.
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-constexpr auto series_stream_insert_impl(::std::ostream &, T &&, priority_tag<0>)
+constexpr auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0>)
 {
+    using series_t = remove_cvref_t<T>;
+    using cf_type = series_cf_t<series_t>;
+    using key_type = series_key_t<series_t>;
+
+    const auto &s = static_cast<const series_t &>(s_);
+    const auto &ss = s.get_symbol_set();
+
+    // Print the header.
+    os << "Key type        : " << ::piranha::type_name<key_type>() << '\n';
+    os << "Coefficient type: " << ::piranha::type_name<cf_type>() << '\n';
+    os << "Tag type        : " << ::piranha::type_name<series_tag_t<series_t>>() << '\n';
+    os << "Symbol set      : " << ::piranha::detail::to_string(s.get_symbol_set()) << '\n';
+    os << "Number of terms : " << s.size() << '\n';
+
+    if (s.empty()) {
+        os << "0";
+        return;
+    }
+
+    // Hard-code the limit for now.
+    constexpr auto limit = 50ul;
+
+    decltype(s.size()) count = 0;
+    auto it = s.begin();
+    const auto end = s.end();
+    ::std::ostringstream oss;
+    ::std::string ret;
+
+    for (; it != end;) {
+        if (limit && count == limit) {
+            break;
+        }
+
+        // Get the string representations
+        // of coefficient and key.
+        oss.str("");
+        oss << static_cast<const cf_type &>(it->second);
+        auto str_cf = oss.str();
+
+        oss.str("");
+        ::piranha::key_stream_insert(oss, static_cast<const key_type &>(it->first), ss);
+        const auto str_key = oss.str();
+
+        if (str_cf == "1" && str_key != "1") {
+            // Suppress the coefficient if it is "1"
+            // and the key is not "1".
+            str_cf = "";
+        } else if (str_cf == "-1" && str_key != "1") {
+            // Turn the coefficient into a minus sign
+            // if it is -1 and the key is not "1".
+            str_cf = "-";
+        }
+
+        // Append the coefficient.
+        ret += str_cf;
+        if (str_cf != "" && str_cf != "-" && str_key != "1") {
+            // If the abs(coefficient) is not unitary and
+            // the key is not "1", then we need the mult sign.
+            ret += "*";
+        }
+
+        // Append the key.
+        if (str_key != "1") {
+            ret += str_key;
+        }
+
+        // Increase the counters.
+        ++it;
+        if (it != end) {
+            // Prepare the plus for the next term
+            // if we are not at the end.
+            ret += "+";
+        }
+        ++count;
+    }
+
+    // If we reached the limit without printing all terms in the series, print the ellipsis.
+    if (limit && count == limit && it != end) {
+        ret += "...";
+    }
+
+    // Transform "+-" into "-".
+    ::std::string::size_type index = 0;
+    while (true) {
+        index = ret.find("+-", index);
+        if (index == ::std::string::npos) {
+            break;
+        }
+        ret.replace(index, 2, "-");
+        ++index;
+    }
+
+    os << ret;
 }
 
 } // namespace detail

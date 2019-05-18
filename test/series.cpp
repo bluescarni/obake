@@ -13,6 +13,7 @@
 
 #include <bitset>
 #include <cstddef>
+#include <initializer_list>
 #include <iostream>
 #include <limits>
 #include <type_traits>
@@ -49,4 +50,14 @@ TEST_CASE("pow_test")
               << std::bitset<width>(hash(pm_t{1, 2, 3})) << '\n';
     std::cout << std::bitset<width>(detail::key_hasher{}(pm_t{4, 5, 6})) << " vs "
               << std::bitset<width>(hash(pm_t{4, 5, 6})) << '\n';
+
+    s.set_symbol_set({"x", "y", "z"});
+    s.add_term(pm_t{0, 1, 2}, -1.);
+    s.add_term(pm_t{2, 4, 5}, -2.);
+    s.add_term(pm_t{2, 4, 5}, -5.);
+    s.add_term(pm_t{0, 0, 0}, -1.);
+    s.add_term(pm_t{0, 0, 0}, 1.);
+    s.add_term(pm_t{0, 0, 0}, -1.);
+
+    std::cout << s << '\n';
 }
