@@ -65,8 +65,13 @@ PIRANHA_CONCEPT_DECL Key = is_key_v<T>;
 #endif
 
 template <typename T>
-using is_cf = ::std::conjunction<is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>,
-                                 is_stream_insertable<::std::add_lvalue_reference_t<const T>>>;
+using is_cf = ::std::conjunction<
+    is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>,
+    is_stream_insertable<::std::add_lvalue_reference_t<const T>>,
+    is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
+    is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
+    is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
+    is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>>;
 
 template <typename T>
 inline constexpr bool is_cf_v = is_cf<T>::value;
