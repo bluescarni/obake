@@ -300,6 +300,30 @@ PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 namespace detail
 {
 
+template <typename T, typename U>
+using compound_add_t = decltype(::std::declval<T>() += ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_compound_addable = is_detected<detail::compound_add_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_compound_addable_v = is_compound_addable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL CompoundAddable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) += ::std::forward<U>(y);
+};
+
+#endif
+
+namespace detail
+{
+
 template <typename T>
 using preinc_t = decltype(++::std::declval<T>());
 
@@ -343,6 +367,59 @@ template <typename T>
 PIRANHA_CONCEPT_DECL PostIncrementable = requires(T &&x)
 {
     ::std::forward<T>(x)++;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using sub_t = decltype(::std::declval<T>() - ::std::declval<U>());
+
+}
+
+template <typename T, typename U = T>
+using is_subtractable
+    = ::std::conjunction<is_detected<detail::sub_t, T, U>, is_detected<detail::sub_t, U, T>,
+                         ::std::is_same<detected_t<detail::sub_t, T, U>, detected_t<detail::sub_t, U, T>>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_subtractable_v = is_subtractable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+PIRANHA_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) - ::std::forward<U>(y);
+    ::std::forward<U>(y) - ::std::forward<T>(x);
+    requires Same<decltype(::std::forward<T>(x) - ::std::forward<U>(y)),
+                  decltype(::std::forward<U>(y) - ::std::forward<T>(x))>;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using compound_sub_t = decltype(::std::declval<T>() -= ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_compound_subtractable = is_detected<detail::compound_sub_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_compound_subtractable_v = is_compound_subtractable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) -= ::std::forward<U>(y);
 };
 
 #endif
