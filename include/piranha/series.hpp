@@ -134,17 +134,60 @@ struct key_comparer {
     }
 };
 
+// Helper for inserting a term into a series table.
+template <bool CheckZero, bool CheckTableSize, typename S, typename M, typename T, typename U>
+inline void series_add_term_table(S &s, M &hm, T &&key, U &&cf)
+{
+    // Determine the coefficient type.
+    // NOTE: we always assume that T and U are the exact
+    // series key/cf types, after removal of ref and cv qualifiers.
+    using cf_type = remove_cvref_t<U>;
+
+    if constexpr (CheckTableSize) {
+        if (piranha_unlikely(hm.size() == s.get_max_table_size())) {
+            // The table size is already the maximum allowed, don't
+            // attempt the insertion.
+            piranha_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
+                                                 "destination table already contains the maximum number of terms ("
+                                                     + detail::to_string(s.get_max_table_size()) + ")");
+        }
+    }
+
+    // Attempt the insertion.
+    const auto res = hm.try_emplace(detail::tcast(::std::forward<T>(key)), detail::tcast(::std::forward<U>(cf)));
+
+    if (!res.second) {
+        // Insertion did not take place because a term with
+        // the same key exists already. Add the input coefficient
+        // to the existing one.
+        // NOTE: after this line, we have modified a coefficient
+        // in the series, and the series might now be in an invalid
+        // state. From now on, we have to pay attention to exception
+        // safety.
+        res.first->second += detail::tcast(::std::forward<U>(cf));
+        // Now check that the updated coefficient is not zero.
+        if constexpr (CheckZero) {
+            try {
+                if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
+                    hm.erase(res.first);
+                }
+            } catch (...) {
+                // NOTE: if is_zero() throws, we may have the table
+                // in an invalid state (a coefficient may be zero).
+                // Clear it before re-throwing.
+                hm.clear();
+                throw;
+            }
+        }
+    }
+}
+
 // TODO:
-// - segmented table,
-// - limit tables size in case of segmented setup, in order
-//   to avoid overflows when computing the total size (add boolean
-//   option for that, and always disable the check in case there's
-//   only a single table),
 // - negative insertion,
 // - exception safety in case of negative insertion,
 // - double check exception safety with the old code.
-template <typename S, typename T, typename U, bool CheckZero = true, bool CheckCompatKey = true,
-          bool CheckTableSize = true>
+// Helper for inserting a term into a series.
+template <bool CheckZero, bool CheckCompatKey, bool CheckTableSize, typename S, typename T, typename U>
 inline void series_add_term(S &s, T &&key, U &&cf)
 {
     // Determine key/cf types.
@@ -161,19 +204,20 @@ inline void series_add_term(S &s, T &&key, U &&cf)
     // in which we are actually inserting something in the series.
     if constexpr (CheckCompatKey) {
         if (piranha_unlikely(!::piranha::key_is_compatible(static_cast<const key_type &>(key), ss))) {
+            // The key is not compatible with the symbol set.
             if constexpr (is_stream_insertable_v<const key_type &>) {
                 // A slightly better error message if we can
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
-                oss << static_cast<const key_type &>(key);
+                static_cast<::std::ostream &>(oss) << static_cast<const key_type &>(key);
                 piranha_throw(::std::invalid_argument, "Cannot add a new term to a series: the term's key, \""
                                                            + oss.str()
-                                                           + "\", is not compatible with the series' symbol set, \""
-                                                           + ::piranha::detail::to_string(ss) + "\"");
+                                                           + "\", is not compatible with the series' symbol set, "
+                                                           + ::piranha::detail::to_string(ss));
             } else {
                 piranha_throw(::std::invalid_argument, "Cannot add a new term to a series: the term's key is not "
-                                                       "compatible with the series' symbol set, \""
-                                                           + ::piranha::detail::to_string(ss) + "\"");
+                                                       "compatible with the series' symbol set, "
+                                                           + ::piranha::detail::to_string(ss));
             }
         }
     }
@@ -188,48 +232,28 @@ inline void series_add_term(S &s, T &&key, U &&cf)
     }
 
     if (log2_size == 0u) {
-        auto &hm = s.m_container[0];
-        if constexpr (CheckTableSize) {
-            if (piranha_unlikely(hm.size() == s.get_max_table_size())) {
-                piranha_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
-                                                     "destination table already contains the maximum number of terms ("
-                                                         + detail::to_string(s.get_max_table_size()) + ")");
-            }
-        }
-        const auto res = hm.try_emplace(detail::tcast(::std::forward<T>(key)), detail::tcast(::std::forward<U>(cf)));
-        if (!res.second) {
-            // Insertion did not take place because a term with
-            // the same key exists already. Add the input coefficient
-            // to the existing one.
-            // NOTE: after this line, we have modified a coefficient
-            // in the series, and the series might now be in an invalid
-            // state. From now on, we have to pay attention to exception
-            // safety.
-            res.first->second += detail::tcast(::std::forward<U>(cf));
-            // Now check that the updated coefficient is not zero.
-            if constexpr (CheckZero) {
-                try {
-                    if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
-                        hm.erase(res.first);
-                    }
-                } catch (...) {
-                    // NOTE: if is_zero() throws, we may have the table
-                    // in an invalid state (a coefficient may be zero).
-                    // Clear it before re-throwing.
-                    hm.clear();
-                    throw;
-                }
-            }
-        }
+        // NOTE: forcibly set CheckTableSize to false (for a single
+        // table, the size limit is always the full range of size_type).
+        detail::series_add_term_table<CheckZero, false>(s, s.m_container[0], ::std::forward<T>(key),
+                                                        ::std::forward<U>(cf));
     } else {
+        // Compute the hash of the key via piranha::hash().
+        const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
+
+        // Determine the destination table.
+        const auto table_idx = static_cast<decltype(s.m_container.size())>(k_hash & (log2_size - 1u));
+
+        // Proceed to the insertion.
+        detail::series_add_term_table<CheckZero, CheckTableSize>(s, s.m_container[table_idx], ::std::forward<T>(key),
+                                                                 ::std::forward<U>(cf));
     }
 }
 
 } // namespace detail
 
-// NOTE: document that moved-from series are destructible and assignable.
-// NOTE: test singular iterators.
-// Missing requirements on addability/subtractability of cf.
+// TODO: document that moved-from series are destructible and assignable.
+// TODO: test singular iterators.
+// TODO: check construction of const iterators from murable ones.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -238,9 +262,14 @@ template <typename K, typename C, typename Tag,
 #endif
 class series
 {
-    template <typename S, typename T, typename U, bool, bool, bool>
+    // Make friends with the term insertion helpers.
+    template <bool, bool, bool, typename S, typename T, typename U>
     friend void detail::series_add_term(S &, T &&, U &&);
+    template <bool, bool, typename S, typename M, typename T, typename U>
+    friend void detail::series_add_term_table(S &, M &, T &&, U &&);
 
+    // Define the table type, and the type
+    // holding the set of tables.
     using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher<>, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
@@ -409,6 +438,9 @@ private:
         template <typename U,
                   ::std::enable_if_t<
                       ::std::conjunction_v<
+                          // NOTE: prevent competition with the
+                          // copy constructor.
+                          ::std::negation<::std::is_same<T, U>>,
                           ::std::is_constructible<container_ptr_t, const typename iterator_impl<U>::container_ptr_t &>,
                           ::std::is_constructible<local_it_t<T>, const local_it_t<U> &>>,
                       int> = 0>
@@ -591,7 +623,8 @@ public:
 #endif
     void add_term(T &&key, U &&cf)
     {
-        detail::series_add_term(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
+        // NOTE: all checks enabled.
+        detail::series_add_term<true, true, true>(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
     }
 
 private:
@@ -768,11 +801,11 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
         // Get the string representations
         // of coefficient and key.
         oss.str("");
-        oss << static_cast<const cf_type &>(it->second);
+        static_cast<::std::ostream &>(oss) << static_cast<const cf_type &>(it->second);
         auto str_cf = oss.str();
 
         oss.str("");
-        ::piranha::key_stream_insert(oss, static_cast<const key_type &>(it->first), ss);
+        ::piranha::key_stream_insert(static_cast<::std::ostream &>(oss), static_cast<const key_type &>(it->first), ss);
         const auto str_key = oss.str();
 
         if (str_cf == "1" && str_key != "1") {
@@ -793,7 +826,8 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
             ret += "*";
         }
 
-        // Append the key.
+        // Append the key, if it is not
+        // unitary.
         if (str_key != "1") {
             ret += str_key;
         }
