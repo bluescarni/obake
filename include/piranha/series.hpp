@@ -13,7 +13,6 @@
 #include <cassert>
 #include <cstddef>
 #include <iterator>
-#include <limits>
 #include <numeric>
 #include <sstream>
 #include <stdexcept>
@@ -90,36 +89,14 @@ namespace detail
 // - force the evaluation of a key through const reference,
 //   so that, in the Key requirements, we can request hashability
 //   through const lvalue ref;
-// - provide additional mixing in the lower bits of h1.
-// MixWidth represents how many bits will be mixed.
-// NOTE: set the default mix width to 7 bits for the swiss table.
-template <int MixWidth = 7>
+// - provide additional mixing.
 struct key_hasher {
-    static_assert(MixWidth >= 0, "The key hasher mix width must not be negative.");
-    static_assert(MixWidth < ::std::numeric_limits<::std::size_t>::digits, "The key hasher mix width is too large.");
-    static constexpr ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
+    static ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
     {
-        if constexpr (MixWidth == 0) {
-            // Mix width is zero, return the original hash.
-            return h1;
-        } else {
-            // Determine the mask for mixing.
-            constexpr auto mix_mask = ::std::size_t(-1) >> (::std::numeric_limits<::std::size_t>::digits - MixWidth);
-            // NOTE: the mixing is based on Boost's hash_combine
-            // implementation, perhaps we can investigate some other
-            // mixing technique. Abseil's hash looks promising, but
-            // it is not stable across program invocations due to
-            // random seeding and I am not sure we want that.
-            const auto h2 = h1 ^ (h1 + ::std::size_t(0x9e3779b9ul) + (h1 << 6) + (h1 >> 2));
-            // NOTE: the mixed bits are taken from the bottom of h2
-            // and added on the bottom of h1, after shifting up the existing hash.
-            // Thus, we lose the upper bits of h1 but we keep the (shifted)
-            // rest of it.
-            return (h1 << MixWidth) + (h2 & mix_mask);
-        }
+        return ::absl::Hash<::std::size_t>{}(h1);
     }
     template <typename K>
-    constexpr ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
+    ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
     {
         return key_hasher::hash_mixer(::piranha::hash(k));
     }
@@ -270,7 +247,7 @@ class series
 
     // Define the table type, and the type
     // holding the set of tables.
-    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher<>, detail::key_comparer>;
+    using hash_map_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
     using container_type = ::boost::container::small_vector<hash_map_type, 1>;
 
     // Shortcut for the container size type.
