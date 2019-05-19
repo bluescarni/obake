@@ -277,6 +277,7 @@ public:
         other.m_container.clear();
 #endif
     }
+
     series &operator=(const series &) = default;
     series &operator=(series &&other) noexcept
     {
@@ -357,7 +358,7 @@ public:
     size_type size() const noexcept
     {
         // NOTE: this will never overflow, as we enforce the constraint
-        // that the size of each table is small enough.
+        // that the size of each table is small enough to avoid overflows.
         return ::std::accumulate(m_container.begin(), m_container.end(), size_type(0),
                                  [](const auto &cur, const auto &map) { return cur + map.size(); });
     }
@@ -398,6 +399,7 @@ private:
         // local_it_t is also a forward iterator which is default-inited.
         // https://en.cppreference.com/w/cpp/named_req/ForwardIterator
         iterator_impl() : m_container_ptr(nullptr), m_idx(0), m_local_it{} {}
+
         // Init with a pointer to the container and an index.
         // Used in the begin()/end() implementations.
         // NOTE: ensure m_local_it is default-inited, so it is in
@@ -407,9 +409,11 @@ private:
             : m_container_ptr(container_ptr), m_idx(idx), m_local_it{}
         {
         }
+
         // Default the copy/move ctors.
         iterator_impl(const iterator_impl &) = default;
         iterator_impl(iterator_impl &&) = default;
+
         // Implicit converting ctor from another specialisation. This is
         // used to construct a const iterator from a mutable one.
         template <typename U,
@@ -430,6 +434,7 @@ private:
         friend void swap(iterator_impl &it1, iterator_impl &it2) noexcept
         {
             using ::std::swap;
+
             swap(it1.m_container_ptr, it2.m_container_ptr);
             swap(it1.m_idx, it2.m_idx);
             // NOTE: all iterators are required to be swappable,
@@ -451,9 +456,11 @@ private:
             // The local iterator cannot be pointing
             // at the end of the current table.
             assert(m_local_it != (*m_container_ptr)[m_idx].end());
+
             // Move to the next item in the current table.
             auto &c = *m_container_ptr;
             ++m_local_it;
+
             // NOTE: we expect to have many more elements per
             // table than the total number of tables, hence
             // moving to the next table should be a relatively
@@ -483,6 +490,7 @@ private:
                 }
             }
         }
+
         // NOTE: templated in order to enable comparisons
         // between the const and mutable variants.
         template <typename U,
@@ -500,11 +508,13 @@ private:
             // Non-singular iterators must refer to the same container.
             // If they don't, we have UB (assertion failure in debug mode).
             assert(m_container_ptr == other.m_container_ptr);
+
             // NOTE: this is fine when comparing end() with itself,
             // as m_local_it as a unique representation for end
             // iterators.
             return (m_idx == other.m_idx && m_local_it == other.m_local_it);
         }
+
         T &dereference() const
         {
             // Must point to something.
@@ -578,6 +588,7 @@ public:
     {
         return iterator(&m_container, m_container.size());
     }
+
     const symbol_set &get_symbol_set() const
     {
         return m_symbol_set;
@@ -589,6 +600,7 @@ public:
                           "A symbol set can be set only in an empty series, but this series has "
                               + detail::to_string(this->size()) + " terms");
         }
+
         m_symbol_set = s;
     }
 
@@ -757,7 +769,8 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
     os << "Number of terms : " << s.size() << '\n';
 
     if (s.empty()) {
-        os << "0";
+        // Special-case an empty series.
+        os << '0';
         return;
     }
 
@@ -775,8 +788,7 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
             break;
         }
 
-        // Get the string representations
-        // of coefficient and key.
+        // Get the string representations of coefficient and key.
         oss.str("");
         static_cast<::std::ostream &>(oss) << static_cast<const cf_type &>(it->second);
         auto str_cf = oss.str();
@@ -788,23 +800,22 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
         if (str_cf == "1" && str_key != "1") {
             // Suppress the coefficient if it is "1"
             // and the key is not "1".
-            str_cf = "";
+            str_cf.clear();
         } else if (str_cf == "-1" && str_key != "1") {
             // Turn the coefficient into a minus sign
             // if it is -1 and the key is not "1".
-            str_cf = "-";
+            str_cf = '-';
         }
 
         // Append the coefficient.
         ret += str_cf;
-        if (str_cf != "" && str_cf != "-" && str_key != "1") {
+        if (!str_cf.empty() && str_cf != "-" && str_key != "1") {
             // If the abs(coefficient) is not unitary and
-            // the key is not "1", then we need the mult sign.
-            ret += "*";
+            // the key is not "1", then we need the multiplication sign.
+            ret += '*';
         }
 
-        // Append the key, if it is not
-        // unitary.
+        // Append the key, if it is not unitary.
         if (str_key != "1") {
             ret += str_key;
         }
@@ -814,7 +825,7 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
         if (it != end) {
             // Prepare the plus for the next term
             // if we are not at the end.
-            ret += "+";
+            ret += '+';
         }
         ++count;
     }
@@ -831,8 +842,7 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
         if (index == ::std::string::npos) {
             break;
         }
-        ret.replace(index, 2, "-");
-        ++index;
+        ret.replace(index++, 2, 1, '-');
     }
 
     os << ret;

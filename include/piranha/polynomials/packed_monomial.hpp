@@ -128,7 +128,7 @@ public:
     {
         return m_value;
     }
-    // Setter for the internal value
+    // Setter for the internal value.
     constexpr void _set_value(const T &n)
     {
         m_value = n;
