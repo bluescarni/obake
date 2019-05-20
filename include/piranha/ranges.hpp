@@ -32,7 +32,7 @@ template <typename T>
 constexpr auto call_begin(T &&x) PIRANHA_SS_FORWARD_FUNCTION(begin(::std::forward<T>(x)));
 
 template <typename T>
-using begin_t = decltype(::piranha::detail::begin_using_adl::call_begin(::std::declval<T>()));
+using begin_t = decltype(begin_using_adl::call_begin(::std::declval<T>()));
 
 } // namespace begin_using_adl
 
@@ -45,7 +45,7 @@ template <typename T>
 constexpr auto call_end(T &&x) PIRANHA_SS_FORWARD_FUNCTION(end(::std::forward<T>(x)));
 
 template <typename T>
-using end_t = decltype(::piranha::detail::end_using_adl::call_end(::std::declval<T>()));
+using end_t = decltype(end_using_adl::call_end(::std::declval<T>()));
 
 } // namespace end_using_adl
 

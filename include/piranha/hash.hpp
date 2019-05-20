@@ -57,11 +57,11 @@ constexpr auto hash_impl(T &&x, priority_tag<0>)
 // Machinery to enable the hash implementation only if the return
 // type is std::size_t.
 template <typename T>
-using hash_impl_ret_t = decltype(::piranha::detail::hash_impl(::std::declval<T>(), priority_tag<2>{}));
+using hash_impl_ret_t = decltype(detail::hash_impl(::std::declval<T>(), priority_tag<2>{}));
 
 template <typename T, ::std::enable_if_t<::std::is_same_v<detected_t<hash_impl_ret_t, T>, ::std::size_t>, int> = 0>
 constexpr auto hash_impl_with_ret_check(T &&x)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::detail::hash_impl(::std::forward<T>(x), priority_tag<2>{}));
+    PIRANHA_SS_FORWARD_FUNCTION(detail::hash_impl(::std::forward<T>(x), priority_tag<2>{}));
 
 } // namespace detail
 

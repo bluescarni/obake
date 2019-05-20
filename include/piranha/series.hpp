@@ -91,9 +91,9 @@ namespace detail
 //   through const lvalue ref;
 // - provide additional mixing.
 struct key_hasher {
-    static ::std::size_t hash_mixer(const ::std::size_t &h1) noexcept
+    static ::std::size_t hash_mixer(const ::std::size_t &h) noexcept
     {
-        return ::absl::Hash<::std::size_t>{}(h1);
+        return ::absl::Hash<::std::size_t>{}(h);
     }
     template <typename K>
     ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
@@ -187,14 +187,13 @@ inline void series_add_term(S &s, T &&key, U &&cf)
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
                 static_cast<::std::ostream &>(oss) << static_cast<const key_type &>(key);
-                piranha_throw(::std::invalid_argument, "Cannot add a new term to a series: the term's key, \""
-                                                           + oss.str()
-                                                           + "\", is not compatible with the series' symbol set, "
-                                                           + ::piranha::detail::to_string(ss));
+                piranha_throw(::std::invalid_argument,
+                              "Cannot add a new term to a series: the term's key, \"" + oss.str()
+                                  + "\", is not compatible with the series' symbol set, " + detail::to_string(ss));
             } else {
                 piranha_throw(::std::invalid_argument, "Cannot add a new term to a series: the term's key is not "
                                                        "compatible with the series' symbol set, "
-                                                           + ::piranha::detail::to_string(ss));
+                                                           + detail::to_string(ss));
             }
         }
     }
@@ -345,6 +344,7 @@ public:
     void swap(series &other) noexcept
     {
         using ::std::swap;
+
         swap(m_container, other.m_container);
         swap(m_log2_size, other.m_log2_size);
         swap(m_symbol_set, other.m_symbol_set);
@@ -765,7 +765,7 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
     os << "Key type        : " << ::piranha::type_name<key_type>() << '\n';
     os << "Coefficient type: " << ::piranha::type_name<cf_type>() << '\n';
     os << "Tag type        : " << ::piranha::type_name<series_tag_t<series_t>>() << '\n';
-    os << "Symbol set      : " << ::piranha::detail::to_string(s.get_symbol_set()) << '\n';
+    os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
     os << "Number of terms : " << s.size() << '\n';
 
     if (s.empty()) {
@@ -853,11 +853,7 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
 inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) PIRANHA_SS_FORWARD_LAMBDA(
     detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{}));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-template <CvrSeries S>
-#else
-template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
-#endif
+template <typename S>
 constexpr auto operator<<(::std::ostream &os, S &&s)
     PIRANHA_SS_FORWARD_FUNCTION((void(::piranha::series_stream_insert(os, ::std::forward<S>(s))), os));
 
