@@ -38,6 +38,7 @@
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/math/is_zero.hpp>
+#include <piranha/math/negate.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
@@ -70,7 +71,8 @@ using is_cf = ::std::conjunction<
     is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
     is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
     is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
-    is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>>;
+    is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
+    is_negatable<::std::add_lvalue_reference_t<T>>>;
 
 template <typename T>
 inline constexpr bool is_cf_v = is_cf<T>::value;

@@ -10,6 +10,7 @@
 #define PIRANHA_MATH_NEGATE_HPP
 
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 
 #include <mp++/config.hpp>
@@ -128,11 +129,32 @@ constexpr auto negate_impl(T &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(x
 
 } // namespace detail
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+namespace detail
+{
+
+template <typename T>
+using negate_impl_t = decltype(void(detail::negate_impl(::std::declval<T>(), priority_tag<3>{})), ::std::declval<T>());
+
+}
+
+template <typename T, ::std::enable_if_t<is_detected_v<detail::negate_impl_t, T>, int> = 0>
+constexpr T &&negate(T &&x) noexcept(
+    noexcept(void(detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{})), ::std::forward<T>(x)))
+{
+    return void(detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{})), ::std::forward<T>(x);
+}
+
+#else
+
 // NOTE: we return a perfectly forwarded reference to x, that is, the
 // return type is decltype(x) &&.
 inline constexpr auto negate = [](auto &&x)
     PIRANHA_SS_FORWARD_LAMBDA((void(detail::negate_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})),
                                ::std::forward<decltype(x)>(x)));
+
+#endif
 
 namespace detail
 {
