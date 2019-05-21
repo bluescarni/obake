@@ -18,14 +18,14 @@ namespace piranha::detail
 {
     ::std::string retval = "{";
     for (auto it = s.begin(); it != s.end(); ++it) {
-        retval += "'";
+        retval += '\'';
         retval += *it;
-        retval += "'";
+        retval += '\'';
         if (it + 1 != s.end()) {
             retval += ", ";
         }
     }
-    retval += "}";
+    retval += '}';
 
     return retval;
 }
