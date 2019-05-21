@@ -114,7 +114,9 @@ struct key_comparer {
 };
 
 // Helper for inserting a term into a series table.
-template <bool CheckZero, bool CheckTableSize, typename S, typename Table, typename T, typename U>
+// NOTE: this assumes that any check on the input term has been done
+// outside this function.
+template <bool Sign, bool CheckZero, bool CheckTableSize, typename S, typename Table, typename T, typename U>
 inline void series_add_term_table(S &s, Table &t, T &&key, U &&cf)
 {
     // Determine the coefficient type.
@@ -135,38 +137,47 @@ inline void series_add_term_table(S &s, Table &t, T &&key, U &&cf)
     // Attempt the insertion.
     const auto res = t.try_emplace(detail::tcast(::std::forward<T>(key)), detail::tcast(::std::forward<U>(cf)));
 
-    if (!res.second) {
-        // Insertion did not take place because a term with
-        // the same key exists already. Add the input coefficient
-        // to the existing one.
-        // NOTE: after this line, we have modified a coefficient
-        // in the series, and the series might now be in an invalid
-        // state. From now on, we have to pay attention to exception
-        // safety.
-        res.first->second += detail::tcast(::std::forward<U>(cf));
-        // Now check that the updated coefficient is not zero.
-        if constexpr (CheckZero) {
-            try {
+    try {
+        if (res.second) {
+            // The insertion took place. The only
+            // thing we still have to do is to change
+            // the sign of the newly-inserted term,
+            // in case of negative insertion.
+            if constexpr (!Sign) {
+                // NOTE: in the runtime requirements of negate(),
+                // we ask that negation of a nonzero value never produces
+                // a zero value, thus the existing coefficient can
+                // never become zero.
+                ::piranha::negate(static_cast<cf_type &>(res.first->second));
+                // Check that the coefficient did not become zero.
+                assert(!::piranha::is_zero(static_cast<const cf_type &>(res.first->second)));
+            }
+        } else {
+            // Insertion did not take place because a term with
+            // the same key exists already. Add/sub the input coefficient
+            // to/from the existing one.
+            if constexpr (Sign) {
+                res.first->second += detail::tcast(::std::forward<U>(cf));
+            } else {
+                res.first->second -= detail::tcast(::std::forward<U>(cf));
+            }
+            // Now check that the updated coefficient is not zero.
+            if constexpr (CheckZero) {
                 if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
                     t.erase(res.first);
                 }
-            } catch (...) {
-                // NOTE: if is_zero() throws, we may have the table
-                // in an invalid state (a coefficient may be zero).
-                // Clear it before re-throwing.
-                t.clear();
-                throw;
             }
         }
+    } catch (...) {
+        // NOTE: if something threw, the table might now be in an
+        // inconsistent state. Clear it out before rethrowing.
+        t.clear();
+        throw;
     }
 }
 
-// TODO:
-// - negative insertion,
-// - exception safety in case of negative insertion,
-// - double check exception safety with the old code.
 // Helper for inserting a term into a series.
-template <bool CheckZero, bool CheckCompatKey, bool CheckTableSize, typename S, typename T, typename U>
+template <bool Sign, bool CheckZero, bool CheckCompatKey, bool CheckTableSize, typename S, typename T, typename U>
 inline void series_add_term(S &s, T &&key, U &&cf)
 {
     // Determine key/cf types.
@@ -212,7 +223,8 @@ inline void series_add_term(S &s, T &&key, U &&cf)
     if (log2_size == 0u) {
         // NOTE: forcibly set CheckTableSize to false (for a single
         // table, the size limit is always the full range of size_type).
-        detail::series_add_term_table<CheckZero, false>(s, s.s_table[0], ::std::forward<T>(key), ::std::forward<U>(cf));
+        detail::series_add_term_table<Sign, CheckZero, false>(s, s.s_table[0], ::std::forward<T>(key),
+                                                              ::std::forward<U>(cf));
     } else {
         // Compute the hash of the key via piranha::hash().
         const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
@@ -221,8 +233,8 @@ inline void series_add_term(S &s, T &&key, U &&cf)
         const auto table_idx = static_cast<decltype(s.s_table.size())>(k_hash & (log2_size - 1u));
 
         // Proceed to the insertion.
-        detail::series_add_term_table<CheckZero, CheckTableSize>(s, s.s_table[table_idx], ::std::forward<T>(key),
-                                                                 ::std::forward<U>(cf));
+        detail::series_add_term_table<Sign, CheckZero, CheckTableSize>(s, s.s_table[table_idx], ::std::forward<T>(key),
+                                                                       ::std::forward<U>(cf));
     }
 }
 
@@ -240,9 +252,9 @@ template <typename K, typename C, typename Tag,
 class series
 {
     // Make friends with the term insertion helpers.
-    template <bool, bool, bool, typename S, typename T, typename U>
+    template <bool, bool, bool, bool, typename S, typename T, typename U>
     friend void detail::series_add_term(S &, T &&, U &&);
-    template <bool, bool, typename S, typename M, typename T, typename U>
+    template <bool, bool, bool, typename S, typename M, typename T, typename U>
     friend void detail::series_add_term_table(S &, M &, T &&, U &&);
 
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
@@ -605,16 +617,18 @@ public:
         m_symbol_set = s;
     }
 
+    template <bool Sign = true,
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    template <SameCvr<K> T, SameCvr<C> U>
+              SameCvr<K> T, SameCvr<C> U
 #else
-    template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, is_same_cvr<U, C>>, int> = 0>
+              typename T, typename U,
+              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, is_same_cvr<U, C>>, int> = 0
 #endif
+              >
     void add_term(T &&key, U &&cf)
     {
         // NOTE: all checks enabled.
-        detail::series_add_term<true, true, true>(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
+        detail::series_add_term<Sign, true, true, true>(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
     }
 
 private:

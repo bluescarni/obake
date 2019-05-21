@@ -59,5 +59,9 @@ TEST_CASE("pow_test")
     s.add_term(pm_t{0, 0, 0}, 1.);
     s.add_term(pm_t{0, 0, 0}, -1.);
 
+    s.add_term<false>(pm_t{2, 0, -1}, -1.3);
+    s.add_term(pm_t{2, 1, -1}, -1.);
+    s.add_term<false>(pm_t{2, 1, -1}, -1.);
+
     std::cout << s << '\n';
 }
