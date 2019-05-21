@@ -71,30 +71,30 @@ TEST_CASE("negate_arith")
     REQUIRE(negate(4) == -4);
 
     int n = 4;
-    negate(n);
+    REQUIRE(&negate(n) == &n);
     REQUIRE(std::is_same_v<decltype(negate(n)), int &>);
     REQUIRE(n == -4);
-    negate(n);
+    REQUIRE(&negate(n) == &n);
     REQUIRE(n == 4);
 
     unsigned u = 4;
-    negate(u);
+    REQUIRE(&negate(u) == &u);
     REQUIRE(u == std::numeric_limits<unsigned>::max() - 3u);
-    negate(u);
+    REQUIRE(&negate(u) == &u);
     REQUIRE(u == 4u);
 
     auto x = -6.;
-    negate(x);
+    REQUIRE(&negate(x) == &x);
     REQUIRE(x == 6.);
-    negate(x);
+    REQUIRE(&negate(x) == &x);
     REQUIRE(x == -6.);
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
     auto nn = __int128_t(5);
-    negate(nn);
+    REQUIRE(&negate(nn) == &nn);
     REQUIRE(nn == -5);
-    negate(nn);
+    REQUIRE(&negate(nn) == &nn);
     REQUIRE(nn == 5);
 
 #endif
@@ -121,12 +121,12 @@ TEST_CASE("negate_mppp")
 
     REQUIRE(negate(int_t{123}) == -123);
     int_t n{-456};
-    negate(n);
+    REQUIRE(&negate(n) == &n);
     REQUIRE(n == 456);
 
     REQUIRE(negate(rat_t{123, 45}) == -rat_t{123} / 45);
     rat_t q{-456, 7};
-    negate(q);
+    REQUIRE(&negate(q) == &q);
     REQUIRE(q == 456 / rat_t{7});
 
 #if defined(MPPP_WITH_MPFR)
@@ -139,7 +139,7 @@ TEST_CASE("negate_mppp")
 
     REQUIRE(negate(mppp::real{123}) == -mppp::real{123});
     mppp::real r{-456};
-    negate(r);
+    REQUIRE(&negate(r) == &r);
     REQUIRE(r == 456);
 #endif
 }
