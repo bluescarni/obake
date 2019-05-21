@@ -854,7 +854,14 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
 inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) PIRANHA_SS_FORWARD_LAMBDA(
     detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{}));
 
-template <typename S>
+// NOTE: constrain the operator so that it is enabled
+// only if s is a series. This way, we avoid it to be too
+// greedy.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <CvrSeries S>
+#else
+template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
+#endif
 constexpr auto operator<<(::std::ostream &os, S &&s)
     PIRANHA_SS_FORWARD_FUNCTION((void(::piranha::series_stream_insert(os, ::std::forward<S>(s))), os));
 
