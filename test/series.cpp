@@ -30,6 +30,8 @@ TEST_CASE("pow_test")
     using series_t = series<pm_t, double, void>;
 
     series_t s;
+    s._set_nsegments(4);
+
     std::cout << s << '\n';
     REQUIRE(s.empty());
     REQUIRE(s.begin() == s.end());

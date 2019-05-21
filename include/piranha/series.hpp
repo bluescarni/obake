@@ -153,7 +153,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, U &&cf)
                 assert(!::piranha::is_zero(static_cast<const cf_type &>(res.first->second)));
             }
         } else {
-            // Insertion did not take place because a term with
+            // The insertion did not take place because a term with
             // the same key exists already. Add/sub the input coefficient
             // to/from the existing one.
             if constexpr (Sign) {
@@ -161,9 +161,11 @@ inline void series_add_term_table(S &s, Table &t, T &&key, U &&cf)
             } else {
                 res.first->second -= detail::tcast(::std::forward<U>(cf));
             }
+
             // Now check that the updated coefficient is not zero.
             if constexpr (CheckZero) {
                 if (piranha_unlikely(::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
+                    // NOTE: erase cannot throw.
                     t.erase(res.first);
                 }
             }
@@ -348,6 +350,16 @@ public:
                 // No incompatible keys.
                 assert(::piranha::key_is_compatible(static_cast<const K &>(p.first), m_symbol_set));
             }
+
+            // Check that, in a segmented table, all terms are in the table they
+            // belong to, according to the first-level hash.
+            if (m_log2_size > 0u) {
+                for (decltype(s_table.size()) i = 0u; i < s_table.size(); ++i) {
+                    for (const auto &p : s_table[i]) {
+                        assert((::piranha::hash(static_cast<const K &>(p.first)) & (m_log2_size - 1u)) == i);
+                    }
+                }
+            }
         }
 #endif
     }
@@ -464,7 +476,7 @@ private:
             // Cannot be already at the end of the s_table.
             assert(m_idx < s_table_ptr->size());
             // The current table cannot be empty.
-            assert(!s_table_ptr[m_idx].empty());
+            assert(!(*s_table_ptr)[m_idx].empty());
             // The local iterator cannot be pointing
             // at the end of the current table.
             assert(m_local_it != (*s_table_ptr)[m_idx].end());
@@ -629,6 +641,20 @@ public:
     {
         // NOTE: all checks enabled.
         detail::series_add_term<Sign, true, true, true>(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
+    }
+
+    // Set the number of segments (in log2 units).
+    void _set_nsegments(unsigned l)
+    {
+        if (piranha_unlikely(l > max_log2_size)) {
+            piranha_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)
+                                                       + ", as this value exceeds the maximum allowed value (2**"
+                                                       + detail::to_string(max_log2_size) + ")");
+        }
+
+        // NOTE: construct + move assign for exception safety.
+        s_table = s_table_type(s_size_t(1) << l);
+        m_log2_size = static_cast<s_size_t>(l);
     }
 
 private:
