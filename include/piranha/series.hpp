@@ -242,14 +242,38 @@ inline void series_add_term(S &s, T &&key, U &&cf)
 
 } // namespace detail
 
+// Forward declaration.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <Key, Cf, typename>
+#else
+template <typename K, typename C, typename, typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
+#endif
+class series;
+
+namespace detail
+{
+
+template <typename T>
+inline constexpr ::std::size_t series_rank_impl = 0;
+
+template <typename K, typename C, typename Tag>
+inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> = []() {
+    static_assert(series_rank_impl<C> < ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error");
+    return series_rank_impl<C> + 1u;
+}();
+
+} // namespace detail
+
+template <typename T>
+inline constexpr ::std::size_t series_rank = detail::series_rank_impl<T>;
+
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
 // TODO: check construction of const iterators from murable ones.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
-template <typename K, typename C, typename Tag,
-          typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
+template <typename K, typename C, typename Tag, typename>
 #endif
 class series
 {
@@ -746,20 +770,6 @@ struct series_tag_t_impl<series<K, C, Tag>> {
 
 template <typename T>
 using series_tag_t = typename detail::series_tag_t_impl<T>::type;
-
-namespace detail
-{
-
-template <typename T>
-inline constexpr ::std::size_t series_rank_impl = 0;
-
-template <typename K, typename C, typename Tag>
-inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> = series_rank_impl<C> + 1u;
-
-} // namespace detail
-
-template <typename T>
-inline constexpr ::std::size_t series_rank = detail::series_rank_impl<T>;
 
 namespace customisation::internal
 {
