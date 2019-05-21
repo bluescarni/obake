@@ -747,6 +747,20 @@ struct series_tag_t_impl<series<K, C, Tag>> {
 template <typename T>
 using series_tag_t = typename detail::series_tag_t_impl<T>::type;
 
+namespace detail
+{
+
+template <typename T>
+inline constexpr ::std::size_t series_rank_impl = 0;
+
+template <typename K, typename C, typename Tag>
+inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> = series_rank_impl<C> + 1u;
+
+} // namespace detail
+
+template <typename T>
+inline constexpr ::std::size_t series_rank = detail::series_rank_impl<T>;
+
 namespace customisation::internal
 {
 

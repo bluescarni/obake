@@ -29,6 +29,10 @@ TEST_CASE("pow_test")
     using pm_t = packed_monomial<int>;
     using series_t = series<pm_t, double, void>;
 
+    REQUIRE(series_rank<void> == 0u);
+    REQUIRE(series_rank<series_t> == 1u);
+    REQUIRE(series_rank<series_t &> == 0u);
+
     series_t s;
     s._set_nsegments(4);
 
