@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/math/safe_convert.hpp>
 #include <piranha/type_traits.hpp>
@@ -23,7 +24,7 @@ namespace piranha
 {
 
 // Exception to signal failure in piranha::safe_cast().
-class safe_cast_failure final : public ::std::invalid_argument
+class PIRANHA_DLL_PUBLIC_INLINE_CLASS safe_cast_failure final : public ::std::invalid_argument
 {
 public:
     using ::std::invalid_argument::invalid_argument;
