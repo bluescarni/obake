@@ -232,6 +232,19 @@ PIRANHA_CONCEPT_DECL Returnable = is_returnable_v<T>;
 
 #endif
 
+template <typename T, typename... Args>
+using is_constructible = ::std::conjunction<::std::is_constructible<T, Args...>, ::std::is_destructible<T>>;
+
+template <typename T, typename... Args>
+inline constexpr bool is_constructible_v = is_constructible<T, Args...>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename... Args>
+PIRANHA_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
+
+#endif
+
 namespace detail
 {
 

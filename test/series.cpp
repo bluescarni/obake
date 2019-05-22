@@ -33,8 +33,9 @@ TEST_CASE("pow_test")
     REQUIRE(series_rank<series_t> == 1u);
     REQUIRE(series_rank<series_t &> == 0u);
 
-    series_t s;
+    series_t s, s2(4);
     s._set_nsegments(4);
+    std::cout << s2 << '\n';
 
     std::cout << s << '\n';
     REQUIRE(s.empty());

@@ -1594,3 +1594,46 @@ TEST_CASE("compound_subtractable")
     REQUIRE(!CompoundSubtractable<int, int &&>);
 #endif
 }
+
+struct defstr00 {
+    template <typename... Args>
+    defstr00(Args &&...);
+};
+
+struct nondestr00 {
+    nondestr00() = default;
+    ~nondestr00() = delete;
+};
+
+TEST_CASE("constructible")
+{
+    REQUIRE(!is_constructible_v<void>);
+
+    REQUIRE(is_constructible_v<int>);
+    REQUIRE(!is_constructible_v<int, void>);
+    REQUIRE(!is_constructible_v<int &>);
+    REQUIRE(!is_constructible_v<int &&>);
+    REQUIRE(!is_constructible_v<const int &>);
+
+    REQUIRE(is_constructible_v<defstr00>);
+    REQUIRE(is_constructible_v<defstr00, int, int>);
+    REQUIRE(is_constructible_v<defstr00, int &, const int &>);
+
+    REQUIRE(!is_constructible_v<nondestr00>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Constructible<void>);
+
+    REQUIRE(Constructible<int>);
+    REQUIRE(!Constructible<int, void>);
+    REQUIRE(!Constructible<int &>);
+    REQUIRE(!Constructible<int &&>);
+    REQUIRE(!Constructible<const int &>);
+
+    REQUIRE(Constructible<defstr00>);
+    REQUIRE(Constructible<defstr00, int, int>);
+    REQUIRE(Constructible<defstr00, int &, const int &>);
+
+    REQUIRE(!Constructible<nondestr00>);
+#endif
+}

@@ -225,18 +225,18 @@ inline void series_add_term(S &s, T &&key, U &&cf)
     if (log2_size == 0u) {
         // NOTE: forcibly set CheckTableSize to false (for a single
         // table, the size limit is always the full range of size_type).
-        detail::series_add_term_table<Sign, CheckZero, false>(s, s.s_table[0], ::std::forward<T>(key),
+        detail::series_add_term_table<Sign, CheckZero, false>(s, s.m_s_table[0], ::std::forward<T>(key),
                                                               ::std::forward<U>(cf));
     } else {
         // Compute the hash of the key via piranha::hash().
         const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
 
         // Determine the destination table.
-        const auto table_idx = static_cast<decltype(s.s_table.size())>(k_hash & (log2_size - 1u));
+        const auto table_idx = static_cast<decltype(s.m_s_table.size())>(k_hash & (log2_size - 1u));
 
         // Proceed to the insertion.
-        detail::series_add_term_table<Sign, CheckZero, CheckTableSize>(s, s.s_table[table_idx], ::std::forward<T>(key),
-                                                                       ::std::forward<U>(cf));
+        detail::series_add_term_table<Sign, CheckZero, CheckTableSize>(s, s.m_s_table[table_idx],
+                                                                       ::std::forward<T>(key), ::std::forward<U>(cf));
     }
 }
 
@@ -266,459 +266,6 @@ inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> = []() {
 
 template <typename T>
 inline constexpr ::std::size_t series_rank = detail::series_rank_impl<T>;
-
-// TODO: document that moved-from series are destructible and assignable.
-// TODO: test singular iterators.
-// TODO: check construction of const iterators from murable ones.
-#if defined(PIRANHA_HAVE_CONCEPTS)
-template <Key K, Cf C, typename Tag>
-#else
-template <typename K, typename C, typename Tag, typename>
-#endif
-class series
-{
-    // Make friends with the term insertion helpers.
-    template <bool, bool, bool, bool, typename S, typename T, typename U>
-    friend void detail::series_add_term(S &, T &&, U &&);
-    template <bool, bool, bool, typename S, typename M, typename T, typename U>
-    friend void detail::series_add_term_table(S &, M &, T &&, U &&);
-
-    // Define the table type, and the type holding the set of tables (i.e., the segmented table).
-    using table_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
-    using s_table_type = ::boost::container::small_vector<table_type, 1>;
-
-    // Shortcut for the s_table size type.
-    using s_size_t = typename s_table_type::size_type;
-
-    // The maximum value of the m_log2_size member. Fix
-    // it to the number of bits - 1 so that it's always
-    // safe to bit shift a value of type s_size_t by
-    // this amount.
-    static constexpr s_size_t max_log2_size = static_cast<s_size_t>(detail::limits_digits<s_size_t> - 1);
-
-public:
-    using size_type = typename table_type::size_type;
-
-    series() : s_table(1), m_log2_size(0) {}
-    series(const series &) = default;
-    series(series &&other) noexcept
-        : s_table(::std::move(other.s_table)), m_log2_size(::std::move(other.m_log2_size)),
-          m_symbol_set(::std::move(other.m_symbol_set))
-    {
-#if !defined(NDEBUG)
-        // In debug mode, clear the other s_table
-        // in order to flag that other was moved from.
-        // This allows to run debug checks in the
-        // destructor, if we know the series is in
-        // a valid state.
-        other.s_table.clear();
-#endif
-    }
-
-    series &operator=(const series &) = default;
-    series &operator=(series &&other) noexcept
-    {
-        // NOTE: assuming self-assignment is handled
-        // correctly by the members.
-        s_table = ::std::move(other.s_table);
-        m_log2_size = ::std::move(other.m_log2_size);
-        m_symbol_set = ::std::move(other.m_symbol_set);
-
-#if !defined(NDEBUG)
-        // NOTE: see above.
-        other.s_table.clear();
-#endif
-
-        return *this;
-    }
-
-private:
-    // Get the maximum size of the tables.
-    // This will ensure that size_type can always
-    // represent the total number of terms in the
-    // series.
-    size_type get_max_table_size() const
-    {
-        // NOTE: use a division rather than right shift,
-        // so that we don't have to worry about shifting
-        // too much. This will anyway be optimised into a
-        // shift by the compiler.
-        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (s_size_t(1) << m_log2_size));
-    }
-
-public:
-    ~series()
-    {
-#if !defined(NDEBUG)
-        // Don't run the checks if this
-        // series was moved-from.
-        if (!s_table.empty()) {
-            // Make sure m_log2_size is within the limit.
-            assert(m_log2_size <= max_log2_size);
-
-            // Make sure the number of tables is consistent
-            // with the log2 size.
-            assert(s_table.size() == (s_size_t(1) << m_log2_size));
-
-            // Make sure the size of each table does not exceed the limit.
-            const auto mts = get_max_table_size();
-            for (const auto &t : s_table) {
-                assert(t.size() <= mts);
-            }
-
-            // Check all terms.
-            for (const auto &p : *this) {
-                // No zero terms.
-                assert(!::piranha::key_is_zero(static_cast<const K &>(p.first), m_symbol_set)
-                       && !::piranha::is_zero(static_cast<const C &>(p.second)));
-                // No incompatible keys.
-                assert(::piranha::key_is_compatible(static_cast<const K &>(p.first), m_symbol_set));
-            }
-
-            // Check that, in a segmented table, all terms are in the table they
-            // belong to, according to the first-level hash.
-            if (m_log2_size > 0u) {
-                for (decltype(s_table.size()) i = 0u; i < s_table.size(); ++i) {
-                    for (const auto &p : s_table[i]) {
-                        assert((::piranha::hash(static_cast<const K &>(p.first)) & (m_log2_size - 1u)) == i);
-                    }
-                }
-            }
-        }
-#endif
-    }
-
-    // Member function implementation of the swap primitive.
-    void swap(series &other) noexcept
-    {
-        using ::std::swap;
-
-        swap(s_table, other.s_table);
-        swap(m_log2_size, other.m_log2_size);
-        swap(m_symbol_set, other.m_symbol_set);
-    }
-
-    bool empty() const noexcept
-    {
-        return ::std::all_of(s_table.begin(), s_table.end(), [](const auto &table) { return table.empty(); });
-    }
-
-    size_type size() const noexcept
-    {
-        // NOTE: this will never overflow, as we enforce the constraint
-        // that the size of each table is small enough to avoid overflows.
-        return ::std::accumulate(s_table.begin(), s_table.end(), size_type(0),
-                                 [](const auto &cur, const auto &table) { return cur + table.size(); });
-    }
-
-private:
-    // A small helper to select the (const) iterator of s_table_type, depending on whether
-    // T is const or not. Used in the iterator implementation below.
-    template <typename T>
-    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename s_table_type::value_type::const_iterator,
-                                            typename s_table_type::value_type::iterator>;
-
-    // NOTE: this is mostly taken from:
-    // https://www.boost.org/doc/libs/1_70_0/libs/iterator/doc/iterator_facade.html
-    template <typename T>
-    class iterator_impl
-        : public ::boost::iterator_facade<iterator_impl<T>, T, ::boost::forward_traversal_tag, T &,
-                                          // Fetch the difference type from the underlying local iterator.
-                                          typename ::std::iterator_traits<local_it_t<T>>::difference_type>
-    {
-        // Make friends with other specialisations for interoperability
-        // between const/non-const variants.
-        template <typename U>
-        friend class iterator_impl;
-        // Make friends with boost's iterator machinery.
-        friend class ::boost::iterator_core_access;
-        // Make friends also with the series class, as sometimes
-        // we need to poke the internals of the iterator from there.
-        friend class series;
-
-        // Select the type of the pointer to the s_table with the
-        // correct constness.
-        using s_table_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const s_table_type *, s_table_type *>;
-
-    public:
-        // Defaul constructor.
-        // NOTE: C++14 requires that all value-inited forward iterators
-        // compare equal. This is guaranteed by this constructor, since
-        // local_it_t is also a forward iterator which is default-inited.
-        // https://en.cppreference.com/w/cpp/named_req/ForwardIterator
-        iterator_impl() : s_table_ptr(nullptr), m_idx(0), m_local_it{} {}
-
-        // Init with a pointer to the s_table and an index.
-        // Used in the begin()/end() implementations.
-        // NOTE: ensure m_local_it is default-inited, so it is in
-        // a known state. This is also exploited in the implementation
-        // of begin()/end().
-        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_t idx)
-            : s_table_ptr(s_table_ptr), m_idx(idx), m_local_it{}
-        {
-        }
-
-        // Default the copy/move ctors.
-        iterator_impl(const iterator_impl &) = default;
-        iterator_impl(iterator_impl &&) = default;
-
-        // Implicit converting ctor from another specialisation. This is
-        // used to construct a const iterator from a mutable one.
-        template <typename U,
-                  ::std::enable_if_t<
-                      ::std::conjunction_v<
-                          // NOTE: prevent competition with the
-                          // copy constructor.
-                          ::std::negation<::std::is_same<T, U>>,
-                          ::std::is_constructible<s_table_ptr_t, const typename iterator_impl<U>::s_table_ptr_t &>,
-                          ::std::is_constructible<local_it_t<T>, const local_it_t<U> &>>,
-                      int> = 0>
-        iterator_impl(const iterator_impl<U> &other)
-            : s_table_ptr(other.s_table_ptr), m_idx(other.m_idx), m_local_it(other.m_local_it)
-        {
-        }
-
-        // Specialise the swap primitive.
-        friend void swap(iterator_impl &it1, iterator_impl &it2) noexcept
-        {
-            using ::std::swap;
-
-            swap(it1.s_table_ptr, it2.s_table_ptr);
-            swap(it1.m_idx, it2.m_idx);
-            // NOTE: all iterators are required to be swappable,
-            // so this must always be supported by the local iterator
-            // type. If it throws (unlikely), the program will
-            // terminate as we are marking this function as noexcept.
-            swap(it1.m_local_it, it2.m_local_it);
-        }
-
-    private:
-        void increment()
-        {
-            // Must be pointing to something.
-            assert(s_table_ptr != nullptr);
-            // Cannot be already at the end of the s_table.
-            assert(m_idx < s_table_ptr->size());
-            // The current table cannot be empty.
-            assert(!(*s_table_ptr)[m_idx].empty());
-            // The local iterator cannot be pointing
-            // at the end of the current table.
-            assert(m_local_it != (*s_table_ptr)[m_idx].end());
-
-            // Move to the next item in the current table.
-            auto &st = *s_table_ptr;
-            ++m_local_it;
-
-            // NOTE: we expect to have many more elements per
-            // table than the total number of tables, hence
-            // moving to the next table should be a relatively
-            // rare occurrence.
-            if (piranha_unlikely(m_local_it == st[m_idx].end())) {
-                // We reached the end of the current table.
-                // Keep bumping m_idx until we either
-                // arrive in a non-empty table, or we reach
-                // the end of the s_table.
-                const auto st_size = st.size();
-                while (true) {
-                    ++m_idx;
-                    if (m_idx == st_size) {
-                        // End of the s_table, reset m_local_it to
-                        // value-inited and exit.
-                        // NOTE: this is important, because this is now an end()
-                        // iterator and end() iterators contain a value-inited
-                        // local iterator.
-                        m_local_it = local_it_t<T>{};
-                        break;
-                    } else if (!st[m_idx].empty()) {
-                        // The next non-empty table was found.
-                        // Set m_local_it to its beginning and exit.
-                        m_local_it = st[m_idx].begin();
-                        break;
-                    }
-                }
-            }
-        }
-
-        // NOTE: templated in order to enable comparisons
-        // between the const and mutable variants.
-        template <typename U,
-                  ::std::enable_if_t<is_equality_comparable_v<const local_it_t<T> &, const local_it_t<U> &>, int> = 0>
-        bool equal(const iterator_impl<U> &other) const
-        {
-            // NOTE: comparison is defined either for singular iterators,
-            // or for iterators referring to the same underlying sequence.
-            //
-            // Singular iterators are signalled by a null s_table pointer,
-            // zero index and a singular local iterator. Thus, using this
-            // comparison operator with two singular iterators will always
-            // yield true, as required.
-            //
-            // Non-singular iterators must refer to the same s_table.
-            // If they don't, we have UB (assertion failure in debug mode).
-            assert(s_table_ptr == other.s_table_ptr);
-
-            // NOTE: this is fine when comparing end() with itself,
-            // as m_local_it as a unique representation for end
-            // iterators.
-            return (m_idx == other.m_idx && m_local_it == other.m_local_it);
-        }
-
-        T &dereference() const
-        {
-            // Must point to something.
-            assert(s_table_ptr);
-            // Must not be the end iterator.
-            assert(m_idx < s_table_ptr->size());
-            // The current table must not be empty.
-            assert(!(*s_table_ptr)[m_idx].empty());
-            // The local iterator must not point to the
-            // end of the current table.
-            assert(m_local_it != (*s_table_ptr)[m_idx].end());
-
-            return *m_local_it;
-        }
-
-    private:
-        s_table_ptr_t s_table_ptr;
-        s_size_t m_idx;
-        local_it_t<T> m_local_it;
-    };
-
-public:
-    using iterator = iterator_impl<typename table_type::value_type>;
-    using const_iterator = iterator_impl<const typename table_type::value_type>;
-
-private:
-    // Abstract out the begin implementation to accommodate
-    // const and non-const variants.
-    template <typename It, typename STable>
-    static It begin_impl(STable &c)
-    {
-        It retval(&c, 0);
-        // Look for a non-empty table.
-        for (auto &table : c) {
-            if (!table.empty()) {
-                retval.m_local_it = table.begin();
-                break;
-            }
-            ++retval.m_idx;
-        }
-        // NOTE: if all the tables are empty, or the s_table
-        // is empty, m_idx is now set to the size of s_table
-        // and the local iterator stays in its value-inited
-        // state. That is, retval becomes the end iterator.
-        return retval;
-    }
-
-public:
-    const_iterator begin() const noexcept
-    {
-        return series::begin_impl<const_iterator>(s_table);
-    }
-    const_iterator end() const noexcept
-    {
-        // NOTE: end iterators contain a value-inited
-        // local iterator.
-        return const_iterator(&s_table, s_table.size());
-    }
-    const_iterator cbegin() const noexcept
-    {
-        return begin();
-    }
-    const_iterator cend() const noexcept
-    {
-        return end();
-    }
-    iterator begin() noexcept
-    {
-        return series::begin_impl<iterator>(s_table);
-    }
-    iterator end() noexcept
-    {
-        return iterator(&s_table, s_table.size());
-    }
-
-    const symbol_set &get_symbol_set() const
-    {
-        return m_symbol_set;
-    }
-    void set_symbol_set(const symbol_set &s)
-    {
-        if (piranha_unlikely(!this->empty())) {
-            piranha_throw(::std::invalid_argument,
-                          "A symbol set can be set only in an empty series, but this series has "
-                              + detail::to_string(this->size()) + " terms");
-        }
-
-        m_symbol_set = s;
-    }
-
-    template <bool Sign = true,
-#if defined(PIRANHA_HAVE_CONCEPTS)
-              SameCvr<K> T, SameCvr<C> U
-#else
-              typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, is_same_cvr<U, C>>, int> = 0
-#endif
-              >
-    void add_term(T &&key, U &&cf)
-    {
-        // NOTE: all checks enabled.
-        detail::series_add_term<Sign, true, true, true>(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
-    }
-
-    // Set the number of segments (in log2 units).
-    void _set_nsegments(unsigned l)
-    {
-        if (piranha_unlikely(l > max_log2_size)) {
-            piranha_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)
-                                                       + ", as this value exceeds the maximum allowed value (2**"
-                                                       + detail::to_string(max_log2_size) + ")");
-        }
-
-        // NOTE: construct + move assign for exception safety.
-        s_table = s_table_type(s_size_t(1) << l);
-        m_log2_size = static_cast<s_size_t>(l);
-    }
-
-private:
-    s_table_type s_table;
-    s_size_t m_log2_size;
-    symbol_set m_symbol_set;
-};
-
-// Free function implementation of the swapping primitive.
-template <typename K, typename C, typename Tag>
-inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
-{
-    s1.swap(s2);
-}
-
-namespace detail
-{
-
-template <typename T>
-struct is_series_impl : ::std::false_type {
-};
-
-template <typename K, typename C, typename Tag>
-struct is_series_impl<series<K, C, Tag>> : ::std::true_type {
-};
-
-} // namespace detail
-
-template <typename T>
-using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
-
-template <typename T>
-inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T>
-PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
-
-#endif
 
 namespace detail
 {
@@ -770,6 +317,473 @@ struct series_tag_t_impl<series<K, C, Tag>> {
 
 template <typename T>
 using series_tag_t = typename detail::series_tag_t_impl<T>::type;
+
+// TODO: document that moved-from series are destructible and assignable.
+// TODO: test singular iterators.
+// TODO: check construction of const iterators from murable ones.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <Key K, Cf C, typename Tag>
+#else
+template <typename K, typename C, typename Tag, typename>
+#endif
+class series
+{
+    // Make friends with the term insertion helpers.
+    template <bool, bool, bool, bool, typename S, typename T, typename U>
+    friend void detail::series_add_term(S &, T &&, U &&);
+    template <bool, bool, bool, typename S, typename M, typename T, typename U>
+    friend void detail::series_add_term_table(S &, M &, T &&, U &&);
+
+    // Define the table type, and the type holding the set of tables (i.e., the segmented table).
+    using table_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
+    using s_table_type = ::boost::container::small_vector<table_type, 1>;
+
+    // Shortcut for the segmented table size type.
+    using s_size_t = typename s_table_type::size_type;
+
+    // The maximum value of the m_log2_size member. Fix
+    // it to the number of bits - 1 so that it's always
+    // safe to bit shift a value of type s_size_t by
+    // this amount.
+    static constexpr s_size_t max_log2_size = static_cast<s_size_t>(detail::limits_digits<s_size_t> - 1);
+
+public:
+    using size_type = typename table_type::size_type;
+
+    series() : m_s_table(1), m_log2_size(0) {}
+    series(const series &) = default;
+    series(series &&other) noexcept
+        : m_s_table(::std::move(other.m_s_table)), m_log2_size(::std::move(other.m_log2_size)),
+          m_symbol_set(::std::move(other.m_symbol_set))
+    {
+#if !defined(NDEBUG)
+        // In debug mode, clear the other segmented table
+        // in order to flag that other was moved from.
+        // This allows to run debug checks in the
+        // destructor, if we know the series is in
+        // a valid state.
+        other.m_s_table.clear();
+#endif
+    }
+
+    // TODO finish up.
+    template <typename T>
+    using barrer
+        = ::std::conjunction<::std::negation<::std::is_same<remove_cvref_t<T>, series>>,
+                             ::std::disjunction<::std::conjunction<
+                                 ::std::integral_constant<bool, (series_rank<remove_cvref_t<T>> < series_rank<series>)>,
+                                 is_constructible<C, T>>>>;
+
+    template <typename T, ::std::enable_if_t<barrer<T>::value, int> = 0>
+    explicit series(T &&x) : series()
+    {
+        m_s_table[0].try_emplace(K{}, ::std::forward<T>(x));
+    }
+
+    series &operator=(const series &) = default;
+    series &operator=(series &&other) noexcept
+    {
+        // NOTE: assuming self-assignment is handled
+        // correctly by the members.
+        m_s_table = ::std::move(other.m_s_table);
+        m_log2_size = ::std::move(other.m_log2_size);
+        m_symbol_set = ::std::move(other.m_symbol_set);
+
+#if !defined(NDEBUG)
+        // NOTE: see above.
+        other.m_s_table.clear();
+#endif
+
+        return *this;
+    }
+
+private:
+    // Get the maximum size of the tables.
+    // This will ensure that size_type can always
+    // represent the total number of terms in the
+    // series.
+    size_type get_max_table_size() const
+    {
+        // NOTE: use a division rather than right shift,
+        // so that we don't have to worry about shifting
+        // too much. This will anyway be optimised into a
+        // shift by the compiler.
+        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (s_size_t(1) << m_log2_size));
+    }
+
+public:
+    ~series()
+    {
+#if !defined(NDEBUG)
+        // Don't run the checks if this
+        // series was moved-from.
+        if (!m_s_table.empty()) {
+            // Make sure m_log2_size is within the limit.
+            assert(m_log2_size <= max_log2_size);
+
+            // Make sure the number of tables is consistent
+            // with the log2 size.
+            assert(m_s_table.size() == (s_size_t(1) << m_log2_size));
+
+            // Make sure the size of each table does not exceed the limit.
+            const auto mts = get_max_table_size();
+            for (const auto &t : m_s_table) {
+                assert(t.size() <= mts);
+            }
+
+            // Check all terms.
+            for (const auto &p : *this) {
+                // No zero terms.
+                assert(!::piranha::key_is_zero(static_cast<const K &>(p.first), m_symbol_set)
+                       && !::piranha::is_zero(static_cast<const C &>(p.second)));
+                // No incompatible keys.
+                assert(::piranha::key_is_compatible(static_cast<const K &>(p.first), m_symbol_set));
+            }
+
+            // Check that, in a segmented table, all terms are in the table they
+            // belong to, according to the first-level hash.
+            if (m_log2_size > 0u) {
+                for (decltype(m_s_table.size()) i = 0u; i < m_s_table.size(); ++i) {
+                    for (const auto &p : m_s_table[i]) {
+                        assert((::piranha::hash(static_cast<const K &>(p.first)) & (m_log2_size - 1u)) == i);
+                    }
+                }
+            }
+        }
+#endif
+    }
+
+    // Member function implementation of the swap primitive.
+    void swap(series &other) noexcept
+    {
+        using ::std::swap;
+
+        swap(m_s_table, other.m_s_table);
+        swap(m_log2_size, other.m_log2_size);
+        swap(m_symbol_set, other.m_symbol_set);
+    }
+
+    bool empty() const noexcept
+    {
+        return ::std::all_of(m_s_table.begin(), m_s_table.end(), [](const auto &table) { return table.empty(); });
+    }
+
+    size_type size() const noexcept
+    {
+        // NOTE: this will never overflow, as we enforce the constraint
+        // that the size of each table is small enough to avoid overflows.
+        return ::std::accumulate(m_s_table.begin(), m_s_table.end(), size_type(0),
+                                 [](const auto &cur, const auto &table) { return cur + table.size(); });
+    }
+
+private:
+    // A small helper to select the (const) iterator of s_table_type, depending on whether
+    // T is const or not. Used in the iterator implementation below.
+    template <typename T>
+    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename s_table_type::value_type::const_iterator,
+                                            typename s_table_type::value_type::iterator>;
+
+    // NOTE: this is mostly taken from:
+    // https://www.boost.org/doc/libs/1_70_0/libs/iterator/doc/iterator_facade.html
+    template <typename T>
+    class iterator_impl
+        : public ::boost::iterator_facade<iterator_impl<T>, T, ::boost::forward_traversal_tag, T &,
+                                          // Fetch the difference type from the underlying local iterator.
+                                          typename ::std::iterator_traits<local_it_t<T>>::difference_type>
+    {
+        // Make friends with other specialisations for interoperability
+        // between const/non-const variants.
+        template <typename U>
+        friend class iterator_impl;
+        // Make friends with boost's iterator machinery.
+        friend class ::boost::iterator_core_access;
+        // Make friends also with the series class, as sometimes
+        // we need to poke the internals of the iterator from there.
+        friend class series;
+
+        // Select the type of the pointer to the segmented table
+        // with the correct constness.
+        using s_table_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const s_table_type *, s_table_type *>;
+
+    public:
+        // Defaul constructor.
+        // NOTE: C++14 requires that all value-inited forward iterators
+        // compare equal. This is guaranteed by this constructor, since
+        // local_it_t is also a forward iterator which is default-inited.
+        // https://en.cppreference.com/w/cpp/named_req/ForwardIterator
+        iterator_impl() : m_s_table_ptr(nullptr), m_idx(0), m_local_it{} {}
+
+        // Init with a pointer to the segmented table and an index.
+        // Used in the begin()/end() implementations.
+        // NOTE: ensure m_local_it is default-inited, so it is in
+        // a known state. This is also exploited in the implementation
+        // of begin()/end().
+        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_t idx)
+            : m_s_table_ptr(s_table_ptr), m_idx(idx), m_local_it{}
+        {
+        }
+
+        // Default the copy/move ctors.
+        iterator_impl(const iterator_impl &) = default;
+        iterator_impl(iterator_impl &&) = default;
+
+        // Implicit converting ctor from another specialisation. This is
+        // used to construct a const iterator from a mutable one.
+        template <typename U,
+                  ::std::enable_if_t<
+                      ::std::conjunction_v<
+                          // NOTE: prevent competition with the
+                          // copy constructor.
+                          ::std::negation<::std::is_same<T, U>>,
+                          ::std::is_constructible<s_table_ptr_t, const typename iterator_impl<U>::s_table_ptr_t &>,
+                          ::std::is_constructible<local_it_t<T>, const local_it_t<U> &>>,
+                      int> = 0>
+        iterator_impl(const iterator_impl<U> &other)
+            : m_s_table_ptr(other.m_s_table_ptr), m_idx(other.m_idx), m_local_it(other.m_local_it)
+        {
+        }
+
+        // Specialise the swap primitive.
+        friend void swap(iterator_impl &it1, iterator_impl &it2) noexcept
+        {
+            using ::std::swap;
+
+            swap(it1.m_s_table_ptr, it2.m_s_table_ptr);
+            swap(it1.m_idx, it2.m_idx);
+            // NOTE: all iterators are required to be swappable,
+            // so this must always be supported by the local iterator
+            // type. If it throws (unlikely), the program will
+            // terminate as we are marking this function as noexcept.
+            swap(it1.m_local_it, it2.m_local_it);
+        }
+
+    private:
+        void increment()
+        {
+            // Must be pointing to something.
+            assert(m_s_table_ptr != nullptr);
+            // Cannot be already at the end of the segmented table.
+            assert(m_idx < m_s_table_ptr->size());
+            // The current table cannot be empty.
+            assert(!(*m_s_table_ptr)[m_idx].empty());
+            // The local iterator cannot be pointing
+            // at the end of the current table.
+            assert(m_local_it != (*m_s_table_ptr)[m_idx].end());
+
+            // Move to the next item in the current table.
+            auto &st = *m_s_table_ptr;
+            ++m_local_it;
+
+            // NOTE: we expect to have many more elements per
+            // table than the total number of tables, hence
+            // moving to the next table should be a relatively
+            // rare occurrence.
+            if (piranha_unlikely(m_local_it == st[m_idx].end())) {
+                // We reached the end of the current table.
+                // Keep bumping m_idx until we either
+                // arrive in a non-empty table, or we reach
+                // the end of the segmented table.
+                const auto st_size = st.size();
+                while (true) {
+                    ++m_idx;
+                    if (m_idx == st_size) {
+                        // End of the segmented table, reset m_local_it to
+                        // value-inited and exit.
+                        // NOTE: this is important, because this is now an end()
+                        // iterator and end() iterators contain a value-inited
+                        // local iterator.
+                        m_local_it = local_it_t<T>{};
+                        break;
+                    } else if (!st[m_idx].empty()) {
+                        // The next non-empty table was found.
+                        // Set m_local_it to its beginning and exit.
+                        m_local_it = st[m_idx].begin();
+                        break;
+                    }
+                }
+            }
+        }
+
+        // NOTE: templated in order to enable comparisons
+        // between the const and mutable variants.
+        template <typename U,
+                  ::std::enable_if_t<is_equality_comparable_v<const local_it_t<T> &, const local_it_t<U> &>, int> = 0>
+        bool equal(const iterator_impl<U> &other) const
+        {
+            // NOTE: comparison is defined either for singular iterators,
+            // or for iterators referring to the same underlying sequence.
+            //
+            // Singular iterators are signalled by a null segmented table pointer,
+            // zero index and a singular local iterator. Thus, using this
+            // comparison operator with two singular iterators will always
+            // yield true, as required.
+            //
+            // Non-singular iterators must refer to the same segmented table.
+            // If they don't, we have UB (assertion failure in debug mode).
+            assert(m_s_table_ptr == other.m_s_table_ptr);
+
+            // NOTE: this is fine when comparing end() with itself,
+            // as m_local_it as a unique representation for end
+            // iterators.
+            return (m_idx == other.m_idx && m_local_it == other.m_local_it);
+        }
+
+        T &dereference() const
+        {
+            // Must point to something.
+            assert(m_s_table_ptr);
+            // Must not be the end iterator.
+            assert(m_idx < m_s_table_ptr->size());
+            // The current table must not be empty.
+            assert(!(*m_s_table_ptr)[m_idx].empty());
+            // The local iterator must not point to the
+            // end of the current table.
+            assert(m_local_it != (*m_s_table_ptr)[m_idx].end());
+
+            return *m_local_it;
+        }
+
+    private:
+        s_table_ptr_t m_s_table_ptr;
+        s_size_t m_idx;
+        local_it_t<T> m_local_it;
+    };
+
+public:
+    using iterator = iterator_impl<typename table_type::value_type>;
+    using const_iterator = iterator_impl<const typename table_type::value_type>;
+
+private:
+    // Abstract out the begin implementation to accommodate
+    // const and non-const variants.
+    template <typename It, typename STable>
+    static It begin_impl(STable &c)
+    {
+        It retval(&c, 0);
+        // Look for a non-empty table.
+        for (auto &table : c) {
+            if (!table.empty()) {
+                retval.m_local_it = table.begin();
+                break;
+            }
+            ++retval.m_idx;
+        }
+        // NOTE: if all the tables are empty, or the segmented table
+        // is empty, m_idx is now set to the size of segmented table
+        // and the local iterator stays in its value-inited
+        // state. That is, retval becomes the end iterator.
+        return retval;
+    }
+
+public:
+    const_iterator begin() const noexcept
+    {
+        return series::begin_impl<const_iterator>(m_s_table);
+    }
+    const_iterator end() const noexcept
+    {
+        // NOTE: end iterators contain a value-inited
+        // local iterator.
+        return const_iterator(&m_s_table, m_s_table.size());
+    }
+    const_iterator cbegin() const noexcept
+    {
+        return begin();
+    }
+    const_iterator cend() const noexcept
+    {
+        return end();
+    }
+    iterator begin() noexcept
+    {
+        return series::begin_impl<iterator>(m_s_table);
+    }
+    iterator end() noexcept
+    {
+        return iterator(&m_s_table, m_s_table.size());
+    }
+
+    const symbol_set &get_symbol_set() const
+    {
+        return m_symbol_set;
+    }
+    void set_symbol_set(const symbol_set &s)
+    {
+        if (piranha_unlikely(!this->empty())) {
+            piranha_throw(::std::invalid_argument,
+                          "A symbol set can be set only in an empty series, but this series has "
+                              + detail::to_string(this->size()) + " terms");
+        }
+
+        m_symbol_set = s;
+    }
+
+    template <bool Sign = true,
+#if defined(PIRANHA_HAVE_CONCEPTS)
+              SameCvr<K> T, SameCvr<C> U
+#else
+              typename T, typename U,
+              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, is_same_cvr<U, C>>, int> = 0
+#endif
+              >
+    void add_term(T &&key, U &&cf)
+    {
+        // NOTE: all checks enabled.
+        detail::series_add_term<Sign, true, true, true>(*this, ::std::forward<T>(key), ::std::forward<U>(cf));
+    }
+
+    // Set the number of segments (in log2 units).
+    void _set_nsegments(unsigned l)
+    {
+        if (piranha_unlikely(l > max_log2_size)) {
+            piranha_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)
+                                                       + ", as this value exceeds the maximum allowed value (2**"
+                                                       + detail::to_string(max_log2_size) + ")");
+        }
+
+        // NOTE: construct + move assign for exception safety.
+        m_s_table = s_table_type(s_size_t(1) << l);
+        m_log2_size = static_cast<s_size_t>(l);
+    }
+
+private:
+    s_table_type m_s_table;
+    s_size_t m_log2_size;
+    symbol_set m_symbol_set;
+};
+
+// Free function implementation of the swapping primitive.
+template <typename K, typename C, typename Tag>
+inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
+{
+    s1.swap(s2);
+}
+
+namespace detail
+{
+
+template <typename T>
+struct is_series_impl : ::std::false_type {
+};
+
+template <typename K, typename C, typename Tag>
+struct is_series_impl<series<K, C, Tag>> : ::std::true_type {
+};
+
+} // namespace detail
+
+template <typename T>
+using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
+
+template <typename T>
+inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
+
+#endif
 
 namespace customisation::internal
 {
