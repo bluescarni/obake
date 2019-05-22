@@ -25,6 +25,7 @@
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_is_compatible.hpp>
+#include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/symbols.hpp>
@@ -61,6 +62,11 @@ TEST_CASE("ctor_test")
         REQUIRE(key_is_compatible(pm_t(symbol_set{"x"}), symbol_set{"x"}));
         REQUIRE(key_is_compatible(pm_t(symbol_set{"x", "y"}), symbol_set{"x", "y"}));
         REQUIRE(key_is_compatible(pm_t(symbol_set{"x", "y", "z"}), symbol_set{"x", "y", "z"}));
+
+        REQUIRE(key_is_one(pm_t(symbol_set{}), symbol_set{}));
+        REQUIRE(key_is_one(pm_t(symbol_set{"x"}), symbol_set{"x"}));
+        REQUIRE(key_is_one(pm_t(symbol_set{"x", "y"}), symbol_set{"x", "y"}));
+        REQUIRE(key_is_one(pm_t(symbol_set{"x", "y", "z"}), symbol_set{"x", "y", "z"}));
 
         // Ctor from input iterator and size.
         int_t arr[] = {1, 2, 3};
@@ -104,7 +110,33 @@ TEST_CASE("key_is_zero_test")
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
+
         REQUIRE(is_zero_testable_key_v<pm_t>);
+        REQUIRE(is_zero_testable_key_v<pm_t &>);
+        REQUIRE(is_zero_testable_key_v<const pm_t &>);
+        REQUIRE(is_zero_testable_key_v<pm_t &&>);
+    });
+}
+
+TEST_CASE("key_is_one_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(key_is_one(pm_t{}, symbol_set{}));
+        REQUIRE(key_is_one(pm_t{0, 0, 0}, symbol_set{"x", "y", "z"}));
+        REQUIRE(!key_is_one(pm_t{1, 0, 0}, symbol_set{"x", "y", "z"}));
+        REQUIRE(!key_is_one(pm_t{0, 1, 0}, symbol_set{"x", "y", "z"}));
+        REQUIRE(!key_is_one(pm_t{0, 0, 1}, symbol_set{"x", "y", "z"}));
+        REQUIRE(!key_is_one(pm_t{1, 1, 0}, symbol_set{"x", "y", "z"}));
+        REQUIRE(!key_is_one(pm_t{0, 1, 1}, symbol_set{"x", "y", "z"}));
+        REQUIRE(!key_is_one(pm_t{1, 0, 1}, symbol_set{"x", "y", "z"}));
+
+        REQUIRE(is_one_testable_key_v<pm_t>);
+        REQUIRE(is_one_testable_key_v<pm_t &>);
+        REQUIRE(is_one_testable_key_v<const pm_t &>);
+        REQUIRE(is_one_testable_key_v<pm_t &&>);
     });
 }
 

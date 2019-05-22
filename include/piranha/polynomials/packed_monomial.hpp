@@ -147,6 +147,13 @@ constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)
     return false;
 }
 
+// Implementation of key_is_one(). A monomial is one if all its exponents are zero.
+template <typename T>
+constexpr bool key_is_one(const packed_monomial<T> &p, const symbol_set &)
+{
+    return p.get_value() == T(0);
+}
+
 // Comparison operators.
 template <typename T>
 constexpr bool operator==(const packed_monomial<T> &m1, const packed_monomial<T> &m2)

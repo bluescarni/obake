@@ -35,6 +35,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_is_compatible.hpp>
+#include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/math/is_zero.hpp>
@@ -55,6 +56,7 @@ using is_key = ::std::conjunction<is_semi_regular<T>, is_constructible<T, const 
                                   is_hashable<::std::add_lvalue_reference_t<const T>>,
                                   is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
                                   is_zero_testable_key<::std::add_lvalue_reference_t<const T>>,
+                                  is_one_testable_key<::std::add_lvalue_reference_t<const T>>,
                                   is_compatibility_testable_key<::std::add_lvalue_reference_t<const T>>,
                                   is_stream_insertable_key<::std::add_lvalue_reference_t<const T>>>;
 
@@ -370,7 +372,7 @@ public:
 #endif
     }
 
-    // TODO finish up.
+    // TODO finish up. Use SameCvr?
     template <typename T>
     using barrer
         = ::std::conjunction<::std::negation<::std::is_same<remove_cvref_t<T>, series>>,
