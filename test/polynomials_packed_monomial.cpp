@@ -40,6 +40,9 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
 #endif
                              >;
 
+struct foo {
+};
+
 TEST_CASE("ctor_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
@@ -52,6 +55,12 @@ TEST_CASE("ctor_test")
         pm_t pm0;
         // Default ctor.
         REQUIRE(pm0.get_value() == int_t(0));
+
+        // Constructor from symbol set.
+        REQUIRE(key_is_compatible(pm_t(symbol_set{}), symbol_set{}));
+        REQUIRE(key_is_compatible(pm_t(symbol_set{"x"}), symbol_set{"x"}));
+        REQUIRE(key_is_compatible(pm_t(symbol_set{"x", "y"}), symbol_set{"x", "y"}));
+        REQUIRE(key_is_compatible(pm_t(symbol_set{"x", "y", "z"}), symbol_set{"x", "y", "z"}));
 
         // Ctor from input iterator and size.
         int_t arr[] = {1, 2, 3};
@@ -78,7 +87,8 @@ TEST_CASE("ctor_test")
         REQUIRE(std::is_constructible_v<pm_t, std::istream_iterator<char>, unsigned>);
         REQUIRE(!std::is_constructible_v<pm_t, int, unsigned>);
         REQUIRE(!std::is_constructible_v<pm_t, std::istream_iterator<char>, std::istream_iterator<char>>);
-        REQUIRE(!std::is_constructible_v<pm_t, std::initializer_list<std::string>>);
+        REQUIRE(!std::is_constructible_v<pm_t, std::initializer_list<foo>>);
+        REQUIRE(std::is_constructible_v<pm_t, std::initializer_list<std::string>>);
         REQUIRE(std::is_constructible_v<pm_t, std::vector<int>>);
         REQUIRE(!std::is_constructible_v<pm_t, std::vector<std::string>>);
         REQUIRE(std::is_constructible_v<pm_t, std::vector<int>::const_iterator, std::vector<int>::const_iterator>);

@@ -41,6 +41,8 @@ class packed_monomial
 public:
     // Def ctor inits to a monomial with all zero exponents.
     constexpr packed_monomial() : m_value(0) {}
+    // Constructor from symbol set.
+    constexpr explicit packed_monomial(const symbol_set &) : packed_monomial() {}
     // Constructor from input iterator and size.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename It>

@@ -47,8 +47,12 @@
 namespace piranha
 {
 
+// NOTE: runtime requirements:
+// - constructor from symbol_set generates unitary key
+//   compatible with the input symbol set.
 template <typename T>
-using is_key = ::std::conjunction<is_semi_regular<T>, is_hashable<::std::add_lvalue_reference_t<const T>>,
+using is_key = ::std::conjunction<is_semi_regular<T>, is_constructible<T, const symbol_set &>,
+                                  is_hashable<::std::add_lvalue_reference_t<const T>>,
                                   is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
                                   is_zero_testable_key<::std::add_lvalue_reference_t<const T>>,
                                   is_compatibility_testable_key<::std::add_lvalue_reference_t<const T>>,
@@ -377,7 +381,8 @@ public:
     template <typename T, ::std::enable_if_t<barrer<T>::value, int> = 0>
     explicit series(T &&x) : series()
     {
-        m_s_table[0].try_emplace(K{}, ::std::forward<T>(x));
+        // TODO fix with proper add_term().
+        m_s_table[0].try_emplace(K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
     }
 
     series &operator=(const series &) = default;
