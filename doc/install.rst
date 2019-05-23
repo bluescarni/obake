@@ -8,10 +8,11 @@ Installation
 Requirements
 ------------
 
-Piranha has the following mandatory dependencies:
+Currently, piranha has the following mandatory dependencies:
 
 * the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.14),
-* the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65).
+* the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65),
+* the `Abseil <https://abseil.io/>`_ C++ libraries.
 
 Piranha also depends on other libraries for optional features:
 
@@ -122,8 +123,8 @@ of the dependencies.
 On Linux systems, generally speaking, the best way of installing the
 dependencies is through the distribution's package manager
 (e.g., ``apt-get`` on Ubuntu).
-For those dependencies not available from the system's
-package manager (e.g., mp++ or libbacktrace), the best course of action
+For those dependencies not available from the system's package
+manager (e.g., mp++, libbacktrace, etc.), the best course of action
 is to install them by hand in the user's home directory under the
 ``.local`` subdirectory, and then set the CMake variable
 ``CMAKE_PREFIX_PATH`` to ``~/.local``. This should be enough for
@@ -145,9 +146,6 @@ Compiler and platform specific notes
 
 Visual Studio:
 
-* Due to compiler bugs, when using Visual Studio 2017 some of Piranha's
-  customisation points are implemented as plain functions rather than
-  functors (the specifics are available in the API documentation).
 * When using Visual Studio, the Piranha library is compiled
   with the ``NOMINMAX`` definition and, if supported,
   with the ``/permissive-`` compiler flag.
