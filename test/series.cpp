@@ -17,12 +17,17 @@
 #include <iostream>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 #include <piranha/hash.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
+#include <piranha/type_traits.hpp>
 
 using namespace piranha;
+
+template <typename T, typename U>
+using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
 
 TEST_CASE("pow_test")
 {
@@ -32,6 +37,8 @@ TEST_CASE("pow_test")
     REQUIRE(series_rank<void> == 0u);
     REQUIRE(series_rank<series_t> == 1u);
     REQUIRE(series_rank<series_t &> == 0u);
+
+    REQUIRE(!is_detected_v<series_add_t, int, int>);
 
     series_t s, s2(4);
     s._set_nsegments(4);

@@ -851,6 +851,7 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
     os << "Key type        : " << ::piranha::type_name<key_type>() << '\n';
     os << "Coefficient type: " << ::piranha::type_name<cf_type>() << '\n';
     os << "Tag type        : " << ::piranha::type_name<series_tag_t<series_t>>() << '\n';
+    os << "Rank            : " << series_rank<series_t> << '\n';
     os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
     os << "Number of terms : " << s.size() << '\n';
 
@@ -949,6 +950,74 @@ template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
 #endif
 constexpr auto operator<<(::std::ostream &os, S &&s)
     PIRANHA_SS_FORWARD_FUNCTION((void(::piranha::series_stream_insert(os, ::std::forward<S>(s))), os));
+
+namespace customisation
+{
+
+// External customisation point for piranha::series_add().
+template <typename T, typename U
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_add = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U>
+constexpr auto series_add_impl(T &&x, U &&y, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_add<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Unqualified function call implementation.
+template <typename T, typename U>
+constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
+
+template <typename T, typename U>
+constexpr int series_add_strategy_impl()
+{
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+
+    if constexpr (::std::conjunction_v<::std::negation<is_cvr_series<T>>, ::std::negation<is_cvr_series<U>>>) {
+        return 0;
+    } else if constexpr (::std::disjunction_v<::std::negation<::std::is_same<series_key_t<rT>, series_key_t<rU>>>,
+                                              ::std::negation<::std::is_same<series_tag_t<rT>, series_tag_t<rU>>>>) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+template <typename T, typename U>
+inline constexpr int series_add_strategy = detail::series_add_strategy_impl<T, U>();
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U, ::std::enable_if_t<series_add_strategy<T &&, U &&> != 0, int> = 0>
+constexpr auto series_add_impl(T &&, U &&, priority_tag<0>)
+{
+}
+
+} // namespace detail
+
+inline constexpr auto series_add = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+    detail::series_add_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+
+// Like with operator<<(), constrain so that the operator
+// is enabled only if at least 1 operator is a series.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T> || CvrSeries<U>
+#else
+template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
+#endif
+constexpr auto operator+(T &&x, U &&y)
+    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace piranha
 
