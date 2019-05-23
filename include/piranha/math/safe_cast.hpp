@@ -71,13 +71,23 @@ template <typename To, typename From,
 
 } // namespace detail
 
-// NOTE: at least some earlier versions of MSVC do not like the templated constexpr
-// functor, so we just replace it with a regular function. Need to check if this
+// NOTE: at least some earlier versions of MSVC do not like the lambda
+// functor, so we just replace it with a regular functor. Need to check if this
 // has been fixed in MSVC 2019.
+// NOTE: it is important that this remains a function object, rather than
+// a function, so that the lookup rules are consistent with the lambda
+// function object implementation.
 #if defined(_MSC_VER) && !defined(__clang__)
 
-template <typename To, typename From>
-constexpr auto safe_cast(From &&x) PIRANHA_SS_FORWARD_FUNCTION(detail::safe_cast_impl<To>(::std::forward<From>(x)));
+template <typename To>
+struct safe_cast_msvc {
+    template <typename From>
+    constexpr auto operator()(From &&x) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::safe_cast_impl<To>(::std::forward<From>(x)))
+};
+
+template <typename To>
+inline constexpr auto safe_cast = safe_cast_msvc<To>{};
 
 #else
 

@@ -53,10 +53,14 @@ constexpr auto key_stream_insert_impl(::std::ostream &os, T &&x, const symbol_se
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
-template <typename T>
-constexpr auto key_stream_insert(::std::ostream &os, T &&x, const symbol_set &ss)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::key_stream_insert_impl(os, ::std::forward<T>(x), ss,
-                                                               detail::priority_tag<1>{}));
+struct key_stream_insert_msvc {
+    template <typename T>
+    constexpr auto operator()(::std::ostream &os, T &&x, const symbol_set &ss) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::key_stream_insert_impl(os, ::std::forward<T>(x), ss,
+                                                                          detail::priority_tag<1>{}))
+};
+
+inline constexpr auto key_stream_insert = key_stream_insert_msvc{};
 
 #else
 

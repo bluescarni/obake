@@ -52,10 +52,14 @@ constexpr auto key_is_zero_impl(T &&x, const symbol_set &ss, priority_tag<0>)
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
-template <typename T>
-constexpr auto key_is_zero(T &&x, const symbol_set &ss)
-    PIRANHA_SS_FORWARD_FUNCTION(static_cast<bool>(detail::key_is_zero_impl(::std::forward<T>(x), ss,
-                                                                           detail::priority_tag<1>{})));
+struct key_is_zero_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x, const symbol_set &ss) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::key_is_zero_impl(::std::forward<T>(x), ss,
+                                                                                      detail::priority_tag<1>{})))
+};
+
+inline constexpr auto key_is_zero = key_is_zero_msvc{};
 
 #else
 

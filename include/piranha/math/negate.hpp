@@ -139,12 +139,17 @@ using negate_impl_t = decltype(detail::negate_impl(::std::declval<T>(), priority
 
 }
 
-template <typename T, ::std::enable_if_t<is_detected_v<detail::negate_impl_t, T>, int> = 0>
-constexpr T &&negate(T &&x) noexcept(noexcept(detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{})))
-{
-    detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{});
-    return ::std::forward<T>(x);
-}
+struct negate_msvc {
+    template <typename T, ::std::enable_if_t<is_detected_v<detail::negate_impl_t, T>, int> = 0>
+    constexpr T &&operator()(T &&x) const
+        noexcept(noexcept(detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{})))
+    {
+        detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{});
+        return ::std::forward<T>(x);
+    }
+};
+
+inline constexpr auto negate = negate_msvc{};
 
 #else
 
