@@ -55,13 +55,8 @@ constexpr auto key_is_compatible_impl(T &&x, const symbol_set &ss, priority_tag<
 struct key_is_compatible_msvc {
     template <typename T>
     constexpr auto operator()(T &&x, const symbol_set &ss) const
-        noexcept(noexcept(static_cast<bool>(detail::key_is_compatible_impl(::std::forward<T>(x), ss,
-                                                                           detail::priority_tag<1>{}))))
-            -> decltype(static_cast<bool>(detail::key_is_compatible_impl(::std::forward<T>(x), ss,
-                                                                         detail::priority_tag<1>{})))
-    {
-        return static_cast<bool>(detail::key_is_compatible_impl(::std::forward<T>(x), ss, detail::priority_tag<1>{}));
-    }
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::key_is_compatible_impl(::std::forward<T>(x), ss,
+                                                                                            detail::priority_tag<1>{})))
 };
 
 inline constexpr auto key_is_compatible = key_is_compatible_msvc{};
