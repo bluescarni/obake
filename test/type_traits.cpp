@@ -1637,3 +1637,24 @@ TEST_CASE("constructible")
     REQUIRE(!Constructible<nondestr00>);
 #endif
 }
+
+TEST_CASE("mutable_rvalue_reference")
+{
+    REQUIRE(!is_mutable_rvalue_reference_v<void>);
+
+    REQUIRE(!is_mutable_rvalue_reference_v<int>);
+    REQUIRE(!is_mutable_rvalue_reference_v<int &>);
+    REQUIRE(!is_mutable_rvalue_reference_v<const int &>);
+    REQUIRE(!is_mutable_rvalue_reference_v<const int &&>);
+    REQUIRE(is_mutable_rvalue_reference_v<int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!MutableRvalueReference<void>);
+
+    REQUIRE(!MutableRvalueReference<int>);
+    REQUIRE(!MutableRvalueReference<int &>);
+    REQUIRE(!MutableRvalueReference<const int &>);
+    REQUIRE(!MutableRvalueReference<const int &&>);
+    REQUIRE(MutableRvalueReference<int &&>);
+#endif
+}

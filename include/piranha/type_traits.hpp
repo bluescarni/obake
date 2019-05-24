@@ -83,6 +83,21 @@ PIRANHA_CONCEPT_DECL SameCvr = is_same_cvr_v<T, U>;
 
 #endif
 
+// Detect nonconst rvalue reference.
+template <typename T>
+using is_mutable_rvalue_reference
+    = ::std::conjunction<::std::is_rvalue_reference<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>;
+
+template <typename T>
+inline constexpr bool is_mutable_rvalue_reference_v = is_mutable_rvalue_reference<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL MutableRvalueReference = is_mutable_rvalue_reference_v<T>;
+
+#endif
+
 // Detect C++ integral types, including GCC-style 128bit integers.
 template <typename T>
 using is_integral = ::std::disjunction<::std::is_integral<T>

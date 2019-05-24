@@ -37,9 +37,7 @@ constexpr const remove_cvref_t<T> &tcast_impl(T &&x, ::std::false_type) noexcept
 template <typename T>
 constexpr decltype(auto) tcast(T &&x) noexcept
 {
-    return detail::tcast_impl(::std::forward<T>(x),
-                              ::std::conjunction<::std::is_rvalue_reference<T &&>,
-                                                 ::std::negation<::std::is_const<::std::remove_reference_t<T &&>>>>{});
+    return detail::tcast_impl(::std::forward<T>(x), is_mutable_rvalue_reference<T &&>{});
 }
 
 #else
