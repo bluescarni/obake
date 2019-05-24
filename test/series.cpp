@@ -40,9 +40,13 @@ TEST_CASE("pow_test")
 
     REQUIRE(!is_detected_v<series_add_t, int, int>);
 
+    REQUIRE(detail::series_add_strategy<int &, int &> == 0);
+    REQUIRE(detail::series_add_strategy<int &, series_t &> == 1);
+    REQUIRE(detail::series_add_strategy<series_t &, int &> == 2);
+
     series_t s, s2(4);
     s._set_nsegments(4);
-    std::cout << s2 << '\n';
+    std::cout << s2 + 3.5 << '\n';
 
     std::cout << s << '\n';
     REQUIRE(s.empty());

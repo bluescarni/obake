@@ -981,16 +981,39 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
 template <typename T, typename U>
 constexpr int series_add_strategy_impl()
 {
-    using rT = remove_cvref_t<T>;
-    using rU = remove_cvref_t<U>;
+    using rT [[maybe_unused]] = remove_cvref_t<T>;
+    using rU [[maybe_unused]] = remove_cvref_t<U>;
 
     if constexpr (::std::conjunction_v<::std::negation<is_cvr_series<T>>, ::std::negation<is_cvr_series<U>>>) {
+        // Neither T nor U are series, return 0. This will disable
+        // the default series_add() implementation.
         return 0;
-    } else if constexpr (::std::disjunction_v<::std::negation<::std::is_same<series_key_t<rT>, series_key_t<rU>>>,
-                                              ::std::negation<::std::is_same<series_tag_t<rT>, series_tag_t<rU>>>>) {
-        return 0;
+    } else if constexpr (!is_cvr_series_v<T>) {
+        // T is a scalar, U is a series.
+        // Determine the coefficient type of the return series type.
+        using ret_cf_t = detected_t<detail::add_t, ::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>;
+        if constexpr (is_cf_v<ret_cf_t>) {
+            // The candidate coefficient type is valid. Establish
+            // the series return type.
+            using ret_t = series<series_key_t<rU>, ret_cf_t, series_tag_t<rU>>;
+            return ::std::conjunction_v<is_constructible<ret_t, U>, is_constructible<ret_cf_t, T>> ? 1 : 0;
+        } else {
+            // The candidate return coefficient type
+            // is not valid, or it does not
+            // produce a coefficient type. Return 0.
+            return 0;
+        }
+    } else if constexpr (!is_cvr_series_v<U>) {
+        // Mirror of the above.
+        using ret_cf_t = detected_t<detail::add_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>;
+        if constexpr (is_cf_v<ret_cf_t>) {
+            using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
+            return ::std::conjunction_v<is_constructible<ret_t, T>, is_constructible<ret_cf_t, U>> ? 2 : 0;
+        } else {
+            return 0;
+        }
     } else {
-        return 1;
+        // Both T and U are series.
     }
 }
 
@@ -999,8 +1022,30 @@ inline constexpr int series_add_strategy = detail::series_add_strategy_impl<T, U
 
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_add_strategy<T &&, U &&> != 0, int> = 0>
-constexpr auto series_add_impl(T &&, U &&, priority_tag<0>)
+constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 {
+    using rT [[maybe_unused]] = remove_cvref_t<T>;
+    using rU [[maybe_unused]] = remove_cvref_t<U>;
+
+    constexpr auto strat = series_add_strategy<T &&, U &&>;
+
+    if constexpr (strat == 1) {
+        // T scalar, U series.
+        using ret_t = series<series_key_t<rU>, detail::add_t<const rT &, const series_cf_t<rU> &>, series_tag_t<rU>>;
+
+        ret_t retval(::std::forward<U>(y));
+        retval.add_term(series_key_t<rU>(retval.get_symbol_set()), ::std::forward<T>(x));
+
+        return retval;
+    } else if constexpr (strat == 2) {
+        // T series, U scalar.
+        using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const rU &>, series_tag_t<rT>>;
+
+        ret_t retval(::std::forward<T>(x));
+        retval.add_term(series_key_t<rT>(retval.get_symbol_set()), ::std::forward<U>(y));
+
+        return retval;
+    }
 }
 
 } // namespace detail
