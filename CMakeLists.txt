@@ -85,8 +85,8 @@ else()
 endif()
 
 add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
-set_property(TARGET piranha PROPERTY VERSION "${piranha_VERSION_MAJOR}.${piranha_VERSION_MINOR}")
-set_property(TARGET piranha PROPERTY SOVERSION 0 )
+set_property(TARGET piranha PROPERTY VERSION "1.0")
+set_property(TARGET piranha PROPERTY SOVERSION 1 )
 
 target_compile_options(piranha PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>")
 set_target_properties(piranha PROPERTIES CXX_VISIBILITY_PRESET hidden)
