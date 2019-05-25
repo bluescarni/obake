@@ -753,6 +753,16 @@ public:
         m_log2_size = static_cast<s_size_t>(l);
     }
 
+    // Clear the series.
+    // This will remove all the terms and symbols.
+    void clear() noexcept
+    {
+        for (auto &t : m_s_table) {
+            t.clear();
+        }
+        m_symbol_set.clear();
+    }
+
 private:
     s_table_type m_s_table;
     s_size_t m_log2_size;
