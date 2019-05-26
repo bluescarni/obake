@@ -358,7 +358,47 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
     }
 }
 
+// Machinery for series' generic constructor.
+template <typename T, typename K, typename C, typename Tag>
+constexpr int series_generic_ctor_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+    using series_t = series<K, C, Tag>;
+
+    if constexpr (::std::is_same_v<rT, series_t>) {
+        // Avoid competition with the copy/move ctors.
+        return 0;
+    } else if constexpr (series_rank<rT> < series_rank<series_t>) {
+        return is_constructible_v<C, T> ? 1 : 0;
+    } else if constexpr (series_rank<rT> == series_rank<series_t>) {
+        if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
+                                           ::std::is_same<series_tag_t<rT>, Tag>>) {
+            // TODO: proper enabler conditions.
+            return 2;
+        } else {
+            return 0;
+        }
+    }
+}
+
+template <typename T, typename K, typename C, typename Tag>
+inline constexpr int series_generic_ctor_algorithm = detail::series_generic_ctor_algorithm_impl<T, K, C, Tag>();
+
 } // namespace detail
+
+template <typename T, typename K, typename C, typename Tag>
+using is_series_interoperable
+    = ::std::integral_constant<bool, detail::series_generic_ctor_algorithm<T, K, C, Tag> != 0>;
+
+template <typename T, typename K, typename C, typename Tag>
+inline constexpr bool is_series_interoperable_v = is_series_interoperable<T, K, C, Tag>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename K, typename C, typename Tag>
+PIRANHA_CONCEPT_DECL SeriesInteroperable = is_series_interoperable_v<T, K, C, Tag>;
+
+#endif
 
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
@@ -408,41 +448,19 @@ public:
 #endif
     }
 
-private:
-    template <typename Series, typename T>
-    static constexpr int generic_ctor_strategy_impl()
-    {
-        using rT = remove_cvref_t<T>;
-
-        if constexpr (::std::is_same_v<rT, Series>) {
-            // Avoid competition with the copy/move ctors.
-            return 0;
-        } else if constexpr (series_rank<rT> < series_rank<Series>) {
-            return is_constructible_v<series_cf_t<Series>, T> ? 1 : 0;
-        } else if constexpr (series_rank<rT> == series_rank<Series>) {
-            if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<Series>>,
-                                               ::std::is_same<series_tag_t<rT>, series_tag_t<Series>>>) {
-                // TODO: proper enabler conditions.
-                return 2;
-            } else {
-                return 0;
-            }
-        }
-    }
-
-    template <typename Series, typename T>
-    static constexpr int generic_ctor_strategy = generic_ctor_strategy_impl<Series, T>();
-
-public:
-    template <typename T, ::std::enable_if_t<generic_ctor_strategy<series, T &&> != 0, int> = 0>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    template <SeriesInteroperable<K, C, Tag> T>
+#else
+    template <typename T, ::std::enable_if_t<is_series_interoperable_v<T, K, C, Tag>, int> = 0>
+#endif
     explicit series(T &&x) : series()
     {
-        constexpr auto strat = generic_ctor_strategy<series, T &&>;
+        constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
 
-        if constexpr (strat == 1) {
+        if constexpr (algo == 1) {
             // TODO fix with proper add_term().
             m_s_table[0].try_emplace(K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
-        } else if constexpr (strat == 2) {
+        } else if constexpr (algo == 2) {
             m_symbol_set = x.get_symbol_set();
             try {
                 for (auto &p : x) {
