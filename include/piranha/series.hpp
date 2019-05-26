@@ -205,10 +205,11 @@ namespace detail
 enum class sat_check_zero : bool { off, on };
 enum class sat_check_compat_key : bool { off, on };
 enum class sat_check_table_size : bool { off, on };
+enum class sat_assume_unique : bool { off, on };
 
 // Helper for inserting a term into a series table.
 template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
-          typename S, typename Table, typename T, typename... Args>
+          sat_assume_unique AssumeUnique, typename S, typename Table, typename T, typename... Args>
 inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
 {
     // Determine the key/cf types.
@@ -258,8 +259,14 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     // Attempt the insertion.
     const auto res = t.try_emplace(detail::tcast(::std::forward<T>(key)), ::std::forward<Args>(args)...);
 
+    if constexpr (AssumeUnique == sat_assume_unique::on) {
+        // Assert that we actually performed an insertion,
+        // in case we are assuming the term is unique.
+        assert(res.second);
+    }
+
     try {
-        if (res.second) {
+        if (AssumeUnique == sat_assume_unique::on || res.second) {
             // The insertion took place. Change
             // the sign of the newly-inserted term,
             // in case of negative insertion.
@@ -273,7 +280,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
 
             // Determine if we are inserting a coefficient, or
             // a pack that can be used to construct a coefficient.
-            constexpr auto insert_cf = []() {
+            constexpr auto args_is_cf = []() {
                 if constexpr (sizeof...(args) == 1u) {
                     return ::std::is_same_v<cf_type, remove_cvref_t<Args>...>;
                 } else {
@@ -282,7 +289,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             }();
 
             if constexpr (Sign) {
-                if constexpr (insert_cf) {
+                if constexpr (args_is_cf) {
                     // NOTE: if we are inserting a coefficient, use it directly.
                     res.first->second += detail::tcast(::std::forward<Args>(args)...);
                 } else {
@@ -291,7 +298,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
                     res.first->second += cf_type(::std::forward<Args>(args)...);
                 }
             } else {
-                if constexpr (insert_cf) {
+                if constexpr (args_is_cf) {
                     res.first->second -= detail::tcast(::std::forward<Args>(args)...);
                 } else {
                     res.first->second -= cf_type(::std::forward<Args>(args)...);
@@ -304,7 +311,6 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             // or modified is zero. If it is, erase it.
             if (piranha_unlikely(::piranha::key_is_zero(static_cast<const key_type &>(res.first->first), ss)
                                  || ::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
-                // NOTE: erase cannot throw.
                 t.erase(res.first);
             }
         }
@@ -312,13 +318,14 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
         // NOTE: if something threw, the table might now be in an
         // inconsistent state. Clear it out before rethrowing.
         t.clear();
+
         throw;
     }
 }
 
 // Helper for inserting a term into a series.
 template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
-          typename S, typename T, typename... Args>
+          sat_assume_unique AssumeUnique, typename S, typename T, typename... Args>
 inline void series_add_term(S &s, T &&key, Args &&... args)
 {
     // Determine the key type.
@@ -329,7 +336,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
     if (log2_size == 0u) {
         // NOTE: forcibly set the table size check to off (for a single
         // table, the size limit is always the full range of size_type).
-        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off>(
+        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off, AssumeUnique>(
             s, s.m_s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     } else {
         // Compute the hash of the key via piranha::hash().
@@ -339,7 +346,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
         const auto table_idx = static_cast<decltype(s.m_s_table.size())>(k_hash & (log2_size - 1u));
 
         // Proceed to the insertion.
-        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize>(
+        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize, AssumeUnique>(
             s, s.m_s_table[table_idx], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     }
 }
@@ -397,11 +404,11 @@ template <typename K, typename C, typename Tag, typename>
 class series
 {
     // Make friends with the term insertion helpers.
-    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size, typename S,
-              typename T, typename... Args>
+    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size,
+              detail::sat_assume_unique, typename S, typename T, typename... Args>
     friend void detail::series_add_term(S &, T &&, Args &&...);
-    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size, typename S,
-              typename Table, typename T, typename... Args>
+    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size,
+              detail::sat_assume_unique, typename S, typename Table, typename T, typename... Args>
     friend void detail::series_add_term_table(S &, Table &, T &&, Args &&...);
 
     // Make friends with all series types.
@@ -455,16 +462,17 @@ public:
         constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
 
         if constexpr (algo == 1) {
-            // NOTE: disable key compat and table size checks: key must be compatible
+            // NOTE: disable key compat and table size checks: the key must be compatible
             // with the symbol set used for construction (key concept runtime requirement),
-            // and we have only 1 table, so no size check needed.
+            // and we have only 1 table, so no size check needed. Also, the new term
+            // will be unique by construction.
             detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
-                                          detail::sat_check_table_size::off>(
+                                          detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
                 *this, m_s_table[0], K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
         } else if constexpr (algo == 2) {
             // Small helper to clear x, if it is a nonconst
             // rvalue reference. We want to make sure it is
-            // emptied out before returning if there's a chance
+            // emptied out before returning, if there's a chance
             // we moved data from it.
             auto clear_x = [&x]() {
                 if constexpr (is_mutable_rvalue_reference_v<T &&>) {
@@ -485,15 +493,17 @@ public:
                         // NOTE: like above, disable key compat check (we assume the other
                         // series contains only compatible keys) and table size check (only
                         // 1 table). Disable also zero check, as we assume the other series
-                        // has no zero terms.
+                        // has no zero terms. Finally, we know all the terms in the input
+                        // series are unique.
                         detail::series_add_term_table<true, detail::sat_check_zero::off,
                                                       detail::sat_check_compat_key::off,
-                                                      detail::sat_check_table_size::off>(*this, tab, p.first,
-                                                                                         ::std::move(p.second));
+                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                            *this, tab, p.first, ::std::move(p.second));
                     } else {
                         detail::series_add_term_table<true, detail::sat_check_zero::off,
                                                       detail::sat_check_compat_key::off,
-                                                      detail::sat_check_table_size::off>(*this, tab, p.first, p.second);
+                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                            *this, tab, p.first, p.second);
                     }
                 }
             } catch (...) {
@@ -853,14 +863,14 @@ public:
 #endif
         void add_term(T &&key, Args &&... args)
     {
-        // NOTE: all checks enabled.
+        // NOTE: all checks enabled, don't assume uniqueness.
         detail::series_add_term<Sign, detail::sat_check_zero::on, detail::sat_check_compat_key::on,
-                                detail::sat_check_table_size::on>(*this, ::std::forward<T>(key),
-                                                                  ::std::forward<Args>(args)...);
+                                detail::sat_check_table_size::on, detail::sat_assume_unique::off>(
+            *this, ::std::forward<T>(key), ::std::forward<Args>(args)...);
     }
 
     // Set the number of segments (in log2 units).
-    void _set_nsegments(unsigned l)
+    void set_nsegments(unsigned l)
     {
         if (piranha_unlikely(l > max_log2_size)) {
             piranha_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)

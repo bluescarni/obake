@@ -50,7 +50,7 @@ TEST_CASE("pow_test")
     REQUIRE(detail::series_add_strategy<series_t &, int &> == 2);
 
     series_t s, s2(4);
-    s._set_nsegments(4);
+    s.set_nsegments(4);
     std::cout << s2 + 3.5 << '\n';
 
     series_t_rat sa(s2 + 3.5);
