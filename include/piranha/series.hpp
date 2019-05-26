@@ -200,32 +200,15 @@ using series_tag_t = typename detail::series_tag_t_impl<T>::type;
 namespace detail
 {
 
-// Check a key for compatibility against the symbol set ss, and throw
-// if the key is not compatible.
-template <typename T>
-inline void series_add_term_check_key_compat(const T &key, const symbol_set &ss)
-{
-    if (piranha_unlikely(!::piranha::key_is_compatible(key, ss))) {
-        // The key is not compatible with the symbol set.
-        if constexpr (is_stream_insertable_v<const T &>) {
-            // A slightly better error message if we can
-            // produce a string representation of the key.
-            ::std::ostringstream oss;
-            static_cast<::std::ostream &>(oss) << key;
-            piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, \"" + oss.str()
-                                                       + "\", is not compatible with the series' symbol set, "
-                                                       + detail::to_string(ss));
-        } else {
-            piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key is not "
-                                                   "compatible with the series' symbol set, "
-                                                       + detail::to_string(ss));
-        }
-    }
-}
+// A bunch of scoped enums used to fine-tune at compile-time
+// the behaviour of the term insertion helpers below.
+enum class sat_check_zero : bool { off, on };
+enum class sat_check_compat_key : bool { off, on };
+enum class sat_check_table_size : bool { off, on };
 
 // Helper for inserting a term into a series table.
-template <bool Sign, bool CheckZero, bool CheckCompatKey, bool CheckTableSize, typename S, typename Table, typename T,
-          typename... Args>
+template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
+          typename S, typename Table, typename T, typename... Args>
 inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
 {
     // Determine the key/cf types.
@@ -236,7 +219,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     // Cache a reference to the symbol set.
     const auto &ss = s.m_symbol_set;
 
-    if constexpr (CheckTableSize) {
+    if constexpr (CheckTableSize == sat_check_table_size::on) {
         // Check the table size, if requested.
         if (piranha_unlikely(t.size() == s.get_max_table_size())) {
             // The table size is already the maximum allowed, don't
@@ -247,9 +230,24 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
         }
     }
 
-    if constexpr (CheckCompatKey) {
+    if constexpr (CheckCompatKey == sat_check_compat_key::on) {
         // Check key for compatibility, if requested.
-        series_add_term_check_key_compat(key, ss);
+        if (piranha_unlikely(!::piranha::key_is_compatible(static_cast<const key_type &>(key), ss))) {
+            // The key is not compatible with the symbol set.
+            if constexpr (is_stream_insertable_v<const key_type &>) {
+                // A slightly better error message if we can
+                // produce a string representation of the key.
+                ::std::ostringstream oss;
+                static_cast<::std::ostream &>(oss) << static_cast<const key_type &>(key);
+                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, \"" + oss.str()
+                                                           + "\", is not compatible with the series' symbol set, "
+                                                           + detail::to_string(ss));
+            } else {
+                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key is not "
+                                                       "compatible with the series' symbol set, "
+                                                           + detail::to_string(ss));
+            }
+        }
     } else {
         // Otherwise, assert that the key is compatible.
         // There are no situations so far in which we may
@@ -301,7 +299,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             }
         }
 
-        if constexpr (CheckZero) {
+        if constexpr (CheckZero == sat_check_zero::on) {
             // If requested, check whether the term we inserted
             // or modified is zero. If it is, erase it.
             if (piranha_unlikely(::piranha::key_is_zero(static_cast<const key_type &>(res.first->first), ss)
@@ -319,31 +317,20 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
 }
 
 // Helper for inserting a term into a series.
-template <bool Sign, bool CheckZero, bool CheckCompatKey, bool CheckTableSize, typename S, typename T, typename... Args>
+template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
+          typename S, typename T, typename... Args>
 inline void series_add_term(S &s, T &&key, Args &&... args)
 {
     // Determine the key type.
     using key_type = series_key_t<::std::remove_reference_t<S>>;
     static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
-    if constexpr (CheckCompatKey) {
-        // Check key for compatibility, if requested.
-        series_add_term_check_key_compat(key, s.m_symbol_set);
-    } else {
-        // Otherwise, assert that the key is compatible.
-        // There are no situations so far in which we may
-        // want to allow adding an incompatible key.
-        assert(::piranha::key_is_compatible(static_cast<const key_type &>(key), s.m_symbol_set));
-    }
-
     const auto log2_size = s.m_log2_size;
     if (log2_size == 0u) {
-        // NOTE: forcibly set CheckTableSize to false (for a single
+        // NOTE: forcibly set the table size check to off (for a single
         // table, the size limit is always the full range of size_type).
-        // NOTE: set also key compat check to false: if CheckCompatKey is true,
-        // we already ran the check above, otherwise we don't care.
-        detail::series_add_term_table<Sign, CheckZero, false, false>(s, s.m_s_table[0], ::std::forward<T>(key),
-                                                                     ::std::forward<Args>(args)...);
+        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off>(
+            s, s.m_s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     } else {
         // Compute the hash of the key via piranha::hash().
         const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
@@ -352,8 +339,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
         const auto table_idx = static_cast<decltype(s.m_s_table.size())>(k_hash & (log2_size - 1u));
 
         // Proceed to the insertion.
-        // NOTE: as above, set key compatibility check to false.
-        detail::series_add_term_table<Sign, CheckZero, false, CheckTableSize>(
+        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize>(
             s, s.m_s_table[table_idx], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     }
 }
@@ -411,10 +397,21 @@ template <typename K, typename C, typename Tag, typename>
 class series
 {
     // Make friends with the term insertion helpers.
-    template <bool, bool, bool, bool, typename S, typename T, typename... Args>
+    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size, typename S,
+              typename T, typename... Args>
     friend void detail::series_add_term(S &, T &&, Args &&...);
-    template <bool, bool, bool, bool, typename S, typename Table, typename T, typename... Args>
+    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size, typename S,
+              typename Table, typename T, typename... Args>
     friend void detail::series_add_term_table(S &, Table &, T &&, Args &&...);
+
+    // Make friends with all series types.
+    template <typename, typename, typename
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+              ,
+              typename
+#endif
+              >
+    friend class series;
 
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
     using table_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
@@ -458,25 +455,48 @@ public:
         constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
 
         if constexpr (algo == 1) {
-            // TODO fix with proper add_term().
-            m_s_table[0].try_emplace(K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
+            // NOTE: disable key compat and table size checks: key must be compatible
+            // with the symbol set used for construction (key concept runtime requirement),
+            // and we have only 1 table, so no size check needed.
+            detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
+                                          detail::sat_check_table_size::off>(
+                *this, m_s_table[0], K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
         } else if constexpr (algo == 2) {
-            m_symbol_set = x.get_symbol_set();
-            try {
-                for (auto &p : x) {
-                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-                        // TODO: disable some checks?
-                        this->add_term(p.first, ::std::move(p.second));
-                    } else {
-                        this->add_term(p.first, p.second);
-                    }
-                }
-            } catch (...) {
+            // Small helper to clear x, if it is a nonconst
+            // rvalue reference. We want to make sure it is
+            // emptied out before returning if there's a chance
+            // we moved data from it.
+            auto clear_x = [&x]() {
                 if constexpr (is_mutable_rvalue_reference_v<T &&>) {
                     x.clear();
                 }
+            };
+
+            try {
+                m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+                auto &tab = m_s_table[0];
+                for (auto &p : x) {
+                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                        // NOTE: like above, disable key compat check (we assume the other
+                        // series contains only compatible keys) and table size check (only
+                        // 1 table). Disable also zero check, as we assume the other series
+                        // has no zero terms.
+                        detail::series_add_term_table<true, detail::sat_check_zero::off,
+                                                      detail::sat_check_compat_key::off,
+                                                      detail::sat_check_table_size::off>(*this, tab, p.first,
+                                                                                         ::std::move(p.second));
+                    } else {
+                        detail::series_add_term_table<true, detail::sat_check_zero::off,
+                                                      detail::sat_check_compat_key::off,
+                                                      detail::sat_check_table_size::off>(*this, tab, p.first, p.second);
+                    }
+                }
+            } catch (...) {
+                clear_x();
                 throw;
             }
+
+            clear_x();
         }
     }
 
@@ -829,7 +849,9 @@ public:
         void add_term(T &&key, Args &&... args)
     {
         // NOTE: all checks enabled.
-        detail::series_add_term<Sign, true, true, true>(*this, ::std::forward<T>(key), ::std::forward<Args>(args)...);
+        detail::series_add_term<Sign, detail::sat_check_zero::on, detail::sat_check_compat_key::on,
+                                detail::sat_check_table_size::on>(*this, ::std::forward<T>(key),
+                                                                  ::std::forward<Args>(args)...);
     }
 
     // Set the number of segments (in log2 units).
