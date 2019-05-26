@@ -169,9 +169,6 @@ using negate_t = decltype(::piranha::negate(::std::declval<T>()));
 
 }
 
-// NOTE: document runtime requirement, negation of
-// a nonzero value (as established by is_zero()) never
-// results in a zero value.
 template <typename T>
 using is_negatable = is_detected<detail::negate_t, T>;
 

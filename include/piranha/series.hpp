@@ -473,8 +473,13 @@ public:
             };
 
             try {
-                m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+                // Reserve space in the new table.
                 auto &tab = m_s_table[0];
+                tab.reserve(x.size());
+
+                // Copy/move over the symbol set.
+                m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+
                 for (auto &p : x) {
                     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
                         // NOTE: like above, disable key compat check (we assume the other
