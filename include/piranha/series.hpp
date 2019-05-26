@@ -409,22 +409,19 @@ public:
     }
 
 private:
-    template <typename T>
+    template <typename Series, typename T>
     static constexpr int generic_ctor_strategy_impl()
     {
-        using rT [[maybe_unused]] = remove_cvref_t<T>;
+        using rT = remove_cvref_t<T>;
 
-        if constexpr (::std::is_same_v<rT, series>) {
+        if constexpr (::std::is_same_v<rT, Series>) {
+            // Avoid competition with the copy/move ctors.
             return 0;
-        } else if constexpr (series_rank<rT> < series_rank<series>) {
-            if constexpr (is_constructible_v<C, T>) {
-                return 1;
-            } else {
-                return 0;
-            }
-        } else if constexpr (series_rank<rT> == series_rank<series>) {
-            if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
-                                               ::std::is_same<series_tag_t<rT>, Tag>>) {
+        } else if constexpr (series_rank<rT> < series_rank<Series>) {
+            return is_constructible_v<series_cf_t<Series>, T> ? 1 : 0;
+        } else if constexpr (series_rank<rT> == series_rank<Series>) {
+            if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<Series>>,
+                                               ::std::is_same<series_tag_t<rT>, series_tag_t<Series>>>) {
                 // TODO: proper enabler conditions.
                 return 2;
             } else {
@@ -433,14 +430,14 @@ private:
         }
     }
 
-    template <typename T>
-    static constexpr int generic_ctor_strategy = generic_ctor_strategy_impl<T>();
+    template <typename Series, typename T>
+    static constexpr int generic_ctor_strategy = generic_ctor_strategy_impl<Series, T>();
 
 public:
-    template <typename T, ::std::enable_if_t<generic_ctor_strategy<T &&> != 0, int> = 0>
+    template <typename T, ::std::enable_if_t<generic_ctor_strategy<series, T &&> != 0, int> = 0>
     explicit series(T &&x) : series()
     {
-        constexpr auto strat = generic_ctor_strategy<T &&>;
+        constexpr auto strat = generic_ctor_strategy<series, T &&>;
 
         if constexpr (strat == 1) {
             // TODO fix with proper add_term().
