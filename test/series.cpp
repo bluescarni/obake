@@ -19,6 +19,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <mp++/rational.hpp>
+
 #include <piranha/hash.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
@@ -31,8 +33,11 @@ using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
 
 TEST_CASE("pow_test")
 {
+    using rat_t = mppp::rational<1>;
+
     using pm_t = packed_monomial<int>;
     using series_t = series<pm_t, double, void>;
+    using series_t_rat = series<pm_t, rat_t, void>;
 
     REQUIRE(series_rank<void> == 0u);
     REQUIRE(series_rank<series_t> == 1u);
@@ -47,6 +52,9 @@ TEST_CASE("pow_test")
     series_t s, s2(4);
     s._set_nsegments(4);
     std::cout << s2 + 3.5 << '\n';
+
+    series_t_rat sa(s2 + 3.5);
+    std::cout << sa << '\n';
 
     std::cout << s << '\n';
     REQUIRE(s.empty());
