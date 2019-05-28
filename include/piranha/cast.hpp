@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/dependent_false.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
@@ -46,10 +47,9 @@ namespace detail
 //
 // https://stackoverflow.com/questions/44490086/adl-fails-or-not-done-for-function-with-additional-non-deduced-template-par
 //
-// Make it a 2-argument function, so we are sure this is never picked
-// during overload resolution.
-template <typename>
-void cast(int, int);
+// Make sure this is always disabled.
+template <typename, typename U, ::std::enable_if_t<dependent_false<U>::value, int> = 0>
+void cast(U &&);
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename To, typename From>
@@ -62,8 +62,7 @@ constexpr auto cast_impl(From &&x, priority_tag<1>) PIRANHA_SS_FORWARD_FUNCTION(
 
 // Lowest priority: implementation via static_cast.
 template <typename To, typename From>
-constexpr auto cast_impl(From &&x, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(static_cast<To>(::std::forward<From>(x)));
+constexpr auto cast_impl(From &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(To(::std::forward<From>(x)));
 
 // Machinery to enable the cast implementation only if it
 // actually returns To.
