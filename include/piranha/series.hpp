@@ -26,6 +26,7 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
+#include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
@@ -364,15 +365,29 @@ constexpr int series_generic_ctor_algorithm_impl()
         // Avoid competition with the copy/move ctors.
         return 0;
     } else if constexpr (series_rank<rT> < series_rank<series_t>) {
+        // Construction from lesser rank requires
+        // to be able to construct C from T.
         return is_constructible_v<C, T> ? 1 : 0;
     } else if constexpr (series_rank<rT> == series_rank<series_t>) {
         if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
                                            ::std::is_same<series_tag_t<rT>, Tag>>) {
-            // TODO: proper enabler conditions.
-            return 2;
+            // Construction from equal rank, different coefficient type. Requires
+            // to be able to construct C from the coefficient type of T.
+            // The construction argument will be a const reference or an rvalue
+            // reference, depending on whether T is a mutable rvalue reference.
+            using cf_conv_t
+                = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
+            return is_constructible_v<C, cf_conv_t> ? 2 : 0;
         } else {
             return 0;
         }
+    } else {
+        // Construction from higher rank. Requires that
+        // series_t can be constructed from the coefficient
+        // type of T.
+        using series_conv_t
+            = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
+        return is_constructible_v<series_t, series_conv_t> ? 3 : 0;
     }
 }
 
@@ -398,6 +413,10 @@ PIRANHA_CONCEPT_DECL SeriesInteroperable = is_series_interoperable_v<T, K, C, Ta
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
 // TODO: check construction of const iterators from murable ones.
+// TODO: test construction of series with int coefficient from
+// series with double coefficient, to verify that coefficients
+// that get truncated to zero are not inserted.
+// TODO: test move semantics during insertion, generic construction.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -463,7 +482,22 @@ public:
     {
         constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
 
+        // Small helper to clear x, if it is a nonconst
+        // rvalue reference series. We want to make sure it is
+        // emptied out before returning, if there's a chance
+        // we moved data from it.
+        [[maybe_unused]] auto clear_x_if_rvalue_series = [&x]() {
+            detail::ignore(x);
+            if constexpr (is_mutable_rvalue_reference_v<T &&> && (series_rank<remove_cvref_t<T>>) > 0u) {
+                x.clear();
+            }
+        };
+
         if constexpr (algo == 1) {
+            // Case 1: the series rank of T is less than the series
+            // rank of this series type. Insert a term with unitary
+            // key and coefficient constructed from x.
+
             // NOTE: disable key compat and table size checks: the key must be compatible
             // with the symbol set used for construction (key concept runtime requirement),
             // and we have only 1 table, so no size check needed. Also, the new term
@@ -472,15 +506,11 @@ public:
                                           detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
                 *this, m_s_table[0], K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
         } else if constexpr (algo == 2) {
-            // Small helper to clear x, if it is a nonconst
-            // rvalue reference. We want to make sure it is
-            // emptied out before returning, if there's a chance
-            // we moved data from it.
-            auto clear_x = [&x]() {
-                if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-                    x.clear();
-                }
-            };
+            // Case 2: the series rank of T is equal to the series
+            // rank of this series type, and the key and tag types
+            // are the same (but the coefficient types are different,
+            // otherwise we would be in a copy/move constructor scenario).
+            // Insert all terms from x into this, converting the coefficients.
 
             try {
                 // Reserve space in the new table.
@@ -494,26 +524,59 @@ public:
                     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
                         // NOTE: like above, disable key compat check (we assume the other
                         // series contains only compatible keys) and table size check (only
-                        // 1 table). Disable also zero check, as we assume the other series
-                        // has no zero terms. Finally, we know all the terms in the input
-                        // series are unique.
-                        detail::series_add_term_table<true, detail::sat_check_zero::off,
+                        // 1 table). We also know all the terms in the input
+                        // series are unique. We keep the zero check because the conversion
+                        // of the coefficient type of T to C might result in zero
+                        // (e.g., converting from double to int).
+                        detail::series_add_term_table<true, detail::sat_check_zero::on,
                                                       detail::sat_check_compat_key::off,
                                                       detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
                             *this, tab, p.first, ::std::move(p.second));
                     } else {
-                        detail::series_add_term_table<true, detail::sat_check_zero::off,
+                        detail::series_add_term_table<true, detail::sat_check_zero::on,
                                                       detail::sat_check_compat_key::off,
                                                       detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                            *this, tab, p.first, p.second);
+                            *this, tab, p.first, static_cast<const series_cf_t<remove_cvref_t<T>> &>(p.second));
                     }
                 }
             } catch (...) {
-                clear_x();
+                clear_x_if_rvalue_series();
                 throw;
             }
 
-            clear_x();
+            clear_x_if_rvalue_series();
+        } else if constexpr (algo == 3) {
+            // Case 3: the series rank of T is higher than the series
+            // rank of this series type. The construction is successful
+            // only if x is a single coefficient series and this series
+            // type is constructible from the coefficient type of T.
+
+            if (x.is_single_cf()) {
+                if (x.empty()) {
+                    // If x is empty, just return (this is already empty).
+                    assert(empty());
+                    return;
+                }
+
+                try {
+                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                        *this = series(::std::move(x.begin()->second));
+                    } else {
+                        *this = series(static_cast<const series_cf_t<remove_cvref_t<T>> &>(x.begin()->second));
+                    }
+                } catch (...) {
+                    clear_x_if_rvalue_series();
+                    throw;
+                }
+
+                clear_x_if_rvalue_series();
+            } else {
+                piranha_throw(::std::invalid_argument, "Cannot construct a series of type '"
+                                                           + ::piranha::type_name<series>()
+                                                           + "' from a series of higher rank of type '"
+                                                           + ::piranha::type_name<remove_cvref_t<T>>()
+                                                           + "' which does not consist of a single coefficient");
+            }
         }
     }
 
@@ -611,6 +674,18 @@ public:
         // that the size of each table is small enough to avoid overflows.
         return ::std::accumulate(m_s_table.begin(), m_s_table.end(), size_type(0),
                                  [](const auto &cur, const auto &table) { return cur + table.size(); });
+    }
+
+    bool is_single_cf() const
+    {
+        switch (size()) {
+            case 0u:
+                return true;
+            case 1u:
+                return ::piranha::key_is_one(cbegin()->first, m_symbol_set);
+            default:
+                return false;
+        }
     }
 
 private:

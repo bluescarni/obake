@@ -51,6 +51,8 @@ TEST_CASE("pow_test")
 
     series_t s, s2(4);
     s.set_nsegments(4);
+    REQUIRE(s2.is_single_cf());
+    REQUIRE(s.is_single_cf());
     std::cout << s2 + 3.5 << '\n';
 
     series_t_rat sa(s2 + 3.5);
@@ -88,6 +90,8 @@ TEST_CASE("pow_test")
     s.add_term<false>(pm_t{2, 0, -1}, -1.3);
     s.add_term(pm_t{2, 1, -1}, -1.);
     s.add_term<false>(pm_t{2, 1, -1}, -1.);
+
+    REQUIRE(!s.is_single_cf());
 
     std::cout << s << '\n';
 }
