@@ -202,6 +202,8 @@ namespace detail
 
 // A bunch of scoped enums used to fine-tune at compile-time
 // the behaviour of the term insertion helpers below.
+// NOTE: use scoped enums instead of plain bools to avoid
+// mixing up the order of the flags when invoking the helpers.
 enum class sat_check_zero : bool { off, on };
 enum class sat_check_compat_key : bool { off, on };
 enum class sat_check_table_size : bool { off, on };
