@@ -34,20 +34,6 @@ template <typename To, typename From
           >
 inline constexpr auto cast = not_implemented;
 
-namespace internal
-{
-
-// Internal customisation point for piranha::cast().
-template <typename To, typename From
-#if !defined(PIRANHA_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto cast = not_implemented;
-
-} // namespace internal
-
 } // namespace customisation
 
 namespace detail
@@ -67,58 +53,32 @@ void cast(U &&);
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename To, typename From>
-constexpr auto cast_impl(From &&x, priority_tag<3>)
+constexpr auto cast_impl(From &&x, priority_tag<2>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::cast<To, From &&>)(::std::forward<From>(x)));
 
 // Unqualified function call implementation.
 template <typename To, typename From>
-constexpr auto cast_impl(From &&x, priority_tag<2>) PIRANHA_SS_FORWARD_FUNCTION(cast<To>(::std::forward<From>(x)));
-
-// Explicit override in the internal customisation namespace.
-template <typename To, typename From>
-constexpr auto cast_impl(From &&x, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::cast<To, From &&>)(::std::forward<From>(x)));
+constexpr auto cast_impl(From &&x, priority_tag<1>) PIRANHA_SS_FORWARD_FUNCTION(cast<To>(::std::forward<From>(x)));
 
 // Lowest priority: implementation via static_cast.
 template <typename To, typename From>
-constexpr auto cast_impl(From &&x, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(static_cast<To>(::std::forward<From>(x)));
+constexpr auto cast_impl(From &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(To(::std::forward<From>(x)));
 
-// Machinery to enable the cast implementation only if:
-// - it actually returns To,
-// - To is a non cv-qualified object.
+// Machinery to enable the cast implementation only if it
+// actually returns To.
 template <typename To, typename From>
-using cast_impl_ret_t = decltype(detail::cast_impl<To>(::std::declval<From>(), priority_tag<3>{}));
+using cast_impl_ret_t = decltype(detail::cast_impl<To>(::std::declval<From>(), priority_tag<2>{}));
 
 template <typename To, typename From,
-          ::std::enable_if_t<::std::conjunction_v<::std::is_object<To>, ::std::negation<::std::is_const<To>>,
-                                                  ::std::negation<::std::is_volatile<To>>,
-                                                  ::std::is_same<detected_t<cast_impl_ret_t, To, From>, To>>,
-                             int> = 0>
+          ::std::enable_if_t<::std::is_same_v<detected_t<cast_impl_ret_t, To, From>, To>, int> = 0>
 constexpr auto cast_impl_to_check(From &&x)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::cast_impl<To>(::std::forward<From>(x), priority_tag<3>{}));
+    PIRANHA_SS_FORWARD_FUNCTION(detail::cast_impl<To>(::std::forward<From>(x), priority_tag<2>{}));
 
 } // namespace detail
-
-#if defined(_MSC_VER) && !defined(__clang__)
-
-template <typename To>
-struct cast_msvc {
-    template <typename From>
-    constexpr auto operator()(From &&x) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::cast_impl_to_check<To>(::std::forward<From>(x)))
-};
-
-template <typename To>
-inline constexpr auto cast = cast_msvc<To>{};
-
-#else
 
 template <typename To>
 inline constexpr auto cast
     = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::cast_impl_to_check<To>(::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {
