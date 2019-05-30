@@ -10,7 +10,9 @@
 #define PIRANHA_SYMBOLS_HPP
 
 #include <string>
+#include <tuple>
 
+#include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 
 #include <piranha/detail/visibility.hpp>
@@ -22,12 +24,19 @@ using symbol_set = ::boost::container::flat_set<::std::string>;
 
 using symbol_idx = symbol_set::size_type;
 
+// Map of symbol indices. This sorted data structure maps
+// symbol_idx instances to instances of T.
+template <typename T>
+using symbol_idx_map = ::boost::container::flat_map<symbol_idx, T>;
+
 namespace detail
 {
 
 PIRANHA_DLL_PUBLIC ::std::string to_string(const symbol_set &);
+PIRANHA_DLL_PUBLIC ::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>>
+ss_merge(const symbol_set &, const symbol_set &);
 
-}
+} // namespace detail
 
 } // namespace piranha
 
