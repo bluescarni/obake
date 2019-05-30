@@ -970,10 +970,10 @@ public:
     }
     void set_symbol_set(const symbol_set &s)
     {
-        if (piranha_unlikely(!this->empty())) {
+        if (piranha_unlikely(!empty())) {
             piranha_throw(::std::invalid_argument,
                           "A symbol set can be set only in an empty series, but this series has "
-                              + detail::to_string(this->size()) + " terms");
+                              + detail::to_string(size()) + " terms");
         }
 
         m_symbol_set = s;
