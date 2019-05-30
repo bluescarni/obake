@@ -397,16 +397,16 @@ inline constexpr int series_generic_ctor_algorithm = detail::series_generic_ctor
 } // namespace detail
 
 template <typename T, typename K, typename C, typename Tag>
-using is_series_interoperable
+using is_series_constructible
     = ::std::integral_constant<bool, detail::series_generic_ctor_algorithm<T, K, C, Tag> != 0>;
 
 template <typename T, typename K, typename C, typename Tag>
-inline constexpr bool is_series_interoperable_v = is_series_interoperable<T, K, C, Tag>::value;
+inline constexpr bool is_series_constructible_v = is_series_constructible<T, K, C, Tag>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename K, typename C, typename Tag>
-PIRANHA_CONCEPT_DECL SeriesInteroperable = is_series_interoperable_v<T, K, C, Tag>;
+PIRANHA_CONCEPT_DECL SeriesConstructible = is_series_constructible_v<T, K, C, Tag>;
 
 #endif
 
@@ -513,9 +513,9 @@ private:
 
 public:
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    template <SeriesInteroperable<K, C, Tag> T>
+    template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_interoperable_v<T, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
 #endif
     explicit series(T &&x) : series()
     {
@@ -617,9 +617,9 @@ public:
         return *this;
     }
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    template <SeriesInteroperable<K, C, Tag> T>
+    template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_interoperable_v<T, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
 #endif
     series &operator=(T &&x)
     {
