@@ -374,7 +374,7 @@ constexpr int series_generic_ctor_algorithm_impl()
             // Construction from equal rank, different coefficient type. Requires
             // to be able to construct C from the coefficient type of T.
             // The construction argument will be a const reference or an rvalue
-            // reference, depending on whether T is a mutable rvalue reference.
+            // reference, depending on whether T is a mutable rvalue reference or not.
             using cf_conv_t
                 = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
             return is_constructible_v<C, cf_conv_t> ? 2 : 0;
@@ -407,6 +407,21 @@ inline constexpr bool is_series_interoperable_v = is_series_interoperable<T, K, 
 
 template <typename T, typename K, typename C, typename Tag>
 PIRANHA_CONCEPT_DECL SeriesInteroperable = is_series_interoperable_v<T, K, C, Tag>;
+
+#endif
+
+template <typename T, typename C>
+using is_series_convertible
+    = ::std::conjunction<::std::integral_constant<bool, series_rank<T> == 0u>, ::std::is_object<T>,
+                         is_constructible<T, int>, is_constructible<T, const C &>>;
+
+template <typename T, typename C>
+inline constexpr bool is_series_convertible_v = is_series_convertible<T, C>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename C>
+PIRANHA_CONCEPT_DECL SeriesConvertible = is_series_convertible_v<T, C>;
 
 #endif
 
@@ -594,6 +609,35 @@ public:
 #endif
 
         return *this;
+    }
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    template <SeriesInteroperable<K, C, Tag> T>
+#else
+    template <typename T, ::std::enable_if_t<is_series_interoperable_v<T, K, C, Tag>, int> = 0>
+#endif
+    series &operator=(T &&x)
+    {
+        return *this = series(::std::forward<T>(x));
+    }
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    template <SeriesConvertible<C> T>
+#else
+    template <typename T, ::std::enable_if_t<is_series_convertible_v<T, C>, int> = 0>
+#endif
+    explicit operator T() const
+    {
+        switch (size()) {
+            case 0u:
+                return T(0);
+            case 1u:
+                return T(cbegin()->second);
+            default:
+                piranha_throw(::std::invalid_argument,
+                              "Cannot convert a series of type '" + ::piranha::type_name<series>()
+                                  + "' to on object of type '" + ::piranha::type_name<T>()
+                                  + "', because the series does not consist of a single coefficient");
+        }
     }
 
 private:

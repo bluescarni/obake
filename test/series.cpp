@@ -94,4 +94,11 @@ TEST_CASE("pow_test")
     REQUIRE(!s.is_single_cf());
 
     std::cout << s << '\n';
+
+    s = rat_t{1, 2};
+    std::cout << s << '\n';
+
+    series_t_rat farp{"3/4"};
+    std::cout << farp << '\n';
+    std::cout << static_cast<double>(farp) << '\n';
 }
