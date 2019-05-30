@@ -201,6 +201,32 @@ using series_tag_t = typename detail::series_tag_t_impl<T>::type;
 namespace detail
 {
 
+template <typename T>
+struct is_series_impl : ::std::false_type {
+};
+
+template <typename K, typename C, typename Tag>
+struct is_series_impl<series<K, C, Tag>> : ::std::true_type {
+};
+
+} // namespace detail
+
+template <typename T>
+using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
+
+template <typename T>
+inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
+
+#endif
+
+namespace detail
+{
+
 // A bunch of scoped enums used to fine-tune at compile-time
 // the behaviour of the term insertion helpers below.
 // NOTE: use scoped enums instead of plain bools to avoid
@@ -504,7 +530,7 @@ private:
         x_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
         ~x_clearer()
         {
-            if constexpr (is_mutable_rvalue_reference_v<T &&> && (series_rank<remove_cvref_t<T>>) > 0u) {
+            if constexpr (::std::conjunction_v<is_mutable_rvalue_reference<T &&>, is_cvr_series<T>>) {
                 m_ref.clear();
             }
         }
@@ -1031,32 +1057,6 @@ inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
 {
     s1.swap(s2);
 }
-
-namespace detail
-{
-
-template <typename T>
-struct is_series_impl : ::std::false_type {
-};
-
-template <typename K, typename C, typename Tag>
-struct is_series_impl<series<K, C, Tag>> : ::std::true_type {
-};
-
-} // namespace detail
-
-template <typename T>
-using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
-
-template <typename T>
-inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T>
-PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
-
-#endif
 
 namespace customisation::internal
 {
