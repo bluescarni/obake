@@ -483,14 +483,21 @@ public:
         constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
 
         // Small helper to clear x, if it is a nonconst
-        // rvalue reference series. We want to make sure it is
-        // emptied out before returning, if there's a chance
-        // we moved data from it.
-        [[maybe_unused]] auto clear_x_if_rvalue_series = [&x]() {
-            detail::ignore(x);
-            if constexpr (is_mutable_rvalue_reference_v<T &&> && (series_rank<remove_cvref_t<T>>) > 0u) {
-                x.clear();
+        // rvalue reference to a series. In some cases, we might
+        // end up moving away individual coefficients from x,
+        // which may leave x in an inconsistent state. With this
+        // RAII struct, we'll ensure x is cleared out before
+        // leaving this function (either as part of regular program
+        // flow or in case of exception).
+        struct x_clearer {
+            x_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
+            ~x_clearer()
+            {
+                if constexpr (is_mutable_rvalue_reference_v<T &&> && (series_rank<remove_cvref_t<T>>) > 0u) {
+                    m_ref.clear();
+                }
             }
+            T &&m_ref;
         };
 
         if constexpr (algo == 1) {
@@ -512,39 +519,34 @@ public:
             // otherwise we would be in a copy/move constructor scenario).
             // Insert all terms from x into this, converting the coefficients.
 
-            try {
-                // Reserve space in the new table.
-                auto &tab = m_s_table[0];
-                tab.reserve(x.size());
+            // Init the clearer, as we'll be extracting
+            // coefficients from x below.
+            x_clearer xc(::std::forward<T>(x));
 
-                // Copy/move over the symbol set.
-                m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+            // Reserve space in the new table.
+            auto &tab = m_s_table[0];
+            tab.reserve(x.size());
 
-                for (auto &p : x) {
-                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-                        // NOTE: like above, disable key compat check (we assume the other
-                        // series contains only compatible keys) and table size check (only
-                        // 1 table). We also know all the terms in the input
-                        // series are unique. We keep the zero check because the conversion
-                        // of the coefficient type of T to C might result in zero
-                        // (e.g., converting from double to int).
-                        detail::series_add_term_table<true, detail::sat_check_zero::on,
-                                                      detail::sat_check_compat_key::off,
-                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                            *this, tab, p.first, ::std::move(p.second));
-                    } else {
-                        detail::series_add_term_table<true, detail::sat_check_zero::on,
-                                                      detail::sat_check_compat_key::off,
-                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                            *this, tab, p.first, static_cast<const series_cf_t<remove_cvref_t<T>> &>(p.second));
-                    }
+            // Copy/move over the symbol set.
+            m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+
+            for (auto &p : x) {
+                if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                    // NOTE: like above, disable key compat check (we assume the other
+                    // series contains only compatible keys) and table size check (only
+                    // 1 table). We also know all the terms in the input
+                    // series are unique. We keep the zero check because the conversion
+                    // of the coefficient type of T to C might result in zero
+                    // (e.g., converting from double to int).
+                    detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
+                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                        *this, tab, p.first, ::std::move(p.second));
+                } else {
+                    detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
+                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                        *this, tab, p.first, static_cast<const series_cf_t<remove_cvref_t<T>> &>(p.second));
                 }
-            } catch (...) {
-                clear_x_if_rvalue_series();
-                throw;
             }
-
-            clear_x_if_rvalue_series();
         } else if constexpr (algo == 3) {
             // Case 3: the series rank of T is higher than the series
             // rank of this series type. The construction is successful
@@ -558,18 +560,15 @@ public:
                     return;
                 }
 
-                try {
-                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-                        *this = series(::std::move(x.begin()->second));
-                    } else {
-                        *this = series(static_cast<const series_cf_t<remove_cvref_t<T>> &>(x.begin()->second));
-                    }
-                } catch (...) {
-                    clear_x_if_rvalue_series();
-                    throw;
-                }
+                // Init the clearer, as we will be moving the
+                // only coefficient in x.
+                x_clearer xc(::std::forward<T>(x));
 
-                clear_x_if_rvalue_series();
+                if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                    *this = series(::std::move(x.begin()->second));
+                } else {
+                    *this = series(static_cast<const series_cf_t<remove_cvref_t<T>> &>(x.begin()->second));
+                }
             } else {
                 piranha_throw(::std::invalid_argument, "Cannot construct a series of type '"
                                                            + ::piranha::type_name<series>()
