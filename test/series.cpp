@@ -101,4 +101,7 @@ TEST_CASE("pow_test")
     series_t_rat farp{"3/4"};
     std::cout << farp << '\n';
     std::cout << static_cast<double>(farp) << '\n';
+
+    REQUIRE(!is_series_constructible_v<void, void, void, void>);
+    REQUIRE(!is_series_convertible_v<void, void>);
 }

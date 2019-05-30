@@ -91,37 +91,6 @@ PIRANHA_CONCEPT_DECL Cf = is_cf_v<T>;
 
 #endif
 
-namespace detail
-{
-
-// A small hashing wrapper for keys. It accomplishes two tasks:
-// - force the evaluation of a key through const reference,
-//   so that, in the Key requirements, we can request hashability
-//   through const lvalue ref;
-// - provide additional mixing.
-struct key_hasher {
-    static ::std::size_t hash_mixer(const ::std::size_t &h) noexcept
-    {
-        return ::absl::Hash<::std::size_t>{}(h);
-    }
-    template <typename K>
-    ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
-    {
-        return key_hasher::hash_mixer(::piranha::hash(k));
-    }
-};
-
-// Wrapper to force key comparison via const lvalue refs.
-struct key_comparer {
-    template <typename K>
-    constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
-    {
-        return k1 == k2;
-    }
-};
-
-} // namespace detail
-
 // Forward declaration.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key, Cf, typename>
@@ -385,35 +354,44 @@ template <typename T, typename K, typename C, typename Tag>
 constexpr int series_generic_ctor_algorithm_impl()
 {
     using rT = remove_cvref_t<T>;
-    using series_t = series<K, C, Tag>;
 
-    if constexpr (::std::is_same_v<rT, series_t>) {
-        // Avoid competition with the copy/move ctors.
-        return 0;
-    } else if constexpr (series_rank<rT> < series_rank<series_t>) {
-        // Construction from lesser rank requires
-        // to be able to construct C from T.
-        return is_constructible_v<C, T> ? 1 : 0;
-    } else if constexpr (series_rank<rT> == series_rank<series_t>) {
-        if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
-                                           ::std::is_same<series_tag_t<rT>, Tag>>) {
-            // Construction from equal rank, different coefficient type. Requires
-            // to be able to construct C from the coefficient type of T.
-            // The construction argument will be a const reference or an rvalue
-            // reference, depending on whether T is a mutable rvalue reference or not.
-            using cf_conv_t
-                = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
-            return is_constructible_v<C, cf_conv_t> ? 2 : 0;
-        } else {
+    // NOTE: check first if series<K, C, Tag> is a well-formed
+    // type (that is, K and C satisfy the key/cf requirements).
+    // Like this, if this function is instantiated with bogus
+    // types, it will return 0 rather than giving a hard error.
+    if constexpr (is_detected_v<series, K, C, Tag>) {
+        using series_t = series<K, C, Tag>;
+
+        if constexpr (::std::is_same_v<rT, series_t>) {
+            // Avoid competition with the copy/move ctors.
             return 0;
+        } else if constexpr (series_rank<rT> < series_rank<series_t>) {
+            // Construction from lesser rank requires
+            // to be able to construct C from T.
+            return is_constructible_v<C, T> ? 1 : 0;
+        } else if constexpr (series_rank<rT> == series_rank<series_t>) {
+            if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
+                                               ::std::is_same<series_tag_t<rT>, Tag>>) {
+                // Construction from equal rank, different coefficient type. Requires
+                // to be able to construct C from the coefficient type of T.
+                // The construction argument will be a const reference or an rvalue
+                // reference, depending on whether T is a mutable rvalue reference or not.
+                using cf_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&,
+                                                       const series_cf_t<rT> &>;
+                return is_constructible_v<C, cf_conv_t> ? 2 : 0;
+            } else {
+                return 0;
+            }
+        } else {
+            // Construction from higher rank. Requires that
+            // series_t can be constructed from the coefficient
+            // type of T.
+            using series_conv_t
+                = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
+            return is_constructible_v<series_t, series_conv_t> ? 3 : 0;
         }
     } else {
-        // Construction from higher rank. Requires that
-        // series_t can be constructed from the coefficient
-        // type of T.
-        using series_conv_t
-            = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
-        return is_constructible_v<series_t, series_conv_t> ? 3 : 0;
+        return 0;
     }
 }
 
@@ -439,7 +417,7 @@ PIRANHA_CONCEPT_DECL SeriesConstructible = is_series_constructible_v<T, K, C, Ta
 template <typename T, typename C>
 using is_series_convertible
     = ::std::conjunction<::std::integral_constant<bool, series_rank<T> == 0u>, ::std::is_object<T>,
-                         is_constructible<T, int>, is_constructible<T, const C &>>;
+                         is_constructible<T, int>, is_constructible<T, ::std::add_lvalue_reference_t<const C>>>;
 
 template <typename T, typename C>
 inline constexpr bool is_series_convertible_v = is_series_convertible<T, C>::value;
@@ -450,6 +428,37 @@ template <typename T, typename C>
 PIRANHA_CONCEPT_DECL SeriesConvertible = is_series_convertible_v<T, C>;
 
 #endif
+
+namespace detail
+{
+
+// A small hashing wrapper for keys. It accomplishes two tasks:
+// - force the evaluation of a key through const reference,
+//   so that, in the Key requirements, we can request hashability
+//   through const lvalue ref;
+// - provide additional mixing.
+struct key_hasher {
+    static ::std::size_t hash_mixer(const ::std::size_t &h) noexcept
+    {
+        return ::absl::Hash<::std::size_t>{}(h);
+    }
+    template <typename K>
+    ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
+    {
+        return key_hasher::hash_mixer(::piranha::hash(k));
+    }
+};
+
+// Wrapper to force key comparison via const lvalue refs.
+struct key_comparer {
+    template <typename K>
+    constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
+    {
+        return k1 == k2;
+    }
+};
+
+} // namespace detail
 
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
