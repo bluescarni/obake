@@ -488,6 +488,30 @@ public:
 #endif
     }
 
+private:
+    // Small helper to clear() a nonconst
+    // rvalue reference to a series. This is used in the
+    // generic constructor below, where, in some cases, we might
+    // end up moving away individual coefficients from an input series,
+    // which may leave the series in an inconsistent state. With this
+    // RAII struct, we'll ensure the series is cleared out before
+    // leaving the constructor (either as part of regular program
+    // flow or in case of exception).
+    // NOTE: we define this helper here, instead of locally in
+    // the constructor, because MSVC does not like that.
+    template <typename T>
+    struct x_clearer {
+        x_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
+        ~x_clearer()
+        {
+            if constexpr (is_mutable_rvalue_reference_v<T &&> && (series_rank<remove_cvref_t<T>>) > 0u) {
+                m_ref.clear();
+            }
+        }
+        T &&m_ref;
+    };
+
+public:
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesInteroperable<K, C, Tag> T>
 #else
@@ -496,24 +520,6 @@ public:
     explicit series(T &&x) : series()
     {
         constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
-
-        // Small helper to clear x, if it is a nonconst
-        // rvalue reference to a series. In some cases, we might
-        // end up moving away individual coefficients from x,
-        // which may leave x in an inconsistent state. With this
-        // RAII struct, we'll ensure x is cleared out before
-        // leaving this function (either as part of regular program
-        // flow or in case of exception).
-        struct x_clearer {
-            x_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
-            ~x_clearer()
-            {
-                if constexpr (is_mutable_rvalue_reference_v<T &&> && (series_rank<remove_cvref_t<T>>) > 0u) {
-                    m_ref.clear();
-                }
-            }
-            T &&m_ref;
-        };
 
         if constexpr (algo == 1) {
             // Case 1: the series rank of T is less than the series
@@ -536,7 +542,7 @@ public:
 
             // Init the clearer, as we'll be extracting
             // coefficients from x below.
-            x_clearer xc(::std::forward<T>(x));
+            x_clearer<T> xc(::std::forward<T>(x));
 
             // Reserve space in the new table.
             auto &tab = m_s_table[0];
@@ -577,7 +583,7 @@ public:
 
                 // Init the clearer, as we will be moving the
                 // only coefficient in x.
-                x_clearer xc(::std::forward<T>(x));
+                x_clearer<T> xc(::std::forward<T>(x));
 
                 if constexpr (is_mutable_rvalue_reference_v<T &&>) {
                     *this = series(::std::move(x.begin()->second));
