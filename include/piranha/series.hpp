@@ -1309,8 +1309,14 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
         using ret_t = series<series_key_t<rU>, detail::add_t<const rT &, const series_cf_t<rU> &>, series_tag_t<rU>>;
 
         ret_t retval(::std::forward<U>(y));
-        // TODO fixme proper add_term.
-        retval.add_term(series_key_t<rU>(retval.get_symbol_set()), ::std::forward<T>(x));
+        // NOTE: we can turn off key compat check, as we know
+        // the new key will be compatible by construction. The other
+        // checks are needed. Also, because we don't know
+        // the segmentation of y, we need to use series_add_term()
+        // instead of series_add_term_table().
+        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
+                                sat_assume_unique::off>(retval, series_key_t<rU>(retval.get_symbol_set()),
+                                                        ::std::forward<T>(x));
 
         return retval;
     } else if constexpr (algo == 2) {
@@ -1318,7 +1324,9 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
         using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const rU &>, series_tag_t<rT>>;
 
         ret_t retval(::std::forward<T>(x));
-        retval.add_term(series_key_t<rT>(retval.get_symbol_set()), ::std::forward<U>(y));
+        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
+                                sat_assume_unique::off>(retval, series_key_t<rT>(retval.get_symbol_set()),
+                                                        ::std::forward<U>(y));
 
         return retval;
     }
