@@ -45,9 +45,9 @@ TEST_CASE("pow_test")
 
     REQUIRE(!is_detected_v<series_add_t, int, int>);
 
-    REQUIRE(detail::series_add_strategy<int &, int &> == 0);
-    REQUIRE(detail::series_add_strategy<int &, series_t &> == 1);
-    REQUIRE(detail::series_add_strategy<series_t &, int &> == 2);
+    REQUIRE(detail::series_add_algorithm<int &, int &> == 0);
+    REQUIRE(detail::series_add_algorithm<int &, series_t &> == 1);
+    REQUIRE(detail::series_add_algorithm<series_t &, int &> == 2);
 
     series_t s, s2(4);
     s.set_nsegments(4);

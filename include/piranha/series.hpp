@@ -1254,7 +1254,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
-constexpr int series_add_strategy_impl()
+constexpr int series_add_algorithm_impl()
 {
     using rT [[maybe_unused]] = remove_cvref_t<T>;
     using rU [[maybe_unused]] = remove_cvref_t<U>;
@@ -1293,18 +1293,18 @@ constexpr int series_add_strategy_impl()
 }
 
 template <typename T, typename U>
-inline constexpr int series_add_strategy = detail::series_add_strategy_impl<T, U>();
+inline constexpr int series_add_algorithm = detail::series_add_algorithm_impl<T, U>();
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_add_strategy<T &&, U &&> != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 {
     using rT [[maybe_unused]] = remove_cvref_t<T>;
     using rU [[maybe_unused]] = remove_cvref_t<U>;
 
-    constexpr auto strat = series_add_strategy<T &&, U &&>;
+    constexpr auto algo = series_add_algorithm<T &&, U &&>;
 
-    if constexpr (strat == 1) {
+    if constexpr (algo == 1) {
         // T scalar, U series.
         using ret_t = series<series_key_t<rU>, detail::add_t<const rT &, const series_cf_t<rU> &>, series_tag_t<rU>>;
 
@@ -1313,7 +1313,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
         retval.add_term(series_key_t<rU>(retval.get_symbol_set()), ::std::forward<T>(x));
 
         return retval;
-    } else if constexpr (strat == 2) {
+    } else if constexpr (algo == 2) {
         // T series, U scalar.
         using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const rU &>, series_tag_t<rT>>;
 
