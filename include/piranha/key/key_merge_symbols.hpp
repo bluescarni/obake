@@ -77,6 +77,8 @@ using key_merge_symbols_t = decltype(::piranha::key_merge_symbols(
 
 }
 
+// NOTE: runtime requirement: the output key will be
+// compatible with the merged symbol set.
 template <typename T>
 using is_symbols_mergeable_key = is_detected<detail::key_merge_symbols_t, T>;
 
