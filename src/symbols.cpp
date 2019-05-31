@@ -114,7 +114,29 @@ namespace piranha::detail
         return retval;
     };
 
-    return ::std::make_tuple(::std::move(u_set), compute_map(s1), compute_map(s2));
+    auto m1 = compute_map(s1);
+    auto m2 = compute_map(s2);
+
+#if !defined(NDEBUG)
+    auto check_map = [](const auto &m) {
+        for (auto it = m.begin(); it != m.end(); ++it) {
+            // There cannot be empty symbol sets in the map.
+            assert(!it->second.empty());
+            if (it + 1 != m.end()) {
+                // If this is not the last pair in the map,
+                // then its last symbol must precede, in
+                // alphabetical order, the first symbol
+                // of the next pair.
+                assert(*(it->second.end() - 1) < *((it + 1)->second.begin()));
+            }
+        }
+    };
+
+    check_map(m1);
+    check_map(m2);
+#endif
+
+    return ::std::make_tuple(::std::move(u_set), ::std::move(m1), ::std::move(m2));
 }
 
 } // namespace piranha::detail

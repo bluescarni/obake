@@ -14,11 +14,16 @@
 #include <initializer_list>
 #include <iterator>
 #include <ostream>
+#include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/ignore.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
+#include <piranha/exceptions.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
@@ -255,6 +260,68 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
         assert(m.get_value() == T(0));
         os << '1';
     }
+}
+
+// Implementation of symbols merging.
+// NOTE: requires that m is compatible with s, and ins_map consistent with s.
+template <typename T>
+inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const symbol_idx_map<symbol_set> &ins_map,
+                                            const symbol_set &s)
+{
+    assert(::piranha::polynomials::key_is_compatible(m, s));
+    // The last element of the insertion map must be at most s.size(), which means that there
+    // are symbols to be appended at the end.
+    assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
+
+    // Do a first pass to compute the total size after merging.
+    auto merged_size = s.size();
+    for (const auto &p : ins_map) {
+        const auto tmp_size = p.second.size();
+        // LCOV_EXCL_START
+        if (piranha_unlikely(tmp_size > ::std::get<1>(detail::limits_minmax<decltype(s.size())>) - merged_size)) {
+            piranha_throw(::std::overflow_error, "Overflow while trying to merge new symbols in a packed monomial: the "
+                                                 "size of the merged monomial is too large");
+        }
+        // LCOV_EXCL_STOP
+        merged_size += tmp_size;
+    }
+
+    // Init the unpacker and the packer.
+    // NOTE: we know s.size() is small enough thanks to the
+    // assertion at the beginning.
+    bit_unpacker bu(m.get_value(), static_cast<unsigned>(s.size()));
+    bit_packer<T> bp(::piranha::safe_cast<unsigned>(merged_size));
+
+    T tmp;
+    auto map_it = ins_map.begin();
+    const auto map_end = ins_map.end();
+    for (auto i = 0u; i < static_cast<unsigned>(s.size()); ++i) {
+        if (map_it != map_end && map_it->first == i) {
+            // We reached an index at which we need to
+            // insert new elements. Insert as many
+            // zeroes as necessary in the packer.
+            for (const auto &_ : map_it->second) {
+                detail::ignore(_);
+                bp << T(0);
+            }
+            // Move to the next element in the map.
+            ++map_it;
+        }
+        // Add the existing element to the packer.
+        bu >> tmp;
+        bp << tmp;
+    }
+
+    // We could still have symbols which need to be appended at the end.
+    if (map_it != map_end) {
+        for (const auto &_ : map_it->second) {
+            detail::ignore(_);
+            bp << T(0);
+        }
+        assert(map_it + 1 == map_end);
+    }
+
+    return packed_monomial<T>(bp.get());
 }
 
 } // namespace polynomials
