@@ -176,5 +176,9 @@ TEST_CASE("key_merge_symbols_test")
     REQUIRE(!SymbolsMergeableKey<noext00>);
     REQUIRE(!SymbolsMergeableKey<noext00 &>);
     REQUIRE(!SymbolsMergeableKey<const noext00 &>);
+
+    REQUIRE(!SymbolsMergeableKey<ns::kms02>);
+    REQUIRE(!SymbolsMergeableKey<ns::kms02 &>);
+    REQUIRE(!SymbolsMergeableKey<const ns::kms02 &>);
 #endif
 }
