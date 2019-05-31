@@ -104,4 +104,6 @@ TEST_CASE("pow_test")
 
     REQUIRE(!is_series_constructible_v<void, void, void, void>);
     REQUIRE(!is_series_convertible_v<void, void>);
+
+    std::cout << s + s << '\n';
 }

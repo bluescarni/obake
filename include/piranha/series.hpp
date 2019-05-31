@@ -38,6 +38,7 @@
 #include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
+#include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
@@ -1013,6 +1014,10 @@ public:
 
         m_symbol_set = s;
     }
+    auto &_get_s_table()
+    {
+        return m_s_table;
+    }
 
     template <bool Sign = true,
 #if defined(PIRANHA_HAVE_CONCEPTS)
@@ -1289,6 +1294,8 @@ constexpr int series_add_algorithm_impl()
         }
     } else {
         // Both T and U are series.
+        // TODO enabling.
+        return 3;
     }
 }
 
@@ -1329,6 +1336,132 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
                                                         ::std::forward<U>(y));
 
         return retval;
+    } else if constexpr (algo == 3) {
+        // Both T and U are series, same rank, possibly different cf.
+        // The return type is a series with the same rank, tag and key,
+        // and coefficient type resulting from the addition of the
+        // coefficient types in the two series.
+        using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const series_cf_t<rU> &>,
+                             series_tag_t<rT>>;
+
+        // Implementation of the addition between
+        // two series with identical symbol sets.
+        auto impl = [](auto &&a, auto &&b) {
+            assert(a.get_symbol_set() == b.get_symbol_set());
+
+            // Init the retval from the larger series.
+            const bool a_gte_b = a.size() >= b.size();
+            auto retval = a_gte_b ? ret_t(::std::forward<decltype(a)>(a)) : ret_t(::std::forward<decltype(b)>(b));
+
+            // Helpers to merge the terms from the smaller series into retval.
+
+            // Version 1: retval contains multiple tables.
+            auto term_merger = [&retval](auto &&rhs) {
+                for (auto &p : rhs) {
+                    if constexpr (is_mutable_rvalue_reference_v<decltype(rhs) &&>) {
+                        // NOTE: turn on the zero check, as we might end up
+                        // annihilating terms during insertion.
+                        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                sat_check_table_size::on, sat_assume_unique::off>(
+                            retval, p.first, ::std::move(p.second));
+                    } else {
+                        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                sat_check_table_size::on, sat_assume_unique::off>(retval, p.first,
+                                                                                                  p.second);
+                    }
+                }
+            };
+
+            // Version 2: retval contains a single table.
+            auto term_merger_table = [&retval](auto &&rhs) {
+                auto &t = retval._get_s_table()[0];
+
+                for (auto &p : rhs) {
+                    if constexpr (is_mutable_rvalue_reference_v<decltype(rhs) &&>) {
+                        // NOTE: disable the table size check, as we are
+                        // sure we have a single table.
+                        detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::off>(
+                            retval, t, p.first, ::std::move(p.second));
+                    } else {
+                        detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::off>(
+                            retval, t, p.first, p.second);
+                    }
+                }
+            };
+
+            // Proceed merging the terms, perfectly forwarding
+            // and exploiting single-table layout, if possible.
+            if (a_gte_b) {
+                if (retval._get_s_table().size() > 1u) {
+                    term_merger(::std::forward<decltype(b)>(b));
+                } else {
+                    term_merger_table(::std::forward<decltype(b)>(b));
+                }
+            } else {
+                if (retval._get_s_table().size() > 1u) {
+                    term_merger(::std::forward<decltype(a)>(a));
+                } else {
+                    term_merger_table(::std::forward<decltype(a)>(a));
+                }
+            }
+
+            return retval;
+        };
+
+        if (x.get_symbol_set() == y.get_symbol_set()) {
+            // Same symbol sets, run the implementation
+            // directly on x and y.
+            return impl(::std::forward<T>(x), ::std::forward<U>(y));
+        } else {
+            // Merge the symbol sets.
+            const auto mss = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+
+            // Create the return values.
+            ret_t a, b;
+            a.set_symbol_set(::std::get<0>(mss));
+            b.set_symbol_set(::std::get<0>(mss));
+
+            // Helper to transform x and y into ret_t, while
+            // at the same time extending the keys
+            // with the insertion maps from mss.
+            auto converter = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
+                // Cache a couple of quantities.
+                auto &to_table = to._get_s_table()[0];
+                const auto &orig_ss = from.get_symbol_set();
+
+                // Establish if we need to check for zero coefficients
+                // when inserting. We don't if the coefficient types of to and from
+                // coincide, otherwise the conversion might generate zeroes.
+                constexpr auto check_zero = static_cast<sat_check_zero>(
+                    ::std::is_same_v<series_cf_t<ret_t>, series_cf_t<remove_cvref_t<decltype(from)>>>);
+
+                // Merge the terms.
+                for (auto &p : from) {
+                    // Compute the merged key.
+                    auto merged_key = ::piranha::key_merge_symbols(
+                        static_cast<const series_key_t<remove_cvref_t<decltype(from)>> &>(p.first), ins_map, orig_ss);
+
+                    // Insert the term: the only check we may need is check_zero, in case
+                    // the coefficient type changes.
+                    if constexpr (is_mutable_rvalue_reference_v<decltype(from) &&>) {
+                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::on>(
+                            to, to_table, ::std::move(merged_key), ::std::move(p.second));
+                    } else {
+                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::on>(
+                            to, to_table, ::std::move(merged_key), p.second);
+                    }
+                }
+            };
+            converter(a, ::std::forward<T>(x), ::std::get<1>(mss));
+            converter(b, ::std::forward<U>(y), ::std::get<2>(mss));
+
+            // Run the implementation moving in the converted series.
+            return impl(::std::move(a), ::std::move(b));
+        }
     }
 }
 
