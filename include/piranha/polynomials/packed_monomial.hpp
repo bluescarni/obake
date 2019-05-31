@@ -43,6 +43,8 @@ public:
     constexpr packed_monomial() : m_value(0) {}
     // Constructor from symbol set.
     constexpr explicit packed_monomial(const symbol_set &) : packed_monomial() {}
+    // Constructor from value.
+    constexpr explicit packed_monomial(const T &n) : m_value(n) {}
     // Constructor from input iterator and size.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename It>

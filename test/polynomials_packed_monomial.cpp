@@ -53,9 +53,15 @@ TEST_CASE("ctor_test")
 
         REQUIRE(is_semi_regular_v<pm_t>);
 
-        pm_t pm0;
         // Default ctor.
+        pm_t pm0;
         REQUIRE(pm0.get_value() == int_t(0));
+
+        // Constructor from value.
+        REQUIRE(pm_t(int_t(0)).get_value() == int_t(0));
+        REQUIRE(pm_t(int_t(1)).get_value() == int_t(1));
+        REQUIRE(pm_t(int_t(2)).get_value() == int_t(2));
+        REQUIRE(pm_t(int_t(42)).get_value() == int_t(42));
 
         // Constructor from symbol set.
         REQUIRE(key_is_compatible(pm_t(symbol_set{}), symbol_set{}));
@@ -87,9 +93,12 @@ TEST_CASE("ctor_test")
         pm_t pm4{1, 2, 3};
         REQUIRE(pm4.get_value() == bp1.get());
 
+        struct sfoo {
+        };
+
         // Test some type traits.
         REQUIRE(!std::is_constructible_v<pm_t, void>);
-        REQUIRE(!std::is_constructible_v<pm_t, int>);
+        REQUIRE(!std::is_constructible_v<pm_t, sfoo>);
         REQUIRE(std::is_constructible_v<pm_t, std::istream_iterator<char>, unsigned>);
         REQUIRE(!std::is_constructible_v<pm_t, int, unsigned>);
         REQUIRE(!std::is_constructible_v<pm_t, std::istream_iterator<char>, std::istream_iterator<char>>);
