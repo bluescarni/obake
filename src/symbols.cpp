@@ -42,8 +42,8 @@ namespace piranha::detail
 }
 
 // Merge symbol sets.
-::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>> ss_merge(const symbol_set &s1,
-                                                                                          const symbol_set &s2)
+::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>> merge_symbol_sets(const symbol_set &s1,
+                                                                                                   const symbol_set &s2)
 {
     // Use the underlying sequence type
     // of symbol_set for the computation of the
@@ -53,11 +53,13 @@ namespace piranha::detail
     // NOTE: the max size of the union is the sum of the two sizes, make sure
     // we can compute that safely.
     // NOTE: the size type of seq is the same size type of symbol_set.
+    // LCOV_EXCL_START
     if (piranha_unlikely(s1.size() > ::std::get<1>(limits_minmax<symbol_set::size_type>) - s2.size())) {
         piranha_throw(::std::overflow_error,
                       "Overflow in the computation of the size of the union of two symbol sets of sizes "
                           + detail::to_string(s1.size()) + " and " + detail::to_string(s2.size()));
     }
+    // LCOV_EXCL_STOP
     // Prepare the storage.
     seq.resize(static_cast<symbol_set::size_type>(s1.size() + s2.size()));
 

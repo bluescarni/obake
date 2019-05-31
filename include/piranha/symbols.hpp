@@ -34,7 +34,7 @@ namespace detail
 
 PIRANHA_DLL_PUBLIC ::std::string to_string(const symbol_set &);
 PIRANHA_DLL_PUBLIC ::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>>
-ss_merge(const symbol_set &, const symbol_set &);
+merge_symbol_sets(const symbol_set &, const symbol_set &);
 
 } // namespace detail
 
