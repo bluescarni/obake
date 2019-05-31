@@ -292,7 +292,6 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     bit_unpacker bu(m.get_value(), static_cast<unsigned>(s.size()));
     bit_packer<T> bp(::piranha::safe_cast<unsigned>(merged_size));
 
-    T tmp;
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
     for (auto i = 0u; i < static_cast<unsigned>(s.size()); ++i) {
@@ -308,6 +307,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
             ++map_it;
         }
         // Add the existing element to the packer.
+        T tmp;
         bu >> tmp;
         bp << tmp;
     }
