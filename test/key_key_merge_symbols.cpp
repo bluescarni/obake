@@ -43,6 +43,12 @@ struct kms01 {
 // Only some overloads.
 kms01 key_merge_symbols(kms01 &, const symbol_idx_map<symbol_set> &, const symbol_set &);
 
+// Correct, but it will be overridden by an external customisation point.
+struct kms02 {
+};
+
+kms02 key_merge_symbols(const kms02 &, const symbol_idx_map<symbol_set> &, const symbol_set &);
+
 } // namespace ns
 
 // External customisation point.
@@ -91,6 +97,19 @@ inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, noe
     return 42;
 };
 
+// This will override a correct ADL implementation, thus disabling
+// piranha::key_merge_symbols().
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, ns::kms02> inline constexpr auto key_merge_symbols<T>
+#else
+inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ns::kms02>>>
+#endif
+    = [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
+{
+    return 42;
+};
+
 } // namespace piranha::customisation
 
 TEST_CASE("key_merge_symbols_test")
@@ -123,6 +142,10 @@ TEST_CASE("key_merge_symbols_test")
     REQUIRE(!is_symbols_mergeable_key_v<noext00>);
     REQUIRE(!is_symbols_mergeable_key_v<noext00 &>);
     REQUIRE(!is_symbols_mergeable_key_v<const noext00 &>);
+
+    REQUIRE(!is_symbols_mergeable_key_v<ns::kms02>);
+    REQUIRE(!is_symbols_mergeable_key_v<ns::kms02 &>);
+    REQUIRE(!is_symbols_mergeable_key_v<const ns::kms02 &>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(!SymbolsMergeableKey<void>);
