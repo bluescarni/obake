@@ -335,12 +335,14 @@ TEST_CASE("key_merge_symbols_test")
         REQUIRE(is_symbols_mergeable_key_v<pm_t &&>);
         REQUIRE(is_symbols_mergeable_key_v<const pm_t &>);
 
-        REQUIRE(key_merge_symbols(pm_t{}, {}, {}) == pm_t{});
-        REQUIRE(key_merge_symbols(pm_t{}, {{0, {"x"}}}, {}) == pm_t{0});
-        REQUIRE(key_merge_symbols(pm_t{1}, {}, {"x"}) == pm_t{1});
-        REQUIRE(key_merge_symbols(pm_t{1}, {{0, {"y"}}}, {"x"}) == pm_t{0, 1});
-        REQUIRE(key_merge_symbols(pm_t{1}, {{1, {"y"}}}, {"x"}) == pm_t{1, 0});
-        REQUIRE(key_merge_symbols(pm_t{1, 2, 3}, {{0, {"a", "b"}}, {1, {"c"}}, {3, {"d", "e"}}}, {"x", "y", "z"})
+        REQUIRE(key_merge_symbols(pm_t{}, symbol_idx_map<symbol_set>{}, symbol_set{}) == pm_t{});
+        REQUIRE(key_merge_symbols(pm_t{}, symbol_idx_map<symbol_set>{{0, {"x"}}}, symbol_set{}) == pm_t{0});
+        REQUIRE(key_merge_symbols(pm_t{1}, symbol_idx_map<symbol_set>{}, symbol_set{"x"}) == pm_t{1});
+        REQUIRE(key_merge_symbols(pm_t{1}, symbol_idx_map<symbol_set>{{0, {"y"}}}, symbol_set{"x"}) == pm_t{0, 1});
+        REQUIRE(key_merge_symbols(pm_t{1}, symbol_idx_map<symbol_set>{{1, {"y"}}}, symbol_set{"x"}) == pm_t{1, 0});
+        REQUIRE(key_merge_symbols(pm_t{1, 2, 3},
+                                  symbol_idx_map<symbol_set>{{0, {"a", "b"}}, {1, {"c"}}, {3, {"d", "e"}}},
+                                  symbol_set{"x", "y", "z"})
                 == pm_t{0, 0, 1, 0, 2, 3, 0, 0});
 
 #if 0

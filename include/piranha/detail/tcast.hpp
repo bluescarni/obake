@@ -45,8 +45,7 @@ constexpr decltype(auto) tcast(T &&x) noexcept
 template <typename T>
 constexpr decltype(auto) tcast(T &&x) noexcept
 {
-    if constexpr (::std::conjunction_v<::std::is_rvalue_reference<T &&>,
-                                       ::std::negation<::std::is_const<::std::remove_reference_t<T &&>>>>) {
+    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
         return static_cast<T &&>(x);
     } else {
         return static_cast<const remove_cvref_t<T> &>(x);
