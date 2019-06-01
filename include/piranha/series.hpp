@@ -459,6 +459,25 @@ struct key_comparer {
     }
 };
 
+// Small helper to clear() a nonconst
+// rvalue reference to a series. This is used in various places
+// where we might end up moving away individual coefficients from an input series,
+// which may leave the series in an inconsistent state. With this
+// RAII struct, we'll ensure the series is cleared out before
+// leaving the scope (either as part of regular program
+// flow or in case of exception).
+template <typename T>
+struct series_rref_clearer {
+    series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
+    ~series_rref_clearer()
+    {
+        if constexpr (::std::conjunction_v<is_mutable_rvalue_reference<T &&>, is_cvr_series<T>>) {
+            m_ref.clear();
+        }
+    }
+    T &&m_ref;
+};
+
 } // namespace detail
 
 // TODO: document that moved-from series are destructible and assignable.
@@ -523,31 +542,6 @@ public:
         other.m_s_table.clear();
 #endif
     }
-
-private:
-    // Small helper to clear() a nonconst
-    // rvalue reference to a series. This is used in the
-    // generic constructor below, where, in some cases, we might
-    // end up moving away individual coefficients from an input series,
-    // which may leave the series in an inconsistent state. With this
-    // RAII struct, we'll ensure the series is cleared out before
-    // leaving the constructor (either as part of regular program
-    // flow or in case of exception).
-    // NOTE: we define this helper here, instead of locally in
-    // the constructor, because MSVC does not like that.
-    template <typename T>
-    struct x_clearer {
-        x_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
-        ~x_clearer()
-        {
-            if constexpr (::std::conjunction_v<is_mutable_rvalue_reference<T &&>, is_cvr_series<T>>) {
-                m_ref.clear();
-            }
-        }
-        T &&m_ref;
-    };
-
-public:
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
@@ -578,7 +572,7 @@ public:
 
             // Init the clearer, as we'll be extracting
             // coefficients from x below.
-            x_clearer<T> xc(::std::forward<T>(x));
+            detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
             // Reserve space in the new table.
             auto &tab = m_s_table[0];
@@ -619,7 +613,7 @@ public:
 
                 // Init the clearer, as we will be moving the
                 // only coefficient in x.
-                x_clearer<T> xc(::std::forward<T>(x));
+                detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
                 if constexpr (is_mutable_rvalue_reference_v<T &&>) {
                     *this = series(::std::move(x.begin()->second));
@@ -1349,6 +1343,11 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
         auto impl = [](auto &&a, auto &&b) {
             assert(a.get_symbol_set() == b.get_symbol_set());
 
+            // We may end up moving coefficients from a or b.
+            // Make sure we will clear them out properly.
+            detail::series_rref_clearer<decltype(a)> ac(::std::forward<decltype(a)>(a));
+            detail::series_rref_clearer<decltype(b)> bc(::std::forward<decltype(b)>(b));
+
             // Init the retval from the larger series.
             const bool a_gte_b = a.size() >= b.size();
             auto retval = a_gte_b ? ret_t(::std::forward<decltype(a)>(a)) : ret_t(::std::forward<decltype(b)>(b));
@@ -1357,10 +1356,13 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
             // Version 1: retval contains multiple tables.
             auto term_merger = [&retval](auto &&rhs) {
+                assert(retval._get_s_table().size() > 1u);
+
                 for (auto &p : rhs) {
                     if constexpr (is_mutable_rvalue_reference_v<decltype(rhs) &&>) {
                         // NOTE: turn on the zero check, as we might end up
                         // annihilating terms during insertion.
+                        // Compatibility check is not needed.
                         detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
                                                 sat_check_table_size::on, sat_assume_unique::off>(
                             retval, p.first, ::std::move(p.second));
@@ -1374,6 +1376,8 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
             // Version 2: retval contains a single table.
             auto term_merger_table = [&retval](auto &&rhs) {
+                assert(retval._get_s_table().size() == 1u);
+
                 auto &t = retval._get_s_table()[0];
 
                 for (auto &p : rhs) {
@@ -1392,7 +1396,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             };
 
             // Proceed merging the terms, perfectly forwarding
-            // and exploiting single-table layout, if possible.
+            // and exploiting the single-table layout, if possible.
             if (a_gte_b) {
                 if (retval._get_s_table().size() > 1u) {
                     term_merger(::std::forward<decltype(b)>(b));
@@ -1415,6 +1419,11 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             // directly on x and y.
             return impl(::std::forward<T>(x), ::std::forward<U>(y));
         } else {
+            // We may end up moving coefficients from x or y in the conversion to ret_t.
+            // Make sure we will clear them out properly.
+            detail::series_rref_clearer<T> xc(::std::forward<T>(x));
+            detail::series_rref_clearer<U> yc(::std::forward<U>(y));
+
             // Merge the symbol sets.
             const auto mss = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
 
