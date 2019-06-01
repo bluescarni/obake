@@ -471,7 +471,7 @@ struct series_rref_clearer {
     series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
     ~series_rref_clearer()
     {
-        if constexpr (::std::conjunction_v<is_mutable_rvalue_reference<T &&>, is_cvr_series<T>>) {
+        if constexpr (is_mutable_rvalue_reference_v<T &&>) {
             m_ref.clear();
         }
     }
@@ -487,6 +487,7 @@ struct series_rref_clearer {
 // series with double coefficient, to verify that coefficients
 // that get truncated to zero are not inserted.
 // TODO: test move semantics during insertion, generic construction.
+// TODO: test term annihilation during add/sub.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -570,7 +571,7 @@ public:
             // otherwise we would be in a copy/move constructor scenario).
             // Insert all terms from x into this, converting the coefficients.
 
-            // Init the clearer, as we'll be extracting
+            // Init a rref clearer, as we may be extracting
             // coefficients from x below.
             detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
@@ -611,7 +612,7 @@ public:
                     return;
                 }
 
-                // Init the clearer, as we will be moving the
+                // Init the clearer, as we might be moving the
                 // only coefficient in x.
                 detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
@@ -1008,9 +1009,22 @@ public:
 
         m_symbol_set = s;
     }
+
+    // Extract a mutable reference to the internal segmented table.
     auto &_get_s_table()
     {
         return m_s_table;
+    }
+
+    // Reserve enough space for n elements.
+    void reserve(size_type n)
+    {
+        const auto n_tables = s_size_t(1) << m_log2_size;
+        const auto n_per_table = static_cast<size_type>(n / n_tables + static_cast<unsigned>((n % n_tables) != 0u));
+
+        for (auto &t : m_s_table) {
+            t.reserve(n_per_table);
+        }
     }
 
     template <bool Sign = true,
@@ -1343,72 +1357,62 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
         auto impl = [](auto &&a, auto &&b) {
             assert(a.get_symbol_set() == b.get_symbol_set());
 
-            // We may end up moving coefficients from a or b.
-            // Make sure we will clear them out properly.
-            detail::series_rref_clearer<decltype(a)> ac(::std::forward<decltype(a)>(a));
-            detail::series_rref_clearer<decltype(b)> bc(::std::forward<decltype(b)>(b));
-
             // Init the retval from the larger series.
+            // NOTE: perhaps in the future we can consider reserving
+            // additional space for the return value.
             const bool a_gte_b = a.size() >= b.size();
             auto retval = a_gte_b ? ret_t(::std::forward<decltype(a)>(a)) : ret_t(::std::forward<decltype(b)>(b));
 
-            // Helpers to merge the terms from the smaller series into retval.
-
-            // Version 1: retval contains multiple tables.
+            // Helper to merge the terms from the smaller series into retval.
             auto term_merger = [&retval](auto &&rhs) {
-                assert(retval._get_s_table().size() > 1u);
+                using rhs_t = decltype(rhs);
 
-                for (auto &p : rhs) {
-                    if constexpr (is_mutable_rvalue_reference_v<decltype(rhs) &&>) {
-                        // NOTE: turn on the zero check, as we might end up
-                        // annihilating terms during insertion.
-                        // Compatibility check is not needed.
-                        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
-                                                sat_check_table_size::on, sat_assume_unique::off>(
-                            retval, p.first, ::std::move(p.second));
-                    } else {
-                        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
-                                                sat_check_table_size::on, sat_assume_unique::off>(retval, p.first,
-                                                                                                  p.second);
+                // We may end up moving coefficients from rhs.
+                // Make sure we will clear it out properly.
+                detail::series_rref_clearer<rhs_t> rhs_c(::std::forward<rhs_t>(rhs));
+
+                // Distinguish the two cases in which the internal table
+                // is segmented or not.
+                if (retval._get_s_table().size() > 1u) {
+                    for (auto &p : rhs) {
+                        if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
+                            // NOTE: turn on the zero check, as we might end up
+                            // annihilating terms during insertion.
+                            // Compatibility check is not needed.
+                            detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                    sat_check_table_size::on, sat_assume_unique::off>(
+                                retval, p.first, ::std::move(p.second));
+                        } else {
+                            detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                    sat_check_table_size::on, sat_assume_unique::off>(
+                                retval, p.first, static_cast<const series_cf_t<remove_cvref_t<rhs_t>> &>(p.second));
+                        }
+                    }
+                } else {
+                    assert(retval._get_s_table().size() == 1u);
+
+                    auto &t = retval._get_s_table()[0];
+
+                    for (auto &p : rhs) {
+                        if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
+                            // NOTE: disable the table size check, as we are
+                            // sure we have a single table.
+                            detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                          sat_check_table_size::off, sat_assume_unique::off>(
+                                retval, t, p.first, ::std::move(p.second));
+                        } else {
+                            detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
+                                                          sat_check_table_size::off, sat_assume_unique::off>(
+                                retval, t, p.first, static_cast<const series_cf_t<remove_cvref_t<rhs_t>> &>(p.second));
+                        }
                     }
                 }
             };
 
-            // Version 2: retval contains a single table.
-            auto term_merger_table = [&retval](auto &&rhs) {
-                assert(retval._get_s_table().size() == 1u);
-
-                auto &t = retval._get_s_table()[0];
-
-                for (auto &p : rhs) {
-                    if constexpr (is_mutable_rvalue_reference_v<decltype(rhs) &&>) {
-                        // NOTE: disable the table size check, as we are
-                        // sure we have a single table.
-                        detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
-                                                      sat_check_table_size::off, sat_assume_unique::off>(
-                            retval, t, p.first, ::std::move(p.second));
-                    } else {
-                        detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
-                                                      sat_check_table_size::off, sat_assume_unique::off>(
-                            retval, t, p.first, p.second);
-                    }
-                }
-            };
-
-            // Proceed merging the terms, perfectly forwarding
-            // and exploiting the single-table layout, if possible.
             if (a_gte_b) {
-                if (retval._get_s_table().size() > 1u) {
-                    term_merger(::std::forward<decltype(b)>(b));
-                } else {
-                    term_merger_table(::std::forward<decltype(b)>(b));
-                }
+                term_merger(::std::forward<decltype(b)>(b));
             } else {
-                if (retval._get_s_table().size() > 1u) {
-                    term_merger(::std::forward<decltype(a)>(a));
-                } else {
-                    term_merger_table(::std::forward<decltype(a)>(a));
-                }
+                term_merger(::std::forward<decltype(a)>(a));
             }
 
             return retval;
@@ -1419,11 +1423,6 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             // directly on x and y.
             return impl(::std::forward<T>(x), ::std::forward<U>(y));
         } else {
-            // We may end up moving coefficients from x or y in the conversion to ret_t.
-            // Make sure we will clear them out properly.
-            detail::series_rref_clearer<T> xc(::std::forward<T>(x));
-            detail::series_rref_clearer<U> yc(::std::forward<U>(y));
-
             // Merge the symbol sets.
             const auto mss = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
 
@@ -1436,32 +1435,43 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             // at the same time extending the keys
             // with the insertion maps from mss.
             auto converter = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
+                using from_t = decltype(from);
+
+                // We may end up moving coefficients from "from" in the conversion to "to".
+                // Make sure we will clear "from" out properly.
+                detail::series_rref_clearer<from_t> from_c(::std::forward<from_t>(from));
+
                 // Cache a couple of quantities.
                 auto &to_table = to._get_s_table()[0];
                 const auto &orig_ss = from.get_symbol_set();
 
                 // Establish if we need to check for zero coefficients
                 // when inserting. We don't if the coefficient types of to and from
-                // coincide, otherwise the conversion might generate zeroes.
+                // coincide (i.e., no cf conversion takes place),
+                // otherwise the conversion might generate zeroes.
                 constexpr auto check_zero = static_cast<sat_check_zero>(
-                    ::std::is_same_v<series_cf_t<ret_t>, series_cf_t<remove_cvref_t<decltype(from)>>>);
+                    ::std::is_same_v<series_cf_t<ret_t>, series_cf_t<remove_cvref_t<from_t>>>);
+
+                // Reserve space in the destination table.
+                to_table.reserve(from.size());
 
                 // Merge the terms.
                 for (auto &p : from) {
                     // Compute the merged key.
                     auto merged_key = ::piranha::key_merge_symbols(
-                        static_cast<const series_key_t<remove_cvref_t<decltype(from)>> &>(p.first), ins_map, orig_ss);
+                        static_cast<const series_key_t<remove_cvref_t<from_t>> &>(p.first), ins_map, orig_ss);
 
                     // Insert the term: the only check we may need is check_zero, in case
                     // the coefficient type changes.
-                    if constexpr (is_mutable_rvalue_reference_v<decltype(from) &&>) {
+                    if constexpr (is_mutable_rvalue_reference_v<from_t &&>) {
                         detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
                                                       sat_check_table_size::off, sat_assume_unique::on>(
                             to, to_table, ::std::move(merged_key), ::std::move(p.second));
                     } else {
                         detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
                                                       sat_check_table_size::off, sat_assume_unique::on>(
-                            to, to_table, ::std::move(merged_key), p.second);
+                            to, to_table, ::std::move(merged_key),
+                            static_cast<const series_cf_t<remove_cvref_t<from_t>> &>(p.second));
                     }
                 }
             };
