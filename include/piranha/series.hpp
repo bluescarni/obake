@@ -1343,8 +1343,8 @@ template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
-template <typename T, typename U>
-constexpr int series_add_algorithm_impl()
+template <bool Sign, typename T, typename U>
+constexpr int series_addsub_algorithm_impl()
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -1359,7 +1359,10 @@ constexpr int series_add_algorithm_impl()
     } else if constexpr (rank_T < rank_U) {
         // The rank of T is less than the rank of U.
         // Determine the coefficient type of the return series type.
-        using ret_cf_t = detected_t<detail::add_t, ::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>;
+        using ret_cf_t
+            = ::std::conditional_t<Sign,
+                                   detected_t<add_t, ::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>,
+                                   detected_t<sub_t, ::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>>;
 
         if constexpr (is_cf_v<ret_cf_t>) {
             // The candidate coefficient type is valid. Establish
@@ -1374,7 +1377,10 @@ constexpr int series_add_algorithm_impl()
         }
     } else if constexpr (rank_T > rank_U) {
         // Mirror of the above.
-        using ret_cf_t = detected_t<detail::add_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>;
+        using ret_cf_t
+            = ::std::conditional_t<Sign,
+                                   detected_t<add_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>,
+                                   detected_t<sub_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>>;
 
         if constexpr (is_cf_v<ret_cf_t>) {
             using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
@@ -1385,7 +1391,8 @@ constexpr int series_add_algorithm_impl()
     } else {
         // T and U are series with the same rank.
         // Determine the coefficient type of the return type.
-        using ret_cf_t = detected_t<detail::add_t, const series_cf_t<rT> &, const series_cf_t<rU> &>;
+        using ret_cf_t = ::std::conditional_t<Sign, detected_t<add_t, const series_cf_t<rT> &, const series_cf_t<rU> &>,
+                                              detected_t<sub_t, const series_cf_t<rT> &, const series_cf_t<rU> &>>;
 
         if constexpr (::std::conjunction_v<is_cf<ret_cf_t>, ::std::is_same<series_key_t<rT>, series_key_t<rU>>,
                                            ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>>) {
@@ -1421,11 +1428,11 @@ constexpr int series_add_algorithm_impl()
 }
 
 template <typename T, typename U>
-inline constexpr int series_add_algorithm = detail::series_add_algorithm_impl<T, U>();
+inline constexpr int series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>();
 
-// Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
-constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
+// Default implementation of the add/sub primitive for series.
+template <bool Sign, typename T, typename U>
+constexpr auto series_default_addsub_impl(T &&x, U &&y)
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -1434,9 +1441,18 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
     if constexpr (algo == 1) {
         // The rank of T is less than the rank of U.
-        using ret_t = series<series_key_t<rU>, detail::add_t<const rT &, const series_cf_t<rU> &>, series_tag_t<rU>>;
+        using ret_t = series<series_key_t<rU>,
+                             ::std::conditional_t<Sign, detected_t<add_t, const rT &, const series_cf_t<rU> &>,
+                                                  detected_t<sub_t, const rT &, const series_cf_t<rU> &>>,
+                             series_tag_t<rU>>;
 
         ret_t retval(::std::forward<U>(y));
+        if constexpr (!Sign) {
+            // For subtraction, negate the return value as
+            // we flipped around the operands.
+            detail::series_default_negate_impl(retval);
+        }
+
         // NOTE: we can turn off key compat check, as we know
         // the new key will be compatible by construction. The other
         // checks are needed. Also, because we don't know
@@ -1449,10 +1465,13 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
         return retval;
     } else if constexpr (algo == 2) {
         // The rank of U is less than the rank of T.
-        using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const rU &>, series_tag_t<rT>>;
+        using ret_t = series<series_key_t<rT>,
+                             ::std::conditional_t<Sign, detected_t<add_t, const series_cf_t<rT> &, const rU &>,
+                                                  detected_t<sub_t, const series_cf_t<rT> &, const rU &>>,
+                             series_tag_t<rT>>;
 
         ret_t retval(::std::forward<T>(x));
-        detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
+        detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
                                 sat_assume_unique::off>(retval, series_key_t<rT>(retval.get_symbol_set()),
                                                         ::std::forward<U>(y));
 
@@ -1460,12 +1479,15 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
     } else if constexpr (algo == 3) {
         // Both T and U are series, same rank, possibly different cf.
         // The return type is a series with the same rank, tag and key,
-        // and coefficient type resulting from the addition of the
+        // and coefficient type resulting from the addition/subtraction of the
         // coefficient types in the two series.
-        using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const series_cf_t<rU> &>,
-                             series_tag_t<rT>>;
+        using ret_t
+            = series<series_key_t<rT>,
+                     ::std::conditional_t<Sign, detected_t<add_t, const series_cf_t<rT> &, const series_cf_t<rU> &>,
+                                          detected_t<sub_t, const series_cf_t<rT> &, const series_cf_t<rU> &>>,
+                     series_tag_t<rT>>;
 
-        // Implementation of the addition between
+        // Implementation of the addition/subtraction between
         // two series with identical symbol sets.
         auto merge_with_identical_ss = [](auto &&a, auto &&b) {
             assert(a.get_symbol_set() == b.get_symbol_set());
@@ -1482,7 +1504,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
                 // We may end up moving coefficients from rhs.
                 // Make sure we will clear it out properly.
-                detail::series_rref_clearer<rhs_t> rhs_c(::std::forward<rhs_t>(rhs));
+                series_rref_clearer<rhs_t> rhs_c(::std::forward<rhs_t>(rhs));
 
                 // Distinguish the two cases in which the internal table
                 // is segmented or not.
@@ -1492,11 +1514,11 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
                             // NOTE: turn on the zero check, as we might end up
                             // annihilating terms during insertion.
                             // Compatibility check is not needed.
-                            detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
+                            detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off,
                                                     sat_check_table_size::on, sat_assume_unique::off>(
                                 retval, p.first, ::std::move(p.second));
                         } else {
-                            detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::off,
+                            detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off,
                                                     sat_check_table_size::on, sat_assume_unique::off>(
                                 retval, p.first, static_cast<const series_cf_t<remove_cvref_t<rhs_t>> &>(p.second));
                         }
@@ -1510,11 +1532,11 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
                         if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
                             // NOTE: disable the table size check, as we are
                             // sure we have a single table.
-                            detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
+                            detail::series_add_term_table<Sign, sat_check_zero::on, sat_check_compat_key::off,
                                                           sat_check_table_size::off, sat_assume_unique::off>(
                                 retval, t, p.first, ::std::move(p.second));
                         } else {
-                            detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::off,
+                            detail::series_add_term_table<Sign, sat_check_zero::on, sat_check_compat_key::off,
                                                           sat_check_table_size::off, sat_assume_unique::off>(
                                 retval, t, p.first, static_cast<const series_cf_t<remove_cvref_t<rhs_t>> &>(p.second));
                         }
@@ -1527,7 +1549,15 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             if (a.size() >= b.size()) {
                 return term_merger(::std::forward<decltype(a)>(a), ::std::forward<decltype(b)>(b));
             } else {
-                return term_merger(::std::forward<decltype(b)>(b), ::std::forward<decltype(a)>(a));
+                if constexpr (Sign) {
+                    return term_merger(::std::forward<decltype(b)>(b), ::std::forward<decltype(a)>(a));
+                } else {
+                    // If we flipped around the operands and we are subtracting, we'll have
+                    // to negate the result before returning it.
+                    auto retval = term_merger(::std::forward<decltype(b)>(b), ::std::forward<decltype(a)>(a));
+                    detail::series_default_negate_impl(retval);
+                    return retval;
+                }
             }
         };
 
@@ -1552,7 +1582,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
                 // We may end up moving coefficients from "from" in the conversion to "to".
                 // Make sure we will clear "from" out properly.
-                detail::series_rref_clearer<from_t> from_c(::std::forward<from_t>(from));
+                series_rref_clearer<from_t> from_c(::std::forward<from_t>(from));
 
                 // Cache a couple of quantities.
                 auto &to_table = to._get_s_table()[0];
@@ -1595,6 +1625,13 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             return merge_with_identical_ss(::std::move(a), ::std::move(b));
         }
     }
+}
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
+constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
+{
+    return detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 } // namespace detail
