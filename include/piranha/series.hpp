@@ -437,7 +437,7 @@ namespace detail
 //   so that, in the Key requirements, we can request hashability
 //   through const lvalue ref;
 // - provide additional mixing.
-struct key_hasher {
+struct series_key_hasher {
     static ::std::size_t hash_mixer(const ::std::size_t &h) noexcept
     {
         return ::absl::Hash<::std::size_t>{}(h);
@@ -445,12 +445,12 @@ struct key_hasher {
     template <typename K>
     ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
     {
-        return key_hasher::hash_mixer(::piranha::hash(k));
+        return series_key_hasher::hash_mixer(::piranha::hash(k));
     }
 };
 
 // Wrapper to force key comparison via const lvalue refs.
-struct key_comparer {
+struct series_key_comparer {
     template <typename K>
     constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
     {
@@ -465,6 +465,15 @@ struct key_comparer {
 // RAII struct, we'll ensure the series is cleared out before
 // leaving the scope (either as part of regular program
 // flow or in case of exception).
+// NOTE: this is different from the clear() that is called
+// in debug mode during move operations: in that situation,
+// we are guaranteeing that after the move the series
+// is destructible and assignable, so the state of the series
+// does not matter as long as we can revive it. This clearer,
+// on the other hand, is not called during move operations,
+// but only when it might make sense, for optimisation purposes,
+// to move individual coefficients - hence the move semantics
+// guarantee does not apply.
 template <typename T>
 struct series_rref_clearer {
     series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
@@ -481,7 +490,7 @@ struct series_rref_clearer {
 
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
-// TODO: check construction of const iterators from murable ones.
+// TODO: check construction of const iterators from mutable ones.
 // TODO: test construction of series with int coefficient from
 // series with double coefficient, to verify that coefficients
 // that get truncated to zero are not inserted.
@@ -512,7 +521,7 @@ class series
     friend class series;
 
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
-    using table_type = ::absl::flat_hash_map<K, C, detail::key_hasher, detail::key_comparer>;
+    using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
     using s_table_type = ::boost::container::small_vector<table_type, 1>;
 
     // Shortcut for the segmented table size type.

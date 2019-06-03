@@ -74,9 +74,9 @@ TEST_CASE("pow_test")
 
     constexpr auto width = std::numeric_limits<std::size_t>::digits;
 
-    std::cout << std::bitset<width>(detail::key_hasher{}(pm_t{1, 2, 3})) << " vs "
+    std::cout << std::bitset<width>(detail::series_key_hasher{}(pm_t{1, 2, 3})) << " vs "
               << std::bitset<width>(hash(pm_t{1, 2, 3})) << '\n';
-    std::cout << std::bitset<width>(detail::key_hasher{}(pm_t{4, 5, 6})) << " vs "
+    std::cout << std::bitset<width>(detail::series_key_hasher{}(pm_t{4, 5, 6})) << " vs "
               << std::bitset<width>(hash(pm_t{4, 5, 6})) << '\n';
 
     s.set_symbol_set({"x", "y", "z"});
