@@ -169,6 +169,8 @@ using negate_t = decltype(::piranha::negate(::std::declval<T>()));
 
 }
 
+// NOTE: runtime requirement: negation of a non-zero entity
+// never results in a zero.
 template <typename T>
 using is_negatable = is_detected<detail::negate_t, T>;
 

@@ -125,19 +125,6 @@ TEST_CASE("is_arithmetic")
 #endif
 }
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-TEST_CASE("is_const")
-{
-    REQUIRE(!Const<void>);
-    REQUIRE(Const<void const>);
-    REQUIRE(Const<void const volatile>);
-    REQUIRE(!Const<std::string>);
-    REQUIRE(Const<std::string const>);
-    REQUIRE(!Const<std::string &>);
-    REQUIRE(!Const<const std::string &>);
-}
-#endif
-
 TEST_CASE("is_signed")
 {
     REQUIRE(!is_signed_v<void>);

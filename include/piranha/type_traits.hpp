@@ -140,14 +140,6 @@ PIRANHA_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
 
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-// Concept for detecting const-qualified types.
-template <typename T>
-PIRANHA_CONCEPT_DECL Const = ::std::is_const_v<T>;
-
-#endif
-
 // Detect (possibly cv-qualified) signed types.
 // Supports also 128bit integers.
 template <typename T>

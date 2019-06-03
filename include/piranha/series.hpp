@@ -1103,6 +1103,26 @@ inline constexpr auto
     return 0;
 };
 
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    requires CvrSeries<T> && !::std::is_const_v<::std::remove_reference_t<T>> inline constexpr auto negate<T>
+#else
+inline constexpr auto
+    negate<T, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>,
+                                                      ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
+#endif
+    = [](auto &&x) {
+          for (auto &p : x) {
+              // NOTE: the runtime requirements
+              // of negate() ensure that the coefficient
+              // will never become zero after negation.
+              // NOTE: perhaps this can be improved
+              // performance-wise by taking advantage
+              // of the single-table layout, if possible.
+              ::piranha::negate(p.second);
+          }
+      };
+
 } // namespace customisation::internal
 
 namespace customisation

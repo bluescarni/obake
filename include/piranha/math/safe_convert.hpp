@@ -45,7 +45,7 @@ namespace detail
 // Implementation for C++ integrals.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-    requires Integral<T> && !Const<T> && Integral<U>
+    requires Integral<T> && !::std::is_const_v<T> && Integral<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>, is_integral<U>>,
@@ -121,7 +121,7 @@ inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-requires Integral<T> && !Const<T>
+requires Integral<T> && !::std::is_const_v<T>
 #else
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>

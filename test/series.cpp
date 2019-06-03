@@ -22,6 +22,7 @@
 #include <mp++/rational.hpp>
 
 #include <piranha/hash.hpp>
+#include <piranha/math/negate.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/type_traits.hpp>
@@ -105,5 +106,10 @@ TEST_CASE("pow_test")
     REQUIRE(!is_series_constructible_v<void, void, void, void>);
     REQUIRE(!is_series_convertible_v<void, void>);
 
-    std::cout << s + s << '\n';
+    std::cout << negate(s + s) << '\n';
+
+    REQUIRE(is_negatable_v<series_t &>);
+    REQUIRE(is_negatable_v<series_t &&>);
+    REQUIRE(!is_negatable_v<const series_t &>);
+    REQUIRE(!is_negatable_v<const series_t &&>);
 }
