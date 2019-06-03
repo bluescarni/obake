@@ -34,7 +34,7 @@ tested in Piranha's continuous integration setup:
 
 * GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),
 * Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),
-* Visual Studio 2017 on Windows,
+* Visual Studio 2019 on Windows,
 * Xcode 10.2 on OSX 10.14.
 
 See also the
@@ -147,7 +147,7 @@ Compiler and platform specific notes
 Visual Studio:
 
 * When using Visual Studio, the Piranha library is compiled
-  with the ``NOMINMAX`` definition and, if supported,
+  with the ``NOMINMAX`` definition and
   with the ``/permissive-`` compiler flag.
 
 GCC:
