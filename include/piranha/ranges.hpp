@@ -88,7 +88,7 @@ inline constexpr bool is_range_v = is_range<T>::value;
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Range = Same<range_begin_t<T>, range_end_t<T>>;
+PIRANHA_CONCEPT_DECL Range = ::std::is_same_v<range_begin_t<T>, range_end_t<T>>;
 
 #endif
 

@@ -145,7 +145,7 @@ constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
 // after the removal of reference and cv qualifiers.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires Same<remove_cvref_t<T>, remove_cvref_t<U>>
+requires ::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>, int> = 0>
 #endif

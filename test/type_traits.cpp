@@ -247,28 +247,6 @@ TEST_CASE("is_returnable")
 #endif
 }
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-TEST_CASE("default_constructible")
-{
-    REQUIRE(DefaultConstructible<int>);
-    REQUIRE(DefaultConstructible<int *>);
-    REQUIRE(!DefaultConstructible<void>);
-    REQUIRE(!DefaultConstructible<const void>);
-    REQUIRE(!DefaultConstructible<int &>);
-    REQUIRE(!DefaultConstructible<const int &>);
-    REQUIRE(!DefaultConstructible<int &&>);
-}
-#endif
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-TEST_CASE("same")
-{
-    REQUIRE(Same<int, int>);
-    REQUIRE(Same<void, void>);
-    REQUIRE(!Same<void, const void>);
-}
-#endif
-
 TEST_CASE("is_same_cvr")
 {
     REQUIRE(is_same_cvr_v<int, int>);

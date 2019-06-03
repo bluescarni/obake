@@ -44,7 +44,7 @@ namespace detail
 // are using std::declval<>() in the emulation layer).
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename To, typename From>
-requires DefaultConstructible<To> &&SafelyConvertible<From, To &> &&Returnable<To>
+requires ::std::is_default_constructible_v<To> &&SafelyConvertible<From, To &> &&Returnable<To>
 #else
 template <typename To, typename From,
           ::std::enable_if_t<::std::conjunction_v<::std::is_default_constructible<To>,

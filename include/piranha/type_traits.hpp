@@ -62,13 +62,6 @@ inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 template <typename T>
 using remove_cvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T, typename U>
-PIRANHA_CONCEPT_DECL Same = ::std::is_same_v<T, U>;
-
-#endif
-
 // Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
 template <typename T, typename U>
 using is_same_cvr = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
@@ -192,13 +185,6 @@ struct make_unsigned_impl<T,
 template <typename T>
 using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T>
-PIRANHA_CONCEPT_DECL DefaultConstructible = ::std::is_default_constructible_v<T>;
-
-#endif
-
 // Detect semi-regular types.
 template <typename T>
 using is_semi_regular
@@ -311,8 +297,8 @@ PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) + ::std::forward<U>(y);
     ::std::forward<U>(y) + ::std::forward<T>(x);
-    requires Same<decltype(::std::forward<T>(x) + ::std::forward<U>(y)),
-                  decltype(::std::forward<U>(y) + ::std::forward<T>(x))>;
+    requires ::std::is_same_v<decltype(::std::forward<T>(x) + ::std::forward<U>(y)),
+                              decltype(::std::forward<U>(y) + ::std::forward<T>(x))>;
 };
 
 #endif
@@ -414,8 +400,8 @@ PIRANHA_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) - ::std::forward<U>(y);
     ::std::forward<U>(y) - ::std::forward<T>(x);
-    requires Same<decltype(::std::forward<T>(x) - ::std::forward<U>(y)),
-                  decltype(::std::forward<U>(y) - ::std::forward<T>(x))>;
+    requires ::std::is_same_v<decltype(::std::forward<T>(x) - ::std::forward<U>(y)),
+                              decltype(::std::forward<U>(y) - ::std::forward<T>(x))>;
 };
 
 #endif
