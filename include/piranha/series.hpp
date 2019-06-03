@@ -1354,18 +1354,18 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
         // Implementation of the addition between
         // two series with identical symbol sets.
-        auto impl = [](auto &&a, auto &&b) {
+        auto merge_with_identical_ss = [](auto &&a, auto &&b) {
             assert(a.get_symbol_set() == b.get_symbol_set());
 
-            // Init the retval from the larger series.
-            // NOTE: perhaps in the future we can consider reserving
-            // additional space for the return value.
-            const bool a_gte_b = a.size() >= b.size();
-            auto retval = a_gte_b ? ret_t(::std::forward<decltype(a)>(a)) : ret_t(::std::forward<decltype(b)>(b));
-
-            // Helper to merge the terms from the smaller series into retval.
-            auto term_merger = [&retval](auto &&rhs) {
+            // Helper to merge the terms from the smaller series (rhs) into the return value
+            // (which will be inited from the larger series, lhs).
+            auto term_merger = [](auto &&lhs, auto &&rhs) {
                 using rhs_t = decltype(rhs);
+
+                // Build the retval.
+                // NOTE: perhaps in the future we can consider reserving
+                // additional space for the return value.
+                ret_t retval(::std::forward<decltype(lhs)>(lhs));
 
                 // We may end up moving coefficients from rhs.
                 // Make sure we will clear it out properly.
@@ -1407,26 +1407,26 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
                         }
                     }
                 }
+
+                return retval;
             };
 
-            if (a_gte_b) {
-                term_merger(::std::forward<decltype(b)>(b));
+            if (a.size() >= b.size()) {
+                return term_merger(::std::forward<decltype(a)>(a), ::std::forward<decltype(b)>(b));
             } else {
-                term_merger(::std::forward<decltype(a)>(a));
+                return term_merger(::std::forward<decltype(b)>(b), ::std::forward<decltype(a)>(a));
             }
-
-            return retval;
         };
 
         if (x.get_symbol_set() == y.get_symbol_set()) {
             // Same symbol sets, run the implementation
             // directly on x and y.
-            return impl(::std::forward<T>(x), ::std::forward<U>(y));
+            return merge_with_identical_ss(::std::forward<T>(x), ::std::forward<U>(y));
         } else {
             // Merge the symbol sets.
             const auto mss = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
 
-            // Create the return values.
+            // Create the converted/merged counterparts of x and y.
             ret_t a, b;
             a.set_symbol_set(::std::get<0>(mss));
             b.set_symbol_set(::std::get<0>(mss));
@@ -1479,7 +1479,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
             converter(b, ::std::forward<U>(y), ::std::get<2>(mss));
 
             // Run the implementation moving in the converted series.
-            return impl(::std::move(a), ::std::move(b));
+            return merge_with_identical_ss(::std::move(a), ::std::move(b));
         }
     }
 }
