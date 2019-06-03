@@ -1103,6 +1103,65 @@ inline constexpr auto
     return 0;
 };
 
+} // namespace customisation::internal
+
+// Identity operator for series.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <CvrSeries T>
+#else
+template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+#endif
+inline auto operator+(T &&x)
+{
+    return ::std::forward<T>(x);
+}
+
+namespace detail
+{
+
+// Default implementation of piranha::negate() for series.
+template <typename T>
+inline void series_default_negate_impl(T &&x)
+{
+    static_assert(is_cvr_series_v<T>);
+    for (auto &p : x) {
+        // NOTE: the runtime requirements
+        // of negate() ensure that the coefficient
+        // will never become zero after negation.
+        // NOTE: perhaps this can be improved
+        // performance-wise by taking advantage
+        // of the single-table layout, if possible.
+        ::piranha::negate(p.second);
+    }
+}
+
+} // namespace detail
+
+// Negated copy operator.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <CvrSeries T>
+#else
+template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+#endif
+inline auto operator-(T &&x)
+{
+    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+        // NOTE: if we have an rvalue reference in input, we
+        // can negate all coefficients in-place and then re-use
+        // the same reference to move-construct the return value.
+        detail::series_default_negate_impl(::std::forward<T>(x));
+        return ::std::forward<T>(x);
+    } else {
+        // Otherwise, copy and negate.
+        auto retval(::std::forward<T>(x));
+        detail::series_default_negate_impl(retval);
+        return retval;
+    }
+}
+
+namespace customisation::internal
+{
+
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
     requires CvrSeries<T> && !::std::is_const_v<::std::remove_reference_t<T>> inline constexpr auto negate<T>
@@ -1111,17 +1170,7 @@ inline constexpr auto
     negate<T, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>,
                                                       ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
 #endif
-    = [](auto &&x) {
-          for (auto &p : x) {
-              // NOTE: the runtime requirements
-              // of negate() ensure that the coefficient
-              // will never become zero after negation.
-              // NOTE: perhaps this can be improved
-              // performance-wise by taking advantage
-              // of the single-table layout, if possible.
-              ::piranha::negate(p.second);
-          }
-      };
+    = [](auto &&x) { detail::series_default_negate_impl(::std::forward<decltype(x)>(x)); };
 
 } // namespace customisation::internal
 

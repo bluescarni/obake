@@ -106,7 +106,7 @@ TEST_CASE("pow_test")
     REQUIRE(!is_series_constructible_v<void, void, void, void>);
     REQUIRE(!is_series_convertible_v<void, void>);
 
-    std::cout << negate(s + s) << '\n';
+    std::cout << -+-+negate(s + s) << '\n';
 
     REQUIRE(is_negatable_v<series_t &>);
     REQUIRE(is_negatable_v<series_t &&>);
