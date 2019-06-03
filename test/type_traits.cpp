@@ -11,8 +11,6 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include <cstddef>
-#include <functional>
 #include <iterator>
 #include <limits>
 #include <list>
@@ -25,8 +23,6 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
-
-#include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
@@ -1115,179 +1111,6 @@ TEST_CASE("limits_digits")
 #if defined(PIRANHA_HAVE_GCC_INT128)
     REQUIRE(128 == detail::limits_digits<__uint128_t>);
     REQUIRE(127 == detail::limits_digits<__int128_t>);
-#endif
-}
-
-struct fo1 {
-    void operator()(int = 0) const;
-};
-
-// The non-const overload is deleted.
-struct nofo1 {
-    void operator()(int = 0) const;
-    void operator()(int = 0) = delete;
-};
-
-// Vice-versa.
-struct nofo2 {
-    void operator()(int = 0) const = delete;
-    void operator()(int = 0);
-};
-
-TEST_CASE("function_object")
-{
-    REQUIRE(!is_function_object_v<void>);
-    REQUIRE(!is_function_object_v<const void>);
-    REQUIRE(!is_function_object_v<const volatile void>);
-    REQUIRE(!is_function_object_v<int>);
-    REQUIRE(!is_function_object_v<int &>);
-
-    REQUIRE(is_function_object_v<std::hash<int>, std::size_t>);
-    REQUIRE(is_function_object_v<std::hash<int>, const std::size_t &>);
-    REQUIRE(is_function_object_v<std::hash<int>, std::size_t &>);
-    REQUIRE(is_function_object_v<std::hash<int>, std::size_t &&>);
-    REQUIRE(is_function_object_v<std::hash<int>, int>);
-    REQUIRE(is_function_object_v<std::hash<int>, const int &>);
-    REQUIRE(is_function_object_v<std::hash<int>, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int> &, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int> &&, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int> *, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int>>);
-    REQUIRE(!is_function_object_v<std::hash<int>, int, int>);
-
-    // Check mp++'s hash specialisation.
-    REQUIRE(is_function_object_v<std::hash<mppp::integer<1>>, const mppp::integer<1> &>);
-
-    REQUIRE(is_function_object_v<fo1>);
-    REQUIRE(is_function_object_v<fo1, int>);
-    REQUIRE(is_function_object_v<fo1, int &>);
-    REQUIRE(is_function_object_v<fo1, const int &>);
-    REQUIRE(is_function_object_v<fo1, int &&>);
-
-    REQUIRE(!is_function_object_v<nofo1>);
-    REQUIRE(!is_function_object_v<nofo1, int>);
-    REQUIRE(!is_function_object_v<nofo1, int &>);
-    REQUIRE(!is_function_object_v<nofo1, const int &>);
-    REQUIRE(!is_function_object_v<nofo1, int &&>);
-
-    REQUIRE(!is_function_object_v<nofo2>);
-    REQUIRE(!is_function_object_v<nofo2, int>);
-    REQUIRE(!is_function_object_v<nofo2, int &>);
-    REQUIRE(!is_function_object_v<nofo2, const int &>);
-    REQUIRE(!is_function_object_v<nofo2, int &&>);
-
-    // NOTE: std::hash for user-defined type without explicit specialisation
-    // is disabled.
-    REQUIRE(!is_function_object_v<std::hash<fo1>, std::size_t>);
-    REQUIRE(!is_function_object_v<std::hash<nofo1>, std::size_t>);
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-    // The concept is based on the type trait currently, just do a few simple tests.
-    REQUIRE(!FunctionObject<void>);
-    REQUIRE(!FunctionObject<int>);
-    REQUIRE(FunctionObject<std::hash<int>, std::size_t>);
-    REQUIRE(!FunctionObject<std::hash<int> &, std::size_t>);
-    REQUIRE(FunctionObject<std::hash<mppp::integer<1>>, const mppp::integer<1> &>);
-    REQUIRE(FunctionObject<fo1>);
-    REQUIRE(!FunctionObject<nofo1>);
-    REQUIRE(!FunctionObject<nofo2>);
-#endif
-}
-
-// Universal hasher.
-struct hash_00 {
-    template <typename T>
-    std::size_t operator()(const T &) const;
-};
-
-struct nohash_00 {
-    template <typename T>
-    std::size_t operator()(const T &) const;
-    // Missing def ctor.
-    nohash_00() = delete;
-};
-
-struct nohash_01 {
-    template <typename T>
-    std::size_t operator()(const T &) const;
-    // Missing dtor.
-    nohash_01() = default;
-    ~nohash_01() = delete;
-};
-
-// Not a function object.
-struct nohash_02 {
-};
-
-// Wrong return type.
-struct nohash_03 {
-    template <typename T>
-    int operator()(const T &) const;
-};
-
-// Missing const overload.
-struct nohash_04 {
-    template <typename T>
-    std::size_t operator()(const T &) const = delete;
-    template <typename T>
-    std::size_t operator()(const T &);
-};
-
-// Hashes only mutable Ts.
-struct nohash_05 {
-    template <typename T>
-    std::size_t operator()(const T &) const = delete;
-    template <typename T>
-    std::size_t operator()(T &) const;
-};
-
-TEST_CASE("hash")
-{
-    REQUIRE(!is_hash_v<void, void>);
-    REQUIRE(!is_hash_v<std::hash<int>, void>);
-    REQUIRE(!is_hash_v<void, int>);
-    REQUIRE(!is_hash_v<void(int), void(int)>);
-    REQUIRE(!is_hash_v<void(int), int>);
-    REQUIRE(!is_hash_v<int, void(int)>);
-
-    REQUIRE(is_hash_v<std::hash<int>, int>);
-    REQUIRE(is_hash_v<std::hash<int>, const int>);
-    REQUIRE(is_hash_v<std::hash<int>, short>);
-    REQUIRE(!is_hash_v<std::hash<int>, std::string>);
-
-    REQUIRE(is_hash_v<hash_00, int>);
-    REQUIRE(is_hash_v<hash_00, std::string>);
-
-    REQUIRE(!is_hash_v<nohash_00, int>);
-    REQUIRE(!is_hash_v<nohash_01, int>);
-    REQUIRE(!is_hash_v<nohash_02, int>);
-    REQUIRE(!is_hash_v<nohash_03, int>);
-    REQUIRE(!is_hash_v<nohash_04, int>);
-    REQUIRE(!is_hash_v<nohash_05, int>);
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-    // The concept is based on the type trait currently, just do a few simple tests.
-    REQUIRE(!Hash<void, void>);
-    REQUIRE(!Hash<std::hash<int>, void>);
-    REQUIRE(!Hash<void, int>);
-    REQUIRE(!Hash<void(int), void(int)>);
-    REQUIRE(!Hash<void(int), int>);
-    REQUIRE(!Hash<int, void(int)>);
-
-    REQUIRE(Hash<std::hash<int>, int>);
-    REQUIRE(Hash<std::hash<int>, const int>);
-    REQUIRE(Hash<std::hash<int>, short>);
-    REQUIRE(!Hash<std::hash<int>, std::string>);
-
-    REQUIRE(Hash<hash_00, int>);
-    REQUIRE(Hash<hash_00, std::string>);
-
-    REQUIRE(!Hash<nohash_00, int>);
-    REQUIRE(!Hash<nohash_01, int>);
-    REQUIRE(!Hash<nohash_02, int>);
-    REQUIRE(!Hash<nohash_03, int>);
-    REQUIRE(!Hash<nohash_04, int>);
-    REQUIRE(!Hash<nohash_05, int>);
 #endif
 }
 
