@@ -354,14 +354,13 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
 template <typename T, typename K, typename C, typename Tag>
 constexpr int series_generic_ctor_algorithm_impl()
 {
-    using rT = remove_cvref_t<T>;
-
     // NOTE: check first if series<K, C, Tag> is a well-formed
     // type (that is, K and C satisfy the key/cf requirements).
     // Like this, if this function is instantiated with bogus
     // types, it will return 0 rather than giving a hard error.
     if constexpr (is_detected_v<series, K, C, Tag>) {
         using series_t = series<K, C, Tag>;
+        using rT = remove_cvref_t<T>;
 
         if constexpr (::std::is_same_v<rT, series_t>) {
             // Avoid competition with the copy/move ctors.
@@ -1269,17 +1268,21 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
 template <typename T, typename U>
 constexpr int series_add_algorithm_impl()
 {
-    using rT [[maybe_unused]] = remove_cvref_t<T>;
-    using rU [[maybe_unused]] = remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
-    if constexpr (::std::conjunction_v<::std::negation<is_cvr_series<T>>, ::std::negation<is_cvr_series<U>>>) {
+    constexpr auto rank_T = series_rank<rT>;
+    constexpr auto rank_U = series_rank<rU>;
+
+    if constexpr (!rank_T && !rank_U) {
         // Neither T nor U are series, return 0. This will disable
         // the default series_add() implementation.
         return 0;
-    } else if constexpr (!is_cvr_series_v<T>) {
-        // T is a scalar, U is a series.
+    } else if constexpr (rank_T < rank_U) {
+        // The rank of T is less than the rank of U.
         // Determine the coefficient type of the return series type.
         using ret_cf_t = detected_t<detail::add_t, ::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>;
+
         if constexpr (is_cf_v<ret_cf_t>) {
             // The candidate coefficient type is valid. Establish
             // the series return type.
@@ -1291,9 +1294,10 @@ constexpr int series_add_algorithm_impl()
             // produce a coefficient type. Return 0.
             return 0;
         }
-    } else if constexpr (!is_cvr_series_v<U>) {
+    } else if constexpr (rank_T > rank_U) {
         // Mirror of the above.
         using ret_cf_t = detected_t<detail::add_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>;
+
         if constexpr (is_cf_v<ret_cf_t>) {
             using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
             return ::std::conjunction_v<is_constructible<ret_t, T>, is_constructible<ret_cf_t, U>> ? 2 : 0;
@@ -1301,9 +1305,40 @@ constexpr int series_add_algorithm_impl()
             return 0;
         }
     } else {
-        // Both T and U are series.
-        // TODO enabling.
-        return 3;
+        // T and U are series with the same rank.
+        // Determine the coefficient type of the return type.
+        using ret_cf_t = detected_t<detail::add_t, const series_cf_t<rT> &, const series_cf_t<rU> &>;
+
+        if constexpr (::std::conjunction_v<is_cf<ret_cf_t>, ::std::is_same<series_key_t<rT>, series_key_t<rU>>,
+                                           ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>>) {
+            // The return cf type is a valid coefficient, and the key and tag of the two series
+            // match. Establish the series return type.
+            using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
+
+            // In the implementation, we may need to copy/move construct
+            // ret_cf_t from the original coefficients. We will use a const
+            // ref or a mutable rvalue ref, depending on T/U.
+            using cf1 = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
+                                             const series_cf_t<rT> &>;
+            using cf2 = ::std::conditional_t<is_mutable_rvalue_reference_v<U &&>, series_cf_t<rU> &&,
+                                             const series_cf_t<rU> &>;
+
+            return ::std::conjunction_v<
+                       // We may need to construct a ret_t from T or U.
+                       is_constructible<ret_t, T>, is_constructible<ret_t, U>,
+                       // We may need to copy/move convert the original coefficients
+                       // to ret_cf_t.
+                       is_constructible<ret_cf_t, cf1>, is_constructible<ret_cf_t, cf2>,
+                       // We may need to merge new symbols into the original key type.
+                       // NOTE: the key types of T and U must be identical at the moment,
+                       // so only 1 check is needed.
+                       // NOTE: the merging is done via a const ref.
+                       is_symbols_mergeable_key<const series_key_t<rT> &>>
+                       ? 3
+                       : 0;
+        } else {
+            return 0;
+        }
     }
 }
 
@@ -1314,13 +1349,13 @@ inline constexpr int series_add_algorithm = detail::series_add_algorithm_impl<T,
 template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 {
-    using rT [[maybe_unused]] = remove_cvref_t<T>;
-    using rU [[maybe_unused]] = remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr auto algo = series_add_algorithm<T &&, U &&>;
 
     if constexpr (algo == 1) {
-        // T scalar, U series.
+        // The rank of T is less than the rank of U.
         using ret_t = series<series_key_t<rU>, detail::add_t<const rT &, const series_cf_t<rU> &>, series_tag_t<rU>>;
 
         ret_t retval(::std::forward<U>(y));
@@ -1335,7 +1370,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
         return retval;
     } else if constexpr (algo == 2) {
-        // T series, U scalar.
+        // The rank of U is less than the rank of T.
         using ret_t = series<series_key_t<rT>, detail::add_t<const series_cf_t<rT> &, const rU &>, series_tag_t<rT>>;
 
         ret_t retval(::std::forward<T>(x));
