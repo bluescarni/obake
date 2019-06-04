@@ -19,15 +19,10 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <vector>
-
-#if __has_include(<string_view>)
-
-#include <string_view>
-
-#endif
 
 #include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
@@ -310,13 +305,10 @@ TEST_CASE("is_string_like_v")
     REQUIRE(!is_string_like_v<char(&)[1]>);
     REQUIRE(is_string_like_v<const char[2]>);
     REQUIRE(!is_string_like_v<char(&&)[10]>);
-
-#if __has_include(<string_view>)
     REQUIRE(is_string_like_v<std::string_view>);
     REQUIRE(!is_string_like_v<std::string_view &>);
     REQUIRE(!is_string_like_v<const std::string_view &>);
     REQUIRE(is_string_like_v<const std::string_view>);
-#endif
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(!StringLike<void>);
@@ -325,9 +317,7 @@ TEST_CASE("is_string_like_v")
     REQUIRE(!StringLike<char *&>);
     REQUIRE(!StringLike<const char(&)[10]>);
     REQUIRE(StringLike<std::string>);
-#if __has_include(<string_view>)
     REQUIRE(StringLike<std::string_view>);
-#endif
     REQUIRE(!StringLike<std::string &>);
 #endif
 
@@ -342,12 +332,10 @@ TEST_CASE("is_string_like_v")
     char s2[] = "blab";
     check_string_like_dispatch(s2);
     check_string_like_dispatch(&s2[0]);
-#if __has_include(<string_view>)
     const std::string_view sv1{"bubbbbba"};
     check_string_like_dispatch(sv1);
     std::string_view sv2{"bubbbba"};
     check_string_like_dispatch(sv2);
-#endif
 }
 
 struct nonaddable_0 {
