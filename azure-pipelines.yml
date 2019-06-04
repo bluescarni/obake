@@ -60,12 +60,12 @@ jobs:
                    -DCMAKE_CXX_STANDARD=17 ^
                    -DCMAKE_BUILD_TYPE=Release ^
                    -DCMAKE_CXX_COMPILER=clang-cl
-          cmake --build . --target install
+          cmake --build . --target install -- -v
           cd ..
           cd ..
         displayName: "Install abseil"
 
-      # Configure
+      # Configure, build and test.
       - script: |
           setlocal EnableDelayedExpansion
           call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
@@ -77,19 +77,6 @@ jobs:
                 -DPIRANHA_BUILD_TESTS=ON ^
                 -DCMAKE_CXX_FLAGS=/std:c++17 ^
                 $(Build.SourcesDirectory)
-        displayName: "Configure"
-        workingDirectory: $(Build.BinariesDirectory)
-
-      # Build
-      - script: |
-          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           cmake --build . -- -v
-        displayName: "Build"
-        workingDirectory: $(Build.BinariesDirectory)/build
-
-      # Test
-      - script: |
-          setlocal EnableDelayedExpansion
-          ctest -V
-        displayName: "Test"
-        workingDirectory: $(Build.BinariesDirectory)/build/test
+          ctest -V .
+        displayName: "Configure, build and test"
