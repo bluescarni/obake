@@ -99,6 +99,6 @@ jobs:
                 -DCMAKE_CXX_COMPILER=clang-cl ^
                 -DPIRANHA_BUILD_TESTS=ON
           cmake --build . -- -v
-          set PATH=%PATH%;%CD%\Debug
+          set PATH=%PATH%;%CD%
           ctest -V .
         displayName: "Configure, build and test"
