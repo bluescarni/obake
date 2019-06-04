@@ -41,11 +41,33 @@ jobs:
           conda install cmake ^
                         clangdev ^
                         ninja ^
-                        mppp ^
+                        mpir ^
+                        mpfr ^
                         boost-cpp ^
                         python=3.6
           conda list
         displayName: "Install conda packages"
+
+      # Install mp++.
+      - script: |
+          setlocal EnableDelayedExpansion
+          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
+          git clone https://github.com/bluescarni/mppp.git
+          cd mppp
+          mkdir build
+          cd build
+          cmake .. -G Ninja ^
+                   -DMPPP_WITH_MPFR=yes ^
+                   -DCMAKE_PREFIX_PATH=C:\tools\miniconda3 ^
+                   -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3 ^
+                   -DCMAKE_CXX_STANDARD=17 ^
+                   -DCMAKE_BUILD_TYPE=Release ^
+                   -DCMAKE_CXX_COMPILER=clang-cl ^
+                   -DCMAKE_C_COMPILER=clang-cl
+          cmake --build . --target install -- -v
+          cd ..
+          cd ..
+        displayName: "Install mp++"
 
       # Install abseil.
       - script: |
