@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -50,9 +51,27 @@ template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<1>) PIRANHA_SS_FORWARD_FUNCTION(hash(::std::forward<T>(x)));
 
 // Lowest priority: try to use std::hash.
+// NOTE: MSVC 2015 and earlier don't have a poisoned std::hash:
+// if it is instantiated with an unsupported type, it will error
+// out with a static assert instead of sfinaeing. As a compromise,
+// enable this implementation only for a few known types.
+#if defined(_MSC_VER) && _MSC_VER < 1910
+
+template <typename T, ::std::enable_if_t<::std::disjunction_v<::std::is_arithmetic<remove_cvref_t<T>>,
+                                                              ::std::is_same<::std::string, remove_cvref_t<T>>>,
+                                         int> = 0>
+constexpr ::std::size_t hash_impl(T &&x, priority_tag<0>)
+{
+    return ::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x));
+}
+
+#else
+
 template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x)));
+
+#endif
 
 // Machinery to enable the hash implementation only if the return
 // type is std::size_t.
