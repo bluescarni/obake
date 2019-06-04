@@ -6,7 +6,7 @@ branches:
 
 environment:
   matrix:
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: MSVC19_64
     # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     #   BUILD_TYPE: MSVC17_64
@@ -14,26 +14,26 @@ environment:
 install:
 - set PATH=C:\Miniconda36-x64\Scripts;%PATH%
 - conda config --add channels conda-forge --force
-- conda create -y --name piranha cmake boost-cpp mpir mpfr
+- conda create -y --name piranha cmake boost-cpp mp++ clangdev
 - call activate piranha
 
 build_script:
 - set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
 - if [%BUILD_TYPE%]==[MSVC17_64] set CMAKE_GENERATOR=Visual Studio 15 2017
-- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR=Visual Studio 16 2019
+- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR=Visual Studio 14 2015
 
 - mkdir build
 - cd build
 
 # mp++ setup.
-- git clone https://github.com/bluescarni/mppp.git
-- cd mppp
-- mkdir build
-- cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- cmake --build . --config Debug --target install
-- cd ..
-- cd ..
+# - git clone https://github.com/bluescarni/mppp.git
+# - cd mppp
+# - mkdir build
+# - cd build
+# - cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+# - cmake --build . --config Debug --target install
+# - cd ..
+# - cd ..
 
 # abseil setup.
 - git clone https://github.com/abseil/abseil-cpp.git
@@ -46,18 +46,18 @@ build_script:
 - cd ..
 
 # piranha
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DPIRANHA_BUILD_TESTS=yes
-- cmake --build . --config Debug
+# - cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DPIRANHA_BUILD_TESTS=yes
+# - cmake --build . --config Debug
 
 
 test_script:
 # NOTE: ensure the PATH variable contains the path to the piranha dll,
 # otherwise the tests will fail to run.
-- set PATH=%PATH%;%CD%\Debug
-- ctest -V -C Debug
+# - set PATH=%PATH%;%CD%\Debug
+# - ctest -V -C Debug
 
 # Enable this to be able to login to the build worker. You can use the
 # `remmina` program in Ubuntu, use the login information that the line below
 # prints into the log.
-# on_finish:
-# - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+on_finish:
+- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
