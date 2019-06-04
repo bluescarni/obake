@@ -102,7 +102,7 @@ target_include_directories(piranha PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-#target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost)
+target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost)
 if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 else()
@@ -112,7 +112,7 @@ else()
     # NOTE: when we enable piranha's installation machinery,
     # we may have to sort this out (CMAKE_DL_LIBS does not
     # look like an imported target).
-    target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
+    #target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
 endif()
 
 # Configure config.hpp.
