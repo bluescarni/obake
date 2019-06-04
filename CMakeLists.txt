@@ -70,6 +70,11 @@ if(PIRANHA_WITH_LIBBACKTRACE)
     find_package(libbacktrace REQUIRED)
 endif()
 
+# Depend on DbgEng on MSVC, for the stack trace support.
+if(YACMA_COMPILER_IS_MSVC)
+    find_package(DbgEng REQUIRED)
+endif()
+
 # Initial setup of the piranha target.
 set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
@@ -113,6 +118,11 @@ else()
     # we may have to sort this out (CMAKE_DL_LIBS does not
     # look like an imported target).
     target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
+endif()
+
+# Link to DbgEng on MSVC.
+if(YACMA_COMPILER_IS_MSVC)
+    target_link_libraries(piranha PUBLIC DbgEng::DbgEng)
 endif()
 
 # Configure config.hpp.
