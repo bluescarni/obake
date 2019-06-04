@@ -87,7 +87,7 @@ jobs:
           cd ..
         displayName: "Install abseil"
 
-      # Configure, build and test.
+      # Configure and build.
       - script: |
           setlocal EnableDelayedExpansion
           call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
@@ -101,5 +101,11 @@ jobs:
           cmake --build . -- -v
           set PATH=%PATH%;%CD%
           echo '##vso[task.setvariable variable=PATH]%PATH%'
+        displayName: "Configure, build"
+
+      # Test.
+      - script: |
+          setlocal EnableDelayedExpansion
+          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           ctest -V .
-        displayName: "Configure, build and test"
+        displayName: "Test"
