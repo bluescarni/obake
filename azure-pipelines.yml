@@ -75,7 +75,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release ^
                 -DCMAKE_C_COMPILER=clang-cl ^
                 -DCMAKE_CXX_COMPILER=clang-cl ^
-                -DPIRANHA_BUILD_TESTS=ON ^
+                -DPIRANHA_BUILD_TESTS=ON
           cmake --build . -- -v
           ctest -V .
         displayName: "Configure, build and test"
