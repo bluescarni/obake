@@ -9,7 +9,6 @@
 #ifndef PIRANHA_UTILS_BIT_PACKING_HPP
 #define PIRANHA_UTILS_BIT_PACKING_HPP
 
-#include <array>
 #include <cassert>
 #include <cstddef>
 #include <stdexcept>
@@ -17,6 +16,7 @@
 #include <type_traits>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/carray.hpp>
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/visibility.hpp>
@@ -239,7 +239,7 @@ struct sbp_minmax_packed {
     // Do paranoid overflow checking as well.
     static_assert(static_cast<unsigned>(limits_digits<T>) <= ::std::get<1>(limits_minmax<::std::size_t>),
                   "Overflow error.");
-    using type = ::std::array<::std::array<T, 2>, static_cast<unsigned>(limits_digits<T>)>;
+    using type = carray<carray<T, 2>, static_cast<unsigned>(limits_digits<T>)>;
 };
 
 // Handy alias.
@@ -366,7 +366,7 @@ struct ubp_max_packed {
     // Do paranoid overflow checking as well.
     static_assert(static_cast<unsigned>(limits_digits<T>) <= ::std::get<1>(limits_minmax<::std::size_t>),
                   "Overflow error.");
-    using type = ::std::array<T, static_cast<unsigned>(limits_digits<T>)>;
+    using type = carray<T, static_cast<unsigned>(limits_digits<T>)>;
 };
 
 // Handy alias.
