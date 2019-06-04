@@ -14,7 +14,7 @@ environment:
 install:
 - set PATH=C:\Miniconda36-x64\Scripts;%PATH%
 - conda config --add channels conda-forge --force
-- conda create -y --name piranha cmake boost-cpp mp++ clangdev
+- conda create -y --name piranha cmake boost-cpp mppp clangdev
 - call activate piranha
 
 build_script:
