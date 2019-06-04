@@ -61,7 +61,7 @@ jobs:
                    -DCMAKE_PREFIX_PATH=C:\tools\miniconda3 ^
                    -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3 ^
                    -DCMAKE_CXX_STANDARD=17 ^
-                   -DCMAKE_BUILD_TYPE=Debug ^
+                   -DCMAKE_BUILD_TYPE=Release ^
                    -DCMAKE_CXX_COMPILER=clang-cl ^
                    -DCMAKE_C_COMPILER=clang-cl
           cmake --build . --target install -- -v
@@ -80,7 +80,7 @@ jobs:
           cmake .. -G Ninja ^
                    -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3 ^
                    -DCMAKE_CXX_STANDARD=17 ^
-                   -DCMAKE_BUILD_TYPE=Debug ^
+                   -DCMAKE_BUILD_TYPE=Release ^
                    -DCMAKE_CXX_COMPILER=clang-cl
           cmake --build . --target install -- -v
           cd ..
@@ -94,7 +94,7 @@ jobs:
           mkdir build
           cd build
           cmake .. -G Ninja ^
-                -DCMAKE_BUILD_TYPE=Debug ^
+                -DCMAKE_BUILD_TYPE=Release ^
                 -DCMAKE_C_COMPILER=clang-cl ^
                 -DCMAKE_CXX_COMPILER=clang-cl ^
                 -DPIRANHA_BUILD_TESTS=ON
