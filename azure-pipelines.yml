@@ -87,7 +87,7 @@ jobs:
           cd ..
         displayName: "Install abseil"
 
-      # Configure and build.
+      # Configure, build and test.
       - script: |
           setlocal EnableDelayedExpansion
           call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
@@ -97,16 +97,8 @@ jobs:
                 -DCMAKE_BUILD_TYPE=Release ^
                 -DCMAKE_C_COMPILER=clang-cl ^
                 -DCMAKE_CXX_COMPILER=clang-cl ^
+                -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3 ^
                 -DPIRANHA_BUILD_TESTS=ON
-          cmake --build . -- -v
-          set PATH=%PATH%;%CD%
-          echo '##vso[task.setvariable variable=PATH]%PATH%'
-        displayName: "Configure, build"
-
-      # Test.
-      - script: |
-          setlocal EnableDelayedExpansion
-          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
-          cd build
+          cmake --build . --target install -- -v
           ctest -V .
-        displayName: "Test"
+        displayName: "Configure, build and test"
