@@ -99,6 +99,7 @@ jobs:
                 -DCMAKE_CXX_COMPILER=clang-cl ^
                 -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3 ^
                 -DPIRANHA_BUILD_TESTS=ON
+          cmake --build . -- -v
           cmake --build . --target install -- -v
           ctest -V .
         displayName: "Configure, build and test"
