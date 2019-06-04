@@ -46,7 +46,60 @@ if(YACMA_COMPILER_IS_MSVC)
         list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
     endif()
     unset(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
-    if(NOT YACMA_COMPILER_IS_CLANGXX)
+    if(YACMA_COMPILER_IS_CLANGXX)
+        # clang-cl emits various warnings from GMP/MPFR, let's just silence them.
+        # NOTE: at one point in the recent past, MSVC added an options similar to GCC's isystem:
+        # https://blogs.msdn.microsoft.com/vcblog/2017/12/13/broken-warnings-theory/
+        # We probably just need to wait for this to be picked up by CMake/clang-cl. Let's
+        # revisit the issue in the future.
+        list(APPEND _PIRANHA_CLANG_CL_DISABLED_WARNINGS
+            "-Wno-unused-variable"
+            "-Wno-inconsistent-dllimport"
+            "-Wno-unknown-pragmas"
+            "-Wno-unused-parameter"
+            "-Wno-sign-compare"
+            "-Wno-deprecated-declarations"
+            "-Wno-deprecated-dynamic-exception-spec"
+            "-Wno-old-style-cast"
+            "-Wno-sign-conversion"
+            "-Wno-non-virtual-dtor"
+            "-Wno-deprecated"
+            "-Wno-shadow"
+            "-Wno-shorten-64-to-32"
+            "-Wno-reserved-id-macro"
+            "-Wno-undef"
+            "-Wno-c++98-compat-pedantic"
+            "-Wno-documentation-unknown-command"
+            "-Wno-zero-as-null-pointer-constant"
+            "-Wno-language-extension-token"
+            "-Wno-gnu-anonymous-struct"
+            "-Wno-nested-anon-types"
+            "-Wno-documentation"
+            "-Wno-comma"
+            "-Wno-nonportable-system-include-path"
+            "-Wno-global-constructors"
+            "-Wno-redundant-parens"
+            "-Wno-exit-time-destructors"
+            "-Wno-missing-noreturn"
+            "-Wno-switch-enum"
+            "-Wno-covered-switch-default"
+            "-Wno-float-equal"
+            "-Wno-double-promotion"
+            "-Wno-microsoft-enum-value"
+            "-Wno-missing-prototypes"
+            "-Wno-implicit-fallthrough"
+            "-Wno-format-nonliteral"
+            "-Wno-cast-qual"
+            "-Wno-disabled-macro-expansion"
+            "-Wno-unused-private-field"
+            "-Wno-unused-template"
+            "-Wno-unused-macros"
+            "-Wno-extra-semi-stmt"
+            "-Wno-c++98-compat")
+        list(APPEND PIRANHA_CXX_FLAGS_DEBUG ${_PIRANHA_CLANG_CL_DISABLED_WARNINGS})
+        list(APPEND PIRANHA_CXX_FLAGS_RELEASE ${_PIRANHA_CLANG_CL_DISABLED_WARNINGS})
+        unset(_PIRANHA_CLANG_CL_DISABLED_WARNINGS)
+    else()
         # Problematic MSVC cl warnings.
         list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/wd4459")
         list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/wd4459")
