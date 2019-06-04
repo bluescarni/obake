@@ -145,7 +145,6 @@ endif()
 add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
 set_property(TARGET piranha PROPERTY VERSION "1.0")
 set_property(TARGET piranha PROPERTY SOVERSION 1 )
-
 target_compile_options(piranha PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>")
 set_target_properties(piranha PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(piranha PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
@@ -183,6 +182,18 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINA
 
 # Configure the sphinx config file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py.in" "${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py" @ONLY)
+
+# Installation of the header files.
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/piranha" DESTINATION include)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" DESTINATION include/piranha)
+
+# Installation of the library.
+install(TARGETS piranha
+    EXPORT piranha_export
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 
 if(PIRANHA_BUILD_TESTS)
     enable_testing()
