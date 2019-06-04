@@ -100,5 +100,6 @@ jobs:
                 -DPIRANHA_BUILD_TESTS=ON
           cmake --build . -- -v
           set PATH=%PATH%;%CD%
+          echo '##vso[task.setvariable variable=PATH]%PATH%'
           ctest -V .
         displayName: "Configure, build and test"
