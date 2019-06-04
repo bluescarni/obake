@@ -49,6 +49,8 @@ jobs:
 
       # Install abseil.
       - script: |
+          setlocal EnableDelayedExpansion
+          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           git clone https://github.com/abseil/abseil-cpp.git
           cd abseil-cpp
           mkdir build
