@@ -75,7 +75,7 @@ jobs:
                 -DCMAKE_C_COMPILER=clang-cl ^
                 -DCMAKE_CXX_COMPILER=clang-cl ^
                 -DPIRANHA_BUILD_TESTS=ON ^
-                -DCMAKE_CXX_FLAGS=-std=c++17 ^
+                -DCMAKE_CXX_FLAGS=/std:c++17 ^
                 $(Build.SourcesDirectory)
         displayName: "Configure"
         workingDirectory: $(Build.BinariesDirectory)
