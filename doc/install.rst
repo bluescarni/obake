@@ -35,6 +35,7 @@ tested in Piranha's continuous integration setup:
 * GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),
 * Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),
 * Visual Studio 2019 on Windows,
+* Clang 8 on Windows (via the ``clang-cl`` driver),
 * Xcode 10.2 on OSX 10.14.
 
 See also the
@@ -146,6 +147,15 @@ Compiler and platform specific notes
 
 Visual Studio:
 
+* Due to various compiler issues, only MSVC 2019 is currently able
+  to compile Piranha.
+* It is possible to use ``clang-cl`` to compile Piranha
+  with earlier versions of MSVC (2017 and 2015). Be
+  aware that the C++ library from MSVC 2015 is not
+  fully standard-compliant, and as a result
+  certain features in Piranha will be disabled when using
+  MSVC 2015 (these occurrences are detailed in the API
+  documentation).
 * When using Visual Studio, the Piranha library is compiled
   with the ``NOMINMAX`` definition and
   with the ``/permissive-`` compiler flag.
