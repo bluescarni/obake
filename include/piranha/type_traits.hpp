@@ -13,10 +13,15 @@
 #include <iterator>
 #include <ostream>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
+#if __has_include(<string_view>)
+
+#include <string_view>
+
+#endif
 
 #include <piranha/config.hpp>
 
@@ -261,9 +266,13 @@ using is_string_like = ::std::disjunction<
     // Is it an array of chars?
     // NOTE: std::remove_cv_t does remove cv qualifiers from arrays.
     ::std::conjunction<::std::is_array<::std::remove_cv_t<T>>,
-                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>,
+                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>
+#if __has_include(<string_view>)
+    ,
     // Is it a string view?
-    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>>;
+    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>
+#endif
+    >;
 
 template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
