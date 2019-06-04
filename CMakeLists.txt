@@ -112,7 +112,7 @@ else()
     # NOTE: when we enable piranha's installation machinery,
     # we may have to sort this out (CMAKE_DL_LIBS does not
     # look like an imported target).
-    #target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
+    target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
 endif()
 
 # Configure config.hpp.
