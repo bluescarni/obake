@@ -51,7 +51,7 @@ constexpr auto key_stream_insert_impl(::std::ostream &os, T &&x, const symbol_se
 
 } // namespace detail
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
 
 struct key_stream_insert_msvc {
     template <typename T>

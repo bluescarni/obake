@@ -129,7 +129,7 @@ constexpr auto negate_impl(T &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(x
 
 } // namespace detail
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
 
 namespace detail
 {

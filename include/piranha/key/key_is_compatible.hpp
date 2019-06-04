@@ -50,7 +50,7 @@ constexpr auto key_is_compatible_impl(T &&x, const symbol_set &ss, priority_tag<
 
 } // namespace detail
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
 
 struct key_is_compatible_msvc {
     template <typename T>

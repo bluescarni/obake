@@ -77,7 +77,7 @@ template <typename To, typename From,
 // NOTE: it is important that this remains a function object, rather than
 // a function, so that the lookup rules are consistent with the lambda
 // function object implementation.
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
 
 template <typename To>
 struct safe_cast_msvc {

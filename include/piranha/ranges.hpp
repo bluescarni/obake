@@ -67,10 +67,30 @@ template <typename T, ::std::enable_if_t<is_iterator_v<detected_t<end_using_adl:
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct begin_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::begin_impl(::std::forward<T>(x)))
+};
+
+inline constexpr auto begin = begin_msvc{};
+
+struct end_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::end_impl(::std::forward<T>(x)))
+};
+
+inline constexpr auto end = end_msvc{};
+
+#else
+
 inline constexpr auto begin =
     [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::begin_impl(::std::forward<decltype(x)>(x)));
 
 inline constexpr auto end = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::end_impl(::std::forward<decltype(x)>(x)));
+
+#endif
 
 template <typename T>
 using range_begin_t = decltype(::piranha::begin(::std::declval<T>()));

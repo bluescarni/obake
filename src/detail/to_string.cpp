@@ -67,7 +67,7 @@ template <typename T>
 
 // NOTE: MSVC warns about using the negation operator
 // on unsigned integrals.
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
 
 #pragma warning(push)
 #pragma warning(disable : 4146)
@@ -132,7 +132,7 @@ template <typename T>
     }
 }
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#if defined(_MSC_VER)
 
 #pragma warning(pop)
 
