@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 #if defined(_WIN32)
 
 // NOTE: setting the backend explicitly is needed for
@@ -74,6 +76,7 @@ namespace piranha::detail
 
     // Generate the stack trace.
     const auto tot_skip = static_cast<::std::size_t>(fixed_skip + static_cast<::std::size_t>(skip));
+    std::cout << "About to invoke boost::stacktrace with a skip of: " << tot_skip << std::endl;
     ::boost::stacktrace::stacktrace st(tot_skip, ::std::numeric_limits<::std::size_t>::max() - tot_skip);
 
     // Special case an empty backtrace.
