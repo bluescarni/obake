@@ -9,10 +9,10 @@ endif()
 
 find_library(DbgEng_LIBRARY NAMES "dbgeng")
 
-#if(NOT DbgEng_LIBRARY)
+if(NOT DbgEng_LIBRARY)
     set(DbgEng_USE_DIRECTLY TRUE)
     set(DbgEng_LIBRARY "dbgeng.lib" CACHE FILEPATH "" FORCE)
-#endif()
+endif()
 
 if(DbgEng_USE_DIRECTLY)
     message(STATUS "dbgeng.lib will be linked directly.")
