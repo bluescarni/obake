@@ -64,10 +64,8 @@ jobs:
                    -DCMAKE_CXX_STANDARD=17 ^
                    -DCMAKE_BUILD_TYPE=Release ^
                    -DCMAKE_CXX_COMPILER=clang-cl ^
-                   -DCMAKE_C_COMPILER=clang-cl ^
-                   -DMPPP_BUILD_TESTS=ON
+                   -DCMAKE_C_COMPILER=clang-cl
           cmake --build . --target install -- -v
-          ctest -V .
           cd ..
           cd ..
         displayName: "Install mp++"
