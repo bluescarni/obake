@@ -102,6 +102,6 @@ jobs:
                 -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
                 -DPIRANHA_BUILD_TESTS=ON
           cmake --build . -- -v
-          cmake --build . --target install -- -v
+          set PATH=%PATH%;%CD%
           ctest -V .
         displayName: "Configure, build and test"
