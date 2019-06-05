@@ -17,9 +17,9 @@
 
 // NOTE: setting the backend explicitly is needed for
 // proper support for clang-cl.
-#define BOOST_STACKTRACE_USE_NOOP
+#define BOOST_STACKTRACE_USE_WINDBG
 #include <boost/stacktrace.hpp>
-#undef BOOST_STACKTRACE_USE_NOOP
+#undef BOOST_STACKTRACE_USE_WINDBG
 
 #elif defined(__APPLE__)
 
