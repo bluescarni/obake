@@ -40,6 +40,7 @@ jobs:
       # Note: conda activate doesn't work here, because it creates a new shell!
       - script: |
           conda install cmake ^
+                        clangdev ^
                         ninja ^
                         mpir ^
                         mpfr ^
@@ -47,15 +48,6 @@ jobs:
                         python=3.6
           conda list
         displayName: "Install conda packages"
-
-      # Install LLVM
-      # Note: LLVM distributed by conda is too old
-      - script: |
-          choco install llvm --yes
-          set PATH=C:\Program Files\LLVM\bin;%PATH%
-          echo '##vso[task.setvariable variable=PATH]%PATH%'
-          clang-cl --version
-        displayName: "Install LLVM"
 
       # Install mp++.
       - script: |
