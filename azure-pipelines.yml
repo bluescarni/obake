@@ -31,7 +31,7 @@ jobs:
       # Configure Miniconda
       - script: |
           conda config --set always_yes yes
-          conda config --append channels conda-forge
+          conda config --add channels conda-forge --force
           conda info
         displayName: "Configure Miniconda"
 
