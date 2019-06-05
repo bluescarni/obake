@@ -46,6 +46,7 @@ jobs:
                         mpfr ^
                         boost-cpp ^
                         vs2015_runtime ^
+                        vc ^
                         python=3.6
           conda list
         displayName: "Install conda packages"
