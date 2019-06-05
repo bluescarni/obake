@@ -84,8 +84,22 @@ constexpr auto hash_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct hash_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::hash_impl_with_ret_check(::std::forward<T>(x)))
+};
+
+inline constexpr auto hash = hash_msvc{};
+
+#else
+
 inline constexpr auto hash =
     [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::hash_impl_with_ret_check(::std::forward<decltype(x)>(x)));
+
+#endif
 
 namespace detail
 {

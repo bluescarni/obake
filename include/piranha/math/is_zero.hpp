@@ -96,10 +96,25 @@ constexpr auto is_zero_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct is_zero_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::is_zero_impl(::std::forward<T>(x),
+                                                                                  detail::priority_tag<3>{})))
+};
+
+inline constexpr auto is_zero = is_zero_msvc{};
+
+#else
+
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
 inline constexpr auto is_zero = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(
     static_cast<bool>(detail::is_zero_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})));
+
+#endif
 
 namespace detail
 {

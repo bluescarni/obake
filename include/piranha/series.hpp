@@ -107,10 +107,16 @@ template <typename T>
 inline constexpr ::std::size_t series_rank_impl = 0;
 
 template <typename K, typename C, typename Tag>
-inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> = []() {
-    static_assert(series_rank_impl<C> < ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error");
-    return series_rank_impl<C> + 1u;
-}();
+inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> =
+#if defined(_MSC_VER)
+    series_rank_impl<C> + 1u
+#else
+    []() {
+        static_assert(series_rank_impl<C> < ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error");
+        return series_rank_impl<C> + 1u;
+    }()
+#endif
+    ;
 
 } // namespace detail
 
@@ -1091,6 +1097,8 @@ inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
 namespace customisation::internal
 {
 
+// TODO: fix lambda usage on MSVC.
+#if 0
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
 requires CvrSeries<T> &&Integral<::std::remove_reference_t<U>> inline constexpr auto pow<T, U>
@@ -1102,6 +1110,7 @@ inline constexpr auto
 {
     return 0;
 };
+#endif
 
 } // namespace customisation::internal
 
@@ -1162,6 +1171,18 @@ inline auto operator-(T &&x)
 namespace customisation::internal
 {
 
+#if defined(_MSC_VER)
+
+struct series_default_negate_impl_msvc {
+    template <typename T>
+    void operator()(T &&x) const
+    {
+        detail::series_default_negate_impl(::std::forward<T>(x));
+    }
+};
+
+#endif
+
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
     requires CvrSeries<T> && !::std::is_const_v<::std::remove_reference_t<T>> inline constexpr auto negate<T>
@@ -1170,7 +1191,12 @@ inline constexpr auto
     negate<T, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>,
                                                       ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
 #endif
-    = [](auto &&x) { detail::series_default_negate_impl(::std::forward<decltype(x)>(x)); };
+    =
+#if defined(_MSC_VER)
+        series_default_negate_impl_msvc{};
+#else
+        [](auto &&x) { detail::series_default_negate_impl(::std::forward<decltype(x)>(x)); };
+#endif
 
 } // namespace customisation::internal
 
@@ -1302,8 +1328,23 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct series_stream_insert_msvc {
+    template <typename T>
+    constexpr auto operator()(::std::ostream &os, T &&s) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_stream_insert_impl(os, ::std::forward<T>(s),
+                                                                             detail::priority_tag<2>{}))
+};
+
+inline constexpr auto series_stream_insert = series_stream_insert_msvc{};
+
+#else
+
 inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) PIRANHA_SS_FORWARD_LAMBDA(
     detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{}));
+
+#endif
 
 // NOTE: constrain the operator so that it is enabled
 // only if s is a series. This way, we avoid it to be too
@@ -1636,8 +1677,23 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct series_add_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_add_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                   detail::priority_tag<2>{}))
+};
+
+inline constexpr auto series_add = series_add_msvc{};
+
+#else
+
 inline constexpr auto series_add = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
     detail::series_add_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+
+#endif
 
 // Like with operator<<(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.

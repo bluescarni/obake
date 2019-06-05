@@ -154,9 +154,23 @@ template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvr
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct safe_convert_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
+        detail::safe_convert_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+};
+
+inline constexpr auto safe_convert = safe_convert_msvc{};
+
+#else
+
 inline constexpr auto safe_convert =
     [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
+
+#endif
 
 namespace detail
 {

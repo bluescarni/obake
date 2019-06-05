@@ -64,9 +64,24 @@ constexpr auto key_merge_symbols_impl_with_ret_check(T &&x, const symbol_idx_map
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct key_merge_symbols_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x, const symbol_idx_map<symbol_set> &ins_map, const symbol_set &ss) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::key_merge_symbols_impl_with_ret_check(::std::forward<T>(x), ins_map,
+                                                                                         ss))
+};
+
+inline constexpr auto key_merge_symbols = key_merge_symbols_msvc{};
+
+#else
+
 inline constexpr auto key_merge_symbols =
     [](auto &&x, const symbol_idx_map<symbol_set> &ins_map, const symbol_set &ss) PIRANHA_SS_FORWARD_LAMBDA(
         detail::key_merge_symbols_impl_with_ret_check(::std::forward<decltype(x)>(x), ins_map, ss));
+
+#endif
 
 namespace detail
 {
