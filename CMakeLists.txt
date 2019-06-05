@@ -174,9 +174,9 @@ else()
 endif()
 
 # Link to DbgEng on MSVC.
-# if(YACMA_COMPILER_IS_MSVC)
-#     target_link_libraries(piranha PUBLIC DbgEng::DbgEng)
-# endif()
+if(YACMA_COMPILER_IS_MSVC)
+    target_link_libraries(piranha PUBLIC DbgEng::DbgEng)
+endif()
 
 # Configure config.hpp.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" @ONLY)
