@@ -6,6 +6,12 @@ jobs:
   # Configure, build, install, and test job
   - job: 'build'
     pool:
+      # NOTE: this is the same image currently used by conda.
+      # Like conda, we'll be using vs2015, not vs2017. If we
+      # try to use the vs2015 image, we get some DLL errors
+      # related to dbgeng, which *I think* are due to the
+      # fact that the vs2015 is using an older version of
+      # the OS.
       vmImage: 'vs2017-win2016'
     timeoutInMinutes: 360
     steps:
@@ -62,6 +68,9 @@ jobs:
                    -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
                    -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
                    -DCMAKE_CXX_STANDARD=17 ^
+                   # NOTE: it's important we set the Release build type
+                   # consistently for piranha and all deps as well, otherwise
+                   # horrible things will happen at runtime.
                    -DCMAKE_BUILD_TYPE=Release ^
                    -DCMAKE_CXX_COMPILER=clang-cl ^
                    -DCMAKE_C_COMPILER=clang-cl
