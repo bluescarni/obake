@@ -22,6 +22,7 @@
 #include <mp++/rational.hpp>
 
 #include <piranha/hash.hpp>
+#include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
@@ -58,6 +59,9 @@ TEST_CASE("pow_test")
 
     series_t_rat sa(s2 + 3.5);
     std::cout << sa << '\n';
+    std::cout << sa - 15.63 << '\n';
+    REQUIRE(is_zero(sa - sa));
+    REQUIRE(is_cf_v<series_t_rat>);
 
     std::cout << s << '\n';
     REQUIRE(s.empty());

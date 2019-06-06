@@ -1168,12 +1168,11 @@ inline auto operator-(T &&x)
     }
 }
 
+// Customise piranha::negate() for series types.
 namespace customisation::internal
 {
 
-#if defined(_MSC_VER)
-
-struct series_default_negate_impl_msvc {
+struct series_default_negate_impl {
     template <typename T>
     void operator()(T &&x) const
     {
@@ -1181,22 +1180,36 @@ struct series_default_negate_impl_msvc {
     }
 };
 
-#endif
-
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
     requires CvrSeries<T> && !::std::is_const_v<::std::remove_reference_t<T>> inline constexpr auto negate<T>
 #else
-inline constexpr auto
-    negate<T, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>,
-                                                      ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
+inline constexpr auto negate<T, ::std::enable_if_t<::std::conjunction_v<
+                                    is_cvr_series<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
 #endif
-    =
-#if defined(_MSC_VER)
-        series_default_negate_impl_msvc{};
+    = series_default_negate_impl{};
+
+} // namespace customisation::internal
+
+// Customise piranha::is_zero() for series types.
+namespace customisation::internal
+{
+
+struct series_default_is_zero_impl {
+    template <typename T>
+    bool operator()(T &&x) const
+    {
+        return ::std::forward<T>(x).empty();
+    }
+};
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires CvrSeries<T> inline constexpr auto is_zero<T>
 #else
-        [](auto &&x) { detail::series_default_negate_impl(::std::forward<decltype(x)>(x)); };
+inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
 #endif
+    = series_default_is_zero_impl{};
 
 } // namespace customisation::internal
 
@@ -1705,6 +1718,90 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 #endif
 constexpr auto operator+(T &&x, U &&y)
     PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T>
+#else
+template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+#endif
+    constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x + y);
+
+namespace customisation
+{
+
+// External customisation point for piranha::series_sub().
+template <typename T, typename U
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_sub = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U>
+constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_sub<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Unqualified function call implementation.
+template <typename T, typename U>
+constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+
+template <typename T, typename U>
+inline constexpr int series_sub_algorithm = detail::series_addsub_algorithm_impl<false, T, U>();
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&> != 0, int> = 0>
+constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
+{
+    return detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct series_sub_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_sub_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                   detail::priority_tag<2>{}))
+};
+
+inline constexpr auto series_sub = series_sub_msvc{};
+
+#else
+
+inline constexpr auto series_sub = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+    detail::series_sub_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+
+#endif
+
+// Like with operator+(), constrain so that the operator
+// is enabled only if at least 1 operator is a series.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T> || CvrSeries<U>
+#else
+template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
+#endif
+constexpr auto operator-(T &&x, U &&y)
+    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T>
+#else
+template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+#endif
+    constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x - y);
 
 } // namespace piranha
 
