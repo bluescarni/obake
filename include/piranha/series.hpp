@@ -245,8 +245,8 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
                 static_cast<::std::ostream &>(oss) << static_cast<const key_type &>(key);
-                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, \"" + oss.str()
-                                                           + "\", is not compatible with the series' symbol set, "
+                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '" + oss.str()
+                                                           + "', is not compatible with the series' symbol set, "
                                                            + detail::to_string(ss));
             } else {
                 piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key is not "
@@ -584,6 +584,7 @@ public:
             // are the same (but the coefficient types are different,
             // otherwise we would be in a copy/move constructor scenario).
             // Insert all terms from x into this, converting the coefficients.
+            static_assert(!::std::is_same_v<series_cf_t<remove_cvref_t<T>>, C>);
 
             // Init a rref clearer, as we may be extracting
             // coefficients from x below.
@@ -1058,7 +1059,7 @@ public:
     }
 
     // Set the number of segments (in log2 units).
-    void set_nsegments(unsigned l)
+    void set_n_segments(unsigned l)
     {
         if (piranha_unlikely(l > max_log2_size)) {
             piranha_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)

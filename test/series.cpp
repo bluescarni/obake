@@ -11,27 +11,136 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include <bitset>
-#include <cstddef>
+// #include <bitset>
+// #include <cstddef>
 #include <initializer_list>
-#include <iostream>
-#include <limits>
-#include <type_traits>
+#include <string>
+// #include <iostream>
+// #include <limits>
+// #include <type_traits>
 #include <utility>
+
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <mp++/rational.hpp>
 
-#include <piranha/hash.hpp>
-#include <piranha/math/is_zero.hpp>
-#include <piranha/math/negate.hpp>
-#include <piranha/math/pow.hpp>
+// #include <piranha/hash.hpp>
+// #include <piranha/math/is_zero.hpp>
+// #include <piranha/math/negate.hpp>
+// #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/type_traits.hpp>
+#include <piranha/symbols.hpp>
+// #include <piranha/type_traits.hpp>
 
 using namespace piranha;
 
-template <typename T, typename U>
-using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
+// template <typename T, typename U>
+// using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
+
+TEST_CASE("series_basic")
+{
+    using pm_t = packed_monomial<int>;
+    using series_t = series<pm_t, mppp::rational<1>, void>;
+
+    // Default construction.
+    series_t s;
+
+    REQUIRE(s.empty());
+    REQUIRE(s.size() == 0u);
+    REQUIRE(s._get_s_table().size() == 1u);
+    REQUIRE(s.get_symbol_set() == symbol_set{});
+    s.set_n_segments(4u);
+    REQUIRE(s.empty());
+    REQUIRE(s.size() == 0u);
+    REQUIRE(s._get_s_table().size() == 16u);
+    s.set_symbol_set(symbol_set{"x", "y", "z"});
+    REQUIRE(s.get_symbol_set() == symbol_set{"x", "y", "z"});
+
+    // Copy construction.
+    symbol_set ss{"x"};
+
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.add_term(pm_t{2}, 4);
+    REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
+    REQUIRE(s.size() == 1u);
+
+    {
+        auto s_copy(s);
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s_copy), "4*x**2"));
+        REQUIRE(s_copy.size() == 1u);
+        REQUIRE(s_copy.get_symbol_set() == ss);
+        REQUIRE(s_copy._get_s_table().size() == 1u);
+    }
+
+    // Try with a segmented series too.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.set_n_segments(3);
+    s.add_term(pm_t{2}, 4);
+    s.add_term(pm_t{0}, -1);
+    s.add_term(pm_t{1}, -2);
+    s.add_term(pm_t{3}, 9);
+    REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
+    REQUIRE(s.size() == 4u);
+
+    {
+        auto s_copy(s);
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s_copy), "4*x**2"));
+        REQUIRE(s_copy.size() == 4u);
+        REQUIRE(s_copy.get_symbol_set() == ss);
+        REQUIRE(s_copy._get_s_table().size() == 8u);
+    }
+
+    // Move construction.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.add_term(pm_t{2}, 4);
+    REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
+    REQUIRE(s.size() == 1u);
+
+    {
+        auto s_move(std::move(s));
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s_move), "4*x**2"));
+        REQUIRE(s_move.size() == 1u);
+        REQUIRE(s_move.get_symbol_set() == ss);
+        REQUIRE(s_move._get_s_table().size() == 1u);
+
+        // Revive s.
+        s = std::move(s_move);
+
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
+        REQUIRE(s.size() == 1u);
+    }
+
+    // Try with a segmented series too.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.set_n_segments(3);
+    s.add_term(pm_t{2}, 4);
+    s.add_term(pm_t{0}, -1);
+    s.add_term(pm_t{1}, -2);
+    s.add_term(pm_t{3}, 9);
+    REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
+    REQUIRE(s.size() == 4u);
+
+    {
+        auto s_move(std::move(s));
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s_move), "4*x**2"));
+        REQUIRE(s_move.size() == 4u);
+        REQUIRE(s_move.get_symbol_set() == ss);
+        REQUIRE(s_move._get_s_table().size() == 8u);
+
+        // Revive s.
+        s = std::move(s_move);
+
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
+        REQUIRE(s.size() == 4u);
+    }
+}
+
+#if 0
 
 TEST_CASE("pow_test")
 {
@@ -117,3 +226,5 @@ TEST_CASE("pow_test")
     REQUIRE(!is_negatable_v<const series_t &>);
     REQUIRE(!is_negatable_v<const series_t &&>);
 }
+
+#endif
