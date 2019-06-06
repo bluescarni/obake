@@ -223,16 +223,16 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
     // Cache a reference to the symbol set.
-    const auto &ss = s.m_symbol_set;
+    const auto &ss = s.get_symbol_set();
 
     if constexpr (CheckTableSize == sat_check_table_size::on) {
         // Check the table size, if requested.
-        if (piranha_unlikely(t.size() == s.get_max_table_size())) {
+        if (piranha_unlikely(t.size() == s._get_max_table_size())) {
             // The table size is already the maximum allowed, don't
             // attempt the insertion.
             piranha_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
                                                  "destination table already contains the maximum number of terms ("
-                                                     + detail::to_string(s.get_max_table_size()) + ")");
+                                                     + detail::to_string(s._get_max_table_size()) + ")");
         }
     }
 
@@ -337,22 +337,24 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
     using key_type = series_key_t<::std::remove_reference_t<S>>;
     static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
-    const auto log2_size = s.m_log2_size;
+    const auto log2_size = s._get_log2_size();
+    auto &s_table = s._get_s_table();
+
     if (log2_size == 0u) {
         // NOTE: forcibly set the table size check to off (for a single
         // table, the size limit is always the full range of size_type).
         detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off, AssumeUnique>(
-            s, s.m_s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
+            s, s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     } else {
         // Compute the hash of the key via piranha::hash().
         const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
 
         // Determine the destination table.
-        const auto table_idx = static_cast<decltype(s.m_s_table.size())>(k_hash & (log2_size - 1u));
+        const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (log2_size - 1u));
 
         // Proceed to the insertion.
         detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize, AssumeUnique>(
-            s, s.m_s_table[table_idx], ::std::forward<T>(key), ::std::forward<Args>(args)...);
+            s, s_table[table_idx], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     }
 }
 
@@ -509,14 +511,6 @@ template <typename K, typename C, typename Tag, typename>
 #endif
 class series
 {
-    // Make friends with the term insertion helpers.
-    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size,
-              detail::sat_assume_unique, typename S, typename T, typename... Args>
-    friend void detail::series_add_term(S &, T &&, Args &&...);
-    template <bool, detail::sat_check_zero, detail::sat_check_compat_key, detail::sat_check_table_size,
-              detail::sat_assume_unique, typename S, typename Table, typename T, typename... Args>
-    friend void detail::series_add_term_table(S &, Table &, T &&, Args &&...);
-
     // Make friends with all series types.
     template <typename, typename, typename
 #if !defined(PIRANHA_HAVE_CONCEPTS)
@@ -692,21 +686,6 @@ public:
         }
     }
 
-private:
-    // Get the maximum size of the tables.
-    // This will ensure that size_type can always
-    // represent the total number of terms in the
-    // series.
-    size_type get_max_table_size() const
-    {
-        // NOTE: use a division rather than right shift,
-        // so that we don't have to worry about shifting
-        // too much. This will anyway be optimised into a
-        // shift by the compiler.
-        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (s_size_t(1) << m_log2_size));
-    }
-
-public:
     ~series()
     {
 #if !defined(NDEBUG)
@@ -721,7 +700,7 @@ public:
             assert(m_s_table.size() == (s_size_t(1) << m_log2_size));
 
             // Make sure the size of each table does not exceed the limit.
-            const auto mts = get_max_table_size();
+            const auto mts = _get_max_table_size();
             for (const auto &t : m_s_table) {
                 assert(t.size() <= mts);
             }
@@ -769,6 +748,24 @@ public:
         // that the size of each table is small enough to avoid overflows.
         return ::std::accumulate(m_s_table.begin(), m_s_table.end(), size_type(0),
                                  [](const auto &cur, const auto &table) { return cur + table.size(); });
+    }
+
+    // Get the maximum size of the tables.
+    // This will ensure that size_type can always
+    // represent the total number of terms in the
+    // series.
+    size_type _get_max_table_size() const
+    {
+        // NOTE: use a division rather than right shift,
+        // so that we don't have to worry about shifting
+        // too much. This will anyway be optimised into a
+        // shift by the compiler.
+        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (s_size_t(1) << m_log2_size));
+    }
+
+    s_size_t _get_log2_size() const
+    {
+        return m_log2_size;
     }
 
     bool is_single_cf() const
