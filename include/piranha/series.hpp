@@ -226,6 +226,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     const auto &ss = s.get_symbol_set();
 
     if constexpr (CheckTableSize == sat_check_table_size::on) {
+        // LCOV_EXCL_START
         // Check the table size, if requested.
         if (piranha_unlikely(t.size() == s._get_max_table_size())) {
             // The table size is already the maximum allowed, don't
@@ -234,6 +235,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
                                                  "destination table already contains the maximum number of terms ("
                                                      + detail::to_string(s._get_max_table_size()) + ")");
         }
+        // LCOV_EXCL_STOP
     }
 
     if constexpr (CheckCompatKey == sat_check_compat_key::on) {

@@ -11,32 +11,135 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-// #include <bitset>
-// #include <cstddef>
 #include <initializer_list>
 #include <string>
-// #include <iostream>
-// #include <limits>
-// #include <type_traits>
+#include <type_traits>
 #include <utility>
+// #include <cstddef>
+// #include <bitset>
+// #include <limits>
+// #include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <mp++/rational.hpp>
 
+#include <piranha/config.hpp>
+#include <piranha/polynomials/packed_monomial.hpp>
+#include <piranha/symbols.hpp>
+#include <piranha/type_traits.hpp>
 // #include <piranha/hash.hpp>
 // #include <piranha/math/is_zero.hpp>
 // #include <piranha/math/negate.hpp>
 // #include <piranha/math/pow.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/symbols.hpp>
-// #include <piranha/type_traits.hpp>
 
 using namespace piranha;
 
 // template <typename T, typename U>
 // using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
+
+TEST_CASE("cf_key_concepts")
+{
+    using pm_t = packed_monomial<int>;
+
+    REQUIRE(!is_cf_v<void>);
+    REQUIRE(!is_key_v<void>);
+
+    REQUIRE(is_cf_v<int>);
+    REQUIRE(is_cf_v<double>);
+    REQUIRE(!is_cf_v<const double>);
+    REQUIRE(!is_cf_v<double &>);
+    REQUIRE(!is_cf_v<const double &>);
+    REQUIRE(!is_cf_v<double &&>);
+
+    REQUIRE(is_key_v<pm_t>);
+    REQUIRE(!is_key_v<const pm_t>);
+    REQUIRE(!is_key_v<pm_t &>);
+    REQUIRE(!is_key_v<const pm_t &>);
+    REQUIRE(!is_key_v<pm_t &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Cf<void>);
+    REQUIRE(!Key<void>);
+
+    REQUIRE(Cf<int>);
+    REQUIRE(Cf<double>);
+    REQUIRE(!Cf<const double>);
+    REQUIRE(!Cf<double &>);
+    REQUIRE(!Cf<const double &>);
+    REQUIRE(!Cf<double &&>);
+
+    REQUIRE(Key<pm_t>);
+    REQUIRE(!Key<const pm_t>);
+    REQUIRE(!Key<pm_t &>);
+    REQUIRE(!Key<const pm_t &>);
+    REQUIRE(!Key<pm_t &&>);
+#endif
+}
+
+TEST_CASE("series_rank")
+{
+    using pm_t = packed_monomial<int>;
+    using series_t = series<pm_t, mppp::rational<1>, void>;
+    using series2_t = series<pm_t, series_t, void>;
+
+    REQUIRE(series_rank<void> == 0u);
+
+    REQUIRE(series_rank<series_t> == 1u);
+    REQUIRE(series_rank<series_t &> == 0u);
+    REQUIRE(series_rank<const series_t> == 0u);
+    REQUIRE(series_rank<const series_t &> == 0u);
+    REQUIRE(series_rank<series_t &&> == 0u);
+
+    REQUIRE(series_rank<series2_t> == 2u);
+    REQUIRE(series_rank<series2_t &> == 0u);
+    REQUIRE(series_rank<const series2_t> == 0u);
+    REQUIRE(series_rank<const series2_t &> == 0u);
+    REQUIRE(series_rank<series2_t &&> == 0u);
+}
+
+TEST_CASE("series_cf_key_tag_t")
+{
+    using pm_t = packed_monomial<int>;
+    using series_t = series<pm_t, mppp::rational<1>, void>;
+
+    REQUIRE(std::is_same_v<pm_t, series_key_t<series_t>>);
+    REQUIRE(std::is_same_v<mppp::rational<1>, series_cf_t<series_t>>);
+    REQUIRE(std::is_same_v<void, series_tag_t<series_t>>);
+
+    REQUIRE(!is_detected_v<series_key_t, const series_t>);
+    REQUIRE(!is_detected_v<series_cf_t, series_t &>);
+    REQUIRE(!is_detected_v<series_key_t, const series_t &&>);
+}
+
+TEST_CASE("is_cvr_series")
+{
+    using pm_t = packed_monomial<int>;
+    using series_t = series<pm_t, mppp::rational<1>, void>;
+
+    REQUIRE(!is_cvr_series_v<void>);
+    REQUIRE(!is_cvr_series_v<int>);
+    REQUIRE(!is_cvr_series_v<double>);
+
+    REQUIRE(is_cvr_series_v<series_t>);
+    REQUIRE(is_cvr_series_v<series_t &>);
+    REQUIRE(is_cvr_series_v<const series_t &>);
+    REQUIRE(is_cvr_series_v<series_t &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CvrSeries<void>);
+    REQUIRE(!CvrSeries<int>);
+    REQUIRE(!CvrSeries<double>);
+
+    REQUIRE(CvrSeries<series_t>);
+    REQUIRE(CvrSeries<series_t &>);
+    REQUIRE(CvrSeries<const series_t &>);
+    REQUIRE(CvrSeries<series_t &&>);
+#endif
+}
+
+TEST_CASE("add_term_primitives") {}
 
 TEST_CASE("series_basic")
 {
@@ -137,6 +240,76 @@ TEST_CASE("series_basic")
 
         REQUIRE(boost::contains(boost::lexical_cast<std::string>(s), "4*x**2"));
         REQUIRE(s.size() == 4u);
+    }
+
+    // Copy assignment.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.add_term(pm_t{2}, 4);
+    s.add_term(pm_t{0}, -1);
+    s.add_term(pm_t{1}, -2);
+    s.add_term(pm_t{3}, 9);
+
+    {
+        series_t s2;
+        s2 = s;
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s2), "4*x**2"));
+        REQUIRE(s2.size() == 4u);
+        REQUIRE(s2.get_symbol_set() == ss);
+        REQUIRE(s2._get_s_table().size() == 1u);
+    }
+
+    // Try with a segmented series too.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.set_n_segments(3);
+    s.add_term(pm_t{2}, 4);
+    s.add_term(pm_t{0}, -1);
+    s.add_term(pm_t{1}, -2);
+    s.add_term(pm_t{3}, 9);
+
+    {
+        series_t s2;
+        s2 = s;
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s2), "4*x**2"));
+        REQUIRE(s2.size() == 4u);
+        REQUIRE(s2.get_symbol_set() == ss);
+        REQUIRE(s2._get_s_table().size() == 8u);
+    }
+
+    // Move assignment.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.add_term(pm_t{2}, 4);
+    s.add_term(pm_t{0}, -1);
+    s.add_term(pm_t{1}, -2);
+    s.add_term(pm_t{3}, 9);
+
+    {
+        series_t s2;
+        s2 = std::move(s);
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s2), "4*x**2"));
+        REQUIRE(s2.size() == 4u);
+        REQUIRE(s2.get_symbol_set() == ss);
+        REQUIRE(s2._get_s_table().size() == 1u);
+    }
+
+    // Try with a segmented series too.
+    s = series_t{};
+    s.set_symbol_set(ss);
+    s.set_n_segments(3);
+    s.add_term(pm_t{2}, 4);
+    s.add_term(pm_t{0}, -1);
+    s.add_term(pm_t{1}, -2);
+    s.add_term(pm_t{3}, 9);
+
+    {
+        series_t s2;
+        s2 = std::move(s);
+        REQUIRE(boost::contains(boost::lexical_cast<std::string>(s2), "4*x**2"));
+        REQUIRE(s2.size() == 4u);
+        REQUIRE(s2.get_symbol_set() == ss);
+        REQUIRE(s2._get_s_table().size() == 8u);
     }
 }
 

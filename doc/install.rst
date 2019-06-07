@@ -150,9 +150,11 @@ Visual Studio:
 * Due to various compiler issues, only MSVC 2019 is currently able
   to compile Piranha.
 * It is possible to use ``clang-cl`` to compile Piranha
-  with earlier versions of MSVC (2017 and 2015). Be
+  with earlier versions of MSVC (2017 and 2015). This means
+  that Clang will be used as a C/C++ compiler, while the
+  C++ standard library will be the one supplied with MSVC. Be
   aware that the C++ library from MSVC 2015 is not
-  fully standard-compliant, and as a result
+  fully C++17-compliant, and as a result
   certain features in Piranha will be disabled when using
   MSVC 2015 (these occurrences are detailed in the API
   documentation).
