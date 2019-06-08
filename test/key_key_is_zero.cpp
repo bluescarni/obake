@@ -57,9 +57,9 @@ namespace piranha::customisation
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_zt00> inline constexpr auto key_is_zero<T>
+requires SameCvr<T, ext_zt00> inline constexpr auto key_is_zero<T>
 #else
-inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvref_v<T, ext_zt00>>>
+inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
 #endif
     = [](auto &&, const symbol_set &) constexpr noexcept
 {
@@ -68,9 +68,9 @@ inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvref_v<T, ext_zt0
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_zt01> inline constexpr auto key_is_zero<T>
+requires SameCvr<T, ext_zt01> inline constexpr auto key_is_zero<T>
 #else
-inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvref_v<T, ext_zt01>>>
+inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
 #endif
     = [](auto &, const symbol_set &) constexpr noexcept
 {
@@ -79,9 +79,9 @@ inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvref_v<T, ext_zt0
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, ext_nzt00> inline constexpr auto key_is_zero<T>
+requires SameCvr<T, ext_nzt00> inline constexpr auto key_is_zero<T>
 #else
-inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvref_v<T, ext_nzt00>>>
+inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvr_v<T, ext_nzt00>>>
 #endif
     = [](auto &&, const symbol_set &) constexpr noexcept
 {

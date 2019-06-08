@@ -11,8 +11,8 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
-#include <cstddef>
-#include <functional>
+#include <piranha/config.hpp>
+
 #include <iterator>
 #include <limits>
 #include <list>
@@ -21,14 +21,16 @@
 #include <set>
 #include <sstream>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <vector>
 
-#include <mp++/integer.hpp>
+#if defined(PIRANHA_HAVE_STRING_VIEW)
 
-#include <piranha/config.hpp>
+#include <string_view>
+
+#endif
+
 #include <piranha/detail/limits.hpp>
 
 using namespace piranha;
@@ -124,19 +126,6 @@ TEST_CASE("is_arithmetic")
     REQUIRE(!Arithmetic<short &&>);
 #endif
 }
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-TEST_CASE("is_const")
-{
-    REQUIRE(!Const<void>);
-    REQUIRE(Const<void const>);
-    REQUIRE(Const<void const volatile>);
-    REQUIRE(!Const<std::string>);
-    REQUIRE(Const<std::string const>);
-    REQUIRE(!Const<std::string &>);
-    REQUIRE(!Const<const std::string &>);
-}
-#endif
 
 TEST_CASE("is_signed")
 {
@@ -260,50 +249,28 @@ TEST_CASE("is_returnable")
 #endif
 }
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-TEST_CASE("default_constructible")
+TEST_CASE("is_same_cvr")
 {
-    REQUIRE(DefaultConstructible<int>);
-    REQUIRE(DefaultConstructible<int *>);
-    REQUIRE(!DefaultConstructible<void>);
-    REQUIRE(!DefaultConstructible<const void>);
-    REQUIRE(!DefaultConstructible<int &>);
-    REQUIRE(!DefaultConstructible<const int &>);
-    REQUIRE(!DefaultConstructible<int &&>);
-}
-#endif
+    REQUIRE(is_same_cvr_v<int, int>);
+    REQUIRE(is_same_cvr_v<int, int &>);
+    REQUIRE(is_same_cvr_v<volatile int, int &>);
+    REQUIRE(is_same_cvr_v<int &&, int &>);
+    REQUIRE(is_same_cvr_v<const int &&, const int>);
+    REQUIRE(is_same_cvr_v<int &, const int &>);
+    REQUIRE(!is_same_cvr_v<void, int>);
+    REQUIRE(!is_same_cvr_v<int, int *>);
+    REQUIRE(!is_same_cvr_v<int *, int>);
+    REQUIRE(is_same_cvr_v<void, void>);
+    REQUIRE(is_same_cvr_v<void, const void>);
+    REQUIRE(is_same_cvr_v<volatile void, const void>);
+    REQUIRE(is_same_cvr_v<const volatile void, const void>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-TEST_CASE("same")
-{
-    REQUIRE(Same<int, int>);
-    REQUIRE(Same<void, void>);
-    REQUIRE(!Same<void, const void>);
-}
-#endif
-
-TEST_CASE("is_same_cvref")
-{
-    REQUIRE(is_same_cvref_v<int, int>);
-    REQUIRE(is_same_cvref_v<int, int &>);
-    REQUIRE(is_same_cvref_v<volatile int, int &>);
-    REQUIRE(is_same_cvref_v<int &&, int &>);
-    REQUIRE(is_same_cvref_v<const int &&, const int>);
-    REQUIRE(is_same_cvref_v<int &, const int &>);
-    REQUIRE(!is_same_cvref_v<void, int>);
-    REQUIRE(!is_same_cvref_v<int, int *>);
-    REQUIRE(!is_same_cvref_v<int *, int>);
-    REQUIRE(is_same_cvref_v<void, void>);
-    REQUIRE(is_same_cvref_v<void, const void>);
-    REQUIRE(is_same_cvref_v<volatile void, const void>);
-    REQUIRE(is_same_cvref_v<const volatile void, const void>);
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-    REQUIRE(SameCvref<int, int>);
-    REQUIRE(SameCvref<int, int &>);
-    REQUIRE(SameCvref<const int, int &>);
-    REQUIRE(!SameCvref<int, void>);
-    REQUIRE(!SameCvref<int *, int &>);
+    REQUIRE(SameCvr<int, int>);
+    REQUIRE(SameCvr<int, int &>);
+    REQUIRE(SameCvr<const int, int &>);
+    REQUIRE(!SameCvr<int, void>);
+    REQUIRE(!SameCvr<int *, int &>);
 #endif
 }
 
@@ -344,10 +311,13 @@ TEST_CASE("is_string_like_v")
     REQUIRE(!is_string_like_v<char(&)[1]>);
     REQUIRE(is_string_like_v<const char[2]>);
     REQUIRE(!is_string_like_v<char(&&)[10]>);
+
+#if defined(PIRANHA_HAVE_STRING_VIEW)
     REQUIRE(is_string_like_v<std::string_view>);
     REQUIRE(!is_string_like_v<std::string_view &>);
     REQUIRE(!is_string_like_v<const std::string_view &>);
     REQUIRE(is_string_like_v<const std::string_view>);
+#endif
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(!StringLike<void>);
@@ -356,7 +326,9 @@ TEST_CASE("is_string_like_v")
     REQUIRE(!StringLike<char *&>);
     REQUIRE(!StringLike<const char(&)[10]>);
     REQUIRE(StringLike<std::string>);
+#if defined(PIRANHA_HAVE_STRING_VIEW)
     REQUIRE(StringLike<std::string_view>);
+#endif
     REQUIRE(!StringLike<std::string &>);
 #endif
 
@@ -371,10 +343,12 @@ TEST_CASE("is_string_like_v")
     char s2[] = "blab";
     check_string_like_dispatch(s2);
     check_string_like_dispatch(&s2[0]);
+#if defined(PIRANHA_HAVE_STRING_VIEW)
     const std::string_view sv1{"bubbbbba"};
     check_string_like_dispatch(sv1);
     std::string_view sv2{"bubbbba"};
     check_string_like_dispatch(sv2);
+#endif
 }
 
 struct nonaddable_0 {
@@ -409,7 +383,6 @@ TEST_CASE("is_addable")
     REQUIRE(is_addable_v<const int, int &>);
     REQUIRE(is_addable_v<int &&, volatile int &>);
     REQUIRE(is_addable_v<std::string, char *>);
-    REQUIRE(is_addable_v<std::string, char *>);
     REQUIRE(!is_addable_v<std::string, int>);
     REQUIRE(!is_addable_v<nonaddable_0>);
     REQUIRE(is_addable_v<addable_0>);
@@ -426,7 +399,6 @@ TEST_CASE("is_addable")
     REQUIRE(Addable<int, int>);
     REQUIRE(Addable<const int, int &>);
     REQUIRE(Addable<int &&, volatile int &>);
-    REQUIRE(Addable<std::string, char *>);
     REQUIRE(Addable<std::string, char *>);
     REQUIRE(!Addable<std::string, int>);
     REQUIRE(!Addable<nonaddable_0>);
@@ -1155,179 +1127,6 @@ TEST_CASE("limits_digits")
 #endif
 }
 
-struct fo1 {
-    void operator()(int = 0) const;
-};
-
-// The non-const overload is deleted.
-struct nofo1 {
-    void operator()(int = 0) const;
-    void operator()(int = 0) = delete;
-};
-
-// Vice-versa.
-struct nofo2 {
-    void operator()(int = 0) const = delete;
-    void operator()(int = 0);
-};
-
-TEST_CASE("function_object")
-{
-    REQUIRE(!is_function_object_v<void>);
-    REQUIRE(!is_function_object_v<const void>);
-    REQUIRE(!is_function_object_v<const volatile void>);
-    REQUIRE(!is_function_object_v<int>);
-    REQUIRE(!is_function_object_v<int &>);
-
-    REQUIRE(is_function_object_v<std::hash<int>, std::size_t>);
-    REQUIRE(is_function_object_v<std::hash<int>, const std::size_t &>);
-    REQUIRE(is_function_object_v<std::hash<int>, std::size_t &>);
-    REQUIRE(is_function_object_v<std::hash<int>, std::size_t &&>);
-    REQUIRE(is_function_object_v<std::hash<int>, int>);
-    REQUIRE(is_function_object_v<std::hash<int>, const int &>);
-    REQUIRE(is_function_object_v<std::hash<int>, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int> &, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int> &&, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int> *, int &&>);
-    REQUIRE(!is_function_object_v<std::hash<int>>);
-    REQUIRE(!is_function_object_v<std::hash<int>, int, int>);
-
-    // Check mp++'s hash specialisation.
-    REQUIRE(is_function_object_v<std::hash<mppp::integer<1>>, const mppp::integer<1> &>);
-
-    REQUIRE(is_function_object_v<fo1>);
-    REQUIRE(is_function_object_v<fo1, int>);
-    REQUIRE(is_function_object_v<fo1, int &>);
-    REQUIRE(is_function_object_v<fo1, const int &>);
-    REQUIRE(is_function_object_v<fo1, int &&>);
-
-    REQUIRE(!is_function_object_v<nofo1>);
-    REQUIRE(!is_function_object_v<nofo1, int>);
-    REQUIRE(!is_function_object_v<nofo1, int &>);
-    REQUIRE(!is_function_object_v<nofo1, const int &>);
-    REQUIRE(!is_function_object_v<nofo1, int &&>);
-
-    REQUIRE(!is_function_object_v<nofo2>);
-    REQUIRE(!is_function_object_v<nofo2, int>);
-    REQUIRE(!is_function_object_v<nofo2, int &>);
-    REQUIRE(!is_function_object_v<nofo2, const int &>);
-    REQUIRE(!is_function_object_v<nofo2, int &&>);
-
-    // NOTE: std::hash for user-defined type without explicit specialisation
-    // is disabled.
-    REQUIRE(!is_function_object_v<std::hash<fo1>, std::size_t>);
-    REQUIRE(!is_function_object_v<std::hash<nofo1>, std::size_t>);
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-    // The concept is based on the type trait currently, just do a few simple tests.
-    REQUIRE(!FunctionObject<void>);
-    REQUIRE(!FunctionObject<int>);
-    REQUIRE(FunctionObject<std::hash<int>, std::size_t>);
-    REQUIRE(!FunctionObject<std::hash<int> &, std::size_t>);
-    REQUIRE(FunctionObject<std::hash<mppp::integer<1>>, const mppp::integer<1> &>);
-    REQUIRE(FunctionObject<fo1>);
-    REQUIRE(!FunctionObject<nofo1>);
-    REQUIRE(!FunctionObject<nofo2>);
-#endif
-}
-
-// Universal hasher.
-struct hash_00 {
-    template <typename T>
-    std::size_t operator()(const T &) const;
-};
-
-struct nohash_00 {
-    template <typename T>
-    std::size_t operator()(const T &) const;
-    // Missing def ctor.
-    nohash_00() = delete;
-};
-
-struct nohash_01 {
-    template <typename T>
-    std::size_t operator()(const T &) const;
-    // Missing dtor.
-    nohash_01() = default;
-    ~nohash_01() = delete;
-};
-
-// Not a function object.
-struct nohash_02 {
-};
-
-// Wrong return type.
-struct nohash_03 {
-    template <typename T>
-    int operator()(const T &) const;
-};
-
-// Missing const overload.
-struct nohash_04 {
-    template <typename T>
-    std::size_t operator()(const T &) const = delete;
-    template <typename T>
-    std::size_t operator()(const T &);
-};
-
-// Hashes only mutable Ts.
-struct nohash_05 {
-    template <typename T>
-    std::size_t operator()(const T &) const = delete;
-    template <typename T>
-    std::size_t operator()(T &) const;
-};
-
-TEST_CASE("hash")
-{
-    REQUIRE(!is_hash_v<void, void>);
-    REQUIRE(!is_hash_v<std::hash<int>, void>);
-    REQUIRE(!is_hash_v<void, int>);
-    REQUIRE(!is_hash_v<void(int), void(int)>);
-    REQUIRE(!is_hash_v<void(int), int>);
-    REQUIRE(!is_hash_v<int, void(int)>);
-
-    REQUIRE(is_hash_v<std::hash<int>, int>);
-    REQUIRE(is_hash_v<std::hash<int>, const int>);
-    REQUIRE(is_hash_v<std::hash<int>, short>);
-    REQUIRE(!is_hash_v<std::hash<int>, std::string>);
-
-    REQUIRE(is_hash_v<hash_00, int>);
-    REQUIRE(is_hash_v<hash_00, std::string>);
-
-    REQUIRE(!is_hash_v<nohash_00, int>);
-    REQUIRE(!is_hash_v<nohash_01, int>);
-    REQUIRE(!is_hash_v<nohash_02, int>);
-    REQUIRE(!is_hash_v<nohash_03, int>);
-    REQUIRE(!is_hash_v<nohash_04, int>);
-    REQUIRE(!is_hash_v<nohash_05, int>);
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-    // The concept is based on the type trait currently, just do a few simple tests.
-    REQUIRE(!Hash<void, void>);
-    REQUIRE(!Hash<std::hash<int>, void>);
-    REQUIRE(!Hash<void, int>);
-    REQUIRE(!Hash<void(int), void(int)>);
-    REQUIRE(!Hash<void(int), int>);
-    REQUIRE(!Hash<int, void(int)>);
-
-    REQUIRE(Hash<std::hash<int>, int>);
-    REQUIRE(Hash<std::hash<int>, const int>);
-    REQUIRE(Hash<std::hash<int>, short>);
-    REQUIRE(!Hash<std::hash<int>, std::string>);
-
-    REQUIRE(Hash<hash_00, int>);
-    REQUIRE(Hash<hash_00, std::string>);
-
-    REQUIRE(!Hash<nohash_00, int>);
-    REQUIRE(!Hash<nohash_01, int>);
-    REQUIRE(!Hash<nohash_02, int>);
-    REQUIRE(!Hash<nohash_03, int>);
-    REQUIRE(!Hash<nohash_04, int>);
-    REQUIRE(!Hash<nohash_05, int>);
-#endif
-}
-
 struct nondtible {
     ~nondtible() = delete;
 };
@@ -1360,5 +1159,303 @@ TEST_CASE("semi_regular")
     REQUIRE(!SemiRegular<int &&>);
     REQUIRE(!SemiRegular<nondtible>);
     REQUIRE(!SemiRegular<nondfctible>);
+#endif
+}
+
+struct non_si_00 {
+};
+
+struct non_si_01 {
+};
+
+// Wrong ret type.
+int operator<<(std::ostream &, const non_si_01 &);
+
+struct part_si {
+};
+
+std::ostream &operator<<(std::ostream &, part_si &&);
+
+struct yes_si {
+};
+
+std::ostream &operator<<(std::ostream &, const yes_si &);
+
+TEST_CASE("stream_insertable")
+{
+    REQUIRE(!is_stream_insertable_v<void>);
+
+    REQUIRE(is_stream_insertable_v<int>);
+    REQUIRE(is_stream_insertable_v<int &>);
+    REQUIRE(is_stream_insertable_v<const int &>);
+    REQUIRE(is_stream_insertable_v<int &&>);
+
+    REQUIRE(is_stream_insertable_v<std::string>);
+    REQUIRE(is_stream_insertable_v<std::string &>);
+    REQUIRE(is_stream_insertable_v<std::string &>);
+    REQUIRE(is_stream_insertable_v<std::string &&>);
+
+    REQUIRE(!is_stream_insertable_v<const non_si_00 &>);
+    REQUIRE(!is_stream_insertable_v<const non_si_01 &>);
+
+    REQUIRE(!is_stream_insertable_v<const part_si &>);
+    REQUIRE(is_stream_insertable_v<part_si &&>);
+
+    REQUIRE(is_stream_insertable_v<yes_si>);
+    REQUIRE(is_stream_insertable_v<yes_si &>);
+    REQUIRE(is_stream_insertable_v<yes_si &>);
+    REQUIRE(is_stream_insertable_v<yes_si &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!StreamInsertable<void>);
+
+    REQUIRE(StreamInsertable<int>);
+    REQUIRE(StreamInsertable<int &>);
+    REQUIRE(StreamInsertable<const int &>);
+    REQUIRE(StreamInsertable<int &&>);
+
+    REQUIRE(StreamInsertable<std::string>);
+    REQUIRE(StreamInsertable<std::string &>);
+    REQUIRE(StreamInsertable<std::string &>);
+    REQUIRE(StreamInsertable<std::string &&>);
+
+    REQUIRE(!StreamInsertable<const non_si_00 &>);
+    REQUIRE(!StreamInsertable<const non_si_01 &>);
+
+    REQUIRE(!StreamInsertable<const part_si &>);
+    REQUIRE(StreamInsertable<part_si &&>);
+
+    REQUIRE(StreamInsertable<yes_si>);
+    REQUIRE(StreamInsertable<yes_si &>);
+    REQUIRE(StreamInsertable<yes_si &>);
+    REQUIRE(StreamInsertable<yes_si &&>);
+#endif
+}
+
+TEST_CASE("compound_addable")
+{
+    REQUIRE(!is_compound_addable_v<void, void>);
+    REQUIRE(!is_compound_addable_v<void, int>);
+    REQUIRE(!is_compound_addable_v<int, void>);
+
+    REQUIRE(is_compound_addable_v<int &, int>);
+    REQUIRE(is_compound_addable_v<int &, int &>);
+    REQUIRE(is_compound_addable_v<int &, const int &>);
+    REQUIRE(is_compound_addable_v<int &, int &&>);
+
+    REQUIRE(!is_compound_addable_v<int &&, int>);
+    REQUIRE(!is_compound_addable_v<int &&, int &>);
+    REQUIRE(!is_compound_addable_v<int &&, const int &>);
+    REQUIRE(!is_compound_addable_v<int &&, int &&>);
+
+    REQUIRE(!is_compound_addable_v<const int &, int>);
+    REQUIRE(!is_compound_addable_v<const int &, int &>);
+    REQUIRE(!is_compound_addable_v<const int &, const int &>);
+    REQUIRE(!is_compound_addable_v<const int &, int &&>);
+
+    REQUIRE(!is_compound_addable_v<int, int>);
+    REQUIRE(!is_compound_addable_v<int, int &>);
+    REQUIRE(!is_compound_addable_v<int, const int &>);
+    REQUIRE(!is_compound_addable_v<int, int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CompoundAddable<void, void>);
+    REQUIRE(!CompoundAddable<void, int>);
+    REQUIRE(!CompoundAddable<int, void>);
+
+    REQUIRE(CompoundAddable<int &, int>);
+    REQUIRE(CompoundAddable<int &, int &>);
+    REQUIRE(CompoundAddable<int &, const int &>);
+    REQUIRE(CompoundAddable<int &, int &&>);
+
+    REQUIRE(!CompoundAddable<int &&, int>);
+    REQUIRE(!CompoundAddable<int &&, int &>);
+    REQUIRE(!CompoundAddable<int &&, const int &>);
+    REQUIRE(!CompoundAddable<int &&, int &&>);
+
+    REQUIRE(!CompoundAddable<const int &, int>);
+    REQUIRE(!CompoundAddable<const int &, int &>);
+    REQUIRE(!CompoundAddable<const int &, const int &>);
+    REQUIRE(!CompoundAddable<const int &, int &&>);
+
+    REQUIRE(!CompoundAddable<int, int>);
+    REQUIRE(!CompoundAddable<int, int &>);
+    REQUIRE(!CompoundAddable<int, const int &>);
+    REQUIRE(!CompoundAddable<int, int &&>);
+#endif
+}
+
+struct nonsubtractable_0 {
+};
+
+struct subtractable_0 {
+    friend subtractable_0 operator-(subtractable_0, subtractable_0);
+};
+
+struct subtractable_1 {
+    friend subtractable_1 operator-(subtractable_1, subtractable_0);
+    friend subtractable_1 operator-(subtractable_0, subtractable_1);
+};
+
+struct nonsubtractable_1 {
+    friend nonsubtractable_1 operator-(nonsubtractable_1, subtractable_0);
+};
+
+struct nonsubtractable_2 {
+    friend nonsubtractable_2 operator-(nonsubtractable_2, subtractable_0);
+    friend nonsubtractable_1 operator-(subtractable_0, nonsubtractable_2);
+};
+
+TEST_CASE("is_subtractable")
+{
+    REQUIRE(!is_subtractable_v<void>);
+    REQUIRE(!is_subtractable_v<void, void>);
+    REQUIRE(!is_subtractable_v<void, int>);
+    REQUIRE(!is_subtractable_v<int, void>);
+    REQUIRE(is_subtractable_v<int>);
+    REQUIRE(is_subtractable_v<int, int>);
+    REQUIRE(is_subtractable_v<const int, int &>);
+    REQUIRE(is_subtractable_v<int &&, volatile int &>);
+    REQUIRE(!is_subtractable_v<std::string, char *>);
+    REQUIRE(!is_subtractable_v<std::string, int>);
+    REQUIRE(!is_subtractable_v<nonsubtractable_0>);
+    REQUIRE(is_subtractable_v<subtractable_0>);
+    REQUIRE(is_subtractable_v<subtractable_1, subtractable_0>);
+    REQUIRE(!is_subtractable_v<nonsubtractable_1, subtractable_0>);
+    REQUIRE(!is_subtractable_v<nonsubtractable_2, subtractable_0>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Subtractable<void>);
+    REQUIRE(!Subtractable<void, void>);
+    REQUIRE(!Subtractable<void, int>);
+    REQUIRE(!Subtractable<int, void>);
+    REQUIRE(Subtractable<int>);
+    REQUIRE(Subtractable<int, int>);
+    REQUIRE(Subtractable<const int, int &>);
+    REQUIRE(Subtractable<int &&, volatile int &>);
+    REQUIRE(!Subtractable<std::string, char *>);
+    REQUIRE(!Subtractable<std::string, int>);
+    REQUIRE(!Subtractable<nonsubtractable_0>);
+    REQUIRE(Subtractable<subtractable_0>);
+    REQUIRE(Subtractable<subtractable_1, subtractable_0>);
+    REQUIRE(!Subtractable<nonsubtractable_1, subtractable_0>);
+    REQUIRE(!Subtractable<nonsubtractable_2, subtractable_0>);
+#endif
+}
+
+TEST_CASE("compound_subtractable")
+{
+    REQUIRE(!is_compound_subtractable_v<void, void>);
+    REQUIRE(!is_compound_subtractable_v<void, int>);
+    REQUIRE(!is_compound_subtractable_v<int, void>);
+
+    REQUIRE(is_compound_subtractable_v<int &, int>);
+    REQUIRE(is_compound_subtractable_v<int &, int &>);
+    REQUIRE(is_compound_subtractable_v<int &, const int &>);
+    REQUIRE(is_compound_subtractable_v<int &, int &&>);
+
+    REQUIRE(!is_compound_subtractable_v<int &&, int>);
+    REQUIRE(!is_compound_subtractable_v<int &&, int &>);
+    REQUIRE(!is_compound_subtractable_v<int &&, const int &>);
+    REQUIRE(!is_compound_subtractable_v<int &&, int &&>);
+
+    REQUIRE(!is_compound_subtractable_v<const int &, int>);
+    REQUIRE(!is_compound_subtractable_v<const int &, int &>);
+    REQUIRE(!is_compound_subtractable_v<const int &, const int &>);
+    REQUIRE(!is_compound_subtractable_v<const int &, int &&>);
+
+    REQUIRE(!is_compound_subtractable_v<int, int>);
+    REQUIRE(!is_compound_subtractable_v<int, int &>);
+    REQUIRE(!is_compound_subtractable_v<int, const int &>);
+    REQUIRE(!is_compound_subtractable_v<int, int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CompoundSubtractable<void, void>);
+    REQUIRE(!CompoundSubtractable<void, int>);
+    REQUIRE(!CompoundSubtractable<int, void>);
+
+    REQUIRE(CompoundSubtractable<int &, int>);
+    REQUIRE(CompoundSubtractable<int &, int &>);
+    REQUIRE(CompoundSubtractable<int &, const int &>);
+    REQUIRE(CompoundSubtractable<int &, int &&>);
+
+    REQUIRE(!CompoundSubtractable<int &&, int>);
+    REQUIRE(!CompoundSubtractable<int &&, int &>);
+    REQUIRE(!CompoundSubtractable<int &&, const int &>);
+    REQUIRE(!CompoundSubtractable<int &&, int &&>);
+
+    REQUIRE(!CompoundSubtractable<const int &, int>);
+    REQUIRE(!CompoundSubtractable<const int &, int &>);
+    REQUIRE(!CompoundSubtractable<const int &, const int &>);
+    REQUIRE(!CompoundSubtractable<const int &, int &&>);
+
+    REQUIRE(!CompoundSubtractable<int, int>);
+    REQUIRE(!CompoundSubtractable<int, int &>);
+    REQUIRE(!CompoundSubtractable<int, const int &>);
+    REQUIRE(!CompoundSubtractable<int, int &&>);
+#endif
+}
+
+struct defstr00 {
+    template <typename... Args>
+    defstr00(Args &&...);
+};
+
+struct nondestr00 {
+    nondestr00() = default;
+    ~nondestr00() = delete;
+};
+
+TEST_CASE("constructible")
+{
+    REQUIRE(!is_constructible_v<void>);
+
+    REQUIRE(is_constructible_v<int>);
+    REQUIRE(!is_constructible_v<int, void>);
+    REQUIRE(!is_constructible_v<int &>);
+    REQUIRE(!is_constructible_v<int &&>);
+    REQUIRE(!is_constructible_v<const int &>);
+
+    REQUIRE(is_constructible_v<defstr00>);
+    REQUIRE(is_constructible_v<defstr00, int, int>);
+    REQUIRE(is_constructible_v<defstr00, int &, const int &>);
+
+    REQUIRE(!is_constructible_v<nondestr00>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Constructible<void>);
+
+    REQUIRE(Constructible<int>);
+    REQUIRE(!Constructible<int, void>);
+    REQUIRE(!Constructible<int &>);
+    REQUIRE(!Constructible<int &&>);
+    REQUIRE(!Constructible<const int &>);
+
+    REQUIRE(Constructible<defstr00>);
+    REQUIRE(Constructible<defstr00, int, int>);
+    REQUIRE(Constructible<defstr00, int &, const int &>);
+
+    REQUIRE(!Constructible<nondestr00>);
+#endif
+}
+
+TEST_CASE("mutable_rvalue_reference")
+{
+    REQUIRE(!is_mutable_rvalue_reference_v<void>);
+
+    REQUIRE(!is_mutable_rvalue_reference_v<int>);
+    REQUIRE(!is_mutable_rvalue_reference_v<int &>);
+    REQUIRE(!is_mutable_rvalue_reference_v<const int &>);
+    REQUIRE(!is_mutable_rvalue_reference_v<const int &&>);
+    REQUIRE(is_mutable_rvalue_reference_v<int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!MutableRvalueReference<void>);
+
+    REQUIRE(!MutableRvalueReference<int>);
+    REQUIRE(!MutableRvalueReference<int &>);
+    REQUIRE(!MutableRvalueReference<const int &>);
+    REQUIRE(!MutableRvalueReference<const int &&>);
+    REQUIRE(MutableRvalueReference<int &&>);
 #endif
 }

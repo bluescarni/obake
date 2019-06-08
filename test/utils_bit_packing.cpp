@@ -309,19 +309,19 @@ TEST_CASE("homomorphism")
                 const auto [cur_min, cur_max] = [i]() {
                     if constexpr (is_signed_v<int_t>) {
                         if (i == 1u) {
-                            return std::tuple{std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
-                                              std::get<1>(detail::limits_minmax<int_t>) / int_t(2)};
+                            return std::make_tuple(std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
+                                                   std::get<1>(detail::limits_minmax<int_t>) / int_t(2));
                         } else {
                             const auto pbits = (nbits + 1u) / i - static_cast<unsigned>((nbits + 1u) % i == 0u);
-                            return std::tuple{-(int_t(1) << (pbits - 1u)) / int_t(2),
-                                              ((int_t(1) << (pbits - 1u)) - int_t(1)) / int_t(2)};
+                            return std::make_tuple(-(int_t(1) << (pbits - 1u)) / int_t(2),
+                                                   ((int_t(1) << (pbits - 1u)) - int_t(1)) / int_t(2));
                         }
                     } else {
                         if (i == 1u) {
-                            return std::tuple{int_t(0), int_t(-1) / int_t(2)};
+                            return std::make_tuple(int_t(0), int_t(-1) / int_t(2));
                         } else {
                             const auto pbits = nbits / i;
-                            return std::tuple{int_t(0), ((int_t(1) << pbits) - int_t(1)) / int_t(2)};
+                            return std::make_tuple(int_t(0), ((int_t(1) << pbits) - int_t(1)) / int_t(2));
                         }
                     }
                 }();

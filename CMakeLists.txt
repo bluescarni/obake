@@ -33,9 +33,10 @@ set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
 set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 
 if(YACMA_COMPILER_IS_MSVC)
-    # Disable the idiotic minmax macros on MSVC.
-    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX")
-    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX")
+    # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
+    # Also, enable the bigobj flag.
+    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj")
+    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj")
     # Enable strict conformance mode, if supported.
     set(CMAKE_REQUIRED_QUIET TRUE)
     check_cxx_compiler_flag("/permissive-" _PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
@@ -46,7 +47,60 @@ if(YACMA_COMPILER_IS_MSVC)
         list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
     endif()
     unset(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
-    if(NOT YACMA_COMPILER_IS_CLANGXX)
+    if(YACMA_COMPILER_IS_CLANGXX)
+        # clang-cl emits various warnings from GMP/MPFR, let's just silence them.
+        # NOTE: at one point in the recent past, MSVC added an options similar to GCC's isystem:
+        # https://blogs.msdn.microsoft.com/vcblog/2017/12/13/broken-warnings-theory/
+        # We probably just need to wait for this to be picked up by CMake/clang-cl. Let's
+        # revisit the issue in the future.
+        list(APPEND _PIRANHA_CLANG_CL_DISABLED_WARNINGS
+            "-Wno-unused-variable"
+            "-Wno-inconsistent-dllimport"
+            "-Wno-unknown-pragmas"
+            "-Wno-unused-parameter"
+            "-Wno-sign-compare"
+            "-Wno-deprecated-declarations"
+            "-Wno-deprecated-dynamic-exception-spec"
+            "-Wno-old-style-cast"
+            "-Wno-sign-conversion"
+            "-Wno-non-virtual-dtor"
+            "-Wno-deprecated"
+            "-Wno-shadow"
+            "-Wno-shorten-64-to-32"
+            "-Wno-reserved-id-macro"
+            "-Wno-undef"
+            "-Wno-c++98-compat-pedantic"
+            "-Wno-documentation-unknown-command"
+            "-Wno-zero-as-null-pointer-constant"
+            "-Wno-language-extension-token"
+            "-Wno-gnu-anonymous-struct"
+            "-Wno-nested-anon-types"
+            "-Wno-documentation"
+            "-Wno-comma"
+            "-Wno-nonportable-system-include-path"
+            "-Wno-global-constructors"
+            "-Wno-redundant-parens"
+            "-Wno-exit-time-destructors"
+            "-Wno-missing-noreturn"
+            "-Wno-switch-enum"
+            "-Wno-covered-switch-default"
+            "-Wno-float-equal"
+            "-Wno-double-promotion"
+            "-Wno-microsoft-enum-value"
+            "-Wno-missing-prototypes"
+            "-Wno-implicit-fallthrough"
+            "-Wno-format-nonliteral"
+            "-Wno-cast-qual"
+            "-Wno-disabled-macro-expansion"
+            "-Wno-unused-private-field"
+            "-Wno-unused-template"
+            "-Wno-unused-macros"
+            "-Wno-extra-semi-stmt"
+            "-Wno-c++98-compat")
+        list(APPEND PIRANHA_CXX_FLAGS_DEBUG ${_PIRANHA_CLANG_CL_DISABLED_WARNINGS})
+        list(APPEND PIRANHA_CXX_FLAGS_RELEASE ${_PIRANHA_CLANG_CL_DISABLED_WARNINGS})
+        unset(_PIRANHA_CLANG_CL_DISABLED_WARNINGS)
+    else()
         # Problematic MSVC cl warnings.
         list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/wd4459")
         list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/wd4459")
@@ -70,11 +124,17 @@ if(PIRANHA_WITH_LIBBACKTRACE)
     find_package(libbacktrace REQUIRED)
 endif()
 
+# Depend on DbgEng on MSVC, for the stack trace support.
+if(YACMA_COMPILER_IS_MSVC)
+    find_package(DbgEng REQUIRED)
+endif()
+
 # Initial setup of the piranha target.
 set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
 )
 
 if(PIRANHA_WITH_LIBBACKTRACE)
@@ -84,9 +144,8 @@ else()
 endif()
 
 add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
-set_property(TARGET piranha PROPERTY VERSION "${piranha_VERSION_MAJOR}.${piranha_VERSION_MINOR}")
-set_property(TARGET piranha PROPERTY SOVERSION 0 )
-
+set_property(TARGET piranha PROPERTY VERSION "1.0")
+set_property(TARGET piranha PROPERTY SOVERSION 1 )
 target_compile_options(piranha PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>")
 set_target_properties(piranha PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(piranha PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
@@ -101,7 +160,7 @@ target_include_directories(piranha PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map Boost::boost)
+target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost)
 if(PIRANHA_WITH_LIBBACKTRACE)
     target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
 else()
@@ -114,11 +173,28 @@ else()
     target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
 endif()
 
+# Link to DbgEng on MSVC.
+if(YACMA_COMPILER_IS_MSVC)
+    target_link_libraries(piranha PUBLIC DbgEng::DbgEng)
+endif()
+
 # Configure config.hpp.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" @ONLY)
 
 # Configure the sphinx config file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py.in" "${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py" @ONLY)
+
+# Installation of the header files.
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/piranha" DESTINATION include)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" DESTINATION include/piranha)
+
+# Installation of the library.
+install(TARGETS piranha
+    EXPORT piranha_export
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 
 if(PIRANHA_BUILD_TESTS)
     enable_testing()

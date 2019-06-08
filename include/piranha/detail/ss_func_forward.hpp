@@ -67,4 +67,18 @@ namespace piranha::_unused
 {
 }
 
+#if defined(PIRANHA_COMPILER_IS_GCC) && __GNUC__ < 8
+#define PIRANHA_SS_FORWARD_MEMBER_FUNCTION(body)                                                                       \
+    ->decltype(body)                                                                                                   \
+    {                                                                                                                  \
+        return body;                                                                                                   \
+    }
+#else
+#define PIRANHA_SS_FORWARD_MEMBER_FUNCTION(body)                                                                       \
+    noexcept(noexcept(body))->decltype(body)                                                                           \
+    {                                                                                                                  \
+        return body;                                                                                                   \
+    }
+#endif
+
 #endif

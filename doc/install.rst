@@ -8,10 +8,11 @@ Installation
 Requirements
 ------------
 
-Piranha has the following mandatory dependencies:
+Currently, piranha has the following mandatory dependencies:
 
 * the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.14),
-* the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65).
+* the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65),
+* the `Abseil <https://abseil.io/>`_ C++ libraries.
 
 Piranha also depends on other libraries for optional features:
 
@@ -33,7 +34,8 @@ tested in Piranha's continuous integration setup:
 
 * GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),
 * Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),
-* Visual Studio 2017 on Windows,
+* Visual Studio 2019 on Windows,
+* Clang 8 on Windows (via the ``clang-cl`` driver),
 * Xcode 10.2 on OSX 10.14.
 
 See also the
@@ -122,8 +124,8 @@ of the dependencies.
 On Linux systems, generally speaking, the best way of installing the
 dependencies is through the distribution's package manager
 (e.g., ``apt-get`` on Ubuntu).
-For those dependencies not available from the system's
-package manager (e.g., mp++ or libbacktrace), the best course of action
+For those dependencies not available from the system's package
+manager (e.g., mp++, libbacktrace, etc.), the best course of action
 is to install them by hand in the user's home directory under the
 ``.local`` subdirectory, and then set the CMake variable
 ``CMAKE_PREFIX_PATH`` to ``~/.local``. This should be enough for
@@ -145,11 +147,19 @@ Compiler and platform specific notes
 
 Visual Studio:
 
-* Due to compiler bugs, when using Visual Studio 2017 some of Piranha's
-  customisation points are implemented as plain functions rather than
-  functors (the specifics are available in the API documentation).
+* Due to various compiler issues, only MSVC 2019 is currently able
+  to compile Piranha.
+* It is possible to use ``clang-cl`` to compile Piranha
+  with earlier versions of MSVC (2017 and 2015). This means
+  that Clang will be used as a C/C++ compiler, while the
+  C++ standard library will be the one supplied with MSVC. Be
+  aware that the C++ library from MSVC 2015 is not
+  fully C++17-compliant, and as a result
+  certain features in Piranha will be disabled when using
+  MSVC 2015 (these occurrences are detailed in the API
+  documentation).
 * When using Visual Studio, the Piranha library is compiled
-  with the ``NOMINMAX`` definition and, if supported,
+  with the ``NOMINMAX`` definition and
   with the ``/permissive-`` compiler flag.
 
 GCC:

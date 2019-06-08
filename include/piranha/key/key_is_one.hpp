@@ -6,8 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_KEY_KEY_IS_ZERO_HPP
-#define PIRANHA_KEY_KEY_IS_ZERO_HPP
+#ifndef PIRANHA_KEY_KEY_IS_ONE_HPP
+#define PIRANHA_KEY_KEY_IS_ONE_HPP
 
 #include <utility>
 
@@ -24,14 +24,14 @@ namespace piranha
 namespace customisation
 {
 
-// External customisation point for piranha::key_is_zero().
+// External customisation point for piranha::key_is_one().
 template <typename T
 #if !defined(PIRANHA_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
           >
-inline constexpr auto key_is_zero = not_implemented;
+inline constexpr auto key_is_one = not_implemented;
 
 } // namespace customisation
 
@@ -40,33 +40,33 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
-constexpr auto key_is_zero_impl(T &&x, const symbol_set &ss, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::key_is_zero<T &&>)(::std::forward<T>(x), ss));
+constexpr auto key_is_one_impl(T &&x, const symbol_set &ss, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::key_is_one<T &&>)(::std::forward<T>(x), ss));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto key_is_zero_impl(T &&x, const symbol_set &ss, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(key_is_zero(::std::forward<T>(x), ss));
+constexpr auto key_is_one_impl(T &&x, const symbol_set &ss, priority_tag<0>)
+    PIRANHA_SS_FORWARD_FUNCTION(key_is_one(::std::forward<T>(x), ss));
 
 } // namespace detail
 
 #if defined(_MSC_VER)
 
-struct key_is_zero_msvc {
+struct key_is_one_msvc {
     template <typename T>
     constexpr auto operator()(T &&x, const symbol_set &ss) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::key_is_zero_impl(::std::forward<T>(x), ss,
-                                                                                      detail::priority_tag<1>{})))
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::key_is_one_impl(::std::forward<T>(x), ss,
+                                                                                     detail::priority_tag<1>{})))
 };
 
-inline constexpr auto key_is_zero = key_is_zero_msvc{};
+inline constexpr auto key_is_one = key_is_one_msvc{};
 
 #else
 
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
-inline constexpr auto key_is_zero = [](auto &&x, const symbol_set &ss) PIRANHA_SS_FORWARD_LAMBDA(
-    static_cast<bool>(detail::key_is_zero_impl(::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
+inline constexpr auto key_is_one = [](auto &&x, const symbol_set &ss) PIRANHA_SS_FORWARD_LAMBDA(
+    static_cast<bool>(detail::key_is_one_impl(::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
 
 #endif
 
@@ -74,22 +74,22 @@ namespace detail
 {
 
 template <typename T>
-using key_is_zero_t = decltype(::piranha::key_is_zero(::std::declval<T>(), ::std::declval<const symbol_set &>()));
+using key_is_one_t = decltype(::piranha::key_is_one(::std::declval<T>(), ::std::declval<const symbol_set &>()));
 
 }
 
 template <typename T>
-using is_zero_testable_key = is_detected<detail::key_is_zero_t, T>;
+using is_one_testable_key = is_detected<detail::key_is_one_t, T>;
 
 template <typename T>
-inline constexpr bool is_zero_testable_key_v = is_zero_testable_key<T>::value;
+inline constexpr bool is_one_testable_key_v = is_one_testable_key<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL ZeroTestableKey = requires(T &&x, const symbol_set &ss)
+PIRANHA_CONCEPT_DECL OneTestableKey = requires(T &&x, const symbol_set &ss)
 {
-    ::piranha::key_is_zero(::std::forward<T>(x), ss);
+    ::piranha::key_is_one(::std::forward<T>(x), ss);
 };
 
 #endif

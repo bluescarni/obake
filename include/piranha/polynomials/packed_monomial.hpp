@@ -9,13 +9,21 @@
 #ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
+#include <cassert>
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <ostream>
+#include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/ignore.hpp>
+#include <piranha/detail/limits.hpp>
+#include <piranha/detail/to_string.hpp>
+#include <piranha/exceptions.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
@@ -38,6 +46,10 @@ class packed_monomial
 public:
     // Def ctor inits to a monomial with all zero exponents.
     constexpr packed_monomial() : m_value(0) {}
+    // Constructor from symbol set.
+    constexpr explicit packed_monomial(const symbol_set &) : packed_monomial() {}
+    // Constructor from value.
+    constexpr explicit packed_monomial(const T &n) : m_value(n) {}
     // Constructor from input iterator and size.
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <typename It>
@@ -125,6 +137,11 @@ public:
     {
         return m_value;
     }
+    // Setter for the internal value.
+    constexpr void _set_value(const T &n)
+    {
+        m_value = n;
+    }
 
 private:
     T m_value;
@@ -135,6 +152,13 @@ template <typename T>
 constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)
 {
     return false;
+}
+
+// Implementation of key_is_one(). A monomial is one if all its exponents are zero.
+template <typename T>
+constexpr bool key_is_one(const packed_monomial<T> &p, const symbol_set &)
+{
+    return p.get_value() == T(0);
 }
 
 // Comparison operators.
@@ -155,6 +179,149 @@ template <typename T>
 constexpr ::std::size_t hash(const packed_monomial<T> &m)
 {
     return static_cast<::std::size_t>(m.get_value());
+}
+
+// Symbol set compatibility implementation.
+template <typename T>
+inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
+{
+    const auto s_size = s.size();
+    if (s_size == 0u) {
+        // In case of an empty symbol set,
+        // the only valid value for the monomial
+        // is zero.
+        return m.get_value() == T(0);
+    }
+
+    // The index for looking into the limits vectors
+    // for the packed value. The elements at index
+    // 0 in the limits vectors refer to size 1,
+    // hence we must decrease by 1 the size.
+    const auto idx = s_size - 1u;
+
+    if constexpr (is_signed_v<T>) {
+        const auto &mmp_arr = detail::sbp_get_mmp<T>();
+        using size_type = decltype(mmp_arr.size());
+        // Check that the size of the symbol set is not
+        // too large for the current integral type,
+        // and that the value of the monomial fits
+        // within the boundaries of the packed
+        // value for the given symbol set size.
+        return idx < mmp_arr.size() && m.get_value() >= mmp_arr[static_cast<size_type>(idx)][0]
+               && m.get_value() <= mmp_arr[static_cast<size_type>(idx)][1];
+    } else {
+        const auto &umax_arr = detail::ubp_get_max<T>();
+        using size_type = decltype(umax_arr.size());
+        return idx < umax_arr.size() && m.get_value() <= umax_arr[static_cast<size_type>(idx)];
+    }
+}
+
+// Implementation of stream insertion.
+// NOTE: requires that m is compatible with s.
+template <typename T>
+inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, const symbol_set &s)
+{
+    assert(::piranha::polynomials::key_is_compatible(m, s));
+
+    // NOTE: we know s is not too large from the assert.
+    const auto s_size = static_cast<unsigned>(s.size());
+    bool wrote_something = false;
+    bit_unpacker bu(m.get_value(), s_size);
+    T tmp;
+
+    for (const auto &var : s) {
+        bu >> tmp;
+        if (tmp != T(0)) {
+            // The exponent of the current variable
+            // is nonzero.
+            if (wrote_something) {
+                // We already printed something
+                // earlier, make sure we put
+                // the multiplication sign
+                // in front of the variable
+                // name.
+                os << '*';
+            }
+            // Print the variable name.
+            os << var;
+            wrote_something = true;
+            if (tmp != T(1)) {
+                // The exponent is not unitary,
+                // print it.
+                os << "**" << detail::to_string(tmp);
+            }
+        }
+    }
+
+    if (!wrote_something) {
+        // We did not write anything to the stream.
+        // It means that all variables have zero
+        // exponent, thus we print only "1".
+        assert(m.get_value() == T(0));
+        os << '1';
+    }
+}
+
+// Implementation of symbols merging.
+// NOTE: requires that m is compatible with s, and ins_map consistent with s.
+template <typename T>
+inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const symbol_idx_map<symbol_set> &ins_map,
+                                            const symbol_set &s)
+{
+    assert(::piranha::polynomials::key_is_compatible(m, s));
+    // The last element of the insertion map must be at most s.size(), which means that there
+    // are symbols to be appended at the end.
+    assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
+
+    // Do a first pass to compute the total size after merging.
+    auto merged_size = s.size();
+    for (const auto &p : ins_map) {
+        const auto tmp_size = p.second.size();
+        // LCOV_EXCL_START
+        if (piranha_unlikely(tmp_size > ::std::get<1>(detail::limits_minmax<decltype(s.size())>) - merged_size)) {
+            piranha_throw(::std::overflow_error, "Overflow while trying to merge new symbols in a packed monomial: the "
+                                                 "size of the merged monomial is too large");
+        }
+        // LCOV_EXCL_STOP
+        merged_size += tmp_size;
+    }
+
+    // Init the unpacker and the packer.
+    // NOTE: we know s.size() is small enough thanks to the
+    // assertion at the beginning.
+    bit_unpacker bu(m.get_value(), static_cast<unsigned>(s.size()));
+    bit_packer<T> bp(::piranha::safe_cast<unsigned>(merged_size));
+
+    auto map_it = ins_map.begin();
+    const auto map_end = ins_map.end();
+    for (auto i = 0u; i < static_cast<unsigned>(s.size()); ++i) {
+        if (map_it != map_end && map_it->first == i) {
+            // We reached an index at which we need to
+            // insert new elements. Insert as many
+            // zeroes as necessary in the packer.
+            for (const auto &_ : map_it->second) {
+                detail::ignore(_);
+                bp << T(0);
+            }
+            // Move to the next element in the map.
+            ++map_it;
+        }
+        // Add the existing element to the packer.
+        T tmp;
+        bu >> tmp;
+        bp << tmp;
+    }
+
+    // We could still have symbols which need to be appended at the end.
+    if (map_it != map_end) {
+        for (const auto &_ : map_it->second) {
+            detail::ignore(_);
+            bp << T(0);
+        }
+        assert(map_it + 1 == map_end);
+    }
+
+    return packed_monomial<T>(bp.get());
 }
 
 } // namespace polynomials

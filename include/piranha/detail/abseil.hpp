@@ -18,10 +18,12 @@
 #pragma warning(push)
 #pragma warning(disable : 4245)
 #pragma warning(disable : 4127)
+#pragma warning(disable : 4996)
 
 #endif
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 
 #if defined(_MSC_VER) && !defined(__clang__)
 

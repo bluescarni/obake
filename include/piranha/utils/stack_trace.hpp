@@ -26,6 +26,39 @@ PIRANHA_DLL_PUBLIC ::std::string stack_trace_impl(unsigned);
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct stack_trace_enabled_msvc {
+    bool operator()() const
+    {
+        return detail::stack_trace_enabled.load(::std::memory_order_relaxed);
+    }
+};
+
+struct set_stack_trace_enabled_msvc {
+    void operator()(bool status) const
+    {
+        detail::stack_trace_enabled.store(status, ::std::memory_order_relaxed);
+    }
+};
+
+inline constexpr auto stack_trace_enabled = stack_trace_enabled_msvc{};
+inline constexpr auto set_stack_trace_enabled = set_stack_trace_enabled_msvc{};
+
+struct stack_trace_msvc {
+    auto operator()(unsigned skip = 0) const
+    {
+        if (::piranha::stack_trace_enabled()) {
+            return detail::stack_trace_impl(skip);
+        }
+        return ::std::string{"<Stack trace generation has been disabled at runtime>"};
+    }
+};
+
+inline constexpr auto stack_trace = stack_trace_msvc{};
+
+#else
+
 // Test/set whether stack trace generation is enabled at runtime.
 inline constexpr auto stack_trace_enabled
     = []() { return detail::stack_trace_enabled.load(::std::memory_order_relaxed); };
@@ -41,6 +74,8 @@ inline constexpr auto stack_trace = [](unsigned skip = 0) {
     }
     return ::std::string{"<Stack trace generation has been disabled at runtime>"};
 };
+
+#endif
 
 } // namespace piranha
 

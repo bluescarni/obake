@@ -32,7 +32,7 @@ template <typename T>
 constexpr auto call_begin(T &&x) PIRANHA_SS_FORWARD_FUNCTION(begin(::std::forward<T>(x)));
 
 template <typename T>
-using begin_t = decltype(::piranha::detail::begin_using_adl::call_begin(::std::declval<T>()));
+using begin_t = decltype(begin_using_adl::call_begin(::std::declval<T>()));
 
 } // namespace begin_using_adl
 
@@ -45,7 +45,7 @@ template <typename T>
 constexpr auto call_end(T &&x) PIRANHA_SS_FORWARD_FUNCTION(end(::std::forward<T>(x)));
 
 template <typename T>
-using end_t = decltype(::piranha::detail::end_using_adl::call_end(::std::declval<T>()));
+using end_t = decltype(end_using_adl::call_end(::std::declval<T>()));
 
 } // namespace end_using_adl
 
@@ -67,10 +67,30 @@ template <typename T, ::std::enable_if_t<is_iterator_v<detected_t<end_using_adl:
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct begin_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::begin_impl(::std::forward<T>(x)))
+};
+
+inline constexpr auto begin = begin_msvc{};
+
+struct end_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::end_impl(::std::forward<T>(x)))
+};
+
+inline constexpr auto end = end_msvc{};
+
+#else
+
 inline constexpr auto begin =
     [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::begin_impl(::std::forward<decltype(x)>(x)));
 
 inline constexpr auto end = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::end_impl(::std::forward<decltype(x)>(x)));
+
+#endif
 
 template <typename T>
 using range_begin_t = decltype(::piranha::begin(::std::declval<T>()));
@@ -88,7 +108,7 @@ inline constexpr bool is_range_v = is_range<T>::value;
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Range = Same<range_begin_t<T>, range_end_t<T>>;
+PIRANHA_CONCEPT_DECL Range = ::std::is_same_v<range_begin_t<T>, range_end_t<T>>;
 
 #endif
 

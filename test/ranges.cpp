@@ -24,7 +24,12 @@ template <bool>
 struct foo {
 };
 
+// NOTE: begin/end are not constexpr in MSVC 2015.
+#if !defined(_MSC_VER) || _MSC_VER >= 1910
+
 [[maybe_unused]] foo<piranha::begin(aint) != piranha::end(aint)> f;
+
+#endif
 
 namespace ns
 {

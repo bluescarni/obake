@@ -9,15 +9,21 @@
 #ifndef PIRANHA_TYPE_TRAITS_HPP
 #define PIRANHA_TYPE_TRAITS_HPP
 
+#include <piranha/config.hpp>
+
 #include <cstddef>
 #include <iterator>
+#include <ostream>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
-#include <piranha/config.hpp>
+#if defined(PIRANHA_HAVE_STRING_VIEW)
+
+#include <string_view>
+
+#endif
 
 namespace piranha
 {
@@ -61,24 +67,32 @@ inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 template <typename T>
 using remove_cvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
 
+// Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
+template <typename T, typename U>
+using is_same_cvr = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
+
+template <typename T, typename U>
+inline constexpr bool is_same_cvr_v = is_same_cvr<T, U>::value;
+
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL Same = ::std::is_same_v<T, U>;
+PIRANHA_CONCEPT_DECL SameCvr = is_same_cvr_v<T, U>;
 
 #endif
 
-// Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
-template <typename T, typename U>
-using is_same_cvref = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
+// Detect nonconst rvalue reference.
+template <typename T>
+using is_mutable_rvalue_reference
+    = ::std::conjunction<::std::is_rvalue_reference<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>;
 
-template <typename T, typename U>
-inline constexpr bool is_same_cvref_v = is_same_cvref<T, U>::value;
+template <typename T>
+inline constexpr bool is_mutable_rvalue_reference_v = is_mutable_rvalue_reference<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
-template <typename T, typename U>
-PIRANHA_CONCEPT_DECL SameCvref = is_same_cvref_v<T, U>;
+template <typename T>
+PIRANHA_CONCEPT_DECL MutableRvalueReference = is_mutable_rvalue_reference_v<T>;
 
 #endif
 
@@ -121,14 +135,6 @@ inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
 
 template <typename T>
 PIRANHA_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
-
-#endif
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-// Concept for detecting const-qualified types.
-template <typename T>
-PIRANHA_CONCEPT_DECL Const = ::std::is_const_v<T>;
 
 #endif
 
@@ -184,13 +190,6 @@ struct make_unsigned_impl<T,
 template <typename T>
 using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T>
-PIRANHA_CONCEPT_DECL DefaultConstructible = ::std::is_default_constructible_v<T>;
-
-#endif
-
 // Detect semi-regular types.
 template <typename T>
 using is_semi_regular
@@ -231,6 +230,19 @@ PIRANHA_CONCEPT_DECL Returnable = is_returnable_v<T>;
 
 #endif
 
+template <typename T, typename... Args>
+using is_constructible = ::std::conjunction<::std::is_constructible<T, Args...>, ::std::is_destructible<T>>;
+
+template <typename T, typename... Args>
+inline constexpr bool is_constructible_v = is_constructible<T, Args...>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename... Args>
+PIRANHA_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
+
+#endif
+
 namespace detail
 {
 
@@ -254,9 +266,13 @@ using is_string_like = ::std::disjunction<
     // Is it an array of chars?
     // NOTE: std::remove_cv_t does remove cv qualifiers from arrays.
     ::std::conjunction<::std::is_array<::std::remove_cv_t<T>>,
-                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>,
+                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>
+#if defined(PIRANHA_HAVE_STRING_VIEW)
+    ,
     // Is it a string view?
-    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>>;
+    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>
+#endif
+    >;
 
 template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
@@ -290,8 +306,32 @@ PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) + ::std::forward<U>(y);
     ::std::forward<U>(y) + ::std::forward<T>(x);
-    requires Same<decltype(::std::forward<T>(x) + ::std::forward<U>(y)),
-                  decltype(::std::forward<U>(y) + ::std::forward<T>(x))>;
+    requires ::std::is_same_v<decltype(::std::forward<T>(x) + ::std::forward<U>(y)),
+                              decltype(::std::forward<U>(y) + ::std::forward<T>(x))>;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using compound_add_t = decltype(::std::declval<T>() += ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_compound_addable = is_detected<detail::compound_add_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_compound_addable_v = is_compound_addable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL CompoundAddable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) += ::std::forward<U>(y);
 };
 
 #endif
@@ -342,6 +382,59 @@ template <typename T>
 PIRANHA_CONCEPT_DECL PostIncrementable = requires(T &&x)
 {
     ::std::forward<T>(x)++;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using sub_t = decltype(::std::declval<T>() - ::std::declval<U>());
+
+}
+
+template <typename T, typename U = T>
+using is_subtractable
+    = ::std::conjunction<is_detected<detail::sub_t, T, U>, is_detected<detail::sub_t, U, T>,
+                         ::std::is_same<detected_t<detail::sub_t, T, U>, detected_t<detail::sub_t, U, T>>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_subtractable_v = is_subtractable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+PIRANHA_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) - ::std::forward<U>(y);
+    ::std::forward<U>(y) - ::std::forward<T>(x);
+    requires ::std::is_same_v<decltype(::std::forward<T>(x) - ::std::forward<U>(y)),
+                              decltype(::std::forward<U>(y) - ::std::forward<T>(x))>;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using compound_sub_t = decltype(::std::declval<T>() -= ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_compound_subtractable = is_detected<detail::compound_sub_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_compound_subtractable_v = is_compound_subtractable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) -= ::std::forward<U>(y);
 };
 
 #endif
@@ -736,64 +829,23 @@ PIRANHA_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
 namespace detail
 {
 
-template <typename T, typename... Args>
-using function_object_call_t = decltype(::std::declval<T>()(::std::declval<Args>()...));
+template <typename T>
+using stream_insertion_t = decltype(::std::declval<::std::ostream &>() << ::std::declval<T>());
 
 }
 
-// Detect function objects:
-// https://en.cppreference.com/w/cpp/named_req/FunctionObject
-template <typename T, typename... Args>
-using is_function_object
-    = ::std::conjunction<::std::is_object<T>,
-                         // NOTE: as explained in the input iterator type trait, we test lvalues here
-                         // (both const and non-const).
-                         is_detected<detail::function_object_call_t, ::std::add_lvalue_reference_t<T>, Args...>,
-                         is_detected<detail::function_object_call_t, ::std::add_lvalue_reference_t<const T>, Args...>>;
+// Test if T can be inserted into an ostream.
+// Needs to support operator<<() with the correct return type.
+template <typename T>
+using is_stream_insertable = ::std::is_same<detected_t<detail::stream_insertion_t, T>, ::std::ostream &>;
 
-template <typename T, typename... Args>
-inline constexpr bool is_function_object_v = is_function_object<T, Args...>::value;
+template <typename T>
+inline constexpr bool is_stream_insertable_v = is_stream_insertable<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
-template <typename T, typename... Args>
-PIRANHA_CONCEPT_DECL FunctionObject = is_function_object_v<T, Args...>;
-
-#endif
-
-// Detect if T is a hash function object
-// for the type U:
-// https://en.cppreference.com/w/cpp/named_req/Hash
-// We also add the requirements from std::hash specialisations:
-// https://en.cppreference.com/w/cpp/utility/hash
-template <typename T, typename U>
-using is_hash = ::std::conjunction<
-    // T must be a semi-regular type.
-    is_semi_regular<T>,
-    // T must be a function object capable of taking an
-    // lvalue of U as argument, and returning std::size_t.
-    // NOTE: the Hash concept specifically talks about
-    // lvalues in the cppreference page above.
-    // NOTE: we have a slight duplication of is_function_object here,
-    // but like this we avoid repeating the same checks multiple times.
-    // NOTE: we ask for a call operator taking a const reference in input,
-    // as that is the most natural implementation of a hash function (see
-    // earlier discussions in is_function_object, is_iterator, etc.).
-    ::std::is_object<T>,
-    ::std::is_same<detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<T>,
-                              ::std::add_lvalue_reference_t<const U>>,
-                   ::std::size_t>,
-    ::std::is_same<detected_t<detail::function_object_call_t, ::std::add_lvalue_reference_t<const T>,
-                              ::std::add_lvalue_reference_t<const U>>,
-                   ::std::size_t>>;
-
-template <typename T, typename U>
-inline constexpr bool is_hash_v = is_hash<T, U>::value;
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T, typename U>
-PIRANHA_CONCEPT_DECL Hash = is_hash_v<T, U>;
+template <typename T>
+PIRANHA_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
 
 #endif
 

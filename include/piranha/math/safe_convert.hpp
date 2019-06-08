@@ -45,7 +45,7 @@ namespace detail
 // Implementation for C++ integrals.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-    requires Integral<T> && !Const<T> && Integral<U>
+    requires Integral<T> && !::std::is_const_v<T> && Integral<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>, is_integral<U>>,
@@ -121,7 +121,7 @@ inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-requires Integral<T> && !Const<T>
+requires Integral<T> && !::std::is_const_v<T>
 #else
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
@@ -145,7 +145,7 @@ constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
 // after the removal of reference and cv qualifiers.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires Same<remove_cvref_t<T>, remove_cvref_t<U>>
+requires ::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>, int> = 0>
 #endif
@@ -154,9 +154,23 @@ template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvr
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct safe_convert_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
+        detail::safe_convert_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+};
+
+inline constexpr auto safe_convert = safe_convert_msvc{};
+
+#else
+
 inline constexpr auto safe_convert =
     [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
+
+#endif
 
 namespace detail
 {

@@ -25,7 +25,6 @@ using namespace piranha;
 
 TEST_CASE("type_name")
 {
-
     std::cout << type_name<std::string>() << '\n';
     std::cout << type_name<int>() << '\n';
     std::cout << type_name<const int>() << '\n';

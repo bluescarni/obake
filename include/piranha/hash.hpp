@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -50,23 +51,55 @@ template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<1>) PIRANHA_SS_FORWARD_FUNCTION(hash(::std::forward<T>(x)));
 
 // Lowest priority: try to use std::hash.
+// NOTE: MSVC 2015 and earlier don't have a poisoned std::hash:
+// if it is instantiated with an unsupported type, it will error
+// out with a static assert instead of sfinaeing. As a compromise,
+// enable this implementation only for a few known types.
+#if defined(_MSC_VER) && _MSC_VER < 1910
+
+template <typename T, ::std::enable_if_t<::std::disjunction_v<::std::is_arithmetic<remove_cvref_t<T>>,
+                                                              ::std::is_same<::std::string, remove_cvref_t<T>>>,
+                                         int> = 0>
+constexpr ::std::size_t hash_impl(T &&x, priority_tag<0>)
+{
+    return ::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x));
+}
+
+#else
+
 template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x)));
 
+#endif
+
 // Machinery to enable the hash implementation only if the return
 // type is std::size_t.
 template <typename T>
-using hash_impl_ret_t = decltype(::piranha::detail::hash_impl(::std::declval<T>(), priority_tag<2>{}));
+using hash_impl_ret_t = decltype(detail::hash_impl(::std::declval<T>(), priority_tag<2>{}));
 
 template <typename T, ::std::enable_if_t<::std::is_same_v<detected_t<hash_impl_ret_t, T>, ::std::size_t>, int> = 0>
 constexpr auto hash_impl_with_ret_check(T &&x)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::detail::hash_impl(::std::forward<T>(x), priority_tag<2>{}));
+    PIRANHA_SS_FORWARD_FUNCTION(detail::hash_impl(::std::forward<T>(x), priority_tag<2>{}));
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct hash_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&x) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::hash_impl_with_ret_check(::std::forward<T>(x)))
+};
+
+inline constexpr auto hash = hash_msvc{};
+
+#else
+
 inline constexpr auto hash =
     [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::hash_impl_with_ret_check(::std::forward<decltype(x)>(x)));
+
+#endif
 
 namespace detail
 {

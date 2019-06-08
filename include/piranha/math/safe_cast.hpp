@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/math/safe_convert.hpp>
 #include <piranha/type_traits.hpp>
@@ -23,7 +24,7 @@ namespace piranha
 {
 
 // Exception to signal failure in piranha::safe_cast().
-class safe_cast_failure final : public ::std::invalid_argument
+class PIRANHA_DLL_PUBLIC_INLINE_CLASS safe_cast_failure final : public ::std::invalid_argument
 {
 public:
     using ::std::invalid_argument::invalid_argument;
@@ -43,7 +44,7 @@ namespace detail
 // are using std::declval<>() in the emulation layer).
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename To, typename From>
-requires DefaultConstructible<To> &&SafelyConvertible<From, To &> &&Returnable<To>
+requires ::std::is_default_constructible_v<To> &&SafelyConvertible<From, To &> &&Returnable<To>
 #else
 template <typename To, typename From,
           ::std::enable_if_t<::std::conjunction_v<::std::is_default_constructible<To>,
@@ -63,20 +64,30 @@ template <typename To, typename From,
     if (piranha_unlikely(!::piranha::safe_convert(retval, ::std::forward<From>(x)))) {
         piranha_throw(safe_cast_failure, "A value of type '" + ::piranha::type_name<From &&>()
                                              + "' could not be safely converted to the type '"
-                                             + ::piranha::type_name<To>() + "'.");
+                                             + ::piranha::type_name<To>() + "'");
     }
     return retval;
 }
 
 } // namespace detail
 
-// NOTE: at least some earlier versions of MSVC do not like the templated constexpr
-// functor, so we just replace it with a regular function. Need to check if this
+// NOTE: at least some earlier versions of MSVC do not like the lambda
+// functor, so we just replace it with a regular functor. Need to check if this
 // has been fixed in MSVC 2019.
-#if defined(_MSC_VER) && !defined(__clang__)
+// NOTE: it is important that this remains a function object, rather than
+// a function, so that the lookup rules are consistent with the lambda
+// function object implementation.
+#if defined(_MSC_VER)
 
-template <typename To, typename From>
-constexpr auto safe_cast(From &&x) PIRANHA_SS_FORWARD_FUNCTION(detail::safe_cast_impl<To>(::std::forward<From>(x)));
+template <typename To>
+struct safe_cast_msvc {
+    template <typename From>
+    constexpr auto operator()(From &&x) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::safe_cast_impl<To>(::std::forward<From>(x)))
+};
+
+template <typename To>
+inline constexpr auto safe_cast = safe_cast_msvc<To>{};
 
 #else
 

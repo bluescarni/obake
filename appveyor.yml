@@ -6,34 +6,38 @@ branches:
 
 environment:
   matrix:
-    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019 Preview
-    #   BUILD_TYPE: MSVC19_64
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      BUILD_TYPE: MSVC17_64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      BUILD_TYPE: MSVC15_clang_64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      BUILD_TYPE: MSVC19_64
 
 install:
 - set PATH=C:\Miniconda36-x64\Scripts;%PATH%
+- conda config --set always_yes yes
 - conda config --add channels conda-forge --force
-- conda create -y --name piranha cmake boost-cpp mpir mpfr
+- conda create --name piranha cmake boost-cpp mpir mpfr
 - call activate piranha
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda install clangdev ninja
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] clang-cl -v
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 build_script:
-- set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha
-- if [%BUILD_TYPE%]==[MSVC17_64] set CMAKE_GENERATOR=Visual Studio 15 2017
-- if [%BUILD_TYPE%]==[MSVC19_64] set CMAKE_GENERATOR=Visual Studio 16 2019
-
+- set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\piranha\Library
 - mkdir build
 - cd build
 
 # mp++ setup.
-- set MPPP_VERSION=0.14
-- curl -fsSL -o mppp.zip https://github.com/bluescarni/mppp/archive/v%MPPP_VERSION%.zip
-- 7z x mppp.zip
-- cd mppp-%MPPP_VERSION%
+- git clone https://github.com/bluescarni/mppp.git
+- cd mppp
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- cmake --build . --config Debug --target install
+
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target install
+
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH%  -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install -- -v
+
 - cd ..
 - cd ..
 
@@ -42,21 +46,32 @@ build_script:
 - cd abseil-cpp
 - mkdir build
 - cd build
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- cmake --build . --config Debug --target install
+
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target install
+
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang-cl
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install -- -v
+
 - cd ..
 - cd ..
 
 # piranha
-- cmake .. -G "%CMAKE_GENERATOR%" -A x64 -DPIRANHA_BUILD_TESTS=yes
-- cmake --build . --config Debug
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug
+
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DPIRANHA_BUILD_TESTS=ON
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . -- -v
 
 
 test_script:
 # NOTE: ensure the PATH variable contains the path to the piranha dll,
 # otherwise the tests will fail to run.
-- set PATH=%PATH%;%CD%\Debug
-- ctest -V -C Debug
+- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
+- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
+
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] set PATH=%PATH%;%CD%
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] ctest -V .
 
 # Enable this to be able to login to the build worker. You can use the
 # `remmina` program in Ubuntu, use the login information that the line below

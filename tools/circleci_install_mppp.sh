@@ -6,17 +6,15 @@ set -x
 # Exit on error.
 set -e
 
-MPPP_VERSION="0.14"
-wget https://github.com/bluescarni/mppp/archive/v${MPPP_VERSION}.tar.gz -O mppp.tar.gz
-tar xzf mppp.tar.gz
-cd mppp-${MPPP_VERSION}
+git clone https://github.com/bluescarni/mppp.git
+cd mppp
 mkdir build
 cd build
 cmake ../ -DMPPP_WITH_MPFR=YES -DMPPP_WITH_QUADMATH=${MPPP_WITH_QUADMATH} -DCMAKE_INSTALL_PREFIX=~/.local -DCMAKE_CXX_STANDARD=17
 make install -j2
 cd ..
 cd ..
-rm -fr mppp-${MPPP_VERSION}
+rm -fr mppp
 
 set +e
 set +x

@@ -9,7 +9,6 @@
 #ifndef PIRANHA_UTILS_BIT_PACKING_HPP
 #define PIRANHA_UTILS_BIT_PACKING_HPP
 
-#include <array>
 #include <cassert>
 #include <cstddef>
 #include <stdexcept>
@@ -17,6 +16,7 @@
 #include <type_traits>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/carray.hpp>
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/visibility.hpp>
@@ -239,7 +239,7 @@ struct sbp_minmax_packed {
     // Do paranoid overflow checking as well.
     static_assert(static_cast<unsigned>(limits_digits<T>) <= ::std::get<1>(limits_minmax<::std::size_t>),
                   "Overflow error.");
-    using type = ::std::array<::std::array<T, 2>, static_cast<unsigned>(limits_digits<T>)>;
+    using type = carray<carray<T, 2>, static_cast<unsigned>(limits_digits<T>)>;
 };
 
 // Handy alias.
@@ -287,7 +287,7 @@ class signed_bit_unpacker_impl
     using uint_t = make_unsigned_t<T>;
 
 public:
-    constexpr explicit signed_bit_unpacker_impl(const T &n, unsigned size)
+    explicit signed_bit_unpacker_impl(const T &n, unsigned size)
         : m_value(n), m_min(0), m_s_value(0), m_index(0), m_size(size), m_pbits(0), m_cur_shift(0)
     {
         constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
@@ -328,7 +328,6 @@ public:
                 assert(n >= min_n);
                 m_s_value = static_cast<uint_t>(n - min_n);
             }
-
         } else {
             if (piranha_unlikely(n)) {
                 piranha_throw(::std::invalid_argument,
@@ -337,7 +336,7 @@ public:
             }
         }
     }
-    constexpr void operator>>(T &n)
+    void operator>>(T &n)
     {
         if (piranha_unlikely(m_index == m_size)) {
             piranha_throw(::std::out_of_range,
@@ -357,11 +356,62 @@ private:
     unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
+// Machinery for the determination at compile time of the max packed values
+// for unsigned integral types.
+
+// Definition of the array types for storing the max values.
+template <typename T>
+struct ubp_max_packed {
+    // The max array size we need is the bit width of T.
+    // Do paranoid overflow checking as well.
+    static_assert(static_cast<unsigned>(limits_digits<T>) <= ::std::get<1>(limits_minmax<::std::size_t>),
+                  "Overflow error.");
+    using type = carray<T, static_cast<unsigned>(limits_digits<T>)>;
+};
+
+// Handy alias.
+template <typename T>
+using ubp_max_packed_t = typename ubp_max_packed<T>::type;
+
+// Declare the variables holding the max packed values for the
+// supported unsigned integral types.
+PIRANHA_DLL_PUBLIC extern const ubp_max_packed_t<unsigned> ubp_max_unsigned;
+PIRANHA_DLL_PUBLIC extern const ubp_max_packed_t<unsigned long> ubp_max_ulong;
+PIRANHA_DLL_PUBLIC extern const ubp_max_packed_t<unsigned long long> ubp_max_ulonglong;
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+
+PIRANHA_DLL_PUBLIC extern const ubp_max_packed_t<__uint128_t> ubp_max_uint128;
+
+#endif
+
+// Small generic wrapper to access the above constants.
+template <typename T>
+inline const auto &ubp_get_max()
+{
+    if constexpr (::std::is_same_v<T, unsigned>) {
+        return ubp_max_unsigned;
+    } else if constexpr (::std::is_same_v<T, unsigned long>) {
+        return ubp_max_ulong;
+    } else if constexpr (::std::is_same_v<T, unsigned long long>) {
+        return ubp_max_ulonglong;
+    }
+    // NOTE: this is not currently invoked in the test suite,
+    // due to the lack of 128bit rng.
+    // LCOV_EXCL_START
+#if defined(PIRANHA_HAVE_GCC_INT128)
+    else if constexpr (::std::is_same_v<T, __uint128_t>) {
+        return ubp_max_uint128;
+    }
+#endif
+    // LCOV_EXCL_STOP
+}
+
 template <typename T>
 class unsigned_bit_unpacker_impl
 {
 public:
-    constexpr explicit unsigned_bit_unpacker_impl(const T &n, unsigned size)
+    explicit unsigned_bit_unpacker_impl(const T &n, unsigned size)
         : m_value(n), m_mask(0), m_index(0), m_size(size), m_pbits(0)
     {
         constexpr auto nbits = static_cast<unsigned>(limits_digits<T>);
@@ -374,9 +424,10 @@ public:
 
         if (size) {
             m_pbits = nbits / size;
-            // The maximum decodable value is a sequence of m_pbits * size
-            // one bits (starting from LSB).
-            const auto max_decodable = T(-1) >> (nbits % size);
+            // Fetch the max decodable value.
+            const auto max_decodable = detail::ubp_get_max<T>()[size - 1u];
+            // Double check.
+            assert(max_decodable == T(-1) >> (nbits % size));
             if (piranha_unlikely(n > max_decodable)) {
                 piranha_throw(::std::overflow_error,
                               "The value " + detail::to_string(n) + " passed to an unsigned bit unpacker of size "
@@ -403,7 +454,7 @@ public:
             }
         }
     }
-    constexpr void operator>>(T &out)
+    void operator>>(T &out)
     {
         if (piranha_unlikely(m_index == m_size)) {
             piranha_throw(::std::out_of_range,
@@ -426,6 +477,10 @@ private:
 
 } // namespace detail
 
+// NOTE: the bit_unpacker currently cannot be constexpr because in the constructors
+// we reference non-constexpr global data arrays
+// implemented elsewhere (rather than inline). If we ever need constexpr unpacking,
+// we can move those arrays inline, at the price of increased compilation times.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <BitPackable T>
 #else
@@ -437,8 +492,8 @@ class bit_unpacker
                                         detail::unsigned_bit_unpacker_impl<T>>;
 
 public:
-    constexpr explicit bit_unpacker(const T &n, unsigned size) : m_impl(n, size) {}
-    constexpr bit_unpacker &operator>>(T &n)
+    explicit bit_unpacker(const T &n, unsigned size) : m_impl(n, size) {}
+    bit_unpacker &operator>>(T &n)
     {
         m_impl >> n;
         return *this;

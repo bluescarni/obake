@@ -105,8 +105,23 @@ constexpr auto pow_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
+#if defined(_MSC_VER)
+
+struct pow_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::pow_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                            detail::priority_tag<2>{}))
+};
+
+inline constexpr auto pow = pow_msvc{};
+
+#else
+
 inline constexpr auto pow = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
     detail::pow_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+
+#endif
 
 namespace detail
 {

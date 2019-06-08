@@ -15,6 +15,9 @@
 #include <functional>
 #include <string>
 
+#include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
+
 #include <piranha/config.hpp>
 #include <piranha/type_traits.hpp>
 
@@ -64,9 +67,9 @@ namespace piranha::customisation
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, hash_ext> inline constexpr auto hash<T>
+requires SameCvr<T, hash_ext> inline constexpr auto hash<T>
 #else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, hash_ext>>>
+inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, hash_ext>>>
 #endif
     = [](auto &&) constexpr noexcept
 {
@@ -75,9 +78,9 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, hash_ext>>>
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, nohash_ext_00> inline constexpr auto hash<T>
+requires SameCvr<T, nohash_ext_00> inline constexpr auto hash<T>
 #else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, nohash_ext_00>>>
+inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_00>>>
 #endif
     = [](auto &&) constexpr noexcept
 {
@@ -86,9 +89,9 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, nohash_ext_00>
 
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, nohash_ext_01> inline constexpr auto hash<T>
+requires SameCvr<T, nohash_ext_01> inline constexpr auto hash<T>
 #else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvref_v<T, nohash_ext_01>>>
+inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_01>>>
 #endif
     = [](nohash_ext_01 &) constexpr noexcept
 {
@@ -112,6 +115,11 @@ TEST_CASE("hash_test")
     REQUIRE(is_hashable_v<const std::string &>);
     REQUIRE(is_hashable_v<std::string &&>);
     REQUIRE(hash(std::string{"hello world"}) == std::hash<std::string>{}(std::string{"hello world"}));
+
+    REQUIRE(is_hashable_v<mppp::integer<1>>);
+    REQUIRE(is_hashable_v<mppp::rational<1>>);
+    REQUIRE(hash(mppp::integer<1>{123}) == mppp::hash(mppp::integer<1>{123}));
+    REQUIRE(hash(mppp::rational<1>{123, -456}) == mppp::hash(mppp::rational<1>{123, -456}));
 
     REQUIRE(!is_hashable_v<nohash_00>);
     REQUIRE(!is_hashable_v<nohash_00 &>);
@@ -166,6 +174,9 @@ TEST_CASE("hash_test")
     REQUIRE(Hashable<std::string &>);
     REQUIRE(Hashable<const std::string &>);
     REQUIRE(Hashable<std::string &&>);
+
+    REQUIRE(Hashable<mppp::integer<1>>);
+    REQUIRE(Hashable<mppp::rational<1>>);
 
     REQUIRE(!Hashable<nohash_00>);
     REQUIRE(!Hashable<nohash_00 &>);

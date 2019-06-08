@@ -195,9 +195,9 @@ namespace piranha::customisation
 
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvref<T, foo0> &&SameCvref<U, foo0> inline constexpr auto pow<T, U>
+requires SameCvr<T, foo0> &&SameCvr<U, foo0> inline constexpr auto pow<T, U>
 #else
-inline constexpr auto pow<T, U, std::enable_if_t<is_same_cvref_v<T, foo0> && is_same_cvref_v<U, foo0>>>
+inline constexpr auto pow<T, U, std::enable_if_t<is_same_cvr_v<T, foo0> && is_same_cvr_v<U, foo0>>>
 #endif
     = [](auto &&, auto &&) constexpr noexcept
 {
