@@ -2,6 +2,6 @@
 [![Linux Build Status](https://img.shields.io/circleci/project/github/bluescarni/piranha-tng/master.svg?style=for-the-badge)](https://circleci.com/gh/bluescarni/piranha-tng)
 [![Windows Build Status](https://img.shields.io/appveyor/ci/bluescarni/piranha-tng/master.svg?logo=appveyor&style=for-the-badge)](https://ci.appveyor.com/project/bluescarni/piranha-tng)
 [![OSX Build Status](https://img.shields.io/travis/bluescarni/piranha-tng/master.svg?logo=travis&style=for-the-badge)](https://travis-ci.org/bluescarni/piranha-tng)
-[![Azure Build Status](https://img.shields.io/azure-devops/build/bluescarni/bef133f7-ec96-49fb-84f8-a20dbba98770/1.svg?style=for-the-badge)](https://dev.azure.com/bluescarni/main/_build?definitionId=1)
+[![Azure Build Status](https://img.shields.io/azure-devops/build/bluescarni/9be1705f-2865-4d5e-a978-63dc56c6be58/2.svg?style=for-the-badge)](https://dev.azure.com/bluescarni/piranha-tng/_build?definitionId=2)
 [![Code Coverage](https://img.shields.io/codecov/c/github/bluescarni/piranha-tng.svg?style=for-the-badge)](https://codecov.io/github/bluescarni/piranha-tng?branch=master)
 ![license](https://img.shields.io/badge/license-MPL2-blue.svg?style=for-the-badge)
