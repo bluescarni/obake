@@ -22,6 +22,9 @@ namespace piranha::detail
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
+// NOTE: MSVC has some issue with the simpler
+// implementation below.
+
 template <typename T>
 constexpr T &&tcast_impl(T &&x, ::std::true_type) noexcept
 {

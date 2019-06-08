@@ -1140,6 +1140,8 @@ inline void series_default_negate_impl(T &&x)
         // NOTE: perhaps this can be improved
         // performance-wise by taking advantage
         // of the single-table layout, if possible.
+        // NOTE: this could be parallelised,
+        // in case of multiple tables.
         ::piranha::negate(p.second);
     }
 }

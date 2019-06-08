@@ -38,6 +38,8 @@ struct carray {
     {
         return N;
     }
+    // NOTE: supply get() functions
+    // for use in structured bindings.
     template <::std::size_t M>
     friend constexpr T &get(carray &a)
     {
@@ -62,6 +64,8 @@ using carray = ::std::array<T, N>;
 
 #if defined(_MSC_VER) && _MSC_VER < 1910
 
+// NOTE: specialise a couple of std classes
+// in order to support structured bindings.
 #include <tuple>
 #include <type_traits>
 
