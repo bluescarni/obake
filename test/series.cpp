@@ -236,7 +236,7 @@ TEST_CASE("add_term_primitives")
 
                         // Same pattern as above, but make sure that coefficient add/sub happens.
                         // NOTE: test meaningful only if we are not assuming unique.
-                        if constexpr (!decltype(v_au)::value) {
+                        if (!v_au()) {
                             s1 = s1_t{};
                             s1.set_symbol_set(symbol_set{"x", "y", "z"});
                             detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
@@ -319,7 +319,7 @@ TEST_CASE("add_term_primitives")
                         }
 
                         // Check term annihilation or zero insertion.
-                        if constexpr (decltype(v_cz)::value) {
+                        if (v_cz()) {
                             s1 = s1_t{};
                             s1.set_symbol_set(symbol_set{"x", "y", "z"});
                             detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
@@ -329,7 +329,7 @@ TEST_CASE("add_term_primitives")
                                 s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{0});
                             REQUIRE(s1.empty());
 
-                            if constexpr (!decltype(v_au)::value) {
+                            if (!decltype(v_au)::value) {
                                 s1 = s1_t{};
                                 s1.set_symbol_set(symbol_set{"x", "y", "z"});
                                 detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
@@ -357,7 +357,7 @@ TEST_CASE("add_term_primitives")
                             REQUIRE(s1.begin()->second == 0);
                             s1.clear();
 
-                            if constexpr (!decltype(v_au)::value) {
+                            if (!v_au()) {
                                 s1 = s1_t{};
                                 s1.set_symbol_set(symbol_set{"x", "y", "z"});
                                 detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
