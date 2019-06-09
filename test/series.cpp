@@ -13,6 +13,7 @@
 
 #include <initializer_list>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 // #include <cstddef>
@@ -23,9 +24,15 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <mp++/config.hpp>
 #include <mp++/rational.hpp>
 
+#if defined(MPPP_WITH_MPFR)
+#include <mp++/real.hpp>
+#endif
+
 #include <piranha/config.hpp>
+#include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
@@ -35,6 +42,8 @@
 // #include <piranha/math/pow.hpp>
 
 using namespace piranha;
+
+using rat_t = mppp::rational<1>;
 
 // template <typename T, typename U>
 // using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
@@ -81,7 +90,7 @@ TEST_CASE("cf_key_concepts")
 TEST_CASE("series_rank")
 {
     using pm_t = packed_monomial<int>;
-    using series_t = series<pm_t, mppp::rational<1>, void>;
+    using series_t = series<pm_t, rat_t, void>;
     using series2_t = series<pm_t, series_t, void>;
 
     REQUIRE(series_rank<void> == 0u);
@@ -102,10 +111,10 @@ TEST_CASE("series_rank")
 TEST_CASE("series_cf_key_tag_t")
 {
     using pm_t = packed_monomial<int>;
-    using series_t = series<pm_t, mppp::rational<1>, void>;
+    using series_t = series<pm_t, rat_t, void>;
 
     REQUIRE(std::is_same_v<pm_t, series_key_t<series_t>>);
-    REQUIRE(std::is_same_v<mppp::rational<1>, series_cf_t<series_t>>);
+    REQUIRE(std::is_same_v<rat_t, series_cf_t<series_t>>);
     REQUIRE(std::is_same_v<void, series_tag_t<series_t>>);
 
     REQUIRE(!is_detected_v<series_key_t, const series_t>);
@@ -116,7 +125,7 @@ TEST_CASE("series_cf_key_tag_t")
 TEST_CASE("is_cvr_series")
 {
     using pm_t = packed_monomial<int>;
-    using series_t = series<pm_t, mppp::rational<1>, void>;
+    using series_t = series<pm_t, rat_t, void>;
 
     REQUIRE(!is_cvr_series_v<void>);
     REQUIRE(!is_cvr_series_v<int>);
@@ -139,12 +148,253 @@ TEST_CASE("is_cvr_series")
 #endif
 }
 
-TEST_CASE("add_term_primitives") {}
+TEST_CASE("add_term_primitives")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    using Catch::Matchers::Contains;
+
+    using detail::sat_assume_unique;
+    using detail::sat_check_compat_key;
+    using detail::sat_check_table_size;
+    using detail::sat_check_zero;
+
+    const auto vt = std::make_tuple(std::false_type{}, std::true_type{});
+
+    detail::tuple_for_each(vt, [&](auto v_sign) {
+        detail::tuple_for_each(vt, [&](auto v_cz) {
+            detail::tuple_for_each(vt, [&](auto v_cck) {
+                detail::tuple_for_each(vt, [&](auto v_cts) {
+                    detail::tuple_for_each(vt, [&](auto v_au) {
+                        // Insertion with an rvalue.
+                        s1_t s1;
+                        s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                        detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                      static_cast<sat_check_compat_key>(v_cck.value),
+                                                      static_cast<sat_check_table_size>(v_cts.value),
+                                                      static_cast<sat_assume_unique>(v_au.value)>(
+                            s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                        REQUIRE(s1.size() == 1u);
+                        REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                        if (v_sign.value) {
+                            REQUIRE(s1.begin()->second == 42);
+                        } else {
+                            REQUIRE(s1.begin()->second == -42);
+                        }
+
+                        // Insertion with an lvalue.
+                        rat_t q{42, 13};
+                        s1 = s1_t{};
+                        s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                        detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                      static_cast<sat_check_compat_key>(v_cck.value),
+                                                      static_cast<sat_check_table_size>(v_cts.value),
+                                                      static_cast<sat_assume_unique>(v_au.value)>(
+                            s1, s1._get_s_table()[0], pm_t{1, 2, 3}, q);
+                        REQUIRE(s1.size() == 1u);
+                        REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                        if (v_sign.value) {
+                            REQUIRE(s1.begin()->second == q);
+                        } else {
+                            REQUIRE(s1.begin()->second == -q);
+                        }
+
+                        // Insertion with a single argument that can be used to
+                        // construct a coefficient.
+                        s1 = s1_t{};
+                        s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                        detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                      static_cast<sat_check_compat_key>(v_cck.value),
+                                                      static_cast<sat_check_table_size>(v_cts.value),
+                                                      static_cast<sat_assume_unique>(v_au.value)>(
+                            s1, s1._get_s_table()[0], pm_t{1, 2, 3}, 42);
+                        REQUIRE(s1.size() == 1u);
+                        REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                        if (v_sign.value) {
+                            REQUIRE(s1.begin()->second == 42);
+                        } else {
+                            REQUIRE(s1.begin()->second == -42);
+                        }
+
+                        // Insertion with multiple arguments that can be used to
+                        // construct a coefficient.
+                        s1 = s1_t{};
+                        s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                        detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                      static_cast<sat_check_compat_key>(v_cck.value),
+                                                      static_cast<sat_check_table_size>(v_cts.value),
+                                                      static_cast<sat_assume_unique>(v_au.value)>(
+                            s1, s1._get_s_table()[0], pm_t{1, 2, 3}, 42, 13);
+                        REQUIRE(s1.size() == 1u);
+                        REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                        if (v_sign.value) {
+                            REQUIRE(s1.begin()->second == q);
+                        } else {
+                            REQUIRE(s1.begin()->second == -q);
+                        }
+
+                        // Same pattern as above, but make sure that coefficient add/sub happens.
+                        // NOTE: test meaningful only if we are not assuming unique.
+                        if constexpr (!decltype(v_au)::value) {
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{-6});
+                            REQUIRE(s1.size() == 1u);
+                            REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s1.begin()->second == 36);
+                            } else {
+                                REQUIRE(s1.begin()->second == -36);
+                            }
+
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, q);
+                            REQUIRE(s1.size() == 1u);
+                            REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s1.begin()->second == rat_t{588, 13});
+                            } else {
+                                REQUIRE(s1.begin()->second == -rat_t{588, 13});
+                            }
+
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, 1);
+                            REQUIRE(s1.size() == 1u);
+                            REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s1.begin()->second == 43);
+                            } else {
+                                REQUIRE(s1.begin()->second == -43);
+                            }
+
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, 42, 13);
+                            REQUIRE(s1.size() == 1u);
+                            REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s1.begin()->second == rat_t{588, 13});
+                            } else {
+                                REQUIRE(s1.begin()->second == -rat_t{588, 13});
+                            }
+                        }
+
+                        // Check term annihilation or zero insertion.
+                        if constexpr (decltype(v_cz)::value) {
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{0});
+                            REQUIRE(s1.empty());
+
+                            if constexpr (!decltype(v_au)::value) {
+                                s1 = s1_t{};
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                              static_cast<sat_check_compat_key>(v_cck.value),
+                                                              static_cast<sat_check_table_size>(v_cts.value),
+                                                              static_cast<sat_assume_unique>(v_au.value)>(
+                                    s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                                detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                              static_cast<sat_check_compat_key>(v_cck.value),
+                                                              static_cast<sat_check_table_size>(v_cts.value),
+                                                              static_cast<sat_assume_unique>(v_au.value)>(
+                                    s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{-42});
+                                REQUIRE(s1.empty());
+                            }
+                        } else {
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{0});
+                            REQUIRE(s1.size() == 1u);
+                            REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                            REQUIRE(s1.begin()->second == 0);
+                            s1.clear();
+
+                            if constexpr (!decltype(v_au)::value) {
+                                s1 = s1_t{};
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                              static_cast<sat_check_compat_key>(v_cck.value),
+                                                              static_cast<sat_check_table_size>(v_cts.value),
+                                                              static_cast<sat_assume_unique>(v_au.value)>(
+                                    s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{42});
+                                detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                              static_cast<sat_check_compat_key>(v_cck.value),
+                                                              static_cast<sat_check_table_size>(v_cts.value),
+                                                              static_cast<sat_assume_unique>(v_au.value)>(
+                                    s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{-42});
+                                REQUIRE(s1.size() == 1u);
+                                REQUIRE(s1.begin()->first == pm_t{1, 2, 3});
+                                REQUIRE(s1.begin()->second == 0);
+                                s1.clear();
+                            }
+                        }
+                    });
+                });
+            });
+        });
+    });
+
+    // Check throw in case of incompatible key.
+    s1_t s1;
+    s1.set_symbol_set(symbol_set{});
+    REQUIRE_THROWS_WITH(
+        (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
+                                       sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
+        Contains("not compatible with the series' symbol set"));
+}
 
 TEST_CASE("series_basic")
 {
     using pm_t = packed_monomial<int>;
-    using series_t = series<pm_t, mppp::rational<1>, void>;
+    using series_t = series<pm_t, rat_t, void>;
 
     // Default construction.
     series_t s;
