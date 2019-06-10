@@ -97,9 +97,16 @@ namespace piranha::detail
     ::std::string retval;
     auto it_indices_fnames = indices_fnames.crbegin();
     for (auto it = st.crbegin(); it != st.crend(); ++it, ++it_indices_fnames) {
+        auto it_name = it->name();
+        auto null_pos = it_name.find('\0');
+        while (null_pos != ::std::string::npos) {
+            it_name.erase(null_pos, 1);
+            null_pos = it_name.find('\0');
+        }
+
         retval += "# " + ::std::string(max_idx_width - (*it_indices_fnames)[0].size(), ' ') + (*it_indices_fnames)[0]
                   + " | " + (*it_indices_fnames)[1]
-                  + ::std::string(max_fname_width - (*it_indices_fnames)[1].size(), ' ') + " | " + it->name();
+                  + ::std::string(max_fname_width - (*it_indices_fnames)[1].size(), ' ') + " | " + ::std::move(it_name);
         if (it != st.crend() - 1) {
             retval += '\n';
         }
