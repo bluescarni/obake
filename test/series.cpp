@@ -41,6 +41,8 @@
 // #include <piranha/math/negate.hpp>
 // #include <piranha/math/pow.hpp>
 
+#include "test_utils.hpp"
+
 using namespace piranha;
 
 using rat_t = mppp::rational<1>;
@@ -50,6 +52,8 @@ using rat_t = mppp::rational<1>;
 
 TEST_CASE("cf_key_concepts")
 {
+    piranha_test::disable_slow_stack_traces();
+
     using pm_t = packed_monomial<int>;
 
     REQUIRE(!is_cf_v<void>);
