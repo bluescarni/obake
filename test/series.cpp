@@ -12,13 +12,13 @@
 #include "catch.hpp"
 
 #include <initializer_list>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 // #include <cstddef>
 // #include <bitset>
-// #include <limits>
 // #include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
@@ -44,6 +44,12 @@
 using namespace piranha;
 
 using rat_t = mppp::rational<1>;
+
+#if defined(MPPP_WITH_MPFR)
+
+using real = mppp::real;
+
+#endif
 
 // template <typename T, typename U>
 // using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
@@ -376,6 +382,75 @@ TEST_CASE("add_term_primitives")
                                 s1.clear();
                             }
                         }
+
+#if defined(MPPP_WITH_MPFR)
+                        // Test coefficient move semantics with mppp::real.
+                        using s2_t = series<pm_t, real, void>;
+
+                        s2_t s2;
+                        real r{42};
+                        s2.set_symbol_set(symbol_set{"x", "y", "z"});
+                        detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                      static_cast<sat_check_compat_key>(v_cck.value),
+                                                      static_cast<sat_check_table_size>(v_cts.value),
+                                                      static_cast<sat_assume_unique>(v_au.value)>(
+                            s2, s2._get_s_table()[0], pm_t{1, 2, 3}, std::move(r));
+                        REQUIRE(s2.size() == 1u);
+                        REQUIRE(s2.begin()->first == pm_t{1, 2, 3});
+                        if (v_sign.value) {
+                            REQUIRE(s2.begin()->second == 42);
+                        } else {
+                            REQUIRE(s2.begin()->second == -42);
+                        }
+                        REQUIRE(r._get_mpfr_t()->_mpfr_d == nullptr);
+
+                        if (!v_au()) {
+                            r = real{4, std::numeric_limits<int>::digits * 10};
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s2, s2._get_s_table()[0], pm_t{1, 2, 3}, std::move(r));
+                            REQUIRE(s2.size() == 1u);
+                            REQUIRE(s2.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s2.begin()->second == 46);
+                            } else {
+                                REQUIRE(s2.begin()->second == -46);
+                            }
+                            // NOTE: reactivate this check in later
+                            // versions of mp++.
+                            // REQUIRE(r.get_prec() == mppp::detail::real_deduce_precision(0));
+                        }
+
+                        if (!v_au()) {
+                            // Test throwing + clearing within the insertion primitive.
+                            r = real{"nan", 100};
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{1, 2, 3}, 42);
+                            detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                          static_cast<sat_check_compat_key>(v_cck.value),
+                                                          static_cast<sat_check_table_size>(v_cts.value),
+                                                          static_cast<sat_assume_unique>(v_au.value)>(
+                                s1, s1._get_s_table()[0], pm_t{4, 5, 6}, -42);
+                            REQUIRE(s1.size() == 2u);
+
+                            REQUIRE_THROWS_WITH(
+                                (detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                               static_cast<sat_check_compat_key>(v_cck.value),
+                                                               static_cast<sat_check_table_size>(v_cts.value),
+                                                               static_cast<sat_assume_unique>(v_au.value)>(
+                                    s1, s1._get_s_table()[0], pm_t{1, 2, 3}, r)),
+                                Contains("Cannot convert a non-finite real to a rational"));
+
+                            REQUIRE(s1.empty());
+                        }
+#endif
                     });
                 });
             });
