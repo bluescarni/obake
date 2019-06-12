@@ -11,6 +11,7 @@
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+#include <algorithm>
 #include <initializer_list>
 #include <limits>
 #include <string>
@@ -335,7 +336,7 @@ TEST_CASE("add_term_primitives")
                                 s1, s1._get_s_table()[0], pm_t{1, 2, 3}, rat_t{0});
                             REQUIRE(s1.empty());
 
-                            if (!decltype(v_au)::value) {
+                            if (!v_au()) {
                                 s1 = s1_t{};
                                 s1.set_symbol_set(symbol_set{"x", "y", "z"});
                                 detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
@@ -418,9 +419,7 @@ TEST_CASE("add_term_primitives")
                             } else {
                                 REQUIRE(s2.begin()->second == -46);
                             }
-                            // NOTE: reactivate this check in later
-                            // versions of mp++.
-                            // REQUIRE(r.get_prec() == mppp::detail::real_deduce_precision(0));
+                            REQUIRE(r.get_prec() == mppp::detail::real_deduce_precision(0));
                         }
 
                         if (!v_au()) {
@@ -451,6 +450,441 @@ TEST_CASE("add_term_primitives")
                             REQUIRE(s1.empty());
                         }
 #endif
+
+                        // Tests with segmented table.
+                        for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                            s1 = s1_t{};
+                            s1.set_n_segments(s_idx);
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                rat_t{42});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6},
+                                                                                                rat_t{43});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                rat_t{44});
+                            REQUIRE(s1.size() == 3u);
+                            if (v_sign.value) {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == 42 || p.second == 43 || p.second == 44;
+                                }));
+                            } else {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == -42 || p.second == -43 || p.second == -44;
+                                }));
+                            }
+                        }
+
+                        for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                            q = rat_t{42, 13};
+                            s1 = s1_t{};
+                            s1.set_n_segments(s_idx);
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3}, q);
+                            q += 1;
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6}, q);
+                            q += 1;
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9}, q);
+                            REQUIRE(s1.size() == 3u);
+                            if (v_sign.value) {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == rat_t{42, 13} || p.second == rat_t{42, 13} + 1
+                                           || p.second == rat_t{42, 13} + 2;
+                                }));
+                            } else {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == rat_t{-42, 13} || p.second == rat_t{-42, 13} - 1
+                                           || p.second == rat_t{-42, 13} - 2;
+                                }));
+                            }
+                        }
+
+                        for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                            s1 = s1_t{};
+                            s1.set_n_segments(s_idx);
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3}, 42);
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6}, 43);
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9}, 44);
+                            REQUIRE(s1.size() == 3u);
+                            if (v_sign.value) {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == 42 || p.second == 43 || p.second == 44;
+                                }));
+                            } else {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == -42 || p.second == -43 || p.second == -44;
+                                }));
+                            }
+                        }
+
+                        for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                            s1 = s1_t{};
+                            s1.set_n_segments(s_idx);
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3}, 42,
+                                                                                                13);
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6}, 43,
+                                                                                                13);
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9}, 44,
+                                                                                                13);
+                            REQUIRE(s1.size() == 3u);
+                            if (v_sign.value) {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == rat_t{42, 13} || p.second == rat_t{43, 13}
+                                           || p.second == rat_t{44, 13};
+                                }));
+                            } else {
+                                REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                    return p.second == rat_t{-42, 13} || p.second == rat_t{-43, 13}
+                                           || p.second == rat_t{-44, 13};
+                                }));
+                            }
+                        }
+
+                        if (!v_au()) {
+                            for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                s1 = s1_t{};
+                                s1.set_n_segments(s_idx);
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{42});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{43});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                    rat_t{44});
+                                REQUIRE(s1.size() == 2u);
+                                if (v_sign.value) {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == 85 || p.second == 44;
+                                    }));
+                                } else {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == -85 || p.second == -44;
+                                    }));
+                                }
+                            }
+
+                            for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                q = 1;
+                                s1 = s1_t{};
+                                s1.set_n_segments(s_idx);
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{42});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    q);
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                    rat_t{44});
+                                REQUIRE(s1.size() == 2u);
+                                if (v_sign.value) {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == 43 || p.second == 44;
+                                    }));
+                                } else {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == -43 || p.second == -44;
+                                    }));
+                                }
+                            }
+
+                            for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                s1 = s1_t{};
+                                s1.set_n_segments(s_idx);
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{42});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    1);
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                    rat_t{44});
+                                REQUIRE(s1.size() == 2u);
+                                if (v_sign.value) {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == 43 || p.second == 44;
+                                    }));
+                                } else {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == -43 || p.second == -44;
+                                    }));
+                                }
+                            }
+
+                            for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                s1 = s1_t{};
+                                s1.set_n_segments(s_idx);
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{42});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    42, 13);
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                    rat_t{44});
+                                REQUIRE(s1.size() == 2u);
+                                if (v_sign.value) {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == rat_t{588, 13} || p.second == 44;
+                                    }));
+                                } else {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == -rat_t{588, 13} || p.second == -44;
+                                    }));
+                                }
+                            }
+                        }
+
+                        // Check term annihilation or zero insertion.
+                        if (v_cz()) {
+                            for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                s1 = s1_t{};
+                                s1.set_n_segments(s_idx);
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                    rat_t{44});
+                                REQUIRE(s1.size() == 1u);
+                                if (v_sign.value) {
+                                    REQUIRE(s1.begin()->second == 44);
+                                } else {
+                                    REQUIRE(s1.begin()->second == -44);
+                                }
+                            }
+
+                            if (!v_au()) {
+                                for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                    s1 = s1_t{};
+                                    s1.set_n_segments(s_idx);
+                                    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                    detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                            static_cast<sat_check_compat_key>(v_cck.value),
+                                                            static_cast<sat_check_table_size>(v_cts.value),
+                                                            static_cast<sat_assume_unique>(v_au.value)>(
+                                        s1, pm_t{1, 2, 3}, rat_t{42});
+                                    detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                            static_cast<sat_check_compat_key>(v_cck.value),
+                                                            static_cast<sat_check_table_size>(v_cts.value),
+                                                            static_cast<sat_assume_unique>(v_au.value)>(
+                                        s1, pm_t{1, 2, 3}, rat_t{-42});
+                                    detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                            static_cast<sat_check_compat_key>(v_cck.value),
+                                                            static_cast<sat_check_table_size>(v_cts.value),
+                                                            static_cast<sat_assume_unique>(v_au.value)>(
+                                        s1, pm_t{7, 8, 9}, rat_t{44});
+                                    REQUIRE(s1.size() == 1u);
+                                    if (v_sign.value) {
+                                        REQUIRE(s1.begin()->second == 44);
+                                    } else {
+                                        REQUIRE(s1.begin()->second == -44);
+                                    }
+                                }
+                            }
+                        } else {
+                            for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                s1 = s1_t{};
+                                s1.set_n_segments(s_idx);
+                                s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                    rat_t{});
+                                detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                        static_cast<sat_check_compat_key>(v_cck.value),
+                                                        static_cast<sat_check_table_size>(v_cts.value),
+                                                        static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{7, 8, 9},
+                                                                                                    rat_t{44});
+                                REQUIRE(s1.size() == 2u);
+                                if (v_sign.value) {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == rat_t{44} || p.second == 0;
+                                    }));
+                                } else {
+                                    REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                        return p.second == -rat_t{44} || p.second == 0;
+                                    }));
+                                }
+                                s1.clear();
+                            }
+
+                            if (!v_au()) {
+                                for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                                    s1 = s1_t{};
+                                    s1.set_n_segments(s_idx);
+                                    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                                    detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                            static_cast<sat_check_compat_key>(v_cck.value),
+                                                            static_cast<sat_check_table_size>(v_cts.value),
+                                                            static_cast<sat_assume_unique>(v_au.value)>(
+                                        s1, pm_t{1, 2, 3}, rat_t{42});
+                                    detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                            static_cast<sat_check_compat_key>(v_cck.value),
+                                                            static_cast<sat_check_table_size>(v_cts.value),
+                                                            static_cast<sat_assume_unique>(v_au.value)>(
+                                        s1, pm_t{1, 2, 3}, rat_t{-42});
+                                    detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                            static_cast<sat_check_compat_key>(v_cck.value),
+                                                            static_cast<sat_check_table_size>(v_cts.value),
+                                                            static_cast<sat_assume_unique>(v_au.value)>(
+                                        s1, pm_t{7, 8, 9}, rat_t{44});
+                                    REQUIRE(s1.size() == 2u);
+                                    if (v_sign.value) {
+                                        REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                            return p.second == rat_t{44} || p.second == 0;
+                                        }));
+                                    } else {
+                                        REQUIRE(std::all_of(s1.cbegin(), s1.cend(), [](const auto &p) {
+                                            return p.second == -rat_t{44} || p.second == 0;
+                                        }));
+                                    }
+                                    s1.clear();
+                                }
+                            }
+                        }
+
+#if defined(MPPP_WITH_MPFR)
+                        // Test coefficient move semantics with mppp::real.
+
+                        for (auto s_idx : {0u, 1u, 2u, 4u}) {
+                            s2 = s2_t{};
+                            s2.set_n_segments(s_idx);
+                            r = real{42};
+                            s2.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s2, pm_t{1, 2, 3},
+                                                                                                std::move(r));
+                            REQUIRE(s2.size() == 1u);
+                            REQUIRE(s2.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s2.begin()->second == 42);
+                            } else {
+                                REQUIRE(s2.begin()->second == -42);
+                            }
+                            REQUIRE(r._get_mpfr_t()->_mpfr_d == nullptr);
+                        }
+
+                        if (!v_au()) {
+                            r = real{4, std::numeric_limits<int>::digits * 10};
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s2, pm_t{1, 2, 3},
+                                                                                                std::move(r));
+                            REQUIRE(s2.size() == 1u);
+                            REQUIRE(s2.begin()->first == pm_t{1, 2, 3});
+                            if (v_sign.value) {
+                                REQUIRE(s2.begin()->second == 46);
+                            } else {
+                                REQUIRE(s2.begin()->second == -46);
+                            }
+                            REQUIRE(r.get_prec() == mppp::detail::real_deduce_precision(0));
+                        }
+
+                        if (!v_au()) {
+                            // Test throwing + clearing within the insertion primitive.
+                            r = real{"nan", 100};
+                            s1 = s1_t{};
+                            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3}, 42);
+                            detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                    static_cast<sat_check_compat_key>(v_cck.value),
+                                                    static_cast<sat_check_table_size>(v_cts.value),
+                                                    static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6}, -42);
+                            REQUIRE(s1.size() == 2u);
+
+                            REQUIRE_THROWS_WITH(
+                                (detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
+                                                         static_cast<sat_check_compat_key>(v_cck.value),
+                                                         static_cast<sat_check_table_size>(v_cts.value),
+                                                         static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
+                                                                                                     r)),
+                                Contains("Cannot convert a non-finite real to a rational"));
+
+                            REQUIRE(s1.empty());
+                        }
+#endif
                     });
                 });
             });
@@ -464,6 +898,15 @@ TEST_CASE("add_term_primitives")
         (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
                                        sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
         Contains("not compatible with the series' symbol set"));
+
+    for (auto s_idx : {0u, 1u, 2u, 4u}) {
+        s1 = s1_t{};
+        s1.set_n_segments(s_idx);
+        s1.set_symbol_set(symbol_set{});
+        REQUIRE_THROWS_WITH((detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::on,
+                                                     sat_check_table_size::on, sat_assume_unique::off>(s1, pm_t(1), 1)),
+                            Contains("not compatible with the series' symbol set"));
+    }
 }
 
 TEST_CASE("series_basic")
