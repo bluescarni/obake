@@ -33,7 +33,7 @@ build_script:
 - cd build
 
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target install
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Release --target install
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH%  -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install -- -v
@@ -48,7 +48,7 @@ build_script:
 - cd build
 
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target install
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Release --target install
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang-cl
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install -- -v
@@ -58,7 +58,7 @@ build_script:
 
 # piranha
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Release
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DPIRANHA_BUILD_TESTS=ON
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . -- -v
@@ -67,8 +67,8 @@ build_script:
 test_script:
 # NOTE: ensure the PATH variable contains the path to the piranha dll,
 # otherwise the tests will fail to run.
-- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
-- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
+- if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Release
+- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Release
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] set PATH=%PATH%;%CD%
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] test\utils_bit_packing.exe
