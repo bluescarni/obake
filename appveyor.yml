@@ -6,10 +6,10 @@ branches:
 
 environment:
   matrix:
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      BUILD_TYPE: MSVC19_64
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: MSVC15_clang_64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      BUILD_TYPE: MSVC19_64
 
 install:
 - set PATH=C:\Miniconda36-x64\Scripts;%PATH%
@@ -71,6 +71,8 @@ test_script:
 - if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] set PATH=%PATH%;%CD%
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] test\utils_bit_packing.exe
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] test\series.exe
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] ctest -V .
 
 # Enable this to be able to login to the build worker. You can use the
