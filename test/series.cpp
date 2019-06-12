@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <limits>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -26,6 +27,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <mp++/config.hpp>
+#include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
 #if defined(MPPP_WITH_MPFR)
@@ -42,8 +44,11 @@
 // #include <piranha/math/negate.hpp>
 // #include <piranha/math/pow.hpp>
 
+#include "test_utils.hpp"
+
 using namespace piranha;
 
+using int_t = mppp::integer<1>;
 using rat_t = mppp::rational<1>;
 
 #if defined(MPPP_WITH_MPFR)
@@ -57,6 +62,8 @@ using real = mppp::real;
 
 TEST_CASE("cf_key_concepts")
 {
+    piranha_test::disable_slow_stack_traces();
+
     using pm_t = packed_monomial<int>;
 
     REQUIRE(!is_cf_v<void>);
@@ -898,6 +905,10 @@ TEST_CASE("add_term_primitives")
         (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
                                        sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
         Contains("not compatible with the series' symbol set"));
+    REQUIRE_THROWS_AS(
+        (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
+                                       sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
+        std::invalid_argument);
 
     for (auto s_idx : {0u, 1u, 2u, 4u}) {
         s1 = s1_t{};
@@ -906,6 +917,10 @@ TEST_CASE("add_term_primitives")
         REQUIRE_THROWS_WITH((detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::on,
                                                      sat_check_table_size::on, sat_assume_unique::off>(s1, pm_t(1), 1)),
                             Contains("not compatible with the series' symbol set"));
+        REQUIRE_THROWS_AS(
+            (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
+                                           sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
+            std::invalid_argument);
     }
 }
 
@@ -1079,6 +1094,158 @@ TEST_CASE("series_basic")
         REQUIRE(s2.get_symbol_set() == ss);
         REQUIRE(s2._get_s_table().size() == 8u);
     }
+}
+
+TEST_CASE("series_generic_ctor")
+{
+    using Catch::Matchers::Contains;
+
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using s1_int_t = series<pm_t, int_t, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+
+#if defined(MPPP_WITH_MPFR)
+    using s1_real_t = series<pm_t, real, void>;
+#endif
+
+    REQUIRE(!std::is_constructible_v<s1_t, void>);
+
+    // Constructability from non-series type.
+    REQUIRE(std::is_constructible_v<s1_t, int>);
+    REQUIRE(std::is_constructible_v<s1_t, int &>);
+    REQUIRE(std::is_constructible_v<s1_t, const int &>);
+
+    s1_t s1{5};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s1 = s1_t{0.};
+    REQUIRE(s1.empty());
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+
+    s1 = s1_t{"3/4"};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s2_t s2{5};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s2 = s2_t{0};
+    REQUIRE(s2.empty());
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+
+    s2 = s2_t{"3/4"};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    // Constructability from lower rank series.
+    REQUIRE(std::is_constructible_v<s2_t, s1_t>);
+    REQUIRE(std::is_constructible_v<s2_t, s1_t &>);
+    REQUIRE(std::is_constructible_v<s2_t, const s1_t &>);
+
+    s2 = s2_t{s1_t{5}};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s2 = s2_t{s1_t{0}};
+    REQUIRE(s2.empty());
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+
+    s2 = s2_t{s1_t{"3/4"}};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+#if defined(MPPP_WITH_MPFR)
+
+    // Verify that move construction moves.
+    real r{42};
+    s1_real_t s1r{std::move(r)};
+    REQUIRE(r._get_mpfr_t()->_mpfr_d == nullptr);
+
+#endif
+
+    // Constructability from equal rank series.
+    REQUIRE(std::is_constructible_v<s1_t, s1_int_t>);
+    REQUIRE(std::is_constructible_v<s1_t, s1_int_t &>);
+    REQUIRE(std::is_constructible_v<s1_t, const s1_int_t &>);
+    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, int>>);
+
+    s1 = s1_t{s1_int_t{5}};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s1_int_t s1_int{s1_t{"4/5"}};
+    REQUIRE(s1_int.empty());
+
+    // Try with a more complex series.
+    s1_int = s1_int_t{};
+    s1_int.set_n_segments(1);
+    s1_int.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1_int.add_term(pm_t{1, 2, 3}, 1);
+    s1_int.add_term(pm_t{-1, -2, -3}, -1);
+    s1_int.add_term(pm_t{4, 5, 6}, 2);
+    s1_int.add_term(pm_t{7, 8, 9}, -2);
+    {
+        s1_t s1a{s1_int};
+        REQUIRE(s1a.size() == 4u);
+        for (const auto &p : s1a) {
+            REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+        }
+
+        s1_t s2a{std::move(s1_int)};
+        REQUIRE(s2a.size() == 4u);
+        for (const auto &p : s2a) {
+            REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+        }
+    }
+
+    // Construction from a series with higher rank.
+    REQUIRE(std::is_constructible_v<s1_t, s2_t>);
+    REQUIRE(std::is_constructible_v<s1_t, s2_t &>);
+    REQUIRE(std::is_constructible_v<s1_t, const s2_t &>);
+
+    REQUIRE(s1_t{s2_t{}}.empty());
+    REQUIRE(s1_t{s2_t{0}}.empty());
+    s1 = s1_t{s2_t{"4/5"}};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{4, 5});
+
+    s2 = s2_t{};
+    s2.set_symbol_set(symbol_set{"x", "y", "z"});
+    s2.add_term(pm_t{1, 2, 3}, 1);
+    s2.add_term(pm_t{4, 5, 6}, 1);
+
+    REQUIRE_THROWS_WITH(s1_t{s2}, Contains("which does not consist of a single coefficient"));
+    REQUIRE_THROWS_AS(s1_t{s2}, std::invalid_argument);
 }
 
 #if 0
