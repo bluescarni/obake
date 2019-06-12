@@ -1103,6 +1103,7 @@ TEST_CASE("series_generic_ctor")
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1_int_t = series<pm_t, int_t, void>;
+    using s1_double_t = series<pm_t, double, void>;
     using s2_t = series<pm_t, s1_t, void>;
 
 #if defined(MPPP_WITH_MPFR)
@@ -1227,6 +1228,17 @@ TEST_CASE("series_generic_ctor")
         }
     }
 
+    // Verify construction of int series from double series
+    // truncates and removes coefficients.
+    s1_double_t s1_double;
+    s1_double.set_n_segments(1);
+    s1_double.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1_double.add_term(pm_t{1, 2, 3}, .1);
+    s1_double.add_term(pm_t{-1, -2, -3}, -.1);
+    s1_double.add_term(pm_t{4, 5, 6}, .2);
+    s1_double.add_term(pm_t{7, 8, 9}, -.2);
+    REQUIRE(s1_int_t{s1_double}.empty());
+
     // Construction from a series with higher rank.
     REQUIRE(std::is_constructible_v<s1_t, s2_t>);
     REQUIRE(std::is_constructible_v<s1_t, s2_t &>);
@@ -1246,6 +1258,127 @@ TEST_CASE("series_generic_ctor")
 
     REQUIRE_THROWS_WITH(s1_t{s2}, Contains("which does not consist of a single coefficient"));
     REQUIRE_THROWS_AS(s1_t{s2}, std::invalid_argument);
+}
+
+TEST_CASE("series_generic_assignment")
+{
+    // Just a couple of simple tests, this is implemented
+    // on top of the generic ctor.
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using s1_int_t = series<pm_t, int_t, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+
+    // Assignment from lower rank.
+    s1_t s1;
+    s1 = "3/4";
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+
+    s1 = 45;
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 45);
+
+    s2_t s2;
+    s2 = s1;
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{});
+    REQUIRE(s2.begin()->second.begin()->second == 45);
+
+    // Assignment from equal rank.
+    s1 = s1_int_t{-5};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == -5);
+
+    // Assignment from higher rank.
+    REQUIRE(&(s1 = s2_t{-1}) == &s1);
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == -1);
+
+    REQUIRE(!std::is_assignable_v<s1_t, void>);
+    REQUIRE(!std::is_assignable_v<s1_t, series<pm_t, rat_t, int>>);
+}
+
+TEST_CASE("series_conversion_operator")
+{
+    using Catch::Matchers::Contains;
+
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s1{"3/4"};
+    REQUIRE(static_cast<rat_t>(s1) == rat_t{3, 4});
+    REQUIRE(static_cast<double>(s1) == 3 / 4.);
+
+    REQUIRE(static_cast<rat_t>(s1_t{}) == 0);
+    REQUIRE(static_cast<int>(s1_t{}) == 0);
+
+    s1 = s1_t{};
+    s1.set_n_segments(1);
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    s1.add_term(pm_t{-1, -2, -3}, -1);
+    s1.add_term(pm_t{4, 5, 6}, 2);
+    s1.add_term(pm_t{7, 8, 9}, -2);
+    REQUIRE_THROWS_WITH(static_cast<rat_t>(s1),
+                        Contains("because the series does not consist of a single coefficient"));
+    REQUIRE_THROWS_AS(static_cast<rat_t>(s1), std::invalid_argument);
+}
+
+TEST_CASE("series_swap")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(std::is_nothrow_swappable_v<s1_t>);
+
+    s1_t s0{"3/4"};
+
+    s1_t s1;
+    s1.set_n_segments(1);
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    s1.add_term(pm_t{-1, -2, -3}, -1);
+    s1.add_term(pm_t{4, 5, 6}, 2);
+    s1.add_term(pm_t{7, 8, 9}, -2);
+
+    using std::swap;
+    swap(s0, s1);
+
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1._get_s_table().size() == 1u);
+    REQUIRE(s1._get_log2_size() == 0u);
+
+    REQUIRE(s0.size() == 4u);
+    REQUIRE(s0.get_symbol_set() == symbol_set{"x", "y", "z"});
+    REQUIRE(s0._get_s_table().size() == 2u);
+    REQUIRE(s0._get_log2_size() == 1u);
+    for (const auto &p : s0) {
+        REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+    }
+}
+
+TEST_CASE("series_is_single_cf")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(s1_t{}.is_single_cf());
+    REQUIRE(s1_t{42}.is_single_cf());
+
+    s1_t s1;
+    s1.set_n_segments(1);
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    s1.add_term(pm_t{-1, -2, -3}, -1);
+    s1.add_term(pm_t{4, 5, 6}, 2);
+    s1.add_term(pm_t{7, 8, 9}, -2);
+    REQUIRE(!s1.is_single_cf());
 }
 
 #if 0

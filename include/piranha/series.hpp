@@ -501,10 +501,6 @@ struct series_rref_clearer {
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
 // TODO: check construction of const iterators from mutable ones.
-// TODO: test construction of series with int coefficient from
-// series with double coefficient, to verify that coefficients
-// that get truncated to zero are not inserted.
-// TODO: test move semantics during insertion, generic construction.
 // TODO: test term annihilation during add/sub.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
