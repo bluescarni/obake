@@ -13,7 +13,10 @@
 
 #include <initializer_list>
 #include <stdexcept>
+#include <utility>
 
+#include <piranha/math/is_zero.hpp>
+#include <piranha/math/negate.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
 
@@ -123,4 +126,71 @@ TEST_CASE("series_clear")
 
     REQUIRE(s1.empty());
     REQUIRE(s1.get_symbol_set() == symbol_set{});
+}
+
+TEST_CASE("series_unary_plus")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s1{"3/4"};
+    auto s1_c(+s1);
+    REQUIRE(s1_c.size() == 1u);
+    REQUIRE(s1_c.begin()->second == rat_t{3, 4});
+
+    const auto &ptr = &(s1.begin()->second);
+    auto s1_c2(+std::move(s1));
+    REQUIRE(s1_c2.size() == 1u);
+    REQUIRE(s1_c2.begin()->second == rat_t{3, 4});
+    REQUIRE(&(s1_c2.begin()->second) == ptr);
+}
+
+TEST_CASE("series_unary_minus")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s1{"3/4"};
+    auto s1_c(-s1);
+    REQUIRE(s1_c.size() == 1u);
+    REQUIRE(s1_c.begin()->second == -rat_t{3, 4});
+
+    const auto &ptr = &(s1.begin()->second);
+    auto s1_c2(-std::move(s1));
+    REQUIRE(s1_c2.size() == 1u);
+    REQUIRE(s1_c2.begin()->second == -rat_t{3, 4});
+    REQUIRE(&(s1_c2.begin()->second) == ptr);
+}
+
+TEST_CASE("series_negate")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s1{"3/4"};
+    const auto &ptr = &(s1.begin()->second);
+    negate(s1);
+    REQUIRE(s1.begin()->second == -rat_t{3, 4});
+    REQUIRE(&(s1.begin()->second) == ptr);
+    negate(std::move(s1));
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(&(s1.begin()->second) == ptr);
+
+    REQUIRE(!is_negatable_v<const s1_t &>);
+    REQUIRE(!is_negatable_v<const s1_t &&>);
+}
+
+TEST_CASE("series_is_zero")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(is_zero(s1_t{}));
+    REQUIRE(is_zero(s1_t{0}));
+    REQUIRE(!is_zero(s1_t{"3/4"}));
+
+    s1_t s1;
+    REQUIRE(is_zero(s1));
+    s1 = s1_t{4};
+    REQUIRE(!is_zero(s1));
 }
