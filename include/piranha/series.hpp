@@ -970,8 +970,8 @@ private:
             }
             ++retval.m_idx;
         }
-        // NOTE: if all the tables are empty, or the segmented table
-        // is empty, m_idx is now set to the size of segmented table
+        // NOTE: if all the tables are empty, m_idx is now
+        // set to the size of segmented table
         // and the local iterator stays in its value-inited
         // state. That is, retval becomes the end iterator.
         return retval;

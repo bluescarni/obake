@@ -1432,6 +1432,40 @@ TEST_CASE("series_iterators")
         REQUIRE(s1.begin() == s1.cbegin());
         REQUIRE(s1.end() == s1.cend());
     }
+
+    s1_t s1;
+    REQUIRE(s1.begin() == s1.end());
+    REQUIRE(s1.cbegin() == s1.cend());
+    REQUIRE(s1.begin() == s1.cend());
+    REQUIRE(s1.begin() == s1.cend());
+
+    s1 = s1_t{"3/4"};
+    REQUIRE(s1.begin() != s1.end());
+    REQUIRE(s1.cbegin() != s1.cend());
+    REQUIRE(s1.begin() != s1.cend());
+    REQUIRE(s1.begin() != s1.cend());
+
+    // A test with a segmented series.
+    s1 = s1_t{};
+    s1.set_n_segments(2);
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    s1.add_term(pm_t{-1, -2, -3}, -1);
+    s1.add_term(pm_t{4, 5, 6}, 2);
+    s1.add_term(pm_t{7, 8, 9}, -2);
+
+    REQUIRE(s1.begin() != s1.end());
+    REQUIRE(s1.cbegin() != s1.cend());
+    REQUIRE(s1.begin() != s1.cend());
+    REQUIRE(s1.begin() != s1.cend());
+
+    for (auto &p: s1) {
+        REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+    }
+
+    for (auto &p: static_cast<const s1_t &>(s1)) {
+        REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+    }
 }
 
 #if 0
