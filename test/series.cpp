@@ -1381,6 +1381,59 @@ TEST_CASE("series_is_single_cf")
     REQUIRE(!s1.is_single_cf());
 }
 
+TEST_CASE("series_iterators")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using it_t = decltype(std::declval<s1_t &>().begin());
+    using cit_t = decltype(std::declval<s1_t &>().cbegin());
+    using const_it_t = decltype(std::declval<const s1_t &>().begin());
+
+    REQUIRE(std::is_same_v<cit_t, const_it_t>);
+
+    // Check value-inited iterators compare equal.
+    REQUIRE(it_t{} == it_t{});
+    REQUIRE(it_t{it_t{}} == it_t{});
+    REQUIRE(cit_t{} == cit_t{});
+    REQUIRE(cit_t{cit_t{}} == cit_t{});
+    it_t it1{};
+    cit_t cit1{};
+    REQUIRE(it_t(it1) == it_t{});
+    REQUIRE(cit_t(cit1) == cit_t{});
+
+    // Require we can construct a const iterator from a mutable one.
+    REQUIRE(cit_t(it_t{}) == cit_t{});
+
+    {
+        // Swap tests.
+        using std::swap;
+        REQUIRE(std::is_nothrow_swappable_v<it_t>);
+        REQUIRE(std::is_nothrow_swappable_v<cit_t>);
+
+        s1_t s1{"4/5"};
+
+        auto b = s1.begin();
+        auto e = s1.end();
+        swap(b, e);
+        REQUIRE(b == s1.end());
+        REQUIRE(e == s1.begin());
+
+        auto cb = s1.cbegin();
+        auto ce = s1.cend();
+        swap(cb, ce);
+        REQUIRE(cb == s1.cend());
+        REQUIRE(ce == s1.cbegin());
+    }
+
+    {
+        // Cross comparisons between const and mutable variants.
+        s1_t s1{"4/5"};
+
+        REQUIRE(s1.begin() == s1.cbegin());
+        REQUIRE(s1.end() == s1.cend());
+    }
+}
+
 #if 0
 
 TEST_CASE("pow_test")
