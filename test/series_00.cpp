@@ -1459,11 +1459,11 @@ TEST_CASE("series_iterators")
     REQUIRE(s1.begin() != s1.cend());
     REQUIRE(s1.begin() != s1.cend());
 
-    for (auto &p: s1) {
+    for (auto &p : s1) {
         REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
     }
 
-    for (auto &p: static_cast<const s1_t &>(s1)) {
+    for (auto &p : static_cast<const s1_t &>(s1)) {
         REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
     }
 }
