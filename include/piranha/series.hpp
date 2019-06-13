@@ -765,6 +765,10 @@ public:
     {
         return m_log2_size;
     }
+    s_size_t _get_max_log2_size() const
+    {
+        return max_log2_size;
+    }
 
     bool is_single_cf() const
     {
