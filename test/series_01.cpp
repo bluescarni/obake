@@ -106,3 +106,21 @@ TEST_CASE("series_set_n_segments")
                         Contains(" as this value exceeds the maximum allowed value"));
     REQUIRE_THROWS_AS(s1.set_n_segments(static_cast<unsigned>(s1._get_max_log2_size() + 1u)), std::invalid_argument);
 }
+
+TEST_CASE("series_clear")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s1;
+    s1.set_n_segments(2);
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    s1.add_term(pm_t{-1, -2, -3}, -1);
+    s1.add_term(pm_t{4, 5, 6}, 2);
+    s1.add_term(pm_t{7, 8, 9}, -2);
+    s1.clear();
+
+    REQUIRE(s1.empty());
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+}
