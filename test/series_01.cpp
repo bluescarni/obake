@@ -12,16 +12,20 @@
 #include "catch.hpp"
 
 #include <initializer_list>
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include <boost/algorithm/string/predicate.hpp>
 
+#include <piranha/config.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
+#include <piranha/type_traits.hpp>
 
 #include <mp++/rational.hpp>
 
@@ -198,7 +202,7 @@ TEST_CASE("series_is_zero")
     REQUIRE(!is_zero(s1));
 }
 
-TEST_CASE("series_stream_insert")
+TEST_CASE("series_stream_insert_default_impl")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
@@ -240,14 +244,8 @@ TEST_CASE("series_stream_insert")
     oss << s1;
     REQUIRE(boost::contains(oss.str(), "3/2*x**10"));
 
-    s2_t s2;
-    s2.set_symbol_set(symbol_set{"y"});
-    s2.add_term(pm_t{-2}, s1);
-
-    std::cout << s1 << '\n';
-    std::cout << s2 << '\n';
-
     // Test the ellipsis.
+    auto s1_old(s1);
     s1 = s1_t{};
     s1.set_symbol_set(symbol_set{"x"});
     for (auto i = 0u; i < 100u; ++i) {
@@ -260,4 +258,86 @@ TEST_CASE("series_stream_insert")
     oss.str("");
     oss << s1;
     REQUIRE(boost::contains(oss.str(), "..."));
+
+    // Test rank-2 series.
+    s1 = s1_old;
+    s2_t s2;
+    s2.set_symbol_set(symbol_set{"y"});
+    s2.add_term(pm_t{-2}, s1);
+    oss.str("");
+    oss << s2;
+    // If the coefficient series contains more than 1 term,
+    // then it will be enclosed in round brackets when printed.
+    REQUIRE(boost::contains(oss.str(), "("));
+    REQUIRE(boost::contains(oss.str(), ")"));
+
+    // Print them to screen for visual debug.
+    std::cout << s1 << '\n';
+    std::cout << s2 << '\n';
+
+    s1 = s1_t{};
+    s1.set_symbol_set(symbol_set{"x"});
+    s1.add_term(pm_t{3}, "3/4");
+    s2 = s2_t{};
+    s2.set_symbol_set(symbol_set{"y"});
+    s2.add_term(pm_t{-2}, s1);
+    oss.str("");
+    oss << s2;
+    REQUIRE(!boost::contains(oss.str(), "("));
+    REQUIRE(!boost::contains(oss.str(), ")"));
+}
+
+namespace ns
+{
+
+using pm_t = packed_monomial<int>;
+
+// ADL-based customization.
+struct tag00 {
+};
+
+inline void series_stream_insert(std::ostream &os, const series<pm_t, rat_t, tag00> &)
+{
+    os << "Hello world!";
+}
+
+// External customisation.
+struct tag01 {
+};
+
+using s1_t = series<pm_t, rat_t, tag01>;
+
+} // namespace ns
+
+namespace piranha::customisation
+{
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, ns::s1_t> inline constexpr auto series_stream_insert<T>
+#else
+inline constexpr auto series_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
+#endif
+    = [](std::ostream &os, auto &&) { os << "Hello world, again!"; };
+
+} // namespace piranha::customisation
+
+TEST_CASE("series_stream_insert_customization")
+{
+    using pm_t = packed_monomial<int>;
+
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+
+    std::ostringstream oss;
+
+    oss << s1_t{};
+    REQUIRE(boost::contains(oss.str(), "Hello world!"));
+
+    oss.str("");
+    oss << ns::s1_t{};
+    REQUIRE(boost::contains(oss.str(), "Hello world, again!"));
+
+    // Check the type returned by the streaming operator.
+    REQUIRE(std::is_same_v<decltype(oss << s1_t{}), std::ostream &>);
+    REQUIRE(std::is_same_v<decltype(oss << ns::s1_t{}), std::ostream &>);
 }
