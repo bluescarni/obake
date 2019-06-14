@@ -47,6 +47,12 @@ struct ext_si00 {
 struct ext_si01 {
 };
 
+struct int_si00 {
+};
+
+struct int_si01 {
+};
+
 namespace piranha::customisation
 {
 
@@ -71,6 +77,33 @@ inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_
 {
     return true;
 };
+
+namespace internal
+{
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, int_si00> inline constexpr auto cf_stream_insert<T>
+#else
+inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si00>>>
+#endif
+    = [](std::ostream &, auto &&) constexpr noexcept
+{
+    return true;
+};
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, int_si01> inline constexpr auto cf_stream_insert<T>
+#else
+inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si01>>>
+#endif
+    = [](std::ostream &, auto &) constexpr noexcept
+{
+    return true;
+};
+
+} // namespace internal
 
 } // namespace piranha::customisation
 
@@ -115,6 +148,16 @@ TEST_CASE("cf_stream_insert_test")
     REQUIRE(is_stream_insertable_cf_v<const ext_si01 &>);
     REQUIRE(!is_stream_insertable_cf_v<ext_si01 &&>);
 
+    REQUIRE(is_stream_insertable_cf_v<int_si00>);
+    REQUIRE(is_stream_insertable_cf_v<int_si00 &>);
+    REQUIRE(is_stream_insertable_cf_v<const int_si00 &>);
+    REQUIRE(is_stream_insertable_cf_v<int_si00 &&>);
+
+    REQUIRE(!is_stream_insertable_cf_v<int_si01>);
+    REQUIRE(is_stream_insertable_cf_v<int_si01 &>);
+    REQUIRE(is_stream_insertable_cf_v<const int_si01 &>);
+    REQUIRE(!is_stream_insertable_cf_v<int_si01 &&>);
+
 #if defined(PIRANHA_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertableCf<void>);
 
@@ -149,5 +192,15 @@ TEST_CASE("cf_stream_insert_test")
     REQUIRE(StreamInsertableCf<ext_si01 &>);
     REQUIRE(StreamInsertableCf<const ext_si01 &>);
     REQUIRE(!StreamInsertableCf<ext_si01 &&>);
+
+    REQUIRE(StreamInsertableCf<int_si00>);
+    REQUIRE(StreamInsertableCf<int_si00 &>);
+    REQUIRE(StreamInsertableCf<const int_si00 &>);
+    REQUIRE(StreamInsertableCf<int_si00 &&>);
+
+    REQUIRE(!StreamInsertableCf<int_si01>);
+    REQUIRE(StreamInsertableCf<int_si01 &>);
+    REQUIRE(StreamInsertableCf<const int_si01 &>);
+    REQUIRE(!StreamInsertableCf<int_si01 &&>);
 #endif
 }

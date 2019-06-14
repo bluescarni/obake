@@ -33,6 +33,20 @@ template <typename T
           >
 inline constexpr auto cf_stream_insert = not_implemented;
 
+namespace internal
+{
+
+// Internal customisation point for piranha::cf_stream_insert().
+template <typename T
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto cf_stream_insert = not_implemented;
+
+} // namespace internal
+
 } // namespace customisation
 
 namespace detail
@@ -40,13 +54,18 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
-constexpr auto cf_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>)
+constexpr auto cf_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<3>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::cf_stream_insert<T &&>)(os, ::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto cf_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
+constexpr auto cf_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>)
     PIRANHA_SS_FORWARD_FUNCTION(cf_stream_insert(os, ::std::forward<T>(x)));
+
+// Explicit override in the internal customisation namespace.
+template <typename T>
+constexpr auto cf_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::cf_stream_insert<T &&>)(os, ::std::forward<T>(x)));
 
 // Default implementation.
 template <typename T>
@@ -61,7 +80,7 @@ struct cf_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&x) const
         PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::cf_stream_insert_impl(os, ::std::forward<T>(x),
-                                                                         detail::priority_tag<2>{}))
+                                                                         detail::priority_tag<3>{}))
 };
 
 inline constexpr auto cf_stream_insert = cf_stream_insert_msvc{};
@@ -69,7 +88,7 @@ inline constexpr auto cf_stream_insert = cf_stream_insert_msvc{};
 #else
 
 inline constexpr auto cf_stream_insert = [](::std::ostream & os, auto &&x) PIRANHA_SS_FORWARD_LAMBDA(
-    detail::cf_stream_insert_impl(os, ::std::forward<decltype(x)>(x), detail::priority_tag<2>{}));
+    detail::cf_stream_insert_impl(os, ::std::forward<decltype(x)>(x), detail::priority_tag<3>{}));
 
 #endif
 
