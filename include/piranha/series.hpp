@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <iterator>
 #include <numeric>
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
@@ -24,6 +25,7 @@
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
+#include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
 #include <piranha/detail/ignore.hpp>
@@ -75,7 +77,7 @@ PIRANHA_CONCEPT_DECL Key = is_key_v<T>;
 template <typename T>
 using is_cf = ::std::conjunction<
     is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>,
-    is_stream_insertable<::std::add_lvalue_reference_t<const T>>,
+    is_stream_insertable_cf<::std::add_lvalue_reference_t<const T>>,
     is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
     is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
     is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
@@ -1215,57 +1217,21 @@ inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
 
 } // namespace customisation::internal
 
-namespace customisation
-{
-
-// External customisation point for piranha::series_stream_insert().
-template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto series_stream_insert = not_implemented;
-
-} // namespace customisation
-
 namespace detail
 {
 
-// Highest priority: explicit user override in the external customisation namespace.
+// Implementation of the default streaming to os of a series' terms.
 template <typename T>
-constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_stream_insert<T &&>)(os, ::std::forward<T>(x)));
-
-// Unqualified function call implementation.
-template <typename T>
-constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_stream_insert(os, ::std::forward<T>(x)));
-
-// Lowest priority: the default implementation for series.
-template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0>)
+inline void series_stream_terms_impl(::std::ostream &os, const T &s)
 {
-    using series_t = remove_cvref_t<T>;
-    using cf_type = series_cf_t<series_t>;
-    using key_type = series_key_t<series_t>;
-
-    const auto &s = static_cast<const series_t &>(s_);
-    const auto &ss = s.get_symbol_set();
-
-    // Print the header.
-    os << "Key type        : " << ::piranha::type_name<key_type>() << '\n';
-    os << "Coefficient type: " << ::piranha::type_name<cf_type>() << '\n';
-    os << "Tag type        : " << ::piranha::type_name<series_tag_t<series_t>>() << '\n';
-    os << "Rank            : " << series_rank<series_t> << '\n';
-    os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
-    os << "Number of terms : " << s.size() << '\n';
-
     if (s.empty()) {
         // Special-case an empty series.
         os << '0';
         return;
     }
+
+    // Cache access to the symbol set.
+    const auto &ss = s.get_symbol_set();
 
     // Hard-code the limit for now.
     constexpr auto limit = 50ul;
@@ -1283,11 +1249,11 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
 
         // Get the string representations of coefficient and key.
         oss.str("");
-        static_cast<::std::ostream &>(oss) << static_cast<const cf_type &>(it->second);
+        ::piranha::cf_stream_insert(static_cast<::std::ostream &>(oss), it->second);
         auto str_cf = oss.str();
 
         oss.str("");
-        ::piranha::key_stream_insert(static_cast<::std::ostream &>(oss), static_cast<const key_type &>(it->first), ss);
+        ::piranha::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
         const auto str_key = oss.str();
 
         if (str_cf == "1" && str_key != "1") {
@@ -1339,6 +1305,81 @@ inline auto series_stream_insert_impl(::std::ostream &os, T &&s_, priority_tag<0
     }
 
     os << ret;
+}
+
+} // namespace detail
+
+// Customise piranha::cf_stream_insert() for series types.
+namespace customisation::internal
+{
+
+struct series_default_cf_stream_insert_impl {
+    template <typename T>
+    void operator()(::std::ostream &os, const T &x) const
+    {
+        if (x.size() > 1u) {
+            // NOTE: if the series has more than 1 term, bracket it.
+            os << '(';
+            detail::series_stream_terms_impl(os, x);
+            os << ')';
+        } else {
+            detail::series_stream_terms_impl(os, x);
+        }
+    }
+};
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires CvrSeries<T> inline constexpr auto cf_stream_insert<T>
+#else
+inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>>
+#endif
+    = series_default_cf_stream_insert_impl{};
+
+} // namespace customisation::internal
+
+namespace customisation
+{
+
+// External customisation point for piranha::series_stream_insert().
+template <typename T
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_stream_insert = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T>
+constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_stream_insert<T &&>)(os, ::std::forward<T>(x)));
+
+// Unqualified function call implementation.
+template <typename T>
+constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(series_stream_insert(os, ::std::forward<T>(x)));
+
+// Lowest priority: the default implementation for series.
+template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+inline auto series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>)
+{
+    using series_t = remove_cvref_t<T>;
+
+    // Print the header.
+    os << "Key type        : " << ::piranha::type_name<series_key_t<series_t>>() << '\n';
+    os << "Coefficient type: " << ::piranha::type_name<series_cf_t<series_t>>() << '\n';
+    os << "Tag             : " << ::piranha::type_name<series_tag_t<series_t>>() << '\n';
+    os << "Rank            : " << series_rank<series_t> << '\n';
+    os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
+    os << "Number of terms : " << s.size() << '\n';
+
+    series_stream_terms_impl(os, s);
 }
 
 } // namespace detail

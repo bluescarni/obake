@@ -12,8 +12,11 @@
 #include "catch.hpp"
 
 #include <initializer_list>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
+
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
@@ -193,4 +196,68 @@ TEST_CASE("series_is_zero")
     REQUIRE(is_zero(s1));
     s1 = s1_t{4};
     REQUIRE(!is_zero(s1));
+}
+
+TEST_CASE("series_stream_insert")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+
+    std::ostringstream oss;
+
+    // Empty series.
+    s1_t s1;
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "\n0"));
+
+    oss.str("");
+    s1.set_symbol_set(symbol_set{"x"});
+    s1.add_term(pm_t{3}, "3/4");
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "3/4*x**3"));
+
+    s1.add_term(pm_t{1}, "1/2");
+    oss.str("");
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "1/2*x"));
+
+    // Unitary coefficient, non-unitary key.
+    s1.add_term(pm_t{7}, "1");
+    oss.str("");
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "x**7"));
+
+    // Negative unitary coefficient, non-unitary key.
+    s1.add_term(pm_t{6}, "-1");
+    oss.str("");
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "-x**6"));
+
+    // Non-unitary coefficient, non-unitary key.
+    s1.add_term(pm_t{10}, "3/2");
+    oss.str("");
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "3/2*x**10"));
+
+    s2_t s2;
+    s2.set_symbol_set(symbol_set{"y"});
+    s2.add_term(pm_t{-2}, s1);
+
+    std::cout << s1 << '\n';
+    std::cout << s2 << '\n';
+
+    // Test the ellipsis.
+    s1 = s1_t{};
+    s1.set_symbol_set(symbol_set{"x"});
+    for (auto i = 0u; i < 100u; ++i) {
+        if (i % 2u) {
+            s1.add_term(pm_t{static_cast<int>(i)}, static_cast<int>(i));
+        } else {
+            s1.add_term(pm_t{static_cast<int>(i)}, -static_cast<int>(i));
+        }
+    }
+    oss.str("");
+    oss << s1;
+    REQUIRE(boost::contains(oss.str(), "..."));
 }
