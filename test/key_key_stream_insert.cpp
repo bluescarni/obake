@@ -47,7 +47,7 @@ struct nsi01 {
 
 // Wrong ref type on symbol_set, but overriden in the external
 // customisation point.
-void key_stream_insert(std::ostream &os, const nsi00 &, symbol_set &);
+void key_stream_insert(std::ostream &os, const nsi01 &, symbol_set &);
 
 } // namespace ns
 
