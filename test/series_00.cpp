@@ -1466,6 +1466,11 @@ TEST_CASE("series_iterators")
     for (auto &p : static_cast<const s1_t &>(s1)) {
         REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
     }
+
+    // Check the type yielded by dereferencing the iterators.
+    REQUIRE(std::is_same_v<const std::pair<const pm_t, rat_t> &, decltype(*(static_cast<const s1_t &>(s1).begin()))>);
+    REQUIRE(std::is_same_v<const std::pair<const pm_t, rat_t> &, decltype(*(s1.cbegin()))>);
+    REQUIRE(std::is_same_v<std::pair<const pm_t, rat_t> &, decltype(*(s1.begin()))>);
 }
 
 #if 0

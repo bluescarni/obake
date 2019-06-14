@@ -56,6 +56,9 @@ jobs:
         displayName: "Install conda packages"
 
       # Install mp++.
+      # NOTE: it's important we set the Release build type
+      # consistently for piranha and all deps as well, otherwise
+      # horrible things will happen at runtime.
       - script: |
           setlocal EnableDelayedExpansion
           call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
@@ -63,9 +66,6 @@ jobs:
           cd mppp
           mkdir build
           cd build
-          # NOTE: it's important we set the Release build type
-          # consistently for piranha and all deps as well, otherwise
-          # horrible things will happen at runtime.
           cmake .. -G Ninja ^
                    -DMPPP_WITH_MPFR=yes ^
                    -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^

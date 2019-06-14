@@ -19,10 +19,10 @@ using namespace piranha;
 TEST_CASE("symbol_set_to_string_test")
 {
     REQUIRE(detail::to_string(symbol_set{}) == "{}");
-    REQUIRE(detail::to_string(symbol_set{"b"}) == "{'b'}");
-    REQUIRE(detail::to_string(symbol_set{"b", "a"}) == "{'a', 'b'}");
-    REQUIRE(detail::to_string(symbol_set{"c", "b", "a"}) == "{'a', 'b', 'c'}");
-    REQUIRE(detail::to_string(symbol_set{"a", "a", "a"}) == "{'a'}");
+    REQUIRE(detail::to_string(symbol_set{"b"}) == "{\"b\"}");
+    REQUIRE(detail::to_string(symbol_set{"b", "a"}) == "{\"a\", \"b\"}");
+    REQUIRE(detail::to_string(symbol_set{"c", "b", "a"}) == "{\"a\", \"b\", \"c\"}");
+    REQUIRE(detail::to_string(symbol_set{"a", "a", "a"}) == "{\"a\"}");
 }
 
 TEST_CASE("merge_symbol_sets_test")
