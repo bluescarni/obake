@@ -63,14 +63,14 @@ jobs:
           cd mppp
           mkdir build
           cd build
+          # NOTE: it's important we set the Release build type
+          # consistently for piranha and all deps as well, otherwise
+          # horrible things will happen at runtime.
           cmake .. -G Ninja ^
                    -DMPPP_WITH_MPFR=yes ^
                    -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
                    -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
                    -DCMAKE_CXX_STANDARD=17 ^
-                   # NOTE: it's important we set the Release build type
-                   # consistently for piranha and all deps as well, otherwise
-                   # horrible things will happen at runtime.
                    -DCMAKE_BUILD_TYPE=Release ^
                    -DCMAKE_CXX_COMPILER=clang-cl ^
                    -DCMAKE_C_COMPILER=clang-cl

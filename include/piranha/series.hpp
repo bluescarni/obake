@@ -501,10 +501,6 @@ struct series_rref_clearer {
 // TODO: document that moved-from series are destructible and assignable.
 // TODO: test singular iterators.
 // TODO: check construction of const iterators from mutable ones.
-// TODO: test construction of series with int coefficient from
-// series with double coefficient, to verify that coefficients
-// that get truncated to zero are not inserted.
-// TODO: test move semantics during insertion, generic construction.
 // TODO: test term annihilation during add/sub.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
@@ -769,6 +765,10 @@ public:
     {
         return m_log2_size;
     }
+    s_size_t _get_max_log2_size() const
+    {
+        return max_log2_size;
+    }
 
     bool is_single_cf() const
     {
@@ -974,8 +974,8 @@ private:
             }
             ++retval.m_idx;
         }
-        // NOTE: if all the tables are empty, or the segmented table
-        // is empty, m_idx is now set to the size of segmented table
+        // NOTE: if all the tables are empty, m_idx is now
+        // set to the size of segmented table
         // and the local iterator stays in its value-inited
         // state. That is, retval becomes the end iterator.
         return retval;
