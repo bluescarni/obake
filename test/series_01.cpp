@@ -325,7 +325,6 @@ inline constexpr auto series_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, 
 TEST_CASE("series_stream_insert_customization")
 {
     using pm_t = packed_monomial<int>;
-
     using s1_t = series<pm_t, rat_t, ns::tag00>;
 
     std::ostringstream oss;
@@ -340,4 +339,73 @@ TEST_CASE("series_stream_insert_customization")
     // Check the type returned by the streaming operator.
     REQUIRE(std::is_same_v<decltype(oss << s1_t{}), std::ostream &>);
     REQUIRE(std::is_same_v<decltype(oss << ns::s1_t{}), std::ostream &>);
+}
+
+struct foo {
+};
+
+TEST_CASE("series_add")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(!is_addable_v<s1_t, void>);
+    REQUIRE(!is_addable_v<void, s1_t>);
+    REQUIRE(!is_addable_v<s1_t, foo>);
+    REQUIRE(!is_addable_v<foo, s1_t>);
+
+    // Test rank-1 series vs scalar.
+    s1_t s1;
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, "4/5");
+
+    // Test with different scalar type,
+    // coefficient will be rat_t.
+    auto tmp = s1 + 2;
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{4, 5} || p.second == 2));
+    }
+
+    tmp = 2 + s1;
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{4, 5} || p.second == 2));
+    }
+
+    REQUIRE(std::is_same_v<s1_t, decltype(s1 + 2)>);
+    REQUIRE(std::is_same_v<s1_t, decltype(2 + s1)>);
+
+    // Test with same scalar type.
+    tmp = s1 + rat_t{2};
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{4, 5} || p.second == 2));
+    }
+
+    tmp = rat_t{2} + s1;
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{4, 5} || p.second == 2));
+    }
+
+    REQUIRE(std::is_same_v<s1_t, decltype(s1 + rat_t{2})>);
+    REQUIRE(std::is_same_v<s1_t, decltype(rat_t{2} + s1)>);
+
+    // Test with double, will return a series
+    // with double coefficient.
+    auto tmp2 = s1 + 2.;
+    REQUIRE(tmp2.size() == 2u);
+    for (const auto &p : tmp2) {
+        REQUIRE((p.second == static_cast<double>(rat_t{4, 5}) || p.second == 2.));
+    }
+
+    tmp2 = 2. + s1;
+    REQUIRE(tmp2.size() == 2u);
+    for (const auto &p : tmp2) {
+        REQUIRE((p.second == static_cast<double>(rat_t{4, 5}) || p.second == 2.));
+    }
+
+    REQUIRE(std::is_same_v<series<pm_t, double, void>, decltype(s1 + 2.)>);
+    REQUIRE(std::is_same_v<series<pm_t, double, void>, decltype(2. + s1)>);
 }

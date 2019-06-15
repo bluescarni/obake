@@ -1456,6 +1456,9 @@ constexpr int series_addsub_algorithm_impl()
     } else if constexpr (rank_T < rank_U) {
         // The rank of T is less than the rank of U.
         // Determine the coefficient type of the return series type.
+        // NOTE: for the determination of the return type, we use const references.
+        // In the implementation, we might also use rvalue refs (but we will check
+        // at compile time that we can use them, we will not assume it).
         using ret_cf_t
             = ::std::conditional_t<Sign,
                                    detected_t<add_t, ::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>,
@@ -1465,6 +1468,9 @@ constexpr int series_addsub_algorithm_impl()
             // The candidate coefficient type is valid. Establish
             // the series return type.
             using ret_t = series<series_key_t<rU>, ret_cf_t, series_tag_t<rU>>;
+            // NOTE: we'll have to construct the retval from U,
+            // and insert into it a term with coefficient constructed
+            // from T.
             return ::std::conjunction_v<is_constructible<ret_t, U>, is_constructible<ret_cf_t, T>> ? 1 : 0;
         } else {
             // The candidate return coefficient type
@@ -1491,8 +1497,8 @@ constexpr int series_addsub_algorithm_impl()
         using ret_cf_t = ::std::conditional_t<Sign, detected_t<add_t, const series_cf_t<rT> &, const series_cf_t<rU> &>,
                                               detected_t<sub_t, const series_cf_t<rT> &, const series_cf_t<rU> &>>;
 
-        if constexpr (::std::conjunction_v<is_cf<ret_cf_t>, ::std::is_same<series_key_t<rT>, series_key_t<rU>>,
-                                           ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>>) {
+        if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<rU>>,
+                                           ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>, is_cf<ret_cf_t>>) {
             // The return cf type is a valid coefficient, and the key and tag of the two series
             // match. Establish the series return type.
             using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
@@ -1500,20 +1506,20 @@ constexpr int series_addsub_algorithm_impl()
             // In the implementation, we may need to copy/move construct
             // ret_cf_t from the original coefficients. We will use a const
             // ref or a mutable rvalue ref, depending on T/U.
-            using cf1 = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
-                                             const series_cf_t<rT> &>;
-            using cf2 = ::std::conditional_t<is_mutable_rvalue_reference_v<U &&>, series_cf_t<rU> &&,
-                                             const series_cf_t<rU> &>;
+            using cf1_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
+                                               const series_cf_t<rT> &>;
+            using cf2_t = ::std::conditional_t<is_mutable_rvalue_reference_v<U &&>, series_cf_t<rU> &&,
+                                               const series_cf_t<rU> &>;
 
             return ::std::conjunction_v<
                        // We may need to construct a ret_t from T or U.
                        is_constructible<ret_t, T>, is_constructible<ret_t, U>,
                        // We may need to copy/move convert the original coefficients
                        // to ret_cf_t.
-                       is_constructible<ret_cf_t, cf1>, is_constructible<ret_cf_t, cf2>,
+                       is_constructible<ret_cf_t, cf1_t>, is_constructible<ret_cf_t, cf2_t>,
                        // We may need to merge new symbols into the original key type.
                        // NOTE: the key types of T and U must be identical at the moment,
-                       // so only 1 check is needed.
+                       // so checking only T's key type is enough.
                        // NOTE: the merging is done via a const ref.
                        is_symbols_mergeable_key<const series_key_t<rT> &>>
                        ? 3
@@ -1535,12 +1541,13 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
     using rU = remove_cvref_t<U>;
 
     constexpr auto algo = series_add_algorithm<T &&, U &&>;
+    static_assert(algo > 0);
 
     if constexpr (algo == 1) {
         // The rank of T is less than the rank of U.
         using ret_t = series<series_key_t<rU>,
-                             ::std::conditional_t<Sign, detected_t<add_t, const rT &, const series_cf_t<rU> &>,
-                                                  detected_t<sub_t, const rT &, const series_cf_t<rU> &>>,
+                             ::std::conditional_t<Sign, add_t<const rT &, const series_cf_t<rU> &>,
+                                                  sub_t<const rT &, const series_cf_t<rU> &>>,
                              series_tag_t<rU>>;
 
         ret_t retval(::std::forward<U>(y));
@@ -1563,8 +1570,8 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
     } else if constexpr (algo == 2) {
         // The rank of U is less than the rank of T.
         using ret_t = series<series_key_t<rT>,
-                             ::std::conditional_t<Sign, detected_t<add_t, const series_cf_t<rT> &, const rU &>,
-                                                  detected_t<sub_t, const series_cf_t<rT> &, const rU &>>,
+                             ::std::conditional_t<Sign, add_t<const series_cf_t<rT> &, const rU &>,
+                                                  sub_t<const series_cf_t<rT> &, const rU &>>,
                              series_tag_t<rT>>;
 
         ret_t retval(::std::forward<T>(x));
@@ -1578,11 +1585,10 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
         // The return type is a series with the same rank, tag and key,
         // and coefficient type resulting from the addition/subtraction of the
         // coefficient types in the two series.
-        using ret_t
-            = series<series_key_t<rT>,
-                     ::std::conditional_t<Sign, detected_t<add_t, const series_cf_t<rT> &, const series_cf_t<rU> &>,
-                                          detected_t<sub_t, const series_cf_t<rT> &, const series_cf_t<rU> &>>,
-                     series_tag_t<rT>>;
+        using ret_t = series<series_key_t<rT>,
+                             ::std::conditional_t<Sign, add_t<const series_cf_t<rT> &, const series_cf_t<rU> &>,
+                                                  sub_t<const series_cf_t<rT> &, const series_cf_t<rU> &>>,
+                             series_tag_t<rT>>;
 
         // Implementation of the addition/subtraction between
         // two series with identical symbol sets.
