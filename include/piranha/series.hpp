@@ -1256,26 +1256,35 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
         ::piranha::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
         const auto str_key = oss.str();
 
-        if (str_cf == "1" && str_key != "1") {
+        // Detect unitary cf/key.
+        const bool cf_is_one = (str_cf == "1"), cf_is_minus_one = (str_cf == "-1"), key_is_one = (str_key == "1");
+
+        if (cf_is_one && !key_is_one) {
             // Suppress the coefficient if it is "1"
             // and the key is not "1".
             str_cf.clear();
-        } else if (str_cf == "-1" && str_key != "1") {
+        } else if (cf_is_minus_one && !key_is_one) {
             // Turn the coefficient into a minus sign
             // if it is -1 and the key is not "1".
             str_cf = '-';
+        } else if (key_is_one && str_cf.size() > 2u && str_cf.front() == '(' && str_cf.back() == ')') {
+            // If the key is unitary, and the coefficient
+            // consists of something enclosed in round brackets,
+            // then remove them.
+            str_cf = ::std::string(str_cf.begin() + 1, str_cf.end() - 1);
         }
 
-        // Append the coefficient.
+        // Append the (possibly-transformed) coefficient.
         ret += str_cf;
-        if (!str_cf.empty() && str_cf != "-" && str_key != "1") {
+        if (!cf_is_one && !cf_is_minus_one && !key_is_one) {
             // If the abs(coefficient) is not unitary and
-            // the key is not "1", then we need the multiplication sign.
+            // the key is also not unitary, then we need the
+            // multiplication sign.
             ret += '*';
         }
 
         // Append the key, if it is not unitary.
-        if (str_key != "1") {
+        if (!key_is_one) {
             ret += str_key;
         }
 
