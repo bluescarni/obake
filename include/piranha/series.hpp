@@ -1598,6 +1598,8 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
             // Helper to merge the terms from the smaller series (rhs) into the return value
             // (which will be inited from the larger series, lhs).
             auto term_merger = [](auto &&lhs, auto &&rhs) {
+                assert(lhs.size() >= rhs.size());
+
                 using rhs_t = decltype(rhs);
 
                 // Build the retval.

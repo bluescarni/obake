@@ -348,6 +348,9 @@ TEST_CASE("series_add")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
+    using s1a_t = series<pm_t, double, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+    using s2a_t = series<pm_t, s1a_t, void>;
 
     REQUIRE(!is_addable_v<s1_t, void>);
     REQUIRE(!is_addable_v<void, s1_t>);
@@ -406,6 +409,50 @@ TEST_CASE("series_add")
         REQUIRE((p.second == static_cast<double>(rat_t{4, 5}) || p.second == 2.));
     }
 
-    REQUIRE(std::is_same_v<series<pm_t, double, void>, decltype(s1 + 2.)>);
-    REQUIRE(std::is_same_v<series<pm_t, double, void>, decltype(2. + s1)>);
+    REQUIRE(std::is_same_v<s1a_t, decltype(s1 + 2.)>);
+    REQUIRE(std::is_same_v<s1a_t, decltype(2. + s1)>);
+
+    // Test rank-1 vs rank-2.
+    s2_t s2;
+    s2.set_symbol_set(symbol_set{"a", "b", "c"});
+    s2.add_term(pm_t{-1, -2, -3}, "4/5");
+    s2.add_term(pm_t{1, 2, 3}, s1);
+
+    auto tmp3 = s2 + s1;
+    REQUIRE(tmp3.size() == 3u);
+    for (const auto &p : tmp3) {
+        REQUIRE((p.second.begin()->second == rat_t{4, 5} || p.second.begin()->second == 2));
+    }
+
+    tmp3 = s1 + s2;
+    REQUIRE(tmp3.size() == 3u);
+    for (const auto &p : tmp3) {
+        REQUIRE((p.second.begin()->second == rat_t{4, 5} || p.second.begin()->second == 2));
+    }
+
+    REQUIRE(std::is_same_v<s2_t, decltype(s1 + s2)>);
+    REQUIRE(std::is_same_v<s2_t, decltype(s2 + s1)>);
+
+    // Test case in which the return type is different from either
+    // input type.
+    s1a_t s1a;
+    s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1a.add_term(pm_t{10, 11, 12}, -3);
+
+    auto tmp4 = s1a + s2;
+    REQUIRE(tmp4.size() == 3u);
+    for (const auto &p : tmp3) {
+        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == 2.
+                 || p.second.begin()->second == -3.));
+    }
+
+    tmp4 = s2 + s1a;
+    REQUIRE(tmp4.size() == 3u);
+    for (const auto &p : tmp3) {
+        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == 2.
+                 || p.second.begin()->second == -3.));
+    }
+
+    REQUIRE(std::is_same_v<s2a_t, decltype(s1a + s2)>);
+    REQUIRE(std::is_same_v<s2a_t, decltype(s2 + s1a)>);
 }
