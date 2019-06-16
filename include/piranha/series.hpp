@@ -1660,15 +1660,18 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
                 return retval;
             };
 
+            using a_t = decltype(a);
+            using b_t = decltype(b);
+
             if (a.size() >= b.size()) {
-                return term_merger(::std::forward<decltype(a)>(a), ::std::forward<decltype(b)>(b));
+                return term_merger(::std::forward<a_t>(a), ::std::forward<b_t>(b));
             } else {
                 if constexpr (Sign) {
-                    return term_merger(::std::forward<decltype(b)>(b), ::std::forward<decltype(a)>(a));
+                    return term_merger(::std::forward<b_t>(b), ::std::forward<a_t>(a));
                 } else {
                     // If we flipped around the operands and we are subtracting, we'll have
                     // to negate the result before returning it.
-                    auto retval = term_merger(::std::forward<decltype(b)>(b), ::std::forward<decltype(a)>(a));
+                    auto retval = term_merger(::std::forward<b_t>(b), ::std::forward<a_t>(a));
                     detail::series_default_negate_impl(retval);
                     return retval;
                 }
@@ -1682,11 +1685,6 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
         } else {
             // Merge the symbol sets.
             const auto mss = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
-
-            // Create the converted/merged counterparts of x and y.
-            ret_t a, b;
-            a.set_symbol_set(::std::get<0>(mss));
-            b.set_symbol_set(::std::get<0>(mss));
 
             // Helper to transform x and y into ret_t, while
             // at the same time extending the keys
@@ -1732,6 +1730,11 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
                     }
                 }
             };
+
+            // Create the converted/merged counterparts of x and y.
+            ret_t a, b;
+            a.set_symbol_set(::std::get<0>(mss));
+            b.set_symbol_set(::std::get<0>(mss));
             converter(a, ::std::forward<T>(x), ::std::get<1>(mss));
             converter(b, ::std::forward<U>(y), ::std::get<2>(mss));
 
