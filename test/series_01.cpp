@@ -19,6 +19,7 @@
 #include <utility>
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <piranha/config.hpp>
 #include <piranha/math/is_zero.hpp>
@@ -351,6 +352,7 @@ TEST_CASE("series_add")
     using s1a_t = series<pm_t, double, void>;
     using s2_t = series<pm_t, s1_t, void>;
     using s2a_t = series<pm_t, s1a_t, void>;
+    using s3_t = series<pm_t, s2_t, void>;
 
     REQUIRE(!is_addable_v<s1_t, void>);
     REQUIRE(!is_addable_v<void, s1_t>);
@@ -455,4 +457,131 @@ TEST_CASE("series_add")
 
     REQUIRE(std::is_same_v<s2a_t, decltype(s1a + s2)>);
     REQUIRE(std::is_same_v<s2a_t, decltype(s2 + s1a)>);
+
+    // Polynomial-like test.
+    s1_t x;
+    x.set_symbol_set(symbol_set{"x"});
+    x.add_term(pm_t{1}, 1);
+
+    s2_t y;
+    y.set_symbol_set(symbol_set{"y"});
+    y.add_term(pm_t{1}, 2);
+
+    s3_t z;
+    z.set_symbol_set(symbol_set{"z"});
+    z.add_term(pm_t{1}, 3);
+
+    auto tmp5 = x + y + z;
+    REQUIRE(tmp5.size() == 2u);
+    for (const auto &p1 : tmp5) {
+        REQUIRE((p1.second.size() == 1u || p1.second.size() == 2u));
+        REQUIRE((p1.first == pm_t{0} || p1.first == pm_t{1}));
+        for (const auto &p2 : p1.second) {
+            REQUIRE(p2.second.size() == 1u);
+            REQUIRE((p2.first == pm_t{0} || p2.first == pm_t{1}));
+            for (const auto &p3 : p2.second) {
+                REQUIRE((p3.second == 1 || p3.second == 2 || p3.second == 3));
+            }
+        }
+    }
+
+    // NOTE: this will check that round brackets
+    // are elided when the key is unitary.
+    REQUIRE(!boost::contains(boost::lexical_cast<std::string>(tmp5), ")"));
+    REQUIRE(!boost::contains(boost::lexical_cast<std::string>(tmp5), "("));
+
+    REQUIRE(std::is_same_v<s3_t, decltype(x + y + z)>);
+    REQUIRE(std::is_same_v<s3_t, decltype(y + z + x)>);
+    REQUIRE(std::is_same_v<s3_t, decltype(y + x + z)>);
+    REQUIRE(std::is_same_v<s3_t, decltype(z + y + x)>);
+
+    // Same rank.
+    // Try with various segmentations.
+    for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
+        for (auto s_idx2 : {0u, 1u, 2u, 4u}) {
+            // Test identical symbol sets.
+            s1_t a;
+            a.set_n_segments(s_idx1);
+            a.set_symbol_set(symbol_set{"x", "y", "z"});
+            a.add_term(pm_t{1, 2, 3}, "4/5");
+
+            s1_t b;
+            b.set_n_segments(s_idx2);
+            b.set_symbol_set(symbol_set{"x", "y", "z"});
+            b.add_term(pm_t{4, 5, 6}, "-4/5");
+
+            auto c = a + b;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || p.second == rat_t{-4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6}));
+            }
+
+            c = b + a;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || p.second == rat_t{-4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6}));
+            }
+
+            // Add further terms to a.
+            a.add_term(pm_t{-1, -2, -3}, 2);
+            a.add_term(pm_t{-4, -5, -6}, -2);
+
+            c = a + b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            c = b + a;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            // With moves.
+            auto a_copy(a);
+            auto b_copy(b);
+
+            c = std::move(a) + b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            a = a_copy;
+
+            c = a + std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            b = b_copy;
+
+            c = std::move(a) + std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            a = a_copy;
+            b = b_copy;
+        }
+    }
 }
