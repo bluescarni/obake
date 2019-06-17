@@ -1689,11 +1689,16 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
             // the identical symbol sets case above.
             assert(!ins_map_x.empty() || !ins_map_y.empty());
 
-            // Helper to transform x and y into ret_t, while
-            // at the same time extending the keys
-            // with the insertion maps from mss.
-            auto converter = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
+            // Helper to extend the keys of "from" with the symbol insertion map ins_map.
+            // The new series will be written to "to". The coefficient type of "to"
+            // may be different from the coefficient type of "from", in which case a coefficient
+            // conversion will take place.
+            auto sym_extender = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
                 using from_t = decltype(from);
+
+                // NOTE: we assume that this helper is never
+                // invoked with an empty insertion map.
+                assert(!ins_map.empty());
 
                 // We may end up moving coefficients from "from" in the conversion to "to".
                 // Make sure we will clear "from" out properly.
@@ -1734,12 +1739,41 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
                 }
             };
 
-            // Create the converted/merged counterparts of x and y.
+            // Create a flag indicating empty insertion maps:
+            // - 0 -> both non-empty,
+            // - 1 -> x is empty,
+            // - 2 -> y is empty.
+            // (Cannot both be empty as we handled identical symbol sets already).
+            const auto flag
+                = static_cast<unsigned>(ins_map_x.empty()) + (static_cast<unsigned>(ins_map_y.empty()) << 1);
+
+            switch (flag) {
+                case 1u: {
+                    // x already has the correct symbol
+                    // set, extend only y.
+                    ret_t b;
+                    b.set_symbol_set(merged_ss);
+                    sym_extender(b, ::std::forward<U>(y), ins_map_y);
+
+                    return merge_with_identical_ss(::std::forward<T>(x), ::std::move(b));
+                }
+                case 2u: {
+                    // y already has the correct symbol
+                    // set, extend only x.
+                    ret_t a;
+                    a.set_symbol_set(merged_ss);
+                    sym_extender(a, ::std::forward<T>(x), ins_map_x);
+
+                    return merge_with_identical_ss(::std::move(a), ::std::forward<U>(y));
+                }
+            }
+
+            // Both x and y need to be extended.
             ret_t a, b;
             a.set_symbol_set(merged_ss);
             b.set_symbol_set(merged_ss);
-            converter(a, ::std::forward<T>(x), ins_map_x);
-            converter(b, ::std::forward<U>(y), ins_map_y);
+            sym_extender(a, ::std::forward<T>(x), ins_map_x);
+            sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
             // Run the implementation moving in the converted series.
             return merge_with_identical_ss(::std::move(a), ::std::move(b));
