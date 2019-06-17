@@ -13,15 +13,19 @@
 
 #include <initializer_list>
 #include <ostream>
+#include <random>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/ignore.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
@@ -35,6 +39,10 @@
 using rat_t = mppp::rational<1>;
 
 using namespace piranha;
+
+std::mt19937 rng;
+
+const auto ntrials = 200;
 
 TEST_CASE("series_is_single_cf")
 {
@@ -485,7 +493,7 @@ TEST_CASE("series_add")
         }
     }
 
-    // NOTE: this will check that round brackets
+    // NOTE: this will check that round brackets in the stream output
     // are elided when the key is unitary.
     REQUIRE(!boost::contains(boost::lexical_cast<std::string>(tmp5), ")"));
     REQUIRE(!boost::contains(boost::lexical_cast<std::string>(tmp5), "("));
@@ -637,6 +645,167 @@ TEST_CASE("series_add")
                          || p.first == pm_t{-4, -5, -6}));
             }
             ax = ax_copy;
+            b = b_copy;
+
+            // Test with different symbol sets.
+
+            // Some random testing. Here we'll be able
+            // to verify only the symbol set and the series' sizes
+            // (however the asserts in the code will provide
+            // more checking).
+            for (auto i = 0; i < ntrials; ++i) {
+                std::uniform_int_distribution<int> bdist(0, 2);
+
+                symbol_set ss1, ss2, mss;
+                for (auto j = 0; j < 6; ++j) {
+                    const auto tmp = bdist(rng);
+                    if (tmp == 0) {
+                        ss1.insert(ss1.end(), "x" + std::to_string(j));
+                    } else if (tmp == 1) {
+                        ss2.insert(ss2.end(), "x" + std::to_string(j));
+                    } else {
+                        ss1.insert(ss1.end(), "x" + std::to_string(j));
+                        ss2.insert(ss2.end(), "x" + std::to_string(j));
+                    }
+                    mss.insert(mss.end(), "x" + std::to_string(j));
+                }
+
+                std::uniform_int_distribution<int> edist(-3, 3), cdist(0, 10);
+                std::uniform_int_distribution<unsigned> sdist(0, 6);
+
+                a = s1_t{};
+                a.set_n_segments(s_idx1);
+                a.set_symbol_set(ss1);
+                const auto size1 = sdist(rng);
+                for (unsigned j = 0; j < size1; ++j) {
+                    std::vector<int> tmp;
+                    for (const auto &_ : ss1) {
+                        detail::ignore(_);
+                        tmp.push_back(edist(rng));
+                    }
+                    a.add_term(pm_t(tmp), cdist(rng));
+                }
+
+                b = s1_t{};
+                b.set_n_segments(s_idx2);
+                b.set_symbol_set(ss2);
+                const auto size2 = sdist(rng);
+                for (unsigned j = 0; j < size2; ++j) {
+                    std::vector<int> tmp;
+                    for (const auto &_ : ss2) {
+                        detail::ignore(_);
+                        tmp.push_back(edist(rng));
+                    }
+                    b.add_term(pm_t(tmp), cdist(rng));
+                }
+
+                c = a + b;
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+
+                a_copy = a;
+                b_copy = b;
+
+                // Try with moves too.
+                c = std::move(a) + b;
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+                a = a_copy;
+
+                c = a + std::move(b);
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+                b = b_copy;
+
+                c = std::move(a) + std::move(b);
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+                a = a_copy;
+                b = b_copy;
+            }
+
+            // Shorter tests in which we do more checking.
+            a = s1_t{};
+            a.set_n_segments(s_idx1);
+            a.set_symbol_set(symbol_set{"x", "y", "z", "zz"});
+            a.add_term(pm_t{1, 2, 3, -1}, "4/5");
+
+            b = s1_t{};
+            b.set_n_segments(s_idx2);
+            b.set_symbol_set(symbol_set{"x", "y", "z"});
+            b.add_term(pm_t{4, 5, 6}, "-4/5");
+
+            c = a + b;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || p.second == rat_t{-4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0}));
+            }
+
+            c = b + a;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || p.second == rat_t{-4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0}));
+            }
+
+            // Add further terms to a.
+            a.add_term(pm_t{-1, -2, -3, -4}, 2);
+            a.add_term(pm_t{-4, -5, -6, -7}, -2);
+
+            c = a + b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+
+            c = b + a;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+
+            // With moves.
+            a_copy = a;
+            b_copy = b;
+
+            c = std::move(a) + b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+            a = a_copy;
+
+            c = a + std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+            b = b_copy;
+
+            c = std::move(a) + std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+            a = a_copy;
             b = b_copy;
         }
     }

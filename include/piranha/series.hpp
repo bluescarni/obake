@@ -1775,7 +1775,6 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
             sym_extender(a, ::std::forward<T>(x), ins_map_x);
             sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-            // Run the implementation moving in the converted series.
             return merge_with_identical_ss(::std::move(a), ::std::move(b));
         }
     }
