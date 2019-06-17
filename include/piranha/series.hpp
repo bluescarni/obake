@@ -1682,7 +1682,12 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
             return merge_with_identical_ss(::std::forward<T>(x), ::std::forward<U>(y));
         } else {
             // Merge the symbol sets.
-            const auto mss = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+            const auto &[merged_ss, ins_map_x, ins_map_y]
+                = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+
+            // The insertion maps cannot be both empty, as we already handled
+            // the identical symbol sets case above.
+            assert(!ins_map_x.empty() || !ins_map_y.empty());
 
             // Helper to transform x and y into ret_t, while
             // at the same time extending the keys
@@ -1731,10 +1736,10 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
 
             // Create the converted/merged counterparts of x and y.
             ret_t a, b;
-            a.set_symbol_set(::std::get<0>(mss));
-            b.set_symbol_set(::std::get<0>(mss));
-            converter(a, ::std::forward<T>(x), ::std::get<1>(mss));
-            converter(b, ::std::forward<U>(y), ::std::get<2>(mss));
+            a.set_symbol_set(merged_ss);
+            b.set_symbol_set(merged_ss);
+            converter(a, ::std::forward<T>(x), ins_map_x);
+            converter(b, ::std::forward<U>(y), ins_map_y);
 
             // Run the implementation moving in the converted series.
             return merge_with_identical_ss(::std::move(a), ::std::move(b));
