@@ -658,10 +658,10 @@ TEST_CASE("series_add")
 
                 symbol_set ss1, ss2, mss;
                 for (auto j = 0; j < 6; ++j) {
-                    const auto tmp = bdist(rng);
-                    if (tmp == 0) {
+                    const auto btmp = bdist(rng);
+                    if (btmp == 0) {
                         ss1.insert(ss1.end(), "x" + std::to_string(j));
-                    } else if (tmp == 1) {
+                    } else if (btmp == 1) {
                         ss2.insert(ss2.end(), "x" + std::to_string(j));
                     } else {
                         ss1.insert(ss1.end(), "x" + std::to_string(j));
@@ -678,12 +678,12 @@ TEST_CASE("series_add")
                 a.set_symbol_set(ss1);
                 const auto size1 = sdist(rng);
                 for (unsigned j = 0; j < size1; ++j) {
-                    std::vector<int> tmp;
+                    std::vector<int> tmp_v;
                     for (const auto &_ : ss1) {
                         detail::ignore(_);
-                        tmp.push_back(edist(rng));
+                        tmp_v.push_back(edist(rng));
                     }
-                    a.add_term(pm_t(tmp), cdist(rng));
+                    a.add_term(pm_t(tmp_v), cdist(rng));
                 }
 
                 b = s1_t{};
@@ -691,12 +691,12 @@ TEST_CASE("series_add")
                 b.set_symbol_set(ss2);
                 const auto size2 = sdist(rng);
                 for (unsigned j = 0; j < size2; ++j) {
-                    std::vector<int> tmp;
+                    std::vector<int> tmp_v;
                     for (const auto &_ : ss2) {
                         detail::ignore(_);
-                        tmp.push_back(edist(rng));
+                        tmp_v.push_back(edist(rng));
                     }
-                    b.add_term(pm_t(tmp), cdist(rng));
+                    b.add_term(pm_t(tmp_v), cdist(rng));
                 }
 
                 c = a + b;
