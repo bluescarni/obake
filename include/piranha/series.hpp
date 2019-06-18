@@ -830,6 +830,13 @@ private:
         {
         }
 
+        // Init with a pointer to the segmented table, an index and a local iterator.
+        // Used in the find() implementations.
+        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_t idx, local_it_t<T> local_it)
+            : m_s_table_ptr(s_table_ptr), m_idx(idx), m_local_it(local_it)
+        {
+        }
+
         // Default the copy/move ctors.
         iterator_impl(const iterator_impl &) = default;
         iterator_impl(iterator_impl &&) = default;
@@ -1085,6 +1092,62 @@ public:
             t.clear();
         }
         m_symbol_set.clear();
+    }
+
+private:
+    // Implementation of find(), for both the const and mutable
+    // variants.
+    template <typename S>
+    static auto find_impl(S &s, const K &k)
+    {
+        // The return type will be iterator/const_iterator, depending on the
+        // constness of S.
+        using ret_it_t = ::std::conditional_t<::std::is_const_v<S>, const_iterator, iterator>;
+
+        // Helper to find k in a single table belonging
+        // to a segmented table st at index idx.
+        auto find_single_table = [&s, &k](auto &st, s_size_t idx) {
+            assert(idx < st.size());
+
+            // Get out a reference to the table.
+            auto &t = st[idx];
+
+            // Find k in the table.
+            const auto local_ret = t.find(k);
+
+            if (local_ret == t.end()) {
+                // k not found, return the end iterator of
+                // the series.
+                return s.end();
+            } else {
+                // k found, build the corresponding
+                // series iterator.
+                return ret_it_t(&st, idx, local_ret);
+            }
+        };
+
+        const auto log2_size = s.m_log2_size;
+
+        if (log2_size == 0u) {
+            // Single table case.
+            return find_single_table(s.m_s_table, 0);
+        } else {
+            // Segmented table case.
+            const auto k_hash = ::piranha::hash(k);
+            const auto idx = static_cast<s_size_t>(k_hash & (log2_size - 1u));
+            return find_single_table(s.m_s_table, idx);
+        }
+    }
+
+public:
+    // Lookup.
+    const_iterator find(const K &k) const
+    {
+        return series::find_impl(*this, k);
+    }
+    iterator find(const K &k)
+    {
+        return series::find_impl(*this, k);
     }
 
 private:
@@ -1880,6 +1943,126 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x - y);
+
+#if 0
+
+namespace customisation
+{
+
+// External customisation point for piranha::series_equal_to().
+template <typename T, typename U
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_equal_to = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U>
+constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_equal_to<T &&, U &&>)(::std::forward<T>(x),
+                                                                             ::std::forward<U>(y)));
+
+// Unqualified function call implementation.
+template <typename T, typename U>
+constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U /*, ::std::enable_if_t<series_equal_to_algorithm<T &&, U &&> != 0, int> = 0*/>
+constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
+{
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+
+    constexpr auto algo = series_equal_to_algorithm<T &&, U &&>;
+    static_assert(algo > 0);
+
+    // Helper to compare series of different rank
+    // (lhs has higher rank than rhs).
+    auto diff_rank_cmp = [](const auto &lhs, const auto &rhs) {
+        switch (lhs.size()) {
+            case 0u:
+                // An empty series is considered equal to zero.
+                return ::piranha::is_zero(rhs);
+            case 1u: {
+                // lhs has a single term: if its key is unitary
+                // and its coefficient equal to rhs, return true,
+                // otherwise return false.
+                const auto it = lhs.begin();
+                const auto key_is_one = ::piranha::key_is_one(it->first, lhs.get_symbol_set());
+                return key_is_one && it->second == rhs;
+            }
+            default:
+                // lhs has more than 1 term, return false.
+                return false;
+        }
+    };
+
+    if constexpr (algo == 1) {
+        // The rank of T is less than the rank of U.
+        return diff_rank_cmp(y, x);
+    } else if constexpr (algo == 2) {
+        // The rank of U is less than the rank of T.
+        return diff_rank_cmp(x, y);
+    } else {
+        // Two series with equal rank, same key/tag, possibly
+        // different coefficient type.
+
+        // Helper to compare series with identical symbol sets.
+        auto equal_rank_cmp = [](const auto &lhs, const auto &rhs) {
+            assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+
+            // If the series have different sizes,
+            // they cannot be equal.
+            if (lhs.size() != rhs.size()) {
+                return false;
+            }
+
+            for (const auto &p : lhs) {
+            }
+        };
+    }
+}
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct series_equal_to_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
+        detail::series_equal_to_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+};
+
+inline constexpr auto series_equal_to = series_equal_to_msvc{};
+
+#else
+
+// NOTE: forcibly cast to bool the return value, so that if the selected implementation
+// returns a type which is not convertible to bool, this call will SFINAE out.
+inline constexpr auto series_equal_to =
+    [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::series_equal_to_impl(
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
+
+#endif
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T> || CvrSeries<U>
+#else
+template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
+#endif
+constexpr auto operator==(T &&x, U &&y)
+    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
+
+#endif
 
 } // namespace piranha
 
