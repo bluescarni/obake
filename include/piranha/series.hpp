@@ -1262,13 +1262,12 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
         detail::series_stream_single_term(ret, str_cf, str_key);
 
         // Increase the counters.
-        ++it;
-        if (it != end) {
+        ++count;
+        if (++it != end) {
             // Prepare the plus for the next term
             // if we are not at the end.
             ret += '+';
         }
-        ++count;
     }
 
     // If we reached the limit without printing all terms in the series, print the ellipsis.
