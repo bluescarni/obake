@@ -35,6 +35,7 @@
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/tcast.hpp>
 #include <piranha/detail/to_string.hpp>
+#include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_is_compatible.hpp>
@@ -1218,6 +1219,9 @@ inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
 namespace detail
 {
 
+// Implementation of the default streaming for a single term.
+PIRANHA_DLL_PUBLIC void series_stream_single_term(::std::string &, ::std::string &, const ::std::string &);
+
 // Implementation of the default streaming to os of a series' terms.
 template <typename T>
 inline void series_stream_terms_impl(::std::ostream &os, const T &s)
@@ -1254,37 +1258,8 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
         ::piranha::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
         const auto str_key = oss.str();
 
-        // Detect unitary cf/key.
-        const bool cf_is_one = (str_cf == "1"), cf_is_minus_one = (str_cf == "-1"), key_is_one = (str_key == "1");
-
-        if (cf_is_one && !key_is_one) {
-            // Suppress the coefficient if it is "1"
-            // and the key is not "1".
-            str_cf.clear();
-        } else if (cf_is_minus_one && !key_is_one) {
-            // Turn the coefficient into a minus sign
-            // if it is -1 and the key is not "1".
-            str_cf = '-';
-        } else if (key_is_one && str_cf.size() > 2u && str_cf.front() == '(' && str_cf.back() == ')') {
-            // If the key is unitary, and the coefficient
-            // consists of something enclosed in round brackets,
-            // then remove them.
-            str_cf = ::std::string(str_cf.begin() + 1, str_cf.end() - 1);
-        }
-
-        // Append the (possibly-transformed) coefficient.
-        ret += str_cf;
-        if (!cf_is_one && !cf_is_minus_one && !key_is_one) {
-            // If the abs(coefficient) is not unitary and
-            // the key is also not unitary, then we need the
-            // multiplication sign.
-            ret += '*';
-        }
-
-        // Append the key, if it is not unitary.
-        if (!key_is_one) {
-            ret += str_key;
-        }
+        // Print the term.
+        detail::series_stream_single_term(ret, str_cf, str_key);
 
         // Increase the counters.
         ++it;

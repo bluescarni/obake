@@ -134,6 +134,7 @@ set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/series.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
 )
 
