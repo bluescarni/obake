@@ -841,9 +841,11 @@ private:
             assert(local_it != (*s_table_ptr)[idx].end());
         }
 
-        // Default the copy/move ctors.
+        // Default the copy/move ctors/assignment operators.
         iterator_impl(const iterator_impl &) = default;
         iterator_impl(iterator_impl &&) = default;
+        iterator_impl &operator=(const iterator_impl &) = default;
+        iterator_impl &operator=(iterator_impl &&) = default;
 
         // Implicit converting ctor from another specialisation. This is
         // used to construct a const iterator from a mutable one.

@@ -1471,6 +1471,10 @@ TEST_CASE("series_iterators")
     REQUIRE(std::is_same_v<const std::pair<const pm_t, rat_t> &, decltype(*(static_cast<const s1_t &>(s1).begin()))>);
     REQUIRE(std::is_same_v<const std::pair<const pm_t, rat_t> &, decltype(*(s1.cbegin()))>);
     REQUIRE(std::is_same_v<std::pair<const pm_t, rat_t> &, decltype(*(s1.begin()))>);
+
+    // Check that they are input iterators.
+    REQUIRE(is_input_iterator_v<s1_t::iterator>);
+    REQUIRE(is_input_iterator_v<s1_t::const_iterator>);
 }
 
 #if 0
