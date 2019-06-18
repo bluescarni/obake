@@ -963,10 +963,14 @@ public:
 private:
     // Abstract out the begin implementation to accommodate
     // const and non-const variants.
-    template <typename It, typename STable>
-    static It begin_impl(STable &c)
+    template <typename STable>
+    static auto begin_impl(STable &c)
     {
-        It retval(&c, 0);
+        // The return type will be iterator/const_iterator,
+        // depending on the constness of STable.
+        using ret_it_t = ::std::conditional_t<::std::is_const_v<STable>, const_iterator, iterator>;
+
+        ret_it_t retval(&c, 0);
         // Look for a non-empty table.
         for (auto &table : c) {
             if (!table.empty()) {
@@ -975,6 +979,7 @@ private:
             }
             ++retval.m_idx;
         }
+
         // NOTE: if all the tables are empty, m_idx is now
         // set to the size of segmented table
         // and the local iterator stays in its value-inited
@@ -985,7 +990,7 @@ private:
 public:
     const_iterator begin() const noexcept
     {
-        return series::begin_impl<const_iterator>(m_s_table);
+        return series::begin_impl(m_s_table);
     }
     const_iterator end() const noexcept
     {
@@ -1003,7 +1008,7 @@ public:
     }
     iterator begin() noexcept
     {
-        return series::begin_impl<iterator>(m_s_table);
+        return series::begin_impl(m_s_table);
     }
     iterator end() noexcept
     {
