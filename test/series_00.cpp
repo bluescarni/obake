@@ -1403,6 +1403,10 @@ TEST_CASE("series_iterators")
 
     // Require we can construct a const iterator from a mutable one.
     REQUIRE(cit_t(it_t{}) == cit_t{});
+    // Require we can assign a mutable iterator to a const one.
+    cit_t cit2{};
+    cit2 = it1;
+    REQUIRE(cit2 == it1);
 
     {
         // Swap tests.
