@@ -835,6 +835,10 @@ private:
         explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_t idx, local_it_t<T> local_it)
             : m_s_table_ptr(s_table_ptr), m_idx(idx), m_local_it(local_it)
         {
+            // NOTE: make sure this is never inited with the end
+            // iterator of a table, as this is not the intended
+            // use case.
+            assert(local_it != (*s_table_ptr)[idx].end());
         }
 
         // Default the copy/move ctors.
