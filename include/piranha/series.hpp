@@ -716,7 +716,7 @@ public:
             // Check that, in a segmented table, all terms are in the table they
             // belong to, according to the first-level hash.
             if (m_log2_size > 0u) {
-                for (decltype(m_s_table.size()) i = 0u; i < m_s_table.size(); ++i) {
+                for (s_size_t i = 0; i < m_s_table.size(); ++i) {
                     for (const auto &p : m_s_table[i]) {
                         assert((::piranha::hash(static_cast<const K &>(p.first)) & (m_log2_size - 1u)) == i);
                     }
