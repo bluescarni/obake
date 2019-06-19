@@ -431,13 +431,13 @@ TEST_CASE("series_add")
     auto tmp3 = s2 + s1;
     REQUIRE(tmp3.size() == 3u);
     for (const auto &p : tmp3) {
-        REQUIRE((p.second.begin()->second == rat_t{4, 5} || p.second.begin()->second == 2));
+        REQUIRE((p.second.begin()->second == rat_t{4, 5}));
     }
 
     tmp3 = s1 + s2;
     REQUIRE(tmp3.size() == 3u);
     for (const auto &p : tmp3) {
-        REQUIRE((p.second.begin()->second == rat_t{4, 5} || p.second.begin()->second == 2));
+        REQUIRE((p.second.begin()->second == rat_t{4, 5}));
     }
 
     REQUIRE(std::is_same_v<s2_t, decltype(s1 + s2)>);
@@ -451,16 +451,14 @@ TEST_CASE("series_add")
 
     auto tmp4 = s1a + s2;
     REQUIRE(tmp4.size() == 3u);
-    for (const auto &p : tmp3) {
-        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == 2.
-                 || p.second.begin()->second == -3.));
+    for (const auto &p : tmp4) {
+        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == -3.));
     }
 
     tmp4 = s2 + s1a;
     REQUIRE(tmp4.size() == 3u);
-    for (const auto &p : tmp3) {
-        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == 2.
-                 || p.second.begin()->second == -3.));
+    for (const auto &p : tmp4) {
+        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == -3.));
     }
 
     REQUIRE(std::is_same_v<s2a_t, decltype(s1a + s2)>);
@@ -826,6 +824,486 @@ TEST_CASE("series_add")
             REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
             for (const auto &p : c) {
                 REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+            a = a_copy;
+            b = b_copy;
+        }
+    }
+}
+
+TEST_CASE("series_sub")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using s1a_t = series<pm_t, double, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+    using s2a_t = series<pm_t, s1a_t, void>;
+    using s3_t = series<pm_t, s2_t, void>;
+
+    REQUIRE(!is_subtractable_v<s1_t, void>);
+    REQUIRE(!is_subtractable_v<void, s1_t>);
+    REQUIRE(!is_subtractable_v<s1_t, foo>);
+    REQUIRE(!is_subtractable_v<foo, s1_t>);
+
+    // Test rank-1 series vs scalar.
+    s1_t s1;
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, "4/5");
+
+    // Test with different scalar type,
+    // coefficient will be rat_t.
+    auto tmp = s1 - 2;
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{4, 5} || p.second == -2));
+    }
+
+    tmp = 2 - s1;
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{-4, 5} || p.second == 2));
+    }
+
+    REQUIRE(std::is_same_v<s1_t, decltype(s1 - 2)>);
+    REQUIRE(std::is_same_v<s1_t, decltype(2 - s1)>);
+
+    // Test with same scalar type.
+    tmp = s1 - rat_t{2};
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{4, 5} || p.second == -2));
+    }
+
+    tmp = rat_t{2} - s1;
+    REQUIRE(tmp.size() == 2u);
+    for (const auto &p : tmp) {
+        REQUIRE((p.second == rat_t{-4, 5} || p.second == 2));
+    }
+
+    REQUIRE(std::is_same_v<s1_t, decltype(s1 - rat_t{2})>);
+    REQUIRE(std::is_same_v<s1_t, decltype(rat_t{2} - s1)>);
+
+    // Test with double, will return a series
+    // with double coefficient.
+    auto tmp2 = s1 - 2.;
+    REQUIRE(tmp2.size() == 2u);
+    for (const auto &p : tmp2) {
+        REQUIRE((p.second == static_cast<double>(rat_t{4, 5}) || p.second == -2.));
+    }
+
+    tmp2 = 2. - s1;
+    REQUIRE(tmp2.size() == 2u);
+    for (const auto &p : tmp2) {
+        REQUIRE((p.second == static_cast<double>(rat_t{-4, 5}) || p.second == 2.));
+    }
+
+    REQUIRE(std::is_same_v<s1a_t, decltype(s1 - 2.)>);
+    REQUIRE(std::is_same_v<s1a_t, decltype(2. - s1)>);
+
+    // Test rank-1 vs rank-2.
+    s2_t s2;
+    s2.set_symbol_set(symbol_set{"a", "b", "c"});
+    s2.add_term(pm_t{-1, -2, -3}, "4/5");
+    s2.add_term(pm_t{1, 2, 3}, s1);
+
+    auto tmp3 = s2 - s1;
+    REQUIRE(tmp3.size() == 3u);
+    for (const auto &p : tmp3) {
+        REQUIRE((abs(p.second.begin()->second) == rat_t{4, 5}));
+    }
+
+    tmp3 = s1 - s2;
+    REQUIRE(tmp3.size() == 3u);
+    for (const auto &p : tmp3) {
+        REQUIRE((abs(p.second.begin()->second) == rat_t{4, 5}));
+    }
+
+    REQUIRE(std::is_same_v<s2_t, decltype(s1 - s2)>);
+    REQUIRE(std::is_same_v<s2_t, decltype(s2 - s1)>);
+
+    // Test case in which the return type is different from either
+    // input type.
+    s1a_t s1a;
+    s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1a.add_term(pm_t{10, 11, 12}, -3);
+
+    auto tmp4 = s1a - s2;
+    REQUIRE(tmp4.size() == 3u);
+    for (const auto &p : tmp4) {
+        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{-4, 5}) || p.second.begin()->second == -3.));
+    }
+
+    tmp4 = s2 - s1a;
+    REQUIRE(tmp4.size() == 3u);
+    for (const auto &p : tmp4) {
+        REQUIRE((p.second.begin()->second == static_cast<double>(rat_t{4, 5}) || p.second.begin()->second == 3.));
+    }
+
+    REQUIRE(std::is_same_v<s2a_t, decltype(s1a - s2)>);
+    REQUIRE(std::is_same_v<s2a_t, decltype(s2 - s1a)>);
+
+    // Polynomial-like test.
+    s1_t x;
+    x.set_symbol_set(symbol_set{"x"});
+    x.add_term(pm_t{1}, 1);
+
+    s2_t y;
+    y.set_symbol_set(symbol_set{"y"});
+    y.add_term(pm_t{1}, 2);
+
+    s3_t z;
+    z.set_symbol_set(symbol_set{"z"});
+    z.add_term(pm_t{1}, 3);
+
+    auto tmp5 = x - y - z;
+    REQUIRE(tmp5.size() == 2u);
+    for (const auto &p1 : tmp5) {
+        REQUIRE((p1.second.size() == 1u || p1.second.size() == 2u));
+        REQUIRE((p1.first == pm_t{0} || p1.first == pm_t{1}));
+        for (const auto &p2 : p1.second) {
+            REQUIRE(p2.second.size() == 1u);
+            REQUIRE((p2.first == pm_t{0} || p2.first == pm_t{1}));
+            for (const auto &p3 : p2.second) {
+                REQUIRE((p3.second == 1 || p3.second == -2 || p3.second == -3));
+            }
+        }
+    }
+
+    // NOTE: this will check that round brackets in the stream output
+    // are elided when the key is unitary.
+    REQUIRE(!boost::contains(boost::lexical_cast<std::string>(tmp5), ")"));
+    REQUIRE(!boost::contains(boost::lexical_cast<std::string>(tmp5), "("));
+
+    REQUIRE(std::is_same_v<s3_t, decltype(x - y - z)>);
+    REQUIRE(std::is_same_v<s3_t, decltype(y - z - x)>);
+    REQUIRE(std::is_same_v<s3_t, decltype(y - x - z)>);
+    REQUIRE(std::is_same_v<s3_t, decltype(z - y - x)>);
+
+    // Same rank.
+    // Try with various segmentations.
+    for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
+        for (auto s_idx2 : {0u, 1u, 2u, 4u}) {
+            // Test identical symbol sets.
+            s1_t a;
+            a.set_n_segments(s_idx1);
+            a.set_symbol_set(symbol_set{"x", "y", "z"});
+            a.add_term(pm_t{1, 2, 3}, "4/5");
+
+            s1_t b;
+            b.set_n_segments(s_idx2);
+            b.set_symbol_set(symbol_set{"x", "y", "z"});
+            b.add_term(pm_t{4, 5, 6}, "-4/5");
+
+            auto c = a - b;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6}));
+            }
+
+            c = b - a;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{-4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6}));
+            }
+
+            // Add further terms to a.
+            a.add_term(pm_t{-1, -2, -3}, 2);
+            a.add_term(pm_t{-4, -5, -6}, -2);
+
+            c = a - b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            c = b - a;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            // With moves.
+            auto a_copy(a);
+            auto b_copy(b);
+
+            c = std::move(a) - b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            a = a_copy;
+
+            c = a - std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            b = b_copy;
+
+            c = std::move(a) - std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : c) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            // Test term cancellation.
+            a = s1_t{};
+            a.set_n_segments(s_idx1);
+            a.set_symbol_set(symbol_set{"x", "y", "z"});
+            a.add_term(pm_t{1, 2, 3}, "4/5");
+
+            b = s1_t{};
+            b.set_n_segments(s_idx2);
+            b.set_symbol_set(symbol_set{"x", "y", "z"});
+            b.add_term(pm_t{4, 5, 6}, "-4/5");
+            b.add_term(pm_t{1, 2, 3}, "4/5");
+
+            c = a - b;
+            REQUIRE(c.size() == 1u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            REQUIRE(c.begin()->second == rat_t{4, 5});
+            REQUIRE(c.begin()->first == pm_t{4, 5, 6});
+
+            c = b - a;
+            REQUIRE(c.size() == 1u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            REQUIRE(c.begin()->second == rat_t{4, -5});
+            REQUIRE(c.begin()->first == pm_t{4, 5, 6});
+
+            // Test with heterogeneous cf types.
+            a = a_copy;
+            b = b_copy;
+            s1a_t ax(a), bx(b);
+
+            auto cx = ax - b;
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            cx = bx - a;
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+
+            // With moves.
+            auto ax_copy(ax);
+            auto bx_copy(bx);
+
+            cx = std::move(ax) - b;
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            ax = ax_copy;
+
+            cx = ax - std::move(b);
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            b = b_copy;
+
+            cx = std::move(ax) - std::move(b);
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
+                REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
+                         || p.first == pm_t{-4, -5, -6}));
+            }
+            ax = ax_copy;
+            b = b_copy;
+
+            // Test with different symbol sets.
+
+            // Some random testing. Here we'll be able
+            // to verify only the symbol set and the series' sizes
+            // (however the asserts in the code will provide
+            // more checking).
+            for (auto i = 0; i < ntrials; ++i) {
+                std::uniform_int_distribution<int> bdist(0, 2);
+
+                symbol_set ss1, ss2, mss;
+                for (auto j = 0; j < 6; ++j) {
+                    const auto btmp = bdist(rng);
+                    if (btmp == 0) {
+                        ss1.insert(ss1.end(), "x" + std::to_string(j));
+                    } else if (btmp == 1) {
+                        ss2.insert(ss2.end(), "x" + std::to_string(j));
+                    } else {
+                        ss1.insert(ss1.end(), "x" + std::to_string(j));
+                        ss2.insert(ss2.end(), "x" + std::to_string(j));
+                    }
+                    mss.insert(mss.end(), "x" + std::to_string(j));
+                }
+
+                std::uniform_int_distribution<int> edist(-3, 3), cdist(0, 10);
+                std::uniform_int_distribution<unsigned> sdist(0, 6);
+
+                a = s1_t{};
+                a.set_n_segments(s_idx1);
+                a.set_symbol_set(ss1);
+                const auto size1 = sdist(rng);
+                for (unsigned j = 0; j < size1; ++j) {
+                    std::vector<int> tmp_v;
+                    for (const auto &_ : ss1) {
+                        detail::ignore(_);
+                        tmp_v.push_back(edist(rng));
+                    }
+                    a.add_term(pm_t(tmp_v), cdist(rng));
+                }
+
+                b = s1_t{};
+                b.set_n_segments(s_idx2);
+                b.set_symbol_set(ss2);
+                const auto size2 = sdist(rng);
+                for (unsigned j = 0; j < size2; ++j) {
+                    std::vector<int> tmp_v;
+                    for (const auto &_ : ss2) {
+                        detail::ignore(_);
+                        tmp_v.push_back(edist(rng));
+                    }
+                    b.add_term(pm_t(tmp_v), cdist(rng));
+                }
+
+                c = a - b;
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+
+                a_copy = a;
+                b_copy = b;
+
+                // Try with moves too.
+                c = std::move(a) - b;
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+                a = a_copy;
+
+                c = a - std::move(b);
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+                b = b_copy;
+
+                c = std::move(a) - std::move(b);
+                REQUIRE(c.get_symbol_set() == mss);
+                REQUIRE(c.size() <= size1 + size2);
+                a = a_copy;
+                b = b_copy;
+            }
+
+            // Shorter tests in which we do more checking.
+            a = s1_t{};
+            a.set_n_segments(s_idx1);
+            a.set_symbol_set(symbol_set{"x", "y", "z", "zz"});
+            a.add_term(pm_t{1, 2, 3, -1}, "4/5");
+
+            b = s1_t{};
+            b.set_n_segments(s_idx2);
+            b.set_symbol_set(symbol_set{"x", "y", "z"});
+            b.add_term(pm_t{4, 5, 6}, "-4/5");
+
+            c = a - b;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0}));
+            }
+
+            c = b - a;
+            REQUIRE(c.size() == 2u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{-4, 5}));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0}));
+            }
+
+            // Add further terms to a.
+            a.add_term(pm_t{-1, -2, -3, -4}, 2);
+            a.add_term(pm_t{-4, -5, -6, -7}, -2);
+
+            c = a - b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+
+            c = b - a;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{-4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+
+            // With moves.
+            a_copy = a;
+            b_copy = b;
+
+            c = std::move(a) - b;
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+            a = a_copy;
+
+            c = a - std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || abs(p.second) == 2));
+                REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
+                         || p.first == pm_t{-4, -5, -6, -7}));
+            }
+            b = b_copy;
+
+            c = std::move(a) - std::move(b);
+            REQUIRE(c.size() == 4u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z", "zz"});
+            for (const auto &p : c) {
+                REQUIRE((p.second == rat_t{4, 5} || abs(p.second) == 2));
                 REQUIRE((p.first == pm_t{1, 2, 3, -1} || p.first == pm_t{4, 5, 6, 0} || p.first == pm_t{-1, -2, -3, -4}
                          || p.first == pm_t{-4, -5, -6, -7}));
             }
