@@ -1217,7 +1217,7 @@ template <CvrSeries T>
 #else
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-inline auto operator+(T &&x)
+inline remove_cvref_t<T> operator+(T &&x)
 {
     return ::std::forward<T>(x);
 }
@@ -1251,7 +1251,7 @@ template <CvrSeries T>
 #else
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-inline auto operator-(T &&x)
+inline remove_cvref_t<T> operator-(T &&x)
 {
     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
         // NOTE: if we have an rvalue reference in input, we
@@ -1444,7 +1444,7 @@ constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag
 
 // Lowest priority: the default implementation for series.
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-inline auto series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>)
+inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>)
 {
     using series_t = remove_cvref_t<T>;
 
@@ -2087,7 +2087,7 @@ inline constexpr int series_equal_to_algorithm = detail::series_equal_to_algorit
 
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_equal_to_algorithm<T &&, U &&> != 0, int> = 0>
-constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
+constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
