@@ -1325,21 +1325,29 @@ inline bool series_add(const series<K, C, tag00> &, const series<K, C, tag00> &)
 
 } // namespace ns
 
+struct custom_add {
+    template <typename T, typename U>
+    bool operator()(T &&, U &&) const
+    {
+        return false;
+    }
+};
+
 // External customisation.
 namespace piranha::customisation
 {
 
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> &&
-    SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_add<T, U>
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_add<T, U>
 #else
 inline constexpr auto
     series_add<T, U,
                std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
                                                    is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
 #endif
-    = [](auto &&, auto &&) { return false; };
+    = custom_add{};
 
 } // namespace piranha::customisation
 
@@ -1368,21 +1376,29 @@ inline bool series_sub(const series<K, C, tag00> &, const series<K, C, tag00> &)
 
 } // namespace ns
 
+struct custom_sub {
+    template <typename T, typename U>
+    bool operator()(T &&, U &&) const
+    {
+        return false;
+    }
+};
+
 // External customisation.
 namespace piranha::customisation
 {
 
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> &&
-    SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_sub<T, U>
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_sub<T, U>
 #else
 inline constexpr auto
     series_sub<T, U,
                std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
                                                    is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
 #endif
-    = [](auto &&, auto &&) { return false; };
+    = custom_sub{};
 
 } // namespace piranha::customisation
 
@@ -1393,8 +1409,8 @@ TEST_CASE("series_sub_custom")
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
 
     REQUIRE(std::is_same_v<bool, decltype(s1_t{} - s1_t{})>);
-    REQUIRE(s1_t{} + s1_t{} == true);
+    REQUIRE(s1_t{} - s1_t{} == true);
 
     REQUIRE(std::is_same_v<bool, decltype(s2_t{} - s2_t{})>);
-    REQUIRE(s2_t{} + s2_t{} == false);
+    REQUIRE(s2_t{} - s2_t{} == false);
 }
