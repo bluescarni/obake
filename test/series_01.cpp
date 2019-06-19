@@ -588,25 +588,49 @@ TEST_CASE("series_add")
                 REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
                          || p.first == pm_t{-4, -5, -6}));
             }
-            a = a_copy;
-            b = b_copy;
+
+            // Test term cancellation.
+            a = s1_t{};
+            a.set_n_segments(s_idx1);
+            a.set_symbol_set(symbol_set{"x", "y", "z"});
+            a.add_term(pm_t{1, 2, 3}, "4/5");
+
+            b = s1_t{};
+            b.set_n_segments(s_idx2);
+            b.set_symbol_set(symbol_set{"x", "y", "z"});
+            b.add_term(pm_t{4, 5, 6}, "-4/5");
+            b.add_term(pm_t{1, 2, 3}, "-4/5");
+
+            c = a + b;
+            REQUIRE(c.size() == 1u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            REQUIRE(c.begin()->second == rat_t{4, -5});
+            REQUIRE(c.begin()->first == pm_t{4, 5, 6});
+
+            c = b + a;
+            REQUIRE(c.size() == 1u);
+            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
+            REQUIRE(c.begin()->second == rat_t{4, -5});
+            REQUIRE(c.begin()->first == pm_t{4, 5, 6});
 
             // Test with heterogeneous cf types.
+            a = a_copy;
+            b = b_copy;
             s1a_t ax(a), bx(b);
 
             auto cx = ax + b;
-            REQUIRE(c.size() == 4u);
-            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
-            for (const auto &p : c) {
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
                 REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
                 REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
                          || p.first == pm_t{-4, -5, -6}));
             }
 
             cx = bx + a;
-            REQUIRE(c.size() == 4u);
-            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
-            for (const auto &p : c) {
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
                 REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
                 REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
                          || p.first == pm_t{-4, -5, -6}));
@@ -617,9 +641,9 @@ TEST_CASE("series_add")
             auto bx_copy(bx);
 
             cx = std::move(ax) + b;
-            REQUIRE(c.size() == 4u);
-            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
-            for (const auto &p : c) {
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
                 REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
                 REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
                          || p.first == pm_t{-4, -5, -6}));
@@ -627,9 +651,9 @@ TEST_CASE("series_add")
             ax = ax_copy;
 
             cx = ax + std::move(b);
-            REQUIRE(c.size() == 4u);
-            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
-            for (const auto &p : c) {
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
                 REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
                 REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
                          || p.first == pm_t{-4, -5, -6}));
@@ -637,9 +661,9 @@ TEST_CASE("series_add")
             b = b_copy;
 
             cx = std::move(ax) + std::move(b);
-            REQUIRE(c.size() == 4u);
-            REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
-            for (const auto &p : c) {
+            REQUIRE(cx.size() == 4u);
+            REQUIRE(cx.get_symbol_set() == symbol_set{"x", "y", "z"});
+            for (const auto &p : cx) {
                 REQUIRE((abs(p.second) == rat_t{4, 5} || abs(p.second) == 2));
                 REQUIRE((p.first == pm_t{1, 2, 3} || p.first == pm_t{4, 5, 6} || p.first == pm_t{-1, -2, -3}
                          || p.first == pm_t{-4, -5, -6}));
