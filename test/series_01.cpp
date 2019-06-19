@@ -121,9 +121,9 @@ TEST_CASE("series_set_n_segments")
     REQUIRE(s1._get_s_table().size() == 4u);
     s1.set_n_segments(4);
     REQUIRE(s1._get_s_table().size() == 16u);
-    REQUIRE_THROWS_WITH(s1.set_n_segments(static_cast<unsigned>(s1._get_max_log2_size() + 1u)),
+    REQUIRE_THROWS_WITH(s1.set_n_segments(s1._get_max_log2_size() + 1u),
                         Contains(" as this value exceeds the maximum allowed value"));
-    REQUIRE_THROWS_AS(s1.set_n_segments(static_cast<unsigned>(s1._get_max_log2_size() + 1u)), std::invalid_argument);
+    REQUIRE_THROWS_AS(s1.set_n_segments(s1._get_max_log2_size() + 1u), std::invalid_argument);
 }
 
 TEST_CASE("series_clear")

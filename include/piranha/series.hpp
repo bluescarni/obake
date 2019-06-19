@@ -530,7 +530,7 @@ class series
     // it to the number of bits - 1 so that it's always
     // safe to bit shift a value of type s_size_t by
     // this amount.
-    static constexpr s_size_t max_log2_size = static_cast<s_size_t>(detail::limits_digits<s_size_t> - 1);
+    static constexpr unsigned max_log2_size = static_cast<unsigned>(detail::limits_digits<s_size_t> - 1);
 
 public:
     using size_type = typename table_type::size_type;
@@ -583,28 +583,44 @@ public:
             // coefficients from x below.
             detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
-            // Reserve space in the new table.
-            auto &tab = m_s_table[0];
-            tab.reserve(x.size());
-
             // Copy/move over the symbol set.
             m_symbol_set = ::std::forward<T>(x).m_symbol_set;
 
-            for (auto &p : x) {
-                if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+            // Set the number of segments.
+            const auto x_log2_size = x._get_log2_size();
+            set_n_segments(x_log2_size);
+
+            // Insert the terms from x. Although the coefficients
+            // change, the keys remain identical, so we can do the insertion
+            // table by table, relying on the fact that the new keys
+            // will hash to the same table indices as the original ones.
+            for (s_size_t i = 0; i < (s_size_t(1) << x_log2_size); ++i) {
+                // Extract references to the tables in x and this.
+                auto &xt = x._get_s_table()[i];
+                auto &tab = m_s_table[i];
+
+                // Reserve space in the current table.
+                tab.reserve(xt.size());
+
+                for (auto &p : xt) {
                     // NOTE: like above, disable key compat check (we assume the other
-                    // series contains only compatible keys) and table size check (only
-                    // 1 table). We also know all the terms in the input
+                    // series contains only compatible keys) and table size check (we know
+                    // the original tables do not exceed the max size).
+                    // We also know all the terms in the input
                     // series are unique. We keep the zero check because the conversion
                     // of the coefficient type of T to C might result in zero
                     // (e.g., converting from double to int).
-                    detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
-                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                        *this, tab, p.first, ::std::move(p.second));
-                } else {
-                    detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
-                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                        *this, tab, p.first, static_cast<const series_cf_t<remove_cvref_t<T>> &>(p.second));
+                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                        detail::series_add_term_table<true, detail::sat_check_zero::on,
+                                                      detail::sat_check_compat_key::off,
+                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                            *this, tab, p.first, ::std::move(p.second));
+                    } else {
+                        detail::series_add_term_table<true, detail::sat_check_zero::on,
+                                                      detail::sat_check_compat_key::off,
+                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                            *this, tab, p.first, static_cast<const series_cf_t<remove_cvref_t<T>> &>(p.second));
+                    }
                 }
             }
         } else if constexpr (algo == 3) {
@@ -762,11 +778,11 @@ public:
         return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (s_size_t(1) << m_log2_size));
     }
 
-    s_size_t _get_log2_size() const
+    unsigned _get_log2_size() const
     {
         return m_log2_size;
     }
-    s_size_t _get_max_log2_size() const
+    unsigned _get_max_log2_size() const
     {
         return max_log2_size;
     }
@@ -1043,8 +1059,12 @@ public:
         m_symbol_set = s;
     }
 
-    // Extract a mutable reference to the internal segmented table.
+    // Extract a reference to the internal segmented table.
     auto &_get_s_table()
+    {
+        return m_s_table;
+    }
+    const auto &_get_s_table() const
     {
         return m_s_table;
     }
@@ -1087,7 +1107,7 @@ public:
 
         // NOTE: construct + move assign for exception safety.
         m_s_table = s_table_type(s_size_t(1) << l);
-        m_log2_size = static_cast<s_size_t>(l);
+        m_log2_size = l;
     }
 
     // Clear the series.
@@ -1158,7 +1178,7 @@ public:
 
 private:
     s_table_type m_s_table;
-    s_size_t m_log2_size;
+    unsigned m_log2_size;
     symbol_set m_symbol_set;
 };
 
@@ -1588,6 +1608,87 @@ constexpr int series_addsub_algorithm_impl()
 template <typename T, typename U>
 inline constexpr int series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>();
 
+// Helper to extend the keys of "from" with the symbol insertion map ins_map.
+// The new series will be written to "to". The coefficient type of "to"
+// may be different from the coefficient type of "from", in which case a coefficient
+// conversion will take place.
+template <typename To, typename From>
+inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
+{
+    // NOTE: we assume that this helper is
+    // invoked with a non-empty insertion map, and an empty
+    // "to" series. "to" must have the correct symbol set.
+    assert(!ins_map.empty());
+    assert(to.empty());
+
+    // We may end up moving coefficients from "from" in the conversion to "to".
+    // Make sure we will clear "from" out properly.
+    series_rref_clearer<From> from_c(::std::forward<From>(from));
+
+    // Cache the original symbol set.
+    const auto &orig_ss = from.get_symbol_set();
+
+    // Set the number of segments, reserve space.
+    const auto from_log2_size = from._get_log2_size();
+    to.set_n_segments(from_log2_size);
+    to.reserve(from.size());
+
+    // Establish if we need to check for zero coefficients
+    // when inserting. We don't if the coefficient types of to and from
+    // coincide (i.e., no cf conversion takes place),
+    // otherwise the conversion might generate zeroes.
+    constexpr auto check_zero
+        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+
+    // Merge the terms, distinguishing the segmented vs non-segmented case.
+    if (from_log2_size) {
+        for (auto &t : from._get_s_table()) {
+            for (auto &p : t) {
+                // Compute the merged key.
+                auto merged_key = ::piranha::key_merge_symbols(
+                    static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
+
+                // Insert the term. We need the following checks:
+                // - zero check, in case the coefficient type changes,
+                // - table size check, because even if we know the
+                //   max table size was not exceeded in the original series,
+                //   it might be now (as the merged key may end up in a different
+                //   table).
+                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(p.second));
+                } else {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(
+                        to, ::std::move(merged_key), static_cast<const series_cf_t<remove_cvref_t<From>> &>(p.second));
+                }
+            }
+        }
+    } else {
+        auto &to_table = to._get_s_table()[0];
+
+        for (auto &p : from._get_s_table()[0]) {
+            // Compute the merged key.
+            auto merged_key = ::piranha::key_merge_symbols(
+                static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
+
+            // Insert the term: the only check we may need is check_zero, in case
+            // the coefficient type changes. We know that the table size cannot be
+            // exceeded as we are dealing with a single table.
+            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::move(p.second));
+            } else {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(
+                    to, to_table, ::std::move(merged_key),
+                    static_cast<const series_cf_t<remove_cvref_t<From>> &>(p.second));
+            }
+        }
+    }
+}
+
 // Default implementation of the add/sub primitive for series.
 template <bool Sign, typename T, typename U>
 constexpr auto series_default_addsub_impl(T &&x, U &&y)
@@ -1737,56 +1838,6 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
             // the identical symbol sets case above.
             assert(!ins_map_x.empty() || !ins_map_y.empty());
 
-            // Helper to extend the keys of "from" with the symbol insertion map ins_map.
-            // The new series will be written to "to". The coefficient type of "to"
-            // may be different from the coefficient type of "from", in which case a coefficient
-            // conversion will take place.
-            auto sym_extender = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
-                using from_t = decltype(from);
-
-                // NOTE: we assume that this helper is never
-                // invoked with an empty insertion map.
-                assert(!ins_map.empty());
-
-                // We may end up moving coefficients from "from" in the conversion to "to".
-                // Make sure we will clear "from" out properly.
-                series_rref_clearer<from_t> from_c(::std::forward<from_t>(from));
-
-                // Cache a couple of quantities.
-                auto &to_table = to._get_s_table()[0];
-                const auto &orig_ss = from.get_symbol_set();
-
-                // Establish if we need to check for zero coefficients
-                // when inserting. We don't if the coefficient types of to and from
-                // coincide (i.e., no cf conversion takes place),
-                // otherwise the conversion might generate zeroes.
-                constexpr auto check_zero = static_cast<sat_check_zero>(
-                    ::std::is_same_v<series_cf_t<ret_t>, series_cf_t<remove_cvref_t<from_t>>>);
-
-                // Reserve space in the destination table.
-                to_table.reserve(from.size());
-
-                // Merge the terms.
-                for (auto &p : from) {
-                    // Compute the merged key.
-                    auto merged_key = ::piranha::key_merge_symbols(
-                        static_cast<const series_key_t<remove_cvref_t<from_t>> &>(p.first), ins_map, orig_ss);
-
-                    // Insert the term: the only check we may need is check_zero, in case
-                    // the coefficient type changes.
-                    if constexpr (is_mutable_rvalue_reference_v<from_t &&>) {
-                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
-                                                      sat_check_table_size::off, sat_assume_unique::on>(
-                            to, to_table, ::std::move(merged_key), ::std::move(p.second));
-                    } else {
-                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
-                                                      sat_check_table_size::off, sat_assume_unique::on>(
-                            to, to_table, ::std::move(merged_key),
-                            static_cast<const series_cf_t<remove_cvref_t<from_t>> &>(p.second));
-                    }
-                }
-            };
-
             // Create a flag indicating empty insertion maps:
             // - 0 -> both non-empty,
             // - 1 -> x is empty,
@@ -1801,7 +1852,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
                     // set, extend only y.
                     ret_t b;
                     b.set_symbol_set(merged_ss);
-                    sym_extender(b, ::std::forward<U>(y), ins_map_y);
+                    detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
                     return merge_with_identical_ss(::std::forward<T>(x), ::std::move(b));
                 }
@@ -1810,7 +1861,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
                     // set, extend only x.
                     ret_t a;
                     a.set_symbol_set(merged_ss);
-                    sym_extender(a, ::std::forward<T>(x), ins_map_x);
+                    detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
                     return merge_with_identical_ss(::std::move(a), ::std::forward<U>(y));
                 }
@@ -1820,8 +1871,8 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
             ret_t a, b;
             a.set_symbol_set(merged_ss);
             b.set_symbol_set(merged_ss);
-            sym_extender(a, ::std::forward<T>(x), ins_map_x);
-            sym_extender(b, ::std::forward<U>(y), ins_map_y);
+            detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+            detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
             return merge_with_identical_ss(::std::move(a), ::std::move(b));
         }
@@ -1993,6 +2044,8 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
     // Helper to compare series of different rank
     // (lhs has higher rank than rhs).
     auto diff_rank_cmp = [](const auto &lhs, const auto &rhs) {
+        static_assert((series_rank<uncvref_t<decltype(lhs)>>) > series_rank<uncvref_t<decltype(rhs)>>);
+
         switch (lhs.size()) {
             case 0u:
                 // An empty series is considered equal to zero.
@@ -2022,7 +2075,7 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
         // different coefficient type.
 
         // Helper to compare series with identical symbol sets.
-        auto equal_rank_cmp = [](const auto &lhs, const auto &rhs) {
+        auto cmp_identical_ss = [](const auto &lhs, const auto &rhs) {
             assert(lhs.get_symbol_set() == rhs.get_symbol_set());
 
             // If the series have different sizes,
@@ -2031,9 +2084,117 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                 return false;
             }
 
+            // Cache the end iterator of rhs.
+            const auto rhs_end = rhs.end();
             for (const auto &p : lhs) {
+                const auto it = rhs.find(p.first);
+                if (it == rhs_end || p != it->second) {
+                    return false;
+                }
             }
+
+            return true;
         };
+
+        if (x.get_symbol_set() == y.get_symbol_set()) {
+            return cmp_identical_ss(x, y);
+        } else {
+            // Merge the symbol sets.
+            const auto &[merged_ss, ins_map_x, ins_map_y]
+                = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+
+            // The insertion maps cannot be both empty, as we already handled
+            // the identical symbol sets case above.
+            assert(!ins_map_x.empty() || !ins_map_y.empty());
+
+            // Helper to extend the keys of "from" with the symbol insertion map ins_map.
+            // The new series will be written to "to". The coefficient type of "to"
+            // may be different from the coefficient type of "from", in which case a coefficient
+            // conversion will take place.
+            auto sym_extender = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
+                using from_t = decltype(from);
+
+                // NOTE: we assume that this helper is never
+                // invoked with an empty insertion map.
+                assert(!ins_map.empty());
+
+                // We may end up moving coefficients from "from" in the conversion to "to".
+                // Make sure we will clear "from" out properly.
+                series_rref_clearer<from_t> from_c(::std::forward<from_t>(from));
+
+                // Cache a couple of quantities.
+                auto &to_table = to._get_s_table()[0];
+                const auto &orig_ss = from.get_symbol_set();
+
+                // Establish if we need to check for zero coefficients
+                // when inserting. We don't if the coefficient types of to and from
+                // coincide (i.e., no cf conversion takes place),
+                // otherwise the conversion might generate zeroes.
+                constexpr auto check_zero = static_cast<sat_check_zero>(
+                    ::std::is_same_v<series_cf_t<ret_t>, series_cf_t<remove_cvref_t<from_t>>>);
+
+                // Reserve space in the destination table.
+                to_table.reserve(from.size());
+
+                // Merge the terms.
+                for (auto &p : from) {
+                    // Compute the merged key.
+                    auto merged_key = ::piranha::key_merge_symbols(
+                        static_cast<const series_key_t<remove_cvref_t<from_t>> &>(p.first), ins_map, orig_ss);
+
+                    // Insert the term: the only check we may need is check_zero, in case
+                    // the coefficient type changes.
+                    if constexpr (is_mutable_rvalue_reference_v<from_t &&>) {
+                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::on>(
+                            to, to_table, ::std::move(merged_key), ::std::move(p.second));
+                    } else {
+                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::on>(
+                            to, to_table, ::std::move(merged_key),
+                            static_cast<const series_cf_t<remove_cvref_t<from_t>> &>(p.second));
+                    }
+                }
+            };
+
+            // Create a flag indicating empty insertion maps:
+            // - 0 -> both non-empty,
+            // - 1 -> x is empty,
+            // - 2 -> y is empty.
+            // (Cannot both be empty as we handled identical symbol sets already).
+            const auto flag
+                = static_cast<unsigned>(ins_map_x.empty()) + (static_cast<unsigned>(ins_map_y.empty()) << 1);
+
+            switch (flag) {
+                case 1u: {
+                    // x already has the correct symbol
+                    // set, extend only y.
+                    ret_t b;
+                    b.set_symbol_set(merged_ss);
+                    sym_extender(b, ::std::forward<U>(y), ins_map_y);
+
+                    return merge_with_identical_ss(::std::forward<T>(x), ::std::move(b));
+                }
+                case 2u: {
+                    // y already has the correct symbol
+                    // set, extend only x.
+                    ret_t a;
+                    a.set_symbol_set(merged_ss);
+                    sym_extender(a, ::std::forward<T>(x), ins_map_x);
+
+                    return merge_with_identical_ss(::std::move(a), ::std::forward<U>(y));
+                }
+            }
+
+            // Both x and y need to be extended.
+            ret_t a, b;
+            a.set_symbol_set(merged_ss);
+            b.set_symbol_set(merged_ss);
+            sym_extender(a, ::std::forward<T>(x), ins_map_x);
+            sym_extender(b, ::std::forward<U>(y), ins_map_y);
+
+            return merge_with_identical_ss(::std::move(a), ::std::move(b));
+        }
     }
 }
 

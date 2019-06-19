@@ -1206,38 +1206,43 @@ TEST_CASE("series_generic_ctor")
     s1_int_t s1_int{s1_t{"4/5"}};
     REQUIRE(s1_int.empty());
 
-    // Try with a more complex series.
-    s1_int = s1_int_t{};
-    s1_int.set_n_segments(1);
-    s1_int.set_symbol_set(symbol_set{"x", "y", "z"});
-    s1_int.add_term(pm_t{1, 2, 3}, 1);
-    s1_int.add_term(pm_t{-1, -2, -3}, -1);
-    s1_int.add_term(pm_t{4, 5, 6}, 2);
-    s1_int.add_term(pm_t{7, 8, 9}, -2);
-    {
-        s1_t s1a{s1_int};
-        REQUIRE(s1a.size() == 4u);
-        for (const auto &p : s1a) {
-            REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+    for (auto s_idx : {0u, 1u, 2u, 3u, 4u}) {
+        // Try with a more complex series and multiple segments.
+        s1_int = s1_int_t{};
+        s1_int.set_n_segments(s_idx);
+        s1_int.set_symbol_set(symbol_set{"x", "y", "z"});
+        s1_int.add_term(pm_t{1, 2, 3}, 1);
+        s1_int.add_term(pm_t{-1, -2, -3}, -1);
+        s1_int.add_term(pm_t{4, 5, 6}, 2);
+        s1_int.add_term(pm_t{7, 8, 9}, -2);
+        {
+            s1_t s1a{s1_int};
+            REQUIRE(s1a.size() == 4u);
+            REQUIRE(s1a._get_log2_size() == s_idx);
+            for (const auto &p : s1a) {
+                REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+            }
+
+            s1_t s2a{std::move(s1_int)};
+            REQUIRE(s2a.size() == 4u);
+            REQUIRE(s2a._get_log2_size() == s_idx);
+            for (const auto &p : s2a) {
+                REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
+            }
         }
 
-        s1_t s2a{std::move(s1_int)};
-        REQUIRE(s2a.size() == 4u);
-        for (const auto &p : s2a) {
-            REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
-        }
+        // Verify construction of int series from double series
+        // truncates and removes coefficients.
+        s1_double_t s1_double;
+        s1_double.set_n_segments(s_idx);
+        s1_double.set_symbol_set(symbol_set{"x", "y", "z"});
+        s1_double.add_term(pm_t{1, 2, 3}, .1);
+        s1_double.add_term(pm_t{-1, -2, -3}, -.1);
+        s1_double.add_term(pm_t{4, 5, 6}, .2);
+        s1_double.add_term(pm_t{7, 8, 9}, -.2);
+        REQUIRE(s1_int_t{s1_double}.empty());
+        REQUIRE(s1_int_t{s1_double}._get_log2_size() == s_idx);
     }
-
-    // Verify construction of int series from double series
-    // truncates and removes coefficients.
-    s1_double_t s1_double;
-    s1_double.set_n_segments(1);
-    s1_double.set_symbol_set(symbol_set{"x", "y", "z"});
-    s1_double.add_term(pm_t{1, 2, 3}, .1);
-    s1_double.add_term(pm_t{-1, -2, -3}, -.1);
-    s1_double.add_term(pm_t{4, 5, 6}, .2);
-    s1_double.add_term(pm_t{7, 8, 9}, -.2);
-    REQUIRE(s1_int_t{s1_double}.empty());
 
     // Construction from a series with higher rank.
     REQUIRE(std::is_constructible_v<s1_t, s2_t>);
