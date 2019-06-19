@@ -1312,3 +1312,89 @@ TEST_CASE("series_sub")
         }
     }
 }
+
+namespace ns
+{
+
+// ADL-based customisation.
+template <typename K, typename C>
+inline bool series_add(const series<K, C, tag00> &, const series<K, C, tag00> &)
+{
+    return true;
+}
+
+} // namespace ns
+
+// External customisation.
+namespace piranha::customisation
+{
+
+template <typename T, typename U>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> &&
+    SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_add<T, U>
+#else
+inline constexpr auto
+    series_add<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
+#endif
+    = [](auto &&, auto &&) { return false; };
+
+} // namespace piranha::customisation
+
+TEST_CASE("series_add_custom")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+    using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
+
+    REQUIRE(std::is_same_v<bool, decltype(s1_t{} + s1_t{})>);
+    REQUIRE(s1_t{} + s1_t{} == true);
+
+    REQUIRE(std::is_same_v<bool, decltype(s2_t{} + s2_t{})>);
+    REQUIRE(s2_t{} + s2_t{} == false);
+}
+
+namespace ns
+{
+
+// ADL-based customisation.
+template <typename K, typename C>
+inline bool series_sub(const series<K, C, tag00> &, const series<K, C, tag00> &)
+{
+    return true;
+}
+
+} // namespace ns
+
+// External customisation.
+namespace piranha::customisation
+{
+
+template <typename T, typename U>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> &&
+    SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_sub<T, U>
+#else
+inline constexpr auto
+    series_sub<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
+#endif
+    = [](auto &&, auto &&) { return false; };
+
+} // namespace piranha::customisation
+
+TEST_CASE("series_sub_custom")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+    using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
+
+    REQUIRE(std::is_same_v<bool, decltype(s1_t{} - s1_t{})>);
+    REQUIRE(s1_t{} + s1_t{} == true);
+
+    REQUIRE(std::is_same_v<bool, decltype(s2_t{} - s2_t{})>);
+    REQUIRE(s2_t{} + s2_t{} == false);
+}
