@@ -2203,7 +2203,7 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
         if constexpr (algo == 1) {
             // The rank of T is less than the rank of U.
             return diff_rank_cmp(y, x);
-        } else if constexpr (algo == 2) {
+        } else {
             // The rank of U is less than the rank of T.
             return diff_rank_cmp(x, y);
         }

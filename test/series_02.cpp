@@ -20,6 +20,7 @@
 
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
+#include <piranha/type_traits.hpp>
 
 #include "test_utils.hpp"
 
@@ -117,48 +118,185 @@ TEST_CASE("series_comparison")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
+    using s2_t = series<pm_t, s1_t, void>;
 
-    for (auto s_idx : {0u, 1u, 2u, 4u}) {
-        s1_t s1;
-        s1.set_n_segments(s_idx);
+    REQUIRE(!is_equality_comparable_v<s1_t, void>);
+    REQUIRE(!is_equality_comparable_v<void, s1_t>);
 
-        REQUIRE(s1 == 0);
-        REQUIRE(0 == s1);
-        REQUIRE(!(s1 != 0));
-        REQUIRE(!(0 != s1));
+    for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
+        for (auto s_idx2 : {0u, 1u, 2u, 4u}) {
+            // Different ranks.
+            s1_t s1;
+            s1.set_n_segments(s_idx1);
 
-        REQUIRE(!(s1 == 1));
-        REQUIRE(!(1 == s1));
-        REQUIRE(s1 != 1);
-        REQUIRE(1 != s1);
+            REQUIRE(s1 == 0);
+            REQUIRE(0 == s1);
+            REQUIRE(!(s1 != 0));
+            REQUIRE(!(0 != s1));
 
-        s1 = s1_t{};
-        s1.set_n_segments(s_idx);
-        s1.add_term(pm_t{}, 5);
+            REQUIRE(!(s1 == 1));
+            REQUIRE(!(1 == s1));
+            REQUIRE(s1 != 1);
+            REQUIRE(1 != s1);
 
-        REQUIRE(s1 == 5);
-        REQUIRE(5 == s1);
-        REQUIRE(!(s1 != 5));
-        REQUIRE(!(5 != s1));
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1.add_term(pm_t{}, 5);
 
-        REQUIRE(!(s1 == 3));
-        REQUIRE(!(3 == s1));
-        REQUIRE(s1 != 3);
-        REQUIRE(3 != s1);
+            REQUIRE(s1 == 5);
+            REQUIRE(5 == s1);
+            REQUIRE(!(s1 != 5));
+            REQUIRE(!(5 != s1));
 
-        s1 = s1_t{};
-        s1.set_symbol_set(symbol_set{"x", "y", "z"});
-        s1.set_n_segments(s_idx);
-        s1.add_term(pm_t{1, 2, 3}, 5);
+            REQUIRE(!(s1 == 3));
+            REQUIRE(!(3 == s1));
+            REQUIRE(s1 != 3);
+            REQUIRE(3 != s1);
 
-        REQUIRE(!(s1 == 5));
-        REQUIRE(!(5 == s1));
-        REQUIRE(s1 != 5);
-        REQUIRE(5 != s1);
+            s1 = s1_t{};
+            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1.set_n_segments(s_idx1);
+            s1.add_term(pm_t{1, 2, 3}, 5);
 
-        REQUIRE(!(s1 == 0));
-        REQUIRE(!(0 == s1));
-        REQUIRE(s1 != 0);
-        REQUIRE(0 != s1);
+            REQUIRE(!(s1 == 5));
+            REQUIRE(!(5 == s1));
+            REQUIRE(s1 != 5);
+            REQUIRE(5 != s1);
+
+            REQUIRE(!(s1 == 0));
+            REQUIRE(!(0 == s1));
+            REQUIRE(s1 != 0);
+            REQUIRE(0 != s1);
+
+            s2_t s2;
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s2.set_n_segments(s_idx2);
+
+            REQUIRE(s1 == s2);
+            REQUIRE(s2 == s1);
+            REQUIRE(!(s1 != s2));
+            REQUIRE(!(s2 != s1));
+
+            s2 = s2_t{};
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s2.set_n_segments(s_idx2);
+            s1.add_term(pm_t{}, "4/5");
+            s2.add_term(pm_t{}, "4/5");
+
+            REQUIRE(s1 == s2);
+            REQUIRE(s2 == s1);
+            REQUIRE(!(s1 != s2));
+            REQUIRE(!(s2 != s1));
+
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1.add_term(pm_t{}, 1);
+            REQUIRE(s1 != s2);
+            REQUIRE(s2 != s1);
+            REQUIRE(!(s1 == s2));
+            REQUIRE(!(s2 == s1));
+
+            // Equal ranks.
+            s1_t s1a;
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1a.set_n_segments(s_idx2);
+
+            REQUIRE(s1 == s1a);
+            REQUIRE(s1a == s1);
+            REQUIRE(!(s1 != s1a));
+            REQUIRE(!(s1a != s1));
+
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1.add_term(pm_t{}, 4);
+            REQUIRE(s1 != s1a);
+            REQUIRE(s1a != s1);
+            REQUIRE(!(s1 == s1a));
+            REQUIRE(!(s1a == s1));
+
+            s1a = s1_t{};
+            s1a.set_n_segments(s_idx2);
+            s1a.add_term(pm_t{}, -4);
+            REQUIRE(s1 != s1a);
+            REQUIRE(s1a != s1);
+            REQUIRE(!(s1 == s1a));
+            REQUIRE(!(s1a == s1));
+
+            s1a = s1;
+            REQUIRE(s1 == s1a);
+            REQUIRE(s1a == s1);
+            REQUIRE(!(s1 != s1a));
+            REQUIRE(!(s1a != s1));
+
+            // Identical symbol sets.
+            s1a = s1_t{};
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1a.set_n_segments(s_idx2);
+            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1.add_term(pm_t{1, 2, 3}, 5);
+            s1a.add_term(pm_t{1, 2, 3}, 5);
+            REQUIRE(s1 == s1a);
+            REQUIRE(s1a == s1);
+            REQUIRE(!(s1 != s1a));
+            REQUIRE(!(s1a != s1));
+            s1.add_term(pm_t{-1, -2, -3}, -5);
+            s1a.add_term(pm_t{-1, -2, -3}, -5);
+            REQUIRE(s1 == s1a);
+            REQUIRE(s1a == s1);
+            REQUIRE(!(s1 != s1a));
+            REQUIRE(!(s1a != s1));
+            s1.add_term(pm_t{-1, 2, -3}, -5);
+            REQUIRE(s1 != s1a);
+            REQUIRE(s1a != s1);
+            REQUIRE(!(s1 == s1a));
+            REQUIRE(!(s1a == s1));
+
+            // Different symbol sets.
+            s1a = s1_t{};
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1a.set_n_segments(s_idx2);
+            s1.set_symbol_set(symbol_set{"x", "y"});
+            s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1.add_term(pm_t{1, 2}, 5);
+            s1a.add_term(pm_t{1, 2, 0}, 5);
+            REQUIRE(s1 == s1a);
+            REQUIRE(s1a == s1);
+            REQUIRE(!(s1 != s1a));
+            REQUIRE(!(s1a != s1));
+            s1.add_term(pm_t{-1, -2}, -5);
+            s1a.add_term(pm_t{-1, -2, 0}, -5);
+            REQUIRE(s1 == s1a);
+            REQUIRE(s1a == s1);
+            REQUIRE(!(s1 != s1a));
+            REQUIRE(!(s1a != s1));
+            s1.add_term(pm_t{4, 5}, -5);
+            s1a.add_term(pm_t{4, 5, 6}, -5);
+            REQUIRE(s1 != s1a);
+            REQUIRE(s1a != s1);
+            REQUIRE(!(s1 == s1a));
+            REQUIRE(!(s1a == s1));
+            s1a.add_term(pm_t{-4, 5, 6}, -5);
+            REQUIRE(s1 != s1a);
+            REQUIRE(s1a != s1);
+            REQUIRE(!(s1 == s1a));
+            REQUIRE(!(s1a == s1));
+            s1a = s1_t{};
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1a.set_n_segments(s_idx2);
+            s1.set_symbol_set(symbol_set{"x", "y"});
+            s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1.add_term(pm_t{1, 2}, 5);
+            REQUIRE(s1 != s1a);
+            REQUIRE(s1a != s1);
+            REQUIRE(!(s1 == s1a));
+            REQUIRE(!(s1a == s1));
+        }
     }
 }
