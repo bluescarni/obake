@@ -558,6 +558,7 @@ public:
     explicit series(T &&x) : series()
     {
         constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
+        static_assert(algo > 0 && algo <= 3);
 
         if constexpr (algo == 1) {
             // Case 1: the series rank of T is less than the series
@@ -594,6 +595,7 @@ public:
             // change, the keys remain identical, so we can do the insertion
             // table by table, relying on the fact that the new keys
             // will hash to the same table indices as the original ones.
+            // NOTE: this could be parallelised, if needed.
             for (s_size_t i = 0; i < (s_size_t(1) << x_log2_size); ++i) {
                 // Extract references to the tables in x and this.
                 auto &xt = x._get_s_table()[i];
@@ -623,7 +625,7 @@ public:
                     }
                 }
             }
-        } else if constexpr (algo == 3) {
+        } else {
             // Case 3: the series rank of T is higher than the series
             // rank of this series type. The construction is successful
             // only if x is a single coefficient series and this series
@@ -1697,7 +1699,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
     using rU = remove_cvref_t<U>;
 
     constexpr auto algo = series_add_algorithm<T &&, U &&>;
-    static_assert(algo > 0);
+    static_assert(algo > 0 && algo <= 3);
 
     if constexpr (algo == 1) {
         // The rank of T is less than the rank of U.
@@ -1736,7 +1738,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
                                                         ::std::forward<U>(y));
 
         return retval;
-    } else if constexpr (algo == 3) {
+    } else {
         // Both T and U are series, same rank, possibly different cf.
         // The return type is a series with the same rank, tag and key,
         // and coefficient type resulting from the addition/subtraction of the
@@ -2001,8 +2003,6 @@ template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 
 #endif
     constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x - y);
 
-#if 0
-
 namespace customisation
 {
 
@@ -2031,46 +2031,71 @@ template <typename T, typename U>
 constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
+template <typename T, typename U>
+constexpr int series_equal_to_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+
+    constexpr auto rank_T = series_rank<rT>;
+    constexpr auto rank_U = series_rank<rU>;
+
+    if constexpr (!rank_T && !rank_U) {
+        // Neither T nor U are series, return 0. This will disable
+        // the default series_equal_to() implementation.
+        return 0;
+    } else if constexpr (rank_T < rank_U) {
+        // The rank of T is less than the rank of U. We need to be able to:
+        // - zero-test const T &,
+        // - compare via lvalue const refs T and the coefficient
+        //   type of U.
+        return ::std::conjunction_v<
+                   is_zero_testable<::std::add_lvalue_reference_t<const rT>>,
+                   is_equality_comparable<::std::add_lvalue_reference_t<const rT>, const series_cf_t<rU> &>>
+                   ? 1
+                   : 0;
+    } else if constexpr (rank_T > rank_U) {
+        // Mirror of the above.
+        return ::std::conjunction_v<
+                   is_zero_testable<::std::add_lvalue_reference_t<const rU>>,
+                   is_equality_comparable<::std::add_lvalue_reference_t<const rU>, const series_cf_t<rT> &>>
+                   ? 2
+                   : 0;
+    } else {
+        // T and U are series with the same rank.
+        if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<rU>>,
+                                           ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>>) {
+            // The key and tag of the two series match.
+            return ::std::conjunction_v<
+                       // We may need to merge new symbols into the original key type.
+                       // NOTE: in the comparison implementation, we are only
+                       // extending the key but not converting coefficients,
+                       // so no need to check for coefficients convertibility.
+                       is_symbols_mergeable_key<const series_key_t<rT> &>,
+                       // We need to compare the coefficient types, via const lvalue refs.
+                       is_equality_comparable<const series_cf_t<rT> &, const series_cf_t<rU> &>>
+                       ? 3
+                       : 0;
+        } else {
+            return 0;
+        }
+    }
+}
+
+template <typename T, typename U>
+inline constexpr int series_equal_to_algorithm = detail::series_equal_to_algorithm_impl<T, U>();
+
 // Lowest priority: the default implementation for series.
-template <typename T, typename U /*, ::std::enable_if_t<series_equal_to_algorithm<T &&, U &&> != 0, int> = 0*/>
+template <typename T, typename U, ::std::enable_if_t<series_equal_to_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
 
     constexpr auto algo = series_equal_to_algorithm<T &&, U &&>;
-    static_assert(algo > 0);
+    static_assert(algo > 0 && algo <= 3);
 
-    // Helper to compare series of different rank
-    // (lhs has higher rank than rhs).
-    auto diff_rank_cmp = [](const auto &lhs, const auto &rhs) {
-        static_assert((series_rank<uncvref_t<decltype(lhs)>>) > series_rank<uncvref_t<decltype(rhs)>>);
-
-        switch (lhs.size()) {
-            case 0u:
-                // An empty series is considered equal to zero.
-                return ::piranha::is_zero(rhs);
-            case 1u: {
-                // lhs has a single term: if its key is unitary
-                // and its coefficient equal to rhs, return true,
-                // otherwise return false.
-                const auto it = lhs.begin();
-                const auto key_is_one = ::piranha::key_is_one(it->first, lhs.get_symbol_set());
-                return key_is_one && it->second == rhs;
-            }
-            default:
-                // lhs has more than 1 term, return false.
-                return false;
-        }
-    };
-
-    if constexpr (algo == 1) {
-        // The rank of T is less than the rank of U.
-        return diff_rank_cmp(y, x);
-    } else if constexpr (algo == 2) {
-        // The rank of U is less than the rank of T.
-        return diff_rank_cmp(x, y);
-    } else {
+    if constexpr (algo == 3) {
         // Two series with equal rank, same key/tag, possibly
         // different coefficient type.
 
@@ -2086,9 +2111,14 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 
             // Cache the end iterator of rhs.
             const auto rhs_end = rhs.end();
+            // NOTE: this can be parallelised and
+            // improved performance-wise by having specialised
+            // codepaths for single table layout, same
+            // n segments, etc. Keep it in mind for
+            // future optimisations.
             for (const auto &p : lhs) {
                 const auto it = rhs.find(p.first);
-                if (it == rhs_end || p != it->second) {
+                if (it == rhs_end || p.second != it->second) {
                     return false;
                 }
             }
@@ -2107,56 +2137,6 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             // the identical symbol sets case above.
             assert(!ins_map_x.empty() || !ins_map_y.empty());
 
-            // Helper to extend the keys of "from" with the symbol insertion map ins_map.
-            // The new series will be written to "to". The coefficient type of "to"
-            // may be different from the coefficient type of "from", in which case a coefficient
-            // conversion will take place.
-            auto sym_extender = [](ret_t &to, auto &&from, const symbol_idx_map<symbol_set> &ins_map) {
-                using from_t = decltype(from);
-
-                // NOTE: we assume that this helper is never
-                // invoked with an empty insertion map.
-                assert(!ins_map.empty());
-
-                // We may end up moving coefficients from "from" in the conversion to "to".
-                // Make sure we will clear "from" out properly.
-                series_rref_clearer<from_t> from_c(::std::forward<from_t>(from));
-
-                // Cache a couple of quantities.
-                auto &to_table = to._get_s_table()[0];
-                const auto &orig_ss = from.get_symbol_set();
-
-                // Establish if we need to check for zero coefficients
-                // when inserting. We don't if the coefficient types of to and from
-                // coincide (i.e., no cf conversion takes place),
-                // otherwise the conversion might generate zeroes.
-                constexpr auto check_zero = static_cast<sat_check_zero>(
-                    ::std::is_same_v<series_cf_t<ret_t>, series_cf_t<remove_cvref_t<from_t>>>);
-
-                // Reserve space in the destination table.
-                to_table.reserve(from.size());
-
-                // Merge the terms.
-                for (auto &p : from) {
-                    // Compute the merged key.
-                    auto merged_key = ::piranha::key_merge_symbols(
-                        static_cast<const series_key_t<remove_cvref_t<from_t>> &>(p.first), ins_map, orig_ss);
-
-                    // Insert the term: the only check we may need is check_zero, in case
-                    // the coefficient type changes.
-                    if constexpr (is_mutable_rvalue_reference_v<from_t &&>) {
-                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
-                                                      sat_check_table_size::off, sat_assume_unique::on>(
-                            to, to_table, ::std::move(merged_key), ::std::move(p.second));
-                    } else {
-                        detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
-                                                      sat_check_table_size::off, sat_assume_unique::on>(
-                            to, to_table, ::std::move(merged_key),
-                            static_cast<const series_cf_t<remove_cvref_t<from_t>> &>(p.second));
-                    }
-                }
-            };
-
             // Create a flag indicating empty insertion maps:
             // - 0 -> both non-empty,
             // - 1 -> x is empty,
@@ -2169,31 +2149,63 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                 case 1u: {
                     // x already has the correct symbol
                     // set, extend only y.
-                    ret_t b;
+                    rU b;
                     b.set_symbol_set(merged_ss);
-                    sym_extender(b, ::std::forward<U>(y), ins_map_y);
+                    detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                    return merge_with_identical_ss(::std::forward<T>(x), ::std::move(b));
+                    return cmp_identical_ss(x, b);
                 }
                 case 2u: {
                     // y already has the correct symbol
                     // set, extend only x.
-                    ret_t a;
+                    rT a;
                     a.set_symbol_set(merged_ss);
-                    sym_extender(a, ::std::forward<T>(x), ins_map_x);
+                    detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                    return merge_with_identical_ss(::std::move(a), ::std::forward<U>(y));
+                    return cmp_identical_ss(a, y);
                 }
             }
 
             // Both x and y need to be extended.
-            ret_t a, b;
+            rT a;
+            rU b;
             a.set_symbol_set(merged_ss);
             b.set_symbol_set(merged_ss);
-            sym_extender(a, ::std::forward<T>(x), ins_map_x);
-            sym_extender(b, ::std::forward<U>(y), ins_map_y);
+            detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+            detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-            return merge_with_identical_ss(::std::move(a), ::std::move(b));
+            return cmp_identical_ss(a, b);
+        }
+    } else {
+        // Helper to compare series of different rank
+        // (lhs has higher rank than rhs).
+        auto diff_rank_cmp = [](const auto &lhs, const auto &rhs) {
+            static_assert((series_rank<remove_cvref_t<decltype(lhs)>>) > series_rank<remove_cvref_t<decltype(rhs)>>);
+
+            switch (lhs.size()) {
+                case 0u:
+                    // An empty series is considered equal to zero.
+                    return ::piranha::is_zero(rhs);
+                case 1u: {
+                    // lhs has a single term: if its key is unitary
+                    // and its coefficient equal to rhs, return true,
+                    // otherwise return false.
+                    const auto it = lhs.begin();
+                    const auto key_is_one = ::piranha::key_is_one(it->first, lhs.get_symbol_set());
+                    return key_is_one && it->second == rhs;
+                }
+                default:
+                    // lhs has more than 1 term, return false.
+                    return false;
+            }
+        };
+
+        if constexpr (algo == 1) {
+            // The rank of T is less than the rank of U.
+            return diff_rank_cmp(y, x);
+        } else if constexpr (algo == 2) {
+            // The rank of U is less than the rank of T.
+            return diff_rank_cmp(x, y);
         }
     }
 }
@@ -2229,7 +2241,14 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 constexpr auto operator==(T &&x, U &&y)
     PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T> || CvrSeries<U>
+#else
+template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
+constexpr auto operator!=(T &&x, U &&y)
+    PIRANHA_SS_FORWARD_FUNCTION(!::piranha::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace piranha
 

@@ -40,7 +40,6 @@
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
 // #include <piranha/hash.hpp>
-// #include <piranha/math/is_zero.hpp>
 // #include <piranha/math/negate.hpp>
 // #include <piranha/math/pow.hpp>
 

@@ -112,3 +112,53 @@ TEST_CASE("series_lookup")
         }
     }
 }
+
+TEST_CASE("series_comparison")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    for (auto s_idx : {0u, 1u, 2u, 4u}) {
+        s1_t s1;
+        s1.set_n_segments(s_idx);
+
+        REQUIRE(s1 == 0);
+        REQUIRE(0 == s1);
+        REQUIRE(!(s1 != 0));
+        REQUIRE(!(0 != s1));
+
+        REQUIRE(!(s1 == 1));
+        REQUIRE(!(1 == s1));
+        REQUIRE(s1 != 1);
+        REQUIRE(1 != s1);
+
+        s1 = s1_t{};
+        s1.set_n_segments(s_idx);
+        s1.add_term(pm_t{}, 5);
+
+        REQUIRE(s1 == 5);
+        REQUIRE(5 == s1);
+        REQUIRE(!(s1 != 5));
+        REQUIRE(!(5 != s1));
+
+        REQUIRE(!(s1 == 3));
+        REQUIRE(!(3 == s1));
+        REQUIRE(s1 != 3);
+        REQUIRE(3 != s1);
+
+        s1 = s1_t{};
+        s1.set_symbol_set(symbol_set{"x", "y", "z"});
+        s1.set_n_segments(s_idx);
+        s1.add_term(pm_t{1, 2, 3}, 5);
+
+        REQUIRE(!(s1 == 5));
+        REQUIRE(!(5 == s1));
+        REQUIRE(s1 != 5);
+        REQUIRE(5 != s1);
+
+        REQUIRE(!(s1 == 0));
+        REQUIRE(!(0 == s1));
+        REQUIRE(s1 != 0);
+        REQUIRE(0 != s1);
+    }
+}
