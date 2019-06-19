@@ -56,6 +56,7 @@ using key_merge_symbols_impl_ret_t
     = decltype(detail::key_merge_symbols_impl(::std::declval<T>(), ::std::declval<const symbol_idx_map<symbol_set> &>(),
                                               ::std::declval<const symbol_set &>(), priority_tag<1>{}));
 
+// NOTE: enable only if the return value is remove_cvref_t<T>.
 template <typename T,
           ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, detected_t<key_merge_symbols_impl_ret_t, T>>, int> = 0>
 constexpr auto key_merge_symbols_impl_with_ret_check(T &&x, const symbol_idx_map<symbol_set> &ins_map,
