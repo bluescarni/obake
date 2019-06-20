@@ -503,7 +503,6 @@ struct series_rref_clearer {
 } // namespace detail
 
 // TODO: document that moved-from series are destructible and assignable.
-// TODO: test term annihilation during add/sub.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
