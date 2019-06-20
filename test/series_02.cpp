@@ -13,7 +13,9 @@
 
 #include <initializer_list>
 #include <random>
+#include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <mp++/rational.hpp>
@@ -298,5 +300,89 @@ TEST_CASE("series_comparison")
             REQUIRE(!(s1 == s1a));
             REQUIRE(!(s1a == s1));
         }
+    }
+}
+
+// Simple testing for compound add/sub, which are
+// currently implemented in terms of the binary
+// operators.
+TEST_CASE("series_compound_add_sub")
+{
+    using Catch::Matchers::Contains;
+
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(!is_compound_addable_v<s1_t &, void>);
+    REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
+    REQUIRE(!is_compound_addable_v<const s1_t &, int>);
+    REQUIRE(!is_compound_subtractable_v<const s1_t &, int>);
+
+    REQUIRE(!is_compound_addable_v<s1_t &, void>);
+    REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
+    REQUIRE(!is_compound_addable_v<const int &, s1_t>);
+    REQUIRE(!is_compound_subtractable_v<const int &, s1_t>);
+
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += 1)>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= 1)>);
+    REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() += s1_t{})>);
+    REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() -= s1_t{})>);
+
+    for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
+        // Scalar.
+        s1_t s1;
+        s1.set_n_segments(s_idx1);
+        s1.add_term(pm_t{}, "4/5");
+        s1 += 1;
+        REQUIRE(s1 == rat_t{9, 5});
+
+        s1 -= 3;
+        REQUIRE(s1 == rat_t{-6, 5});
+
+        for (auto s_idx2 : {0u, 1u, 2u, 4u}) {
+            // Same rank.
+            s1 = s1_t{};
+            s1.set_n_segments(s_idx1);
+            s1.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1.add_term(pm_t{1, 2, 3}, 1);
+            auto old_s1(s1);
+
+            s1_t s1a;
+            s1a.set_n_segments(s_idx2);
+            s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+            s1a.add_term(pm_t{4, 5, 6}, 2);
+
+            s1 += s1a;
+            REQUIRE(s1 == old_s1 + s1a);
+
+            s1 -= old_s1;
+            REQUIRE(s1 == s1a);
+        }
+    }
+
+    // Scalar on the left.
+    for (auto s_idx : {0u, 1u, 2u, 4u}) {
+        s1_t s1;
+        s1.set_n_segments(s_idx);
+        s1.add_term(pm_t{}, 3);
+        int n = 5;
+        n += s1;
+
+        REQUIRE(n == 8);
+
+        ++n;
+        n -= s1;
+        REQUIRE(n == 6);
+
+        s1 = s1_t{};
+        s1.set_n_segments(s_idx);
+        s1.set_symbol_set(symbol_set{"x"});
+        s1.add_term(pm_t{1}, 3);
+
+        REQUIRE_THROWS_WITH(n += s1, Contains("because the series does not consist of a single coefficient"));
+        REQUIRE_THROWS_AS(n += s1, std::invalid_argument);
+
+        REQUIRE_THROWS_WITH(n -= s1, Contains("because the series does not consist of a single coefficient"));
+        REQUIRE_THROWS_AS(n -= s1, std::invalid_argument);
     }
 }

@@ -1932,6 +1932,8 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 constexpr auto operator+(T &&x, U &&y)
     PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
+// NOTE: for now, implement operator+=() in terms of operator+().
+// This can be optimised later performance-wise.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
@@ -1939,6 +1941,15 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x + y);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires !CvrSeries<T> && CvrSeries<U>
+#else
+template <typename T, typename U,
+          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
+#endif
+    constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(x + y));
 
 namespace customisation
 {
@@ -2006,6 +2017,8 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 constexpr auto operator-(T &&x, U &&y)
     PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
+// NOTE: for now, implement operator-=() in terms of operator-().
+// This can be optimised later performance-wise.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
@@ -2013,6 +2026,15 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x - y);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires !CvrSeries<T> && CvrSeries<U>
+#else
+template <typename T, typename U,
+          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
+#endif
+    constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(x - y));
 
 namespace customisation
 {

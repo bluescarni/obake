@@ -56,9 +56,6 @@ using real = mppp::real;
 
 #endif
 
-// template <typename T, typename U>
-// using series_add_t = decltype(series_add(std::declval<T>(), std::declval<U>()));
-
 TEST_CASE("cf_key_concepts")
 {
     piranha_test::disable_slow_stack_traces();
