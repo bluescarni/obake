@@ -35,6 +35,7 @@
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/tcast.hpp>
 #include <piranha/detail/to_string.hpp>
+#include <piranha/detail/type_c.hpp>
 #include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
@@ -1517,8 +1518,14 @@ template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
+// Meta-programming to establish the algorithm and return type
+// of the default implementation of series add/sub. It will return
+// a pair containing an integral value (1, 2 or 3) signalling the algorithm
+// to be used in the implementation, and a type_c wrapper representing
+// the return type of the operation. If the add/sub implementation is not
+// well-defined for the input types, it will return (0, void).
 template <bool Sign, typename T, typename U>
-constexpr int series_addsub_algorithm_impl()
+constexpr auto series_addsub_algorithm_impl()
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -1526,10 +1533,14 @@ constexpr int series_addsub_algorithm_impl()
     constexpr auto rank_T = series_rank<rT>;
     constexpr auto rank_U = series_rank<rU>;
 
+    // Shortcut for signalling that the add/sub implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, type_c<void>{});
+
     if constexpr (!rank_T && !rank_U) {
-        // Neither T nor U are series, return 0. This will disable
-        // the default series_add() implementation.
-        return 0;
+        // Neither T nor U are series, return failure. This will disable
+        // the default series_add/sub() implementations.
+        return failure;
     } else if constexpr (rank_T < rank_U) {
         // The rank of T is less than the rank of U.
         // Determine the coefficient type of the return series type.
@@ -1548,12 +1559,16 @@ constexpr int series_addsub_algorithm_impl()
             // NOTE: we'll have to construct the retval from U,
             // and insert into it a term with coefficient constructed
             // from T.
-            return ::std::conjunction_v<is_constructible<ret_t, U>, is_constructible<ret_cf_t, T>> ? 1 : 0;
+            if constexpr (::std::conjunction_v<is_constructible<ret_t, U>, is_constructible<ret_cf_t, T>>) {
+                return ::std::make_pair(1, type_c<ret_t>{});
+            } else {
+                return failure;
+            }
         } else {
             // The candidate return coefficient type
             // is not valid, or it does not
-            // produce a coefficient type. Return 0.
-            return 0;
+            // produce a coefficient type. Return failure.
+            return failure;
         }
     } else if constexpr (rank_T > rank_U) {
         // Mirror of the above.
@@ -1564,9 +1579,13 @@ constexpr int series_addsub_algorithm_impl()
 
         if constexpr (is_cf_v<ret_cf_t>) {
             using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
-            return ::std::conjunction_v<is_constructible<ret_t, T>, is_constructible<ret_cf_t, U>> ? 2 : 0;
+            if constexpr (::std::conjunction_v<is_constructible<ret_t, T>, is_constructible<ret_cf_t, U>>) {
+                return ::std::make_pair(2, type_c<ret_t>{});
+            } else {
+                return failure;
+            }
         } else {
-            return 0;
+            return failure;
         }
     } else {
         // T and U are series with the same rank.
@@ -1588,27 +1607,29 @@ constexpr int series_addsub_algorithm_impl()
             using cf2_t = ::std::conditional_t<is_mutable_rvalue_reference_v<U &&>, series_cf_t<rU> &&,
                                                const series_cf_t<rU> &>;
 
-            return ::std::conjunction_v<
-                       // We may need to construct a ret_t from T or U.
-                       is_constructible<ret_t, T>, is_constructible<ret_t, U>,
-                       // We may need to copy/move convert the original coefficients
-                       // to ret_cf_t.
-                       is_constructible<ret_cf_t, cf1_t>, is_constructible<ret_cf_t, cf2_t>,
-                       // We may need to merge new symbols into the original key type.
-                       // NOTE: the key types of T and U must be identical at the moment,
-                       // so checking only T's key type is enough.
-                       // NOTE: the merging is done via a const ref.
-                       is_symbols_mergeable_key<const series_key_t<rT> &>>
-                       ? 3
-                       : 0;
+            if constexpr (::std::conjunction_v<
+                              // We may need to construct a ret_t from T or U.
+                              is_constructible<ret_t, T>, is_constructible<ret_t, U>,
+                              // We may need to copy/move convert the original coefficients
+                              // to ret_cf_t.
+                              is_constructible<ret_cf_t, cf1_t>, is_constructible<ret_cf_t, cf2_t>,
+                              // We may need to merge new symbols into the original key type.
+                              // NOTE: the key types of T and U must be identical at the moment,
+                              // so checking only T's key type is enough.
+                              // NOTE: the merging is done via a const ref.
+                              is_symbols_mergeable_key<const series_key_t<rT> &>>) {
+                return ::std::make_pair(3, type_c<ret_t>{});
+            } else {
+                return failure;
+            }
         } else {
-            return 0;
+            return failure;
         }
     }
 }
 
 template <typename T, typename U>
-inline constexpr int series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>();
+inline constexpr auto series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>();
 
 // Helper to extend the keys of "from" with the symbol insertion map ins_map.
 // The new series will be written to "to". The coefficient type of "to"
@@ -1693,21 +1714,19 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
 
 // Default implementation of the add/sub primitive for series.
 template <bool Sign, typename T, typename U>
-constexpr auto series_default_addsub_impl(T &&x, U &&y)
+constexpr typename decltype(series_addsub_algorithm_impl<Sign, T &&, U &&>().second)::type
+series_default_addsub_impl(T &&x, U &&y)
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
 
-    constexpr auto algo = series_add_algorithm<T &&, U &&>;
+    constexpr auto algo_p = series_addsub_algorithm_impl<Sign, T &&, U &&>();
+    constexpr auto algo = algo_p.first;
     static_assert(algo > 0 && algo <= 3);
+    using ret_t = typename decltype(algo_p.second)::type;
 
     if constexpr (algo == 1) {
         // The rank of T is less than the rank of U.
-        using ret_t = series<series_key_t<rU>,
-                             ::std::conditional_t<Sign, add_t<const rT &, const series_cf_t<rU> &>,
-                                                  sub_t<const rT &, const series_cf_t<rU> &>>,
-                             series_tag_t<rU>>;
-
         ret_t retval(::std::forward<U>(y));
         if constexpr (!Sign) {
             // For subtraction, negate the return value as
@@ -1727,11 +1746,6 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
         return retval;
     } else if constexpr (algo == 2) {
         // The rank of U is less than the rank of T.
-        using ret_t = series<series_key_t<rT>,
-                             ::std::conditional_t<Sign, add_t<const series_cf_t<rT> &, const rU &>,
-                                                  sub_t<const series_cf_t<rT> &, const rU &>>,
-                             series_tag_t<rT>>;
-
         ret_t retval(::std::forward<T>(x));
         detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
                                 sat_assume_unique::off>(retval, series_key_t<rT>(retval.get_symbol_set()),
@@ -1740,14 +1754,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
         return retval;
     } else {
         // Both T and U are series, same rank, possibly different cf.
-        // The return type is a series with the same rank, tag and key,
-        // and coefficient type resulting from the addition/subtraction of the
-        // coefficient types in the two series.
-        using ret_t = series<series_key_t<rT>,
-                             ::std::conditional_t<Sign, add_t<const series_cf_t<rT> &, const series_cf_t<rU> &>,
-                                                  sub_t<const series_cf_t<rT> &, const series_cf_t<rU> &>>,
-                             series_tag_t<rT>>;
-
+        //
         // Implementation of the addition/subtraction between
         // two series with identical symbol sets.
         auto merge_with_identical_ss = [](auto &&a, auto &&b) {
@@ -1882,7 +1889,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
 }
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&>.first != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -1953,10 +1960,10 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
-inline constexpr int series_sub_algorithm = detail::series_addsub_algorithm_impl<false, T, U>();
+inline constexpr auto series_sub_algorithm = detail::series_addsub_algorithm_impl<false, T, U>();
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&> != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&>.first != 0, int> = 0>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y)));
 
