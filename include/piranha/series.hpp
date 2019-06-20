@@ -1884,9 +1884,7 @@ constexpr auto series_default_addsub_impl(T &&x, U &&y)
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
-{
-    return detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
-}
+    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
@@ -1960,9 +1958,7 @@ inline constexpr int series_sub_algorithm = detail::series_addsub_algorithm_impl
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
-{
-    return detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
-}
+    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
