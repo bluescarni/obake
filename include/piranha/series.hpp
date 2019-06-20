@@ -1723,10 +1723,12 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
 
-    constexpr auto algo_p = series_addsub_algorithm_impl<Sign, T &&, U &&>();
-    constexpr auto algo = algo_p.first;
+    // Determine the algorithm.
+    constexpr auto algo = series_addsub_algorithm<Sign, T &&, U &&>.first;
     static_assert(algo > 0 && algo <= 3);
-    using ret_t = typename decltype(algo_p.second)::type;
+
+    // Shortcut to the return type.
+    using ret_t = series_default_addsub_ret_t<Sign, T &&, U &&>;
 
     if constexpr (algo == 1) {
         // The rank of T is less than the rank of U.
@@ -1757,7 +1759,7 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
         return retval;
     } else {
         // Both T and U are series, same rank, possibly different cf.
-        //
+
         // Implementation of the addition/subtraction between
         // two series with identical symbol sets.
         auto merge_with_identical_ss = [](auto &&a, auto &&b) {
@@ -1892,7 +1894,7 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
 }
 
 template <typename T, typename U>
-inline constexpr auto series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>().first;
+inline constexpr auto series_add_algorithm = series_addsub_algorithm<true, T, U>.first;
 
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
@@ -1966,7 +1968,7 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
-inline constexpr auto series_sub_algorithm = detail::series_addsub_algorithm_impl<false, T, U>().first;
+inline constexpr auto series_sub_algorithm = series_addsub_algorithm<false, T, U>.first;
 
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&> != 0, int> = 0>

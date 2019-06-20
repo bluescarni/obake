@@ -12,6 +12,8 @@
 namespace piranha::detail
 {
 
+// A small wrapper to represent types
+// in constexpr functions.
 template <typename T>
 struct type_c {
     using type = T;
