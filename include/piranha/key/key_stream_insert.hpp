@@ -56,8 +56,8 @@ constexpr auto key_stream_insert_impl(::std::ostream &os, T &&x, const symbol_se
 struct key_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&x, const symbol_set &ss) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::key_stream_insert_impl(os, ::std::forward<T>(x), ss,
-                                                                          detail::priority_tag<1>{}))
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(void(detail::key_stream_insert_impl(os, ::std::forward<T>(x), ss,
+                                                                               detail::priority_tag<1>{})))
 };
 
 inline constexpr auto key_stream_insert = key_stream_insert_msvc{};
@@ -66,7 +66,7 @@ inline constexpr auto key_stream_insert = key_stream_insert_msvc{};
 
 inline constexpr auto key_stream_insert =
     [](::std::ostream & os, auto &&x, const symbol_set &ss) PIRANHA_SS_FORWARD_LAMBDA(
-        detail::key_stream_insert_impl(os, ::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{}));
+        void(detail::key_stream_insert_impl(os, ::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
 
 #endif
 
