@@ -1467,8 +1467,8 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
 struct series_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&s) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_stream_insert_impl(os, ::std::forward<T>(s),
-                                                                             detail::priority_tag<2>{}))
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(void(detail::series_stream_insert_impl(os, ::std::forward<T>(s),
+                                                                                  detail::priority_tag<2>{})))
 };
 
 inline constexpr auto series_stream_insert = series_stream_insert_msvc{};
@@ -1476,7 +1476,7 @@ inline constexpr auto series_stream_insert = series_stream_insert_msvc{};
 #else
 
 inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) PIRANHA_SS_FORWARD_LAMBDA(
-    detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{}));
+    void(detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{})));
 
 #endif
 
