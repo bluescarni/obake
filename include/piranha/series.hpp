@@ -1628,9 +1628,6 @@ constexpr auto series_addsub_algorithm_impl()
     }
 }
 
-template <typename T, typename U>
-inline constexpr auto series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>();
-
 // Helper to extend the keys of "from" with the symbol insertion map ins_map.
 // The new series will be written to "to". The coefficient type of "to"
 // may be different from the coefficient type of "from", in which case a coefficient
@@ -1712,10 +1709,16 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     }
 }
 
+// Shortcuts.
+template <bool Sign, typename T, typename U>
+inline constexpr auto series_addsub_algorithm = series_addsub_algorithm_impl<Sign, T, U>();
+
+template <bool Sign, typename T, typename U>
+using series_default_addsub_ret_t = typename decltype(series_addsub_algorithm<Sign, T, U>.second)::type;
+
 // Default implementation of the add/sub primitive for series.
 template <bool Sign, typename T, typename U>
-constexpr typename decltype(series_addsub_algorithm_impl<Sign, T &&, U &&>().second)::type
-series_default_addsub_impl(T &&x, U &&y)
+constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(T &&x, U &&y)
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -1888,8 +1891,11 @@ series_default_addsub_impl(T &&x, U &&y)
     }
 }
 
+template <typename T, typename U>
+inline constexpr auto series_add_algorithm = detail::series_addsub_algorithm_impl<true, T, U>().first;
+
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&>.first != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -1960,10 +1966,10 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
-inline constexpr auto series_sub_algorithm = detail::series_addsub_algorithm_impl<false, T, U>();
+inline constexpr auto series_sub_algorithm = detail::series_addsub_algorithm_impl<false, T, U>().first;
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&>.first != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y)));
 
