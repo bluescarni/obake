@@ -12,6 +12,7 @@
 #include "catch.hpp"
 
 #include <initializer_list>
+#include <limits>
 #include <random>
 #include <stdexcept>
 #include <type_traits>
@@ -384,5 +385,82 @@ TEST_CASE("series_compound_add_sub")
 
         REQUIRE_THROWS_WITH(n -= s1, Contains("because the series does not consist of a single coefficient"));
         REQUIRE_THROWS_AS(n -= s1, std::invalid_argument);
+    }
+}
+
+struct foo {
+};
+
+// Test for the default series multiplication
+// implementation.
+TEST_CASE("series_default_mul")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using s1d_t = series<pm_t, double, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+    using s2d_t = series<pm_t, s1d_t, void>;
+
+    REQUIRE(!is_multipliable_v<s1_t, void>);
+    REQUIRE(!is_multipliable_v<void, s1_t>);
+    REQUIRE(!is_multipliable_v<s1_t, foo>);
+    REQUIRE(!is_multipliable_v<foo, s1_t>);
+    REQUIRE(!is_multipliable_v<s1_t, s1_t>);
+
+    for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
+        s1_t s1;
+        s1.set_n_segments(s_idx1);
+        s1.add_term(pm_t{}, "3/4");
+
+        // Multiplication by zero.
+        REQUIRE(s1 * 0 == 0);
+        REQUIRE(0 * s1 == 0);
+
+        // Simple tests.
+        REQUIRE(s1 * 4 == 3);
+        REQUIRE(4 * s1 == 3);
+        REQUIRE(std::is_same_v<s1_t, decltype(s1 * 4)>);
+        REQUIRE(std::is_same_v<s1_t, decltype(4 * s1)>);
+
+        REQUIRE(s1 * 4. == 3.);
+        REQUIRE(4. * s1 == 3.);
+        REQUIRE(std::is_same_v<s1d_t, decltype(s1 * 4.)>);
+        REQUIRE(std::is_same_v<s1d_t, decltype(4. * s1)>);
+
+        s2_t s2;
+        s2.set_n_segments(s_idx1);
+        s2.add_term(pm_t{}, "3/4");
+
+        REQUIRE(s2 * 0 == 0);
+        REQUIRE(0 * s2 == 0);
+
+        REQUIRE(s2 * 4 == 3);
+        REQUIRE(4 * s2 == 3);
+        REQUIRE(std::is_same_v<s2_t, decltype(s2 * 4)>);
+        REQUIRE(std::is_same_v<s2_t, decltype(4 * s2)>);
+
+        REQUIRE(s2 * 4. == 3.);
+        REQUIRE(4. * s2 == 3.);
+        REQUIRE(std::is_same_v<s2d_t, decltype(s2 * 4.)>);
+        REQUIRE(std::is_same_v<s2d_t, decltype(4. * s2)>);
+
+        if (std::numeric_limits<double>::is_iec559) {
+            // Try term cancellations.
+            s1d_t s1d;
+            s1d.set_n_segments(s_idx1);
+            s1d.set_symbol_set(symbol_set{"x"});
+            s1d.add_term(pm_t{1}, std::numeric_limits<double>::min());
+            s1d.add_term(pm_t{2}, std::numeric_limits<double>::min());
+            s1d.add_term(pm_t{3}, std::numeric_limits<double>::min());
+            s1d.add_term(pm_t{4}, std::numeric_limits<double>::min());
+
+            REQUIRE(s1d * std::numeric_limits<double>::min() == 0.);
+            REQUIRE(std::numeric_limits<double>::min() * s1d == 0.);
+
+            s1d.add_term(pm_t{0}, 1);
+
+            REQUIRE(s1d * std::numeric_limits<double>::min() == std::numeric_limits<double>::min());
+            REQUIRE(std::numeric_limits<double>::min() * s1d == std::numeric_limits<double>::min());
+        }
     }
 }
