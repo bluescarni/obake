@@ -557,7 +557,7 @@ public:
 #endif
     explicit series(T &&x) : series()
     {
-        constexpr auto algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
+        constexpr int algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
         static_assert(algo > 0 && algo <= 3);
 
         if constexpr (algo == 1) {
@@ -1517,6 +1517,87 @@ template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
+// Helper to extend the keys of "from" with the symbol insertion map ins_map.
+// The new series will be written to "to". The coefficient type of "to"
+// may be different from the coefficient type of "from", in which case a coefficient
+// conversion will take place.
+template <typename To, typename From>
+inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
+{
+    // NOTE: we assume that this helper is
+    // invoked with a non-empty insertion map, and an empty
+    // "to" series. "to" must have the correct symbol set.
+    assert(!ins_map.empty());
+    assert(to.empty());
+
+    // We may end up moving coefficients from "from" in the conversion to "to".
+    // Make sure we will clear "from" out properly.
+    series_rref_clearer<From> from_c(::std::forward<From>(from));
+
+    // Cache the original symbol set.
+    const auto &orig_ss = from.get_symbol_set();
+
+    // Set the number of segments, reserve space.
+    const auto from_log2_size = from._get_log2_size();
+    to.set_n_segments(from_log2_size);
+    to.reserve(from.size());
+
+    // Establish if we need to check for zero coefficients
+    // when inserting. We don't if the coefficient types of to and from
+    // coincide (i.e., no cf conversion takes place),
+    // otherwise the conversion might generate zeroes.
+    constexpr auto check_zero
+        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+
+    // Merge the terms, distinguishing the segmented vs non-segmented case.
+    if (from_log2_size) {
+        for (auto &t : from._get_s_table()) {
+            for (auto &p : t) {
+                // Compute the merged key.
+                auto merged_key = ::piranha::key_merge_symbols(
+                    static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
+
+                // Insert the term. We need the following checks:
+                // - zero check, in case the coefficient type changes,
+                // - table size check, because even if we know the
+                //   max table size was not exceeded in the original series,
+                //   it might be now (as the merged key may end up in a different
+                //   table).
+                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(p.second));
+                } else {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(
+                        to, ::std::move(merged_key), static_cast<const series_cf_t<remove_cvref_t<From>> &>(p.second));
+                }
+            }
+        }
+    } else {
+        auto &to_table = to._get_s_table()[0];
+
+        for (auto &p : from._get_s_table()[0]) {
+            // Compute the merged key.
+            auto merged_key = ::piranha::key_merge_symbols(
+                static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
+
+            // Insert the term: the only check we may need is check_zero, in case
+            // the coefficient type changes. We know that the table size cannot be
+            // exceeded as we are dealing with a single table.
+            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::move(p.second));
+            } else {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(
+                    to, to_table, ::std::move(merged_key),
+                    static_cast<const series_cf_t<remove_cvref_t<From>> &>(p.second));
+            }
+        }
+    }
+}
+
 // Meta-programming to establish the algorithm and return type
 // of the default implementation of series add/sub. It will return
 // a pair containing an integral value (1, 2 or 3) signalling the algorithm
@@ -1524,7 +1605,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
 // the return type of the operation. If the add/sub implementation is not
 // well-defined for the input types, it will return (0, void).
 template <bool Sign, typename T, typename U>
-constexpr auto series_addsub_algorithm_impl()
+constexpr auto series_default_addsub_algorithm_impl()
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -1627,93 +1708,12 @@ constexpr auto series_addsub_algorithm_impl()
     }
 }
 
-// Helper to extend the keys of "from" with the symbol insertion map ins_map.
-// The new series will be written to "to". The coefficient type of "to"
-// may be different from the coefficient type of "from", in which case a coefficient
-// conversion will take place.
-template <typename To, typename From>
-inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
-{
-    // NOTE: we assume that this helper is
-    // invoked with a non-empty insertion map, and an empty
-    // "to" series. "to" must have the correct symbol set.
-    assert(!ins_map.empty());
-    assert(to.empty());
-
-    // We may end up moving coefficients from "from" in the conversion to "to".
-    // Make sure we will clear "from" out properly.
-    series_rref_clearer<From> from_c(::std::forward<From>(from));
-
-    // Cache the original symbol set.
-    const auto &orig_ss = from.get_symbol_set();
-
-    // Set the number of segments, reserve space.
-    const auto from_log2_size = from._get_log2_size();
-    to.set_n_segments(from_log2_size);
-    to.reserve(from.size());
-
-    // Establish if we need to check for zero coefficients
-    // when inserting. We don't if the coefficient types of to and from
-    // coincide (i.e., no cf conversion takes place),
-    // otherwise the conversion might generate zeroes.
-    constexpr auto check_zero
-        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
-
-    // Merge the terms, distinguishing the segmented vs non-segmented case.
-    if (from_log2_size) {
-        for (auto &t : from._get_s_table()) {
-            for (auto &p : t) {
-                // Compute the merged key.
-                auto merged_key = ::piranha::key_merge_symbols(
-                    static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
-
-                // Insert the term. We need the following checks:
-                // - zero check, in case the coefficient type changes,
-                // - table size check, because even if we know the
-                //   max table size was not exceeded in the original series,
-                //   it might be now (as the merged key may end up in a different
-                //   table).
-                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(p.second));
-                } else {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(
-                        to, ::std::move(merged_key), static_cast<const series_cf_t<remove_cvref_t<From>> &>(p.second));
-                }
-            }
-        }
-    } else {
-        auto &to_table = to._get_s_table()[0];
-
-        for (auto &p : from._get_s_table()[0]) {
-            // Compute the merged key.
-            auto merged_key = ::piranha::key_merge_symbols(
-                static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
-
-            // Insert the term: the only check we may need is check_zero, in case
-            // the coefficient type changes. We know that the table size cannot be
-            // exceeded as we are dealing with a single table.
-            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::move(p.second));
-            } else {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(
-                    to, to_table, ::std::move(merged_key),
-                    static_cast<const series_cf_t<remove_cvref_t<From>> &>(p.second));
-            }
-        }
-    }
-}
-
 // Shortcuts.
 template <bool Sign, typename T, typename U>
-inline constexpr auto series_addsub_algorithm = series_addsub_algorithm_impl<Sign, T, U>();
+inline constexpr auto series_default_addsub_algorithm = series_default_addsub_algorithm_impl<Sign, T, U>();
 
 template <bool Sign, typename T, typename U>
-using series_default_addsub_ret_t = typename decltype(series_addsub_algorithm<Sign, T, U>.second)::type;
+using series_default_addsub_ret_t = typename decltype(series_default_addsub_algorithm<Sign, T, U>.second)::type;
 
 // Default implementation of the add/sub primitive for series.
 template <bool Sign, typename T, typename U>
@@ -1723,7 +1723,7 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
     using rU = remove_cvref_t<U>;
 
     // Determine the algorithm.
-    constexpr auto algo = series_addsub_algorithm<Sign, T &&, U &&>.first;
+    constexpr int algo = series_default_addsub_algorithm<Sign, T &&, U &&>.first;
     static_assert(algo > 0 && algo <= 3);
 
     // Shortcut to the return type.
@@ -1893,10 +1893,10 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
 }
 
 template <typename T, typename U>
-inline constexpr auto series_add_algorithm = series_addsub_algorithm<true, T, U>.first;
+inline constexpr int series_default_add_algo = series_default_addsub_algorithm<true, T, U>.first;
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_add_algorithm<T &&, U &&> != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_default_add_algo<T &&, U &&> != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -1978,10 +1978,10 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
-inline constexpr auto series_sub_algorithm = series_addsub_algorithm<false, T, U>.first;
+inline constexpr int series_default_sub_algo = series_default_addsub_algorithm<false, T, U>.first;
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_sub_algorithm<T &&, U &&> != 0, int> = 0>
+template <typename T, typename U, ::std::enable_if_t<series_default_sub_algo<T &&, U &&> != 0, int> = 0>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -2124,7 +2124,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
 
-    constexpr auto algo = series_equal_to_algorithm<T &&, U &&>;
+    constexpr int algo = series_equal_to_algorithm<T &&, U &&>;
     static_assert(algo > 0 && algo <= 3);
 
     if constexpr (algo == 3) {
