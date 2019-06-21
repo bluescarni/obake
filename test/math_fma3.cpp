@@ -178,6 +178,9 @@ int fma3(foo &, const foo &, const foo &);
 struct bar {
 };
 
+struct nobar {
+};
+
 namespace piranha::customisation
 {
 
@@ -203,4 +206,22 @@ TEST_CASE("fma3_custom")
     REQUIRE(is_mult_addable_v<bar &, const bar &, const bar &>);
     REQUIRE(!is_mult_addable_v<const bar &, const bar &, const bar &>);
     REQUIRE(!is_mult_addable_v<bar &&, const bar &, const bar &>);
+
+    REQUIRE(!is_mult_addable_v<nobar &, const nobar &, const nobar &>);
+    REQUIRE(!is_mult_addable_v<const nobar &, const nobar &, const nobar &>);
+    REQUIRE(!is_mult_addable_v<nobar &&, const nobar &, const nobar &>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(MultAddable<ns::foo &, const ns::foo &, const ns::foo &>);
+    REQUIRE(!MultAddable<const ns::foo &, const ns::foo &, const ns::foo &>);
+    REQUIRE(!MultAddable<ns::foo &&, const ns::foo &, const ns::foo &>);
+
+    REQUIRE(MultAddable<bar &, const bar &, const bar &>);
+    REQUIRE(!MultAddable<const bar &, const bar &, const bar &>);
+    REQUIRE(!MultAddable<bar &&, const bar &, const bar &>);
+
+    REQUIRE(!MultAddable<nobar &, const nobar &, const nobar &>);
+    REQUIRE(!MultAddable<const nobar &, const nobar &, const nobar &>);
+    REQUIRE(!MultAddable<nobar &&, const nobar &, const nobar &>);
+#endif
 }
