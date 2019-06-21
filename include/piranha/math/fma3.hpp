@@ -1,0 +1,177 @@
+// Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
+//
+// This file is part of the piranha library.
+//
+// This Source Code Form is subject to the terms of the Mozilla
+// Public License v. 2.0. If a copy of the MPL was not distributed
+// with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+#ifndef PIRANHA_MATH_FMA3_HPP
+#define PIRANHA_MATH_FMA3_HPP
+
+#include <cmath>
+#include <cstddef>
+#include <type_traits>
+#include <utility>
+
+#include <mp++/config.hpp>
+#include <mp++/integer.hpp>
+
+#if defined(MPPP_WITH_MPFR)
+
+#include <mp++/real.hpp>
+
+#endif
+
+#if defined(MPPP_WITH_QUADMATH)
+
+#include <mp++/real128.hpp>
+
+#endif
+
+#include <piranha/config.hpp>
+#include <piranha/detail/not_implemented.hpp>
+#include <piranha/detail/priority_tag.hpp>
+#include <piranha/detail/ss_func_forward.hpp>
+#include <piranha/type_traits.hpp>
+
+namespace piranha
+{
+
+namespace customisation
+{
+
+// External customisation point for piranha::fma3().
+template <typename T, typename U, typename V
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto fma3 = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Implementation for C++ floating-point types.
+// Will use the std::fma() family of functions,
+// if they have fast implementations.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T>
+requires FloatingPoint<T>
+#else
+template <typename T, ::std::enable_if_t<::std::is_floating_point_v<T>, int> = 0>
+#endif
+    inline void fma3(T &ret, const T &x, const T &y) noexcept
+{
+    if constexpr (::std::is_same_v<T, float>) {
+#if defined(FP_FAST_FMAF)
+        ret = ::std::fmaf(x, y, ret);
+#else
+        ret += x * y;
+#endif
+    } else if constexpr (::std::is_same_v<T, double>) {
+#if defined(FP_FAST_FMA)
+        ret = ::std::fma(x, y, ret);
+#else
+        ret += x * y;
+#endif
+    } else {
+#if defined(FP_FAST_FMAL)
+        ret = ::std::fmal(x, y, ret);
+#else
+        ret += x * y;
+#endif
+    }
+}
+
+template <::std::size_t SSize>
+inline void fma3(::mppp::integer<SSize> &ret, const ::mppp::integer<SSize> &x, const ::mppp::integer<SSize> &y)
+{
+    ::mppp::addmul(ret, x, y);
+}
+
+#if defined(MPPP_WITH_MPFR)
+
+inline void fma3(::mppp::real &ret, const ::mppp::real &x, const ::mppp::real &y)
+{
+    ::mppp::fma(ret, x, y, ret);
+}
+
+#endif
+
+#if defined(MPPP_WITH_QUADMATH)
+
+inline void fma3(::mppp::real128 &ret, const ::mppp::real128 &x, const ::mppp::real128 &y)
+{
+    ret = ::mppp::fma(x, y, ret);
+}
+
+#endif
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U, typename V>
+constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::fma3<T &&, U &&, V &&>)(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                        ::std::forward<V>(z)));
+
+// Unqualified function call implementation.
+template <typename T, typename U, typename V>
+constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(fma3(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z)));
+
+// Lowest priority: default implementation.
+template <typename T, typename U, typename V>
+constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<0>)
+    PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) += ::std::forward<U>(y) * ::std::forward<V>(z));
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct fma3_msvc {
+    template <typename T, typename U, typename V>
+    constexpr auto operator()(T &&x, U &&y, V &&z) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(void(detail::fma3_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                  ::std::forward<V>(z), detail::priority_tag<2>{})))
+};
+
+inline constexpr auto fma3 = fma3_msvc{};
+
+#else
+
+inline constexpr auto fma3 = [](auto &&x, auto &&y, auto &&z)
+    PIRANHA_SS_FORWARD_LAMBDA(void(detail::fma3_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y),
+                                                     ::std::forward<decltype(z)>(z), detail::priority_tag<2>{})));
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U, typename V>
+using fma3_t = decltype(::piranha::fma3(::std::declval<T>(), ::std::declval<U>(), ::std::declval<V>()));
+
+}
+
+template <typename T, typename U, typename V>
+using is_mult_addable = is_detected<detail::fma3_t, T, U, V>;
+
+template <typename T, typename U, typename V>
+inline constexpr bool is_mult_addable_v = is_mult_addable<T, U, V>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U, typename V>
+PIRANHA_CONCEPT_DECL MultAddable = requires(T &&x, U &&y, V &&z)
+{
+    ::piranha::fma3(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z));
+};
+
+#endif
+
+} // namespace piranha
+
+#endif
