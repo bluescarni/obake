@@ -443,6 +443,59 @@ namespace detail
 {
 
 template <typename T, typename U>
+using mul_t = decltype(::std::declval<T>() * ::std::declval<U>());
+
+}
+
+template <typename T, typename U = T>
+using is_multipliable
+    = ::std::conjunction<is_detected<detail::mul_t, T, U>, is_detected<detail::mul_t, U, T>,
+                         ::std::is_same<detected_t<detail::mul_t, T, U>, detected_t<detail::mul_t, U, T>>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_multipliable_v = is_multipliable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+PIRANHA_CONCEPT_DECL Multipliable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) * ::std::forward<U>(y);
+    ::std::forward<U>(y) * ::std::forward<T>(x);
+    requires ::std::is_same_v<decltype(::std::forward<T>(x) * ::std::forward<U>(y)),
+                              decltype(::std::forward<U>(y) * ::std::forward<T>(x))>;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using compound_mul_t = decltype(::std::declval<T>() *= ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_compound_multipliable = is_detected<detail::compound_mul_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_compound_multipliable_v = is_compound_multipliable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL CompoundMultipliable = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) *= ::std::forward<U>(y);
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
 using eq_t = decltype(::std::declval<T>() == ::std::declval<U>());
 
 template <typename T, typename U>
