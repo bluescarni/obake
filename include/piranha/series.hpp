@@ -1939,7 +1939,8 @@ requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x + y);
+    constexpr auto operator+=(T &&x, U &&y)
+        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) + ::std::forward<U>(y));
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
@@ -1948,7 +1949,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(x + y));
+    constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -2024,7 +2025,8 @@ requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(x = x - y);
+    constexpr auto operator-=(T &&x, U &&y)
+        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) - ::std::forward<U>(y));
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename T, typename U>
