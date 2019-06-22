@@ -359,6 +359,43 @@ TEST_CASE("series_compound_add_sub")
             s1 -= old_s1;
             REQUIRE(s1 == s1a);
         }
+
+        // Try with self.
+        s1 = s1_t{};
+        s1.set_n_segments(s_idx1);
+        s1.set_symbol_set(symbol_set{"x", "y", "z"});
+        s1.add_term(pm_t{1, 2, 3}, 1);
+        auto old_s1(s1);
+
+        s1 += s1;
+        REQUIRE(s1 == 2 * old_s1);
+
+        s1 = old_s1;
+        s1 += std::move(s1);
+        REQUIRE(s1 == 2 * old_s1);
+
+        s1 = old_s1;
+        std::move(s1) += s1;
+        REQUIRE(s1 == 2 * old_s1);
+
+        s1 = old_s1;
+        std::move(s1) += std::move(s1);
+        REQUIRE(s1 == 2 * old_s1);
+
+        s1 -= s1;
+        REQUIRE(s1 == 0);
+
+        s1 = old_s1;
+        s1 -= std::move(s1);
+        REQUIRE(s1 == 0);
+
+        s1 = old_s1;
+        std::move(s1) -= s1;
+        REQUIRE(s1 == 0);
+
+        s1 = old_s1;
+        std::move(s1) -= std::move(s1);
+        REQUIRE(s1 == 0);
     }
 
     // Scalar on the left.
