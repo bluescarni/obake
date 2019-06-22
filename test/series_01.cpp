@@ -611,6 +611,21 @@ TEST_CASE("series_add")
             REQUIRE(c.begin()->second == rat_t{4, -5});
             REQUIRE(c.begin()->first == pm_t{4, 5, 6});
 
+            // Test overlapping operands.
+            a = a_copy;
+
+            c = a + a;
+            REQUIRE(c == 2 * a);
+
+            // With moves as well.
+            c = std::move(a) + a;
+            REQUIRE(c == 2 * a_copy);
+            a = a_copy;
+
+            c = a + std::move(a);
+            REQUIRE(c == 2 * a_copy);
+            a = a_copy;
+
             // Test with heterogeneous cf types.
             a = a_copy;
             b = b_copy;
@@ -1090,6 +1105,21 @@ TEST_CASE("series_sub")
             REQUIRE(c.get_symbol_set() == symbol_set{"x", "y", "z"});
             REQUIRE(c.begin()->second == rat_t{4, -5});
             REQUIRE(c.begin()->first == pm_t{4, 5, 6});
+
+            // Test overlapping operands.
+            a = a_copy;
+
+            c = a - a;
+            REQUIRE(c == 0);
+
+            // With moves as well.
+            c = std::move(a) - a;
+            REQUIRE(c == 0);
+            a = a_copy;
+
+            c = a - std::move(a);
+            REQUIRE(c == 0);
+            a = a_copy;
 
             // Test with heterogeneous cf types.
             a = a_copy;

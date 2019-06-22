@@ -1459,3 +1459,114 @@ TEST_CASE("mutable_rvalue_reference")
     REQUIRE(MutableRvalueReference<int &&>);
 #endif
 }
+
+struct nonmultipliable_0 {
+};
+
+struct multipliable_0 {
+    friend multipliable_0 operator*(multipliable_0, multipliable_0);
+};
+
+struct multipliable_1 {
+    friend multipliable_1 operator*(multipliable_1, multipliable_0);
+    friend multipliable_1 operator*(multipliable_0, multipliable_1);
+};
+
+struct nonmultipliable_1 {
+    friend nonmultipliable_1 operator*(nonmultipliable_1, multipliable_0);
+};
+
+struct nonmultipliable_2 {
+    friend nonmultipliable_2 operator*(nonmultipliable_2, multipliable_0);
+    friend nonmultipliable_1 operator*(multipliable_0, nonmultipliable_2);
+};
+
+TEST_CASE("is_multipliable")
+{
+    REQUIRE(!is_multipliable_v<void>);
+    REQUIRE(!is_multipliable_v<void, void>);
+    REQUIRE(!is_multipliable_v<void, int>);
+    REQUIRE(!is_multipliable_v<int, void>);
+    REQUIRE(is_multipliable_v<int>);
+    REQUIRE(is_multipliable_v<int, int>);
+    REQUIRE(is_multipliable_v<const int, int &>);
+    REQUIRE(is_multipliable_v<int &&, volatile int &>);
+    REQUIRE(!is_multipliable_v<std::string, char *>);
+    REQUIRE(!is_multipliable_v<std::string, int>);
+    REQUIRE(!is_multipliable_v<nonmultipliable_0>);
+    REQUIRE(is_multipliable_v<multipliable_0>);
+    REQUIRE(is_multipliable_v<multipliable_1, multipliable_0>);
+    REQUIRE(!is_multipliable_v<nonmultipliable_1, multipliable_0>);
+    REQUIRE(!is_multipliable_v<nonmultipliable_2, multipliable_0>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Multipliable<void>);
+    REQUIRE(!Multipliable<void, void>);
+    REQUIRE(!Multipliable<void, int>);
+    REQUIRE(!Multipliable<int, void>);
+    REQUIRE(Multipliable<int>);
+    REQUIRE(Multipliable<int, int>);
+    REQUIRE(Multipliable<const int, int &>);
+    REQUIRE(Multipliable<int &&, volatile int &>);
+    REQUIRE(!Multipliable<std::string, char *>);
+    REQUIRE(!Multipliable<std::string, int>);
+    REQUIRE(!Multipliable<nonmultipliable_0>);
+    REQUIRE(Multipliable<multipliable_0>);
+    REQUIRE(Multipliable<multipliable_1, multipliable_0>);
+    REQUIRE(!Multipliable<nonmultipliable_1, multipliable_0>);
+    REQUIRE(!Multipliable<nonmultipliable_2, multipliable_0>);
+#endif
+}
+
+TEST_CASE("compound_multipliable")
+{
+    REQUIRE(!is_compound_multipliable_v<void, void>);
+    REQUIRE(!is_compound_multipliable_v<void, int>);
+    REQUIRE(!is_compound_multipliable_v<int, void>);
+
+    REQUIRE(is_compound_multipliable_v<int &, int>);
+    REQUIRE(is_compound_multipliable_v<int &, int &>);
+    REQUIRE(is_compound_multipliable_v<int &, const int &>);
+    REQUIRE(is_compound_multipliable_v<int &, int &&>);
+
+    REQUIRE(!is_compound_multipliable_v<int &&, int>);
+    REQUIRE(!is_compound_multipliable_v<int &&, int &>);
+    REQUIRE(!is_compound_multipliable_v<int &&, const int &>);
+    REQUIRE(!is_compound_multipliable_v<int &&, int &&>);
+
+    REQUIRE(!is_compound_multipliable_v<const int &, int>);
+    REQUIRE(!is_compound_multipliable_v<const int &, int &>);
+    REQUIRE(!is_compound_multipliable_v<const int &, const int &>);
+    REQUIRE(!is_compound_multipliable_v<const int &, int &&>);
+
+    REQUIRE(!is_compound_multipliable_v<int, int>);
+    REQUIRE(!is_compound_multipliable_v<int, int &>);
+    REQUIRE(!is_compound_multipliable_v<int, const int &>);
+    REQUIRE(!is_compound_multipliable_v<int, int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CompoundMultipliable<void, void>);
+    REQUIRE(!CompoundMultipliable<void, int>);
+    REQUIRE(!CompoundMultipliable<int, void>);
+
+    REQUIRE(CompoundMultipliable<int &, int>);
+    REQUIRE(CompoundMultipliable<int &, int &>);
+    REQUIRE(CompoundMultipliable<int &, const int &>);
+    REQUIRE(CompoundMultipliable<int &, int &&>);
+
+    REQUIRE(!CompoundMultipliable<int &&, int>);
+    REQUIRE(!CompoundMultipliable<int &&, int &>);
+    REQUIRE(!CompoundMultipliable<int &&, const int &>);
+    REQUIRE(!CompoundMultipliable<int &&, int &&>);
+
+    REQUIRE(!CompoundMultipliable<const int &, int>);
+    REQUIRE(!CompoundMultipliable<const int &, int &>);
+    REQUIRE(!CompoundMultipliable<const int &, const int &>);
+    REQUIRE(!CompoundMultipliable<const int &, int &&>);
+
+    REQUIRE(!CompoundMultipliable<int, int>);
+    REQUIRE(!CompoundMultipliable<int, int &>);
+    REQUIRE(!CompoundMultipliable<int, const int &>);
+    REQUIRE(!CompoundMultipliable<int, int &&>);
+#endif
+}
