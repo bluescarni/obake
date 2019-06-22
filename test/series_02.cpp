@@ -336,8 +336,12 @@ TEST_CASE("series_compound_add_sub")
         s1.add_term(pm_t{}, "4/5");
         s1 += 1;
         REQUIRE(s1 == rat_t{9, 5});
+        std::move(s1) += 1;
+        REQUIRE(s1 == rat_t{14, 5});
 
         s1 -= 3;
+        REQUIRE(s1 == rat_t{-1, 5});
+        std::move(s1) -= 1;
         REQUIRE(s1 == rat_t{-6, 5});
 
         for (auto s_idx2 : {0u, 1u, 2u, 4u}) {
@@ -428,6 +432,41 @@ TEST_CASE("series_compound_add_sub")
 struct foo {
 };
 
+namespace ns
+{
+
+using pm_t = packed_monomial<int>;
+
+// ADL-based customization.
+struct tag00 {
+};
+
+inline bool series_mul(const series<pm_t, rat_t, tag00> &, const series<pm_t, rat_t, tag00> &)
+{
+    return true;
+}
+
+// External customisation.
+struct tag01 {
+};
+
+using s1_t = series<pm_t, rat_t, tag01>;
+
+} // namespace ns
+
+namespace piranha::customisation
+{
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires SameCvr<T, ns::s1_t> inline constexpr auto series_mul<T, T>
+#else
+inline constexpr auto series_mul<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
+#endif
+    = [](const auto &, const auto &) { return false; };
+
+} // namespace piranha::customisation
+
 // Test for the default series multiplication
 // implementation.
 TEST_CASE("series_default_mul")
@@ -499,5 +538,30 @@ TEST_CASE("series_default_mul")
             REQUIRE(s1d * std::numeric_limits<double>::min() == std::numeric_limits<double>::min());
             REQUIRE(std::numeric_limits<double>::min() * s1d == std::numeric_limits<double>::min());
         }
+
+        s1 = s1_t{};
+        s1.set_n_segments(s_idx1);
+        s1.add_term(pm_t{}, "3/4");
+
+        s1 *= 2;
+        REQUIRE(s1 == rat_t{3, 2});
+
+        std::move(s1) *= 2;
+        REQUIRE(s1 == 3);
+
+        int n = 4;
+        n *= s1;
+        REQUIRE(n == 12);
+        n *= std::move(s1);
+        REQUIRE(n == 36);
     }
+
+    // Customisation points.
+    REQUIRE(series<pm_t, rat_t, ns::tag00>{} * series<pm_t, rat_t, ns::tag00>{});
+    REQUIRE(!(ns::s1_t{} * ns::s1_t{}));
+
+    REQUIRE(!is_multipliable_v<series<pm_t, rat_t, ns::tag00>, void>);
+    REQUIRE(!is_multipliable_v<void, series<pm_t, rat_t, ns::tag00>>);
+    REQUIRE(!is_multipliable_v<ns::s1_t, void>);
+    REQUIRE(!is_multipliable_v<void, ns::s1_t>);
 }
