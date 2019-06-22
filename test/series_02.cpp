@@ -367,7 +367,7 @@ TEST_CASE("series_compound_add_sub")
         s1.add_term(pm_t{1, 2, 3}, 1);
         auto old_s1(s1);
 
-        s1 += s1;
+        s1 += *&s1;
         REQUIRE(s1 == 2 * old_s1);
 
         s1 = old_s1;
@@ -382,7 +382,7 @@ TEST_CASE("series_compound_add_sub")
         std::move(s1) += std::move(s1);
         REQUIRE(s1 == 2 * old_s1);
 
-        s1 -= s1;
+        s1 -= *&s1;
         REQUIRE(s1 == 0);
 
         s1 = old_s1;

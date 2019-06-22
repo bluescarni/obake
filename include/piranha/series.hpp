@@ -1776,6 +1776,7 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                 // NOTE: perhaps in the future we can consider reserving
                 // additional space for the return value.
                 auto retval = [&lhs, &rhs]() {
+                    detail::ignore(rhs);
                     // NOTE: if lhs and rhs are the same object, don't
                     // perfectly forward in order to avoid move-contruction
                     // of retval which would alter the state of rhs.
