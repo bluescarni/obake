@@ -1775,7 +1775,20 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                 // Build the retval.
                 // NOTE: perhaps in the future we can consider reserving
                 // additional space for the return value.
-                ret_t retval(::std::forward<decltype(lhs)>(lhs));
+                auto retval = [&lhs, &rhs]() {
+                    // NOTE: if lhs and rhs are the same object, don't
+                    // perfectly forward in order to avoid move-contruction
+                    // of retval which would alter the state of rhs.
+                    if constexpr (::std::is_same_v<remove_cvref_t<decltype(lhs)>, remove_cvref_t<decltype(rhs)>>) {
+                        if (&lhs == &rhs) {
+                            return ret_t(lhs);
+                        } else {
+                            return ret_t(::std::forward<decltype(lhs)>(lhs));
+                        }
+                    } else {
+                        return ret_t(::std::forward<decltype(lhs)>(lhs));
+                    }
+                }();
 
                 // We may end up moving coefficients from rhs.
                 // Make sure we will clear it out properly.
