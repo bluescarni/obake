@@ -114,9 +114,9 @@ jobs:
           set PATH=%PATH%;%CD%
           ctest -V .
         displayName: "Configure, build and test"
-  - job: 'vs2015_clang_relwithdebinfo'
+  - job: 'vs2019_relwithdebinfo'
     pool:
-      vmImage: 'vs2017-win2016'
+      vmImage: 'windows-2019'
     timeoutInMinutes: 360
     steps:
 
@@ -150,8 +150,6 @@ jobs:
       # Note: conda activate doesn't work here, because it creates a new shell!
       - script: |
           conda install cmake ^
-                        clangdev ^
-                        ninja ^
                         mpir ^
                         mpfr ^
                         boost-cpp ^
@@ -162,20 +160,16 @@ jobs:
       # Install mp++.
       - script: |
           setlocal EnableDelayedExpansion
-          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           git clone https://github.com/bluescarni/mppp.git
           cd mppp
           mkdir build
           cd build
-          cmake .. -G Ninja ^
+          cmake .. -G "Visual Studio 16 2019" ^
                    -DMPPP_WITH_MPFR=yes ^
                    -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
                    -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
-                   -DCMAKE_CXX_STANDARD=17 ^
-                   -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
-                   -DCMAKE_CXX_COMPILER=clang-cl ^
-                   -DCMAKE_C_COMPILER=clang-cl
-          cmake --build . --target install -- -v
+                   -DCMAKE_CXX_STANDARD=17
+          cmake --build . --config RelWithDebInfo --target install
           cd ..
           cd ..
         displayName: "Install mp++"
@@ -183,18 +177,15 @@ jobs:
       # Install abseil.
       - script: |
           setlocal EnableDelayedExpansion
-          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           git clone https://github.com/abseil/abseil-cpp.git
           cd abseil-cpp
           mkdir build
           cd build
-          cmake .. -G Ninja ^
+          cmake .. -G "Visual Studio 16 2019" ^
                    -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
                    -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
-                   -DCMAKE_CXX_STANDARD=17 ^
-                   -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
-                   -DCMAKE_CXX_COMPILER=clang-cl
-          cmake --build . --target install -- -v
+                   -DCMAKE_CXX_STANDARD=17
+          cmake --build . --config RelWithDebInfo --target install
           cd ..
           cd ..
         displayName: "Install abseil"
@@ -202,17 +193,13 @@ jobs:
       # Configure, build and test.
       - script: |
           setlocal EnableDelayedExpansion
-          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           mkdir build
           cd build
-          cmake .. -G Ninja ^
-                -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
-                -DCMAKE_C_COMPILER=clang-cl ^
-                -DCMAKE_CXX_COMPILER=clang-cl ^
+          cmake .. -G "Visual Studio 16 2019" ^
                 -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
                 -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
                 -DPIRANHA_BUILD_TESTS=ON
-          cmake --build . -- -v
-          set PATH=%PATH%;%CD%
-          ctest -V .
+          cmake --build . --config RelWithDebInfo
+          set PATH=%PATH%;%CD%\RelWithDebInfo
+          ctest -V -C RelWithDebInfo
         displayName: "Configure, build and test"
