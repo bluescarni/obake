@@ -124,7 +124,8 @@ using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
 constexpr detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&, U &&)
 {
-    return detail::poly_mul_ret_t<T &&, U &&>{};
+    using ret_t = detail::poly_mul_ret_t<T &&, U &&>;
+    return ret_t{};
 }
 
 } // namespace polynomials
