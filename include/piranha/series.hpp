@@ -1711,7 +1711,7 @@ constexpr auto series_default_addsub_algorithm_impl()
 
 // Shortcuts.
 template <bool Sign, typename T, typename U>
-inline constexpr auto series_default_addsub_algorithm = series_default_addsub_algorithm_impl<Sign, T, U>();
+inline constexpr auto series_default_addsub_algorithm = detail::series_default_addsub_algorithm_impl<Sign, T, U>();
 
 template <bool Sign, typename T, typename U>
 using series_default_addsub_ret_t = typename decltype(series_default_addsub_algorithm<Sign, T, U>.second)::type;
@@ -2154,7 +2154,7 @@ constexpr auto series_default_mul_algorithm_impl()
 
 // Shortcuts.
 template <typename T, typename U>
-inline constexpr auto series_default_mul_algorithm = series_default_mul_algorithm_impl<T, U>();
+inline constexpr auto series_default_mul_algorithm = detail::series_default_mul_algorithm_impl<T, U>();
 
 template <typename T, typename U>
 inline constexpr int series_default_mul_algo = series_default_mul_algorithm<T, U>.first;
