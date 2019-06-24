@@ -19,9 +19,6 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-// #include <cstddef>
-// #include <bitset>
-// #include <iostream>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
@@ -39,9 +36,6 @@
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
-// #include <piranha/hash.hpp>
-// #include <piranha/math/negate.hpp>
-// #include <piranha/math/pow.hpp>
 
 #include "test_utils.hpp"
 
@@ -1481,92 +1475,3 @@ TEST_CASE("series_iterators")
     REQUIRE(is_input_iterator_v<s1_t::iterator>);
     REQUIRE(is_input_iterator_v<s1_t::const_iterator>);
 }
-
-#if 0
-
-TEST_CASE("pow_test")
-{
-    using rat_t = mppp::rational<1>;
-
-    using pm_t = packed_monomial<int>;
-    using series_t = series<pm_t, double, void>;
-    using series_t_rat = series<pm_t, rat_t, void>;
-
-    REQUIRE(series_rank<void> == 0u);
-    REQUIRE(series_rank<series_t> == 1u);
-    REQUIRE(series_rank<series_t &> == 0u);
-
-    REQUIRE(!is_detected_v<series_add_t, int, int>);
-
-    REQUIRE(detail::series_add_algorithm<int &, int &> == 0);
-    REQUIRE(detail::series_add_algorithm<int &, series_t &> == 1);
-    REQUIRE(detail::series_add_algorithm<series_t &, int &> == 2);
-
-    series_t s, s2(4);
-    s.set_nsegments(4);
-    REQUIRE(s2.is_single_cf());
-    REQUIRE(s.is_single_cf());
-    std::cout << s2 + 3.5 << '\n';
-
-    series_t_rat sa(s2 + 3.5);
-    std::cout << sa << '\n';
-    std::cout << sa - 15.63 << '\n';
-    REQUIRE(is_zero(sa - sa));
-    REQUIRE(is_cf_v<series_t_rat>);
-
-    std::cout << s << '\n';
-    REQUIRE(s.empty());
-    REQUIRE(s.begin() == s.end());
-    REQUIRE(s.cbegin() == s.cend());
-
-    REQUIRE(s.cbegin() == s.begin());
-
-    series_t::const_iterator it0(s.begin());
-    // series_t::iterator it1(s.cbegin());
-
-    REQUIRE(std::is_nothrow_swappable_v<series_t>);
-    REQUIRE(std::is_nothrow_swappable_v<series_t::const_iterator>);
-    REQUIRE(std::is_nothrow_swappable_v<series_t::iterator>);
-
-    constexpr auto width = std::numeric_limits<std::size_t>::digits;
-
-    std::cout << std::bitset<width>(detail::series_key_hasher{}(pm_t{1, 2, 3})) << " vs "
-              << std::bitset<width>(hash(pm_t{1, 2, 3})) << '\n';
-    std::cout << std::bitset<width>(detail::series_key_hasher{}(pm_t{4, 5, 6})) << " vs "
-              << std::bitset<width>(hash(pm_t{4, 5, 6})) << '\n';
-
-    s.set_symbol_set({"x", "y", "z"});
-    s.add_term(pm_t{0, 1, 2}, -1.);
-    s.add_term(pm_t{2, 4, 5}, -2.);
-    s.add_term(pm_t{2, 4, 5}, -5.);
-    s.add_term(pm_t{0, 0, 0}, -1.);
-    s.add_term(pm_t{0, 0, 0}, 1.);
-    s.add_term(pm_t{0, 0, 0}, -1.);
-
-    s.add_term<false>(pm_t{2, 0, -1}, -1.3);
-    s.add_term(pm_t{2, 1, -1}, -1.);
-    s.add_term<false>(pm_t{2, 1, -1}, -1.);
-
-    REQUIRE(!s.is_single_cf());
-
-    std::cout << s << '\n';
-
-    s = rat_t{1, 2};
-    std::cout << s << '\n';
-
-    series_t_rat farp{"3/4"};
-    std::cout << farp << '\n';
-    std::cout << static_cast<double>(farp) << '\n';
-
-    REQUIRE(!is_series_constructible_v<void, void, void, void>);
-    REQUIRE(!is_series_convertible_v<void, void>);
-
-    std::cout << -+-+negate(s + s) << '\n';
-
-    REQUIRE(is_negatable_v<series_t &>);
-    REQUIRE(is_negatable_v<series_t &&>);
-    REQUIRE(!is_negatable_v<const series_t &>);
-    REQUIRE(!is_negatable_v<const series_t &&>);
-}
-
-#endif
