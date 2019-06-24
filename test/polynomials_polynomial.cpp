@@ -12,10 +12,15 @@
 #include "catch.hpp"
 
 #include <piranha/math/pow.hpp>
+#include <piranha/polynomials/packed_monomial.hpp>
 
-TEST_CASE("pow_test")
+using namespace piranha;
+
+TEST_CASE("mul_test")
 {
-    // using poly_t = piranha::polynomial<void, void>;
-    // REQUIRE(piranha::pow(poly_t{}, 4) == 0);
-    // REQUIRE(piranha::pow(poly_t{}, 4.) == 1);
+    using pm_t = packed_monomial<int>;
+
+    using poly_t = polynomial<pm_t, double>;
+
+    poly_t{} * poly_t{};
 }
