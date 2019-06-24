@@ -200,7 +200,7 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
     const auto idx = s_size - 1u;
 
     if constexpr (is_signed_v<T>) {
-        const auto &mmp_arr = detail::sbp_get_mmp<T>();
+        const auto &mmp_arr = ::piranha::detail::sbp_get_mmp<T>();
         using size_type = decltype(mmp_arr.size());
         // Check that the size of the symbol set is not
         // too large for the current integral type,
@@ -210,7 +210,7 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
         return idx < mmp_arr.size() && m.get_value() >= mmp_arr[static_cast<size_type>(idx)][0]
                && m.get_value() <= mmp_arr[static_cast<size_type>(idx)][1];
     } else {
-        const auto &umax_arr = detail::ubp_get_max<T>();
+        const auto &umax_arr = ::piranha::detail::ubp_get_max<T>();
         using size_type = decltype(umax_arr.size());
         return idx < umax_arr.size() && m.get_value() <= umax_arr[static_cast<size_type>(idx)];
     }
@@ -248,7 +248,7 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
             if (tmp != T(1)) {
                 // The exponent is not unitary,
                 // print it.
-                os << "**" << detail::to_string(tmp);
+                os << "**" << ::piranha::detail::to_string(tmp);
             }
         }
     }
@@ -278,7 +278,8 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     for (const auto &p : ins_map) {
         const auto tmp_size = p.second.size();
         // LCOV_EXCL_START
-        if (piranha_unlikely(tmp_size > ::std::get<1>(detail::limits_minmax<decltype(s.size())>) - merged_size)) {
+        if (piranha_unlikely(tmp_size
+                             > ::std::get<1>(::piranha::detail::limits_minmax<decltype(s.size())>) - merged_size)) {
             piranha_throw(::std::overflow_error, "Overflow while trying to merge new symbols in a packed monomial: the "
                                                  "size of the merged monomial is too large");
         }
@@ -300,7 +301,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
             // insert new elements. Insert as many
             // zeroes as necessary in the packer.
             for (const auto &_ : map_it->second) {
-                detail::ignore(_);
+                ::piranha::detail::ignore(_);
                 bp << T(0);
             }
             // Move to the next element in the map.
@@ -315,7 +316,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     // We could still have symbols which need to be appended at the end.
     if (map_it != map_end) {
         for (const auto &_ : map_it->second) {
-            detail::ignore(_);
+            ::piranha::detail::ignore(_);
             bp << T(0);
         }
         assert(map_it + 1 == map_end);
