@@ -11,8 +11,6 @@
 
 #include <utility>
 
-#include <mp++/config.hpp>
-
 #include <piranha/config.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
