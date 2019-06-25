@@ -49,7 +49,7 @@ template <typename T, typename U>
 constexpr auto monomial_overflow_check_impl(T &&x, U &&y, const symbol_set &ss, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION(monomial_overflow_check(::std::forward<T>(x), ::std::forward<U>(y), ss));
 
-// Lowest priority: default implementation.
+// Lowest priority: default implementation, returns false.
 template <typename T, typename U>
 constexpr auto monomial_overflow_check_impl(T &&, U &&, const symbol_set &, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(false);
