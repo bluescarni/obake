@@ -221,7 +221,7 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
 template <typename T>
 inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, const symbol_set &s)
 {
-    assert(::piranha::polynomials::key_is_compatible(m, s));
+    assert(key_is_compatible(m, s));
 
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
@@ -268,7 +268,7 @@ template <typename T>
 inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const symbol_idx_map<symbol_set> &ins_map,
                                             const symbol_set &s)
 {
-    assert(::piranha::polynomials::key_is_compatible(m, s));
+    assert(key_is_compatible(m, s));
     // The last element of the insertion map must be at most s.size(), which means that there
     // are symbols to be appended at the end.
     assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
@@ -323,6 +323,18 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     }
 
     return packed_monomial<T>(bp.get());
+}
+
+// Implementation of monomial_mul().
+template <typename T>
+constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a, const packed_monomial<T> &b,
+                            [[maybe_unused]] const symbol_set &ss)
+{
+
+    assert(key_is_compatible(out, ss));
+    assert(key_is_compatible(a, ss));
+    assert(key_is_compatible(b, ss));
+    out._set_value(a.get_value() + b.get_value());
 }
 
 } // namespace polynomials
