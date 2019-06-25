@@ -346,6 +346,8 @@ constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a
 namespace detail
 {
 
+// Small helper to detect if 2 types
+// are the same packed_monomial type.
 template <typename, typename>
 struct same_packed_monomial : ::std::false_type {
 };
@@ -407,7 +409,7 @@ template <typename R1, typename R2,
     }
 
     // Prepare the limits vectors.
-    auto &[limits1, limits2] = [s_size]() {
+    auto [limits1, limits2] = [s_size]() {
         if constexpr (is_signed) {
             ::std::vector<::std::pair<value_type, value_type>> minmax1, minmax2;
             minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));

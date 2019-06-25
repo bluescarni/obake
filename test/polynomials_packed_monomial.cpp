@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <list>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -30,6 +31,7 @@
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
+#include <piranha/polynomials/monomial_overflow_check.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
 #include <piranha/utils/bit_packing.hpp>
@@ -396,5 +398,73 @@ TEST_CASE("monomial_mul_test")
         a = pm_t{0, 1, 0};
         monomial_mul(a, b, c, symbol_set{"x", "y", "z"});
         REQUIRE(a == pm_t{5, 7, 9});
+    });
+}
+
+TEST_CASE("monomial_overflow_check")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        std::vector<pm_t> v1, v2;
+        symbol_set ss;
+
+        // Empty symbol set.
+        REQUIRE(monomial_overflow_check(v1, v2, ss));
+
+        // Both empty ranges.
+        ss = symbol_set{"x", "y", "z"};
+        REQUIRE(monomial_overflow_check(v1, v2, ss));
+
+        // Empty second range.
+        v1.emplace_back(pm_t{1, 2, 3});
+        REQUIRE(monomial_overflow_check(v1, v2, ss));
+
+        // Simple tests.
+        v2.emplace_back(pm_t{1, 2, 3});
+        REQUIRE(monomial_overflow_check(v1, v2, ss));
+        v1.emplace_back(pm_t{4, 5, 6});
+        REQUIRE(monomial_overflow_check(v1, v2, ss));
+        v1.emplace_back(pm_t{2, 1, 3});
+        v1.emplace_back(pm_t{2, 1, 7});
+        v1.emplace_back(pm_t{0, 1, 0});
+        v2.emplace_back(pm_t{2, 0, 3});
+        v2.emplace_back(pm_t{1, 1, 1});
+        v2.emplace_back(pm_t{0, 4, 1});
+        REQUIRE(monomial_overflow_check(v1, v2, ss));
+
+        if constexpr (is_signed_v<int_t>) {
+            // Negatives as well.
+            v1.emplace_back(pm_t{-2, 1, 3});
+            v1.emplace_back(pm_t{2, 1, -7});
+            v1.emplace_back(pm_t{0, -1, 0});
+            v2.emplace_back(pm_t{-2, 0, 3});
+            v2.emplace_back(pm_t{1, -1, -1});
+            v2.emplace_back(pm_t{0, -4, 1});
+            REQUIRE(monomial_overflow_check(v1, v2, ss));
+        }
+
+        // Check overflow now.
+        if constexpr (is_signed_v<int_t>) {
+            v1.emplace_back(pm_t{int_t(0), int_t(4), std::get<2>(detail::sbp_get_minmax_elem<int_t>(3u))});
+            REQUIRE(!monomial_overflow_check(v1, v2, ss));
+            v1.pop_back();
+
+            v1.emplace_back(pm_t{int_t(0), int_t(4), std::get<1>(detail::sbp_get_minmax_elem<int_t>(3u))});
+            REQUIRE(!monomial_overflow_check(v1, v2, ss));
+            v1.pop_back();
+        } else {
+            v1.emplace_back(pm_t{int_t(0), int_t(4), std::get<1>(detail::ubp_get_max_elem<int_t>(3u))});
+            REQUIRE(!monomial_overflow_check(v1, v2, ss));
+        }
+
+        // Check the type trait.
+        REQUIRE(is_overflow_testable_monomial_v<std::vector<pm_t>, std::vector<pm_t>>);
+        REQUIRE(is_overflow_testable_monomial_v<std::vector<pm_t>, std::list<pm_t>>);
+        REQUIRE(is_overflow_testable_monomial_v<std::list<pm_t>, std::vector<pm_t>>);
+
+        REQUIRE(!is_overflow_testable_monomial_v<std::vector<pm_t>, void>);
+        REQUIRE(!is_overflow_testable_monomial_v<void, std::vector<pm_t>>);
     });
 }
