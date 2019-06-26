@@ -384,9 +384,6 @@ template <typename R1, typename R2,
     using value_type = typename pm_t::value_type;
     using int_t = ::mppp::integer<1>;
 
-    // Shortcut to the signedness of value_type.
-    constexpr bool is_signed = is_signed_v<value_type>;
-
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
 
@@ -410,7 +407,7 @@ template <typename R1, typename R2,
 
     // Prepare the limits vectors.
     auto [limits1, limits2] = [s_size]() {
-        if constexpr (is_signed) {
+        if constexpr (is_signed_v<value_type>) {
             ::std::vector<::std::pair<value_type, value_type>> minmax1, minmax2;
             minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));
             minmax2.reserve(static_cast<decltype(minmax2.size())>(s_size));
@@ -442,13 +439,13 @@ template <typename R1, typename R2,
         value_type tmp;
         for (auto i = 0u; i < s_size; ++i) {
             bu1 >> tmp;
-            if constexpr (is_signed) {
+            if constexpr (is_signed_v<value_type>) {
                 limits1.emplace_back(tmp, tmp);
             } else {
                 limits1.emplace_back(tmp);
             }
             bu2 >> tmp;
-            if constexpr (is_signed) {
+            if constexpr (is_signed_v<value_type>) {
                 limits2.emplace_back(tmp, tmp);
             } else {
                 limits2.emplace_back(tmp);
@@ -466,7 +463,7 @@ template <typename R1, typename R2,
         value_type tmp;
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             bu >> tmp;
-            if constexpr (is_signed) {
+            if constexpr (is_signed_v<value_type>) {
                 limits1[i].first = ::std::min(limits1[i].first, tmp);
                 limits1[i].second = ::std::max(limits1[i].second, tmp);
             } else {
@@ -484,7 +481,7 @@ template <typename R1, typename R2,
         value_type tmp;
         for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
             bu >> tmp;
-            if constexpr (is_signed) {
+            if constexpr (is_signed_v<value_type>) {
                 limits2[i].first = ::std::min(limits2[i].first, tmp);
                 limits2[i].second = ::std::max(limits2[i].second, tmp);
             } else {
@@ -495,7 +492,7 @@ template <typename R1, typename R2,
 
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
-    if constexpr (is_signed) {
+    if constexpr (is_signed_v<value_type>) {
         const auto &[_, min, max] = ::piranha::detail::sbp_get_minmax_elem<value_type>(s_size);
         ::piranha::detail::ignore(_);
 
