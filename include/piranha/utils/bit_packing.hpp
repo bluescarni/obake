@@ -58,6 +58,38 @@ PIRANHA_CONCEPT_DECL BitPackable = is_bit_packable_v<T>;
 namespace detail
 {
 
+// Given a set of 'size' signed integral values to be packed
+// into an instance of type T, return:
+// - the number of bits that each element of the sequence
+//   can use,
+// - the min/max allowed values for each element of the sequence.
+template <typename T>
+constexpr ::std::tuple<unsigned, T, T> sbp_get_minmax_elem(unsigned size)
+{
+    static_assert(is_signed_v<T>);
+
+    constexpr auto nbits = static_cast<unsigned>(limits_digits<T> + 1);
+
+    assert(size > 0u && size < nbits);
+
+    if (size == 1u) {
+        // Special case size 1 (use the full range of the type).
+        return ::std::tuple_cat(::std::make_tuple(nbits), limits_minmax<T>);
+    } else {
+        // In the general case we cannot use the full bit width,
+        // and we need at least one extra bit. Otherwise, we run
+        // into overflow errors during packing.
+        const auto pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
+        assert(pbits);
+
+        // Compute the limits.
+        const auto min = -(T(1) << (pbits - 1u));
+        const auto max = (T(1) << (pbits - 1u)) - T(1);
+
+        return ::std::make_tuple(pbits, min, max);
+    }
+}
+
 // Implementation details for the signed/unsigned packers.
 template <typename T>
 class signed_bit_packer_impl
@@ -75,20 +107,11 @@ public:
         }
 
         if (size) {
-            if (size == 1u) {
-                // Special case size 1 (use the full range of the type).
-                m_pbits = nbits;
-                ::std::tie(m_min, m_max) = limits_minmax<T>;
-            } else {
-                // In the general case we cannot use the full bit width,
-                // and we need at least one extra bit. Otherwise, we run
-                // into overflow errors during packing.
-                m_pbits = nbits / size - static_cast<unsigned>(nbits % size == 0u);
-                assert(m_pbits);
-                // Compute the limits.
-                m_min = -(T(1) << (m_pbits - 1u));
-                m_max = (T(1) << (m_pbits - 1u)) - T(1);
-            }
+            // Compute the min/max values for each element of the sequence.
+            const auto tmp = detail::sbp_get_minmax_elem<T>(size);
+            m_pbits = ::std::get<0>(tmp);
+            m_min = ::std::get<1>(tmp);
+            m_max = ::std::get<2>(tmp);
         }
     }
     constexpr void operator<<(const T &n)
@@ -131,6 +154,30 @@ private:
     unsigned m_index, m_size, m_pbits, m_cur_shift;
 };
 
+// Given a set of 'size' unsigned integral values to be packed
+// into an instance of type T, return:
+// - the number of bits that each element of the sequence
+//   can use,
+// - the max allowed value for each element of the sequence.
+template <typename T>
+constexpr ::std::tuple<unsigned, T> ubp_get_max_elem(unsigned size)
+{
+    static_assert(!is_signed_v<T>);
+
+    constexpr auto nbits = static_cast<unsigned>(limits_digits<T>);
+
+    assert(size > 0u && size <= nbits);
+
+    // pbits is the number of bits that can be used by each
+    // packed value.
+    const auto pbits = nbits / size;
+    // max is the maximum packed value.
+    // It is a sequence of pbits 1 bits.
+    const auto max = static_cast<T>(-1) >> (nbits - pbits);
+
+    return ::std::make_tuple(pbits, max);
+}
+
 template <typename T>
 class unsigned_bit_packer_impl
 {
@@ -149,13 +196,9 @@ public:
         if (size) {
             // NOTE: compute these values only if we are actually going
             // to pack values (if size is zero, no packing ever happens).
-            //
-            // m_pbits is the number of bits that can be used by each
-            // packed value.
-            m_pbits = nbits / size;
-            // m_max is the maximum packed value (in unsigned format).
-            // It is a sequence of m_pbits 1 bits.
-            m_max = static_cast<T>(-1) >> (nbits - m_pbits);
+            const auto tmp = detail::ubp_get_max_elem<T>(size);
+            m_pbits = ::std::get<0>(tmp);
+            m_max = ::std::get<1>(tmp);
         }
     }
     constexpr void operator<<(const T &n)
