@@ -152,6 +152,40 @@ PIRANHA_CONCEPT_DECL MutableForwardRange = Range<T> &&MutableForwardIterator<ran
 
 #endif
 
+namespace detail
+{
+
+namespace range_impl
+{
+
+template <typename T>
+struct range {
+    T b;
+    T e;
+};
+
+template <typename T>
+inline T begin(const range<T> &r)
+{
+    return r.b;
+}
+
+template <typename T>
+inline T end(const range<T> &r)
+{
+    return r.e;
+}
+
+} // namespace range_impl
+
+template <typename T>
+inline auto make_range(T b, T e)
+{
+    return range_impl::range<T>{b, e};
+}
+
+} // namespace detail
+
 } // namespace piranha
 
 #endif
