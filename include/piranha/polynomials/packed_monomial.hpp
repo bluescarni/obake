@@ -381,7 +381,7 @@ template <typename R1, typename R2,
                                        remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>>,
               int> = 0>
 #endif
-    inline bool monomial_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+    inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
 {
     using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
     using value_type = typename pm_t::value_type;
