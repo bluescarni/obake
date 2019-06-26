@@ -9,6 +9,7 @@
 #ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <initializer_list>
@@ -18,6 +19,8 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
+#include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/ignore.hpp>
@@ -44,6 +47,9 @@ template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
 class packed_monomial
 {
 public:
+    // Alias for T.
+    using value_type = T;
+
     // Def ctor inits to a monomial with all zero exponents.
     constexpr packed_monomial() : m_value(0) {}
     // Constructor from symbol set.
@@ -221,7 +227,7 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
 template <typename T>
 inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, const symbol_set &s)
 {
-    assert(::piranha::polynomials::key_is_compatible(m, s));
+    assert(polynomials::key_is_compatible(m, s));
 
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
@@ -268,7 +274,7 @@ template <typename T>
 inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const symbol_idx_map<symbol_set> &ins_map,
                                             const symbol_set &s)
 {
-    assert(::piranha::polynomials::key_is_compatible(m, s));
+    assert(polynomials::key_is_compatible(m, s));
     // The last element of the insertion map must be at most s.size(), which means that there
     // are symbols to be appended at the end.
     assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
@@ -323,6 +329,198 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     }
 
     return packed_monomial<T>(bp.get());
+}
+
+// Implementation of monomial_mul().
+template <typename T>
+constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a, const packed_monomial<T> &b,
+                            [[maybe_unused]] const symbol_set &ss)
+{
+    // Verify the inputs.
+    assert(polynomials::key_is_compatible(a, ss));
+    assert(polynomials::key_is_compatible(b, ss));
+
+    out._set_value(a.get_value() + b.get_value());
+
+    // Verify the output as well.
+    assert(polynomials::key_is_compatible(out, ss));
+}
+
+namespace detail
+{
+
+// Small helper to detect if 2 types
+// are the same packed_monomial type.
+template <typename, typename>
+struct same_packed_monomial : ::std::false_type {
+};
+
+template <typename T>
+struct same_packed_monomial<packed_monomial<T>, packed_monomial<T>> : ::std::true_type {
+};
+
+template <typename T, typename U>
+inline constexpr bool same_packed_monomial_v = same_packed_monomial<T, U>::value;
+
+} // namespace detail
+
+// Monomial overflow checking.
+// NOTE: this assumes that all the monomials in the 2 ranges
+// are compatible with ss.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename R1, typename R2>
+requires InputRange<R1> &&InputRange<R2> &&
+    detail::same_packed_monomial_v<remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+                                   remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
+#else
+template <typename R1, typename R2,
+          ::std::enable_if_t<
+              ::std::conjunction_v<is_input_range<R1>, is_input_range<R2>,
+                                   detail::same_packed_monomial<
+                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>>,
+              int> = 0>
+#endif
+    inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+{
+    using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
+    using value_type = typename pm_t::value_type;
+    using int_t = ::mppp::integer<1>;
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    if (s_size == 0u) {
+        // If the monomials have zero variables,
+        // there cannot be overflow.
+        return true;
+    }
+
+    // Get out the begin/end iterators.
+    auto b1 = ::piranha::begin(::std::forward<R1>(r1));
+    const auto e1 = ::piranha::end(::std::forward<R1>(r1));
+    auto b2 = ::piranha::begin(::std::forward<R2>(r2));
+    const auto e2 = ::piranha::end(::std::forward<R2>(r2));
+
+    if (b1 == e1 || b2 == e2) {
+        // If either range is empty, there will be no
+        // overflow, just return true;
+        return true;
+    }
+
+    // Prepare the limits vectors.
+    auto [limits1, limits2] = [s_size]() {
+        if constexpr (is_signed_v<value_type>) {
+            ::std::vector<::std::pair<value_type, value_type>> minmax1, minmax2;
+            minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));
+            minmax2.reserve(static_cast<decltype(minmax2.size())>(s_size));
+
+            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2));
+        } else {
+            ::std::vector<value_type> max1, max2;
+            max1.reserve(static_cast<decltype(max1.size())>(s_size));
+            max2.reserve(static_cast<decltype(max2.size())>(s_size));
+
+            return ::std::make_tuple(::std::move(max1), ::std::move(max2));
+        }
+    }();
+
+    // Init with the first elements of the ranges.
+    {
+        // NOTE: if the iterators return copies
+        // of the monomials, rather than references,
+        // capturing them via const
+        // ref will extend their lifetimes.
+        const auto &init1 = *b1;
+        const auto &init2 = *b2;
+
+        assert(polynomials::key_is_compatible(init1, ss));
+        assert(polynomials::key_is_compatible(init2, ss));
+
+        bit_unpacker bu1(init1.get_value(), s_size);
+        bit_unpacker bu2(init2.get_value(), s_size);
+        value_type tmp;
+        for (auto i = 0u; i < s_size; ++i) {
+            bu1 >> tmp;
+            if constexpr (is_signed_v<value_type>) {
+                limits1.emplace_back(tmp, tmp);
+            } else {
+                limits1.emplace_back(tmp);
+            }
+            bu2 >> tmp;
+            if constexpr (is_signed_v<value_type>) {
+                limits2.emplace_back(tmp, tmp);
+            } else {
+                limits2.emplace_back(tmp);
+            }
+        }
+    }
+
+    // Examine the rest of the ranges.
+    for (++b1; b1 != e1; ++b1) {
+        const auto &cur = *b1;
+
+        assert(polynomials::key_is_compatible(cur, ss));
+
+        bit_unpacker bu(cur.get_value(), s_size);
+        value_type tmp;
+        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+            bu >> tmp;
+            if constexpr (is_signed_v<value_type>) {
+                limits1[i].first = ::std::min(limits1[i].first, tmp);
+                limits1[i].second = ::std::max(limits1[i].second, tmp);
+            } else {
+                limits1[i] = ::std::max(limits1[i], tmp);
+            }
+        }
+    }
+
+    for (++b2; b2 != e2; ++b2) {
+        const auto &cur = *b2;
+
+        assert(polynomials::key_is_compatible(cur, ss));
+
+        bit_unpacker bu(cur.get_value(), s_size);
+        value_type tmp;
+        for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
+            bu >> tmp;
+            if constexpr (is_signed_v<value_type>) {
+                limits2[i].first = ::std::min(limits2[i].first, tmp);
+                limits2[i].second = ::std::max(limits2[i].second, tmp);
+            } else {
+                limits2[i] = ::std::max(limits2[i], tmp);
+            }
+        }
+    }
+
+    // Now add the limits via interval arithmetics
+    // and check for overflow. Use mppp::integer for the check.
+    if constexpr (is_signed_v<value_type>) {
+        const auto &[_, min, max] = ::piranha::detail::sbp_get_minmax_elem<value_type>(s_size);
+        ::piranha::detail::ignore(_);
+
+        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+            const auto add_min = int_t{limits1[i].first} + limits2[i].first;
+            const auto add_max = int_t{limits1[i].second} + limits2[i].second;
+
+            if (add_min < min || add_max > max) {
+                return false;
+            }
+        }
+    } else {
+        const auto &[_, max] = ::piranha::detail::ubp_get_max_elem<value_type>(s_size);
+        ::piranha::detail::ignore(_);
+
+        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+            const auto add_max = int_t{limits1[i]} + limits2[i];
+
+            if (add_max > max) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 } // namespace polynomials

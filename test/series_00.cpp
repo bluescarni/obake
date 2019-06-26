@@ -1474,4 +1474,7 @@ TEST_CASE("series_iterators")
     // Check that they are input iterators.
     REQUIRE(is_input_iterator_v<s1_t::iterator>);
     REQUIRE(is_input_iterator_v<s1_t::const_iterator>);
+    REQUIRE(is_forward_iterator_v<s1_t::iterator>);
+    REQUIRE(is_mutable_forward_iterator_v<s1_t::iterator>);
+    REQUIRE(is_forward_iterator_v<s1_t::const_iterator>);
 }
