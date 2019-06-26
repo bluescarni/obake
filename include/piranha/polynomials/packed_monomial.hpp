@@ -227,7 +227,7 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
 template <typename T>
 inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, const symbol_set &s)
 {
-    assert(key_is_compatible(m, s));
+    assert(polynomials::key_is_compatible(m, s));
 
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
@@ -274,7 +274,7 @@ template <typename T>
 inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const symbol_idx_map<symbol_set> &ins_map,
                                             const symbol_set &s)
 {
-    assert(key_is_compatible(m, s));
+    assert(polynomials::key_is_compatible(m, s));
     // The last element of the insertion map must be at most s.size(), which means that there
     // are symbols to be appended at the end.
     assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
@@ -336,11 +336,14 @@ template <typename T>
 constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a, const packed_monomial<T> &b,
                             [[maybe_unused]] const symbol_set &ss)
 {
+    // Verify the inputs.
+    assert(polynomials::key_is_compatible(a, ss));
+    assert(polynomials::key_is_compatible(b, ss));
 
-    assert(key_is_compatible(out, ss));
-    assert(key_is_compatible(a, ss));
-    assert(key_is_compatible(b, ss));
     out._set_value(a.get_value() + b.get_value());
+
+    // Verify the output as well.
+    assert(polynomials::key_is_compatible(out, ss));
 }
 
 namespace detail
@@ -431,8 +434,8 @@ template <typename R1, typename R2,
         const auto &init1 = *b1;
         const auto &init2 = *b2;
 
-        assert(key_is_compatible(init1, ss));
-        assert(key_is_compatible(init2, ss));
+        assert(polynomials::key_is_compatible(init1, ss));
+        assert(polynomials::key_is_compatible(init2, ss));
 
         bit_unpacker bu1(init1.get_value(), s_size);
         bit_unpacker bu2(init2.get_value(), s_size);
@@ -457,7 +460,7 @@ template <typename R1, typename R2,
     for (++b1; b1 != e1; ++b1) {
         const auto &cur = *b1;
 
-        assert(key_is_compatible(cur, ss));
+        assert(polynomials::key_is_compatible(cur, ss));
 
         bit_unpacker bu(cur.get_value(), s_size);
         value_type tmp;
@@ -475,7 +478,7 @@ template <typename R1, typename R2,
     for (++b2; b2 != e2; ++b2) {
         const auto &cur = *b2;
 
-        assert(key_is_compatible(cur, ss));
+        assert(polynomials::key_is_compatible(cur, ss));
 
         bit_unpacker bu(cur.get_value(), s_size);
         value_type tmp;
