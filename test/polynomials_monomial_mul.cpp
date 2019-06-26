@@ -13,7 +13,6 @@
 
 #include <piranha/config.hpp>
 #include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
 
 using namespace piranha;
 
