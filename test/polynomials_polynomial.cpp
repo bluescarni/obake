@@ -22,7 +22,9 @@ TEST_CASE("mul_test")
 
     using poly_t = polynomial<pm_t, double>;
 
-    std::cout << poly_t{} * poly_t{} << '\n';
+    auto [x, y] = make_polynomials<poly_t>(symbol_set{"x", "y"}, "x", "y");
+
+    std::cout << x * y << '\n';
     std::cout << poly_t{3} * 3 << '\n';
     std::cout << 3 * poly_t{3} << '\n';
 }
