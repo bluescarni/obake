@@ -22,5 +22,7 @@ TEST_CASE("mul_test")
 
     using poly_t = polynomial<pm_t, double>;
 
-    poly_t{} * poly_t{};
+    std::cout << poly_t{} * poly_t{} << '\n';
+    std::cout << poly_t{3} * 3 << '\n';
+    std::cout << 3 * poly_t{3} << '\n';
 }
