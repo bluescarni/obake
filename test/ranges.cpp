@@ -225,9 +225,13 @@ TEST_CASE("ranges_test")
     REQUIRE(piranha::end(arr_d) == &arr_d[0] + 3);
 }
 
+#if !defined(_MSC_VER) || _MSC_VER >= 1910
+
 // Verify constexpr capabilities.
 constexpr std::array<int, 3> carr{};
-constexpr auto carr_range = piranha::detail::make_range(carr.begin(), carr.end());
+[[maybe_unused]] constexpr auto carr_range = piranha::detail::make_range(carr.begin(), carr.end());
+
+#endif
 
 TEST_CASE("make_range_test")
 {
