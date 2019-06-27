@@ -51,8 +51,10 @@ constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set
 
 // Lowest priority: default implementation, returns true.
 template <typename T, typename U>
-constexpr auto monomial_range_overflow_check_impl(T &&, U &&, const symbol_set &, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(true);
+constexpr bool monomial_range_overflow_check_impl(T &&, U &&, const symbol_set &, priority_tag<0>) noexcept
+{
+    return true;
+}
 
 } // namespace detail
 
