@@ -51,6 +51,17 @@ using is_polynomial = is_polynomial_impl<T>;
 template <typename T>
 inline constexpr bool is_polynomial_v = is_polynomial<T>::value;
 
+// Small helper to extract a const reference to
+// a term's key (that is, the first element of the
+// input pair p).
+struct poly_term_key_ref_extractor {
+    template <typename P>
+    constexpr decltype(auto) operator()(const P &p) const noexcept
+    {
+        return static_cast<const typename P::first_type &>(p.first);
+    }
+};
+
 template <typename T, typename U>
 constexpr auto poly_mul_algorithm_impl()
 {
@@ -81,7 +92,27 @@ constexpr auto poly_mul_algorithm_impl()
             using ret_cf_t = detected_t<::piranha::detail::mul_t, const series_cf_t<rT> &, const series_cf_t<rU> &>;
 
             if constexpr (is_cf_v<ret_cf_t>) {
-                return ::std::make_pair(1, ::piranha::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
+                // The coefficient is valid.
+                //
+                // We need to perform monomial range checking on the input series,
+                // after having copied their terms into local vectors.
+                // Verify that we can do that.
+                using xv_t = ::std::vector<::std::pair<series_key_t<rT>, series_cf_t<rT>>>;
+                using yv_t = ::std::vector<::std::pair<series_key_t<rU>, series_cf_t<rU>>>;
+
+                // Determine the range types to use for the overflow check.
+                using xr_t = decltype(::piranha::detail::make_range(
+                    ::boost::make_transform_iterator(::std::declval<xv_t &>().cbegin(), poly_term_key_ref_extractor{}),
+                    ::boost::make_transform_iterator(::std::declval<xv_t &>().cend(), poly_term_key_ref_extractor{})));
+                using yr_t = decltype(::piranha::detail::make_range(
+                    ::boost::make_transform_iterator(::std::declval<yv_t &>().cbegin(), poly_term_key_ref_extractor{}),
+                    ::boost::make_transform_iterator(::std::declval<yv_t &>().cend(), poly_term_key_ref_extractor{})));
+
+                if constexpr (is_overflow_testable_monomial_range_v<xr_t, yr_t>) {
+                    return ::std::make_pair(1, ::piranha::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
+                } else {
+                    return failure;
+                }
             } else {
                 return failure;
             }
@@ -98,14 +129,6 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
-
-struct poly_term_key_ref_extractor {
-    template <typename P>
-    decltype(auto) operator()(const P &p) const
-    {
-        return static_cast<const typename P::first_type &>(p.first);
-    }
-};
 
 // Implementation of poly multiplication with identical symbol sets.
 template <typename T, typename U>
@@ -130,9 +153,6 @@ inline auto poly_mul_impl(T &&x, U &&y)
         ::boost::make_transform_iterator(y.cend(), p_transform));
 
     // Do the monomial overflow checking.
-    // TODO: add monomial_range_overflow_check() requirement
-    // TODO: testing of make_range().
-    // in the algorithm determination.
     const bool overflow = !::piranha::monomial_range_overflow_check(
         ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                       ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
