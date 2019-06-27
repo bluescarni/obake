@@ -2214,9 +2214,8 @@ constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U 
 
                 // Erase any term whose coefficient became zero.
                 for (const auto &k : v_keys) {
-                    const auto it = t.find(k);
-                    assert(it != t.end());
-                    t.erase(it);
+                    assert(t.find(k) != t.end());
+                    t.erase(k);
                 }
             }
 
