@@ -22,6 +22,7 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/type_c.hpp>
+#include <piranha/exceptions.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
@@ -333,36 +334,46 @@ using polynomial = polynomials::polynomial<C, K>;
 // TODO constrain T.
 // TODO extra requirements on cf/key?
 // TODO make functors.
-// TODO use thread_local statics for ss_copy and tmp.
 template <typename T>
 inline T make_polynomial(const ::std::string &s, const symbol_set &ss = symbol_set{})
 {
-    const auto ss_copy = ss.empty() ? symbol_set{s} : ss;
+    if (ss.empty()) {
+        T retval;
+        retval.set_symbol_set(symbol_set{s});
 
-    T retval;
-    retval.set_symbol_set(ss_copy);
+        constexpr int arr[] = {1};
 
-    ::std::vector<int> tmp;
-    tmp.reserve(static_cast<decltype(tmp.size())>(ss_copy.size()));
+        retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
 
-    bool s_found = false;
-    for (const auto &n : ss_copy) {
-        if (n == s) {
-            s_found = true;
-            tmp.push_back(1);
-        } else {
-            tmp.push_back(0);
+        return retval;
+    } else {
+        T retval;
+        retval.set_symbol_set(ss);
+
+        PIRANHA_MAYBE_TLS ::std::vector<int> tmp;
+        tmp.clear();
+        tmp.reserve(static_cast<decltype(tmp.size())>(ss.size()));
+
+        bool s_found = false;
+        for (const auto &n : ss) {
+            if (n == s) {
+                s_found = true;
+                tmp.push_back(1);
+            } else {
+                tmp.push_back(0);
+            }
         }
-    }
-    if (piranha_unlikely(!s_found)) {
-        // TODO error message.
-        throw ::std::invalid_argument("");
-    }
+        if (piranha_unlikely(!s_found)) {
+            // TODO error message.
+            piranha_throw(::std::invalid_argument, "");
+        }
 
-    retval.add_term(
-        series_key_t<T>(static_cast<const int *>(tmp.data()), static_cast<const int *>(tmp.data() + tmp.size())), 1);
+        retval.add_term(
+            series_key_t<T>(static_cast<const int *>(tmp.data()), static_cast<const int *>(tmp.data() + tmp.size())),
+            1);
 
-    return retval;
+        return retval;
+    }
 }
 
 namespace detail
