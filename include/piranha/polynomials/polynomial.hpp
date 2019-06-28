@@ -9,8 +9,10 @@
 #ifndef PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
 
+#include <array>
 #include <cassert>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -18,6 +20,7 @@
 #include <boost/iterator/transform_iterator.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/type_c.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
@@ -330,30 +333,20 @@ using polynomial = polynomials::polynomial<C, K>;
 // TODO constrain T.
 // TODO extra requirements on cf/key?
 // TODO make functors.
+// TODO use thread_local statics for ss_copy and tmp.
 template <typename T>
-inline T make_polynomial(const ::std::string &s)
+inline T make_polynomial(const ::std::string &s, const symbol_set &ss = symbol_set{})
 {
+    const auto ss_copy = ss.empty() ? symbol_set{s} : ss;
+
     T retval;
-    retval.set_symbol_set(symbol_set{s});
-
-    constexpr int arr[] = {1};
-
-    retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
-
-    return retval;
-}
-
-template <typename T>
-inline T make_polynomial(const symbol_set &ss, const ::std::string &s)
-{
-    T retval;
-    retval.set_symbol_set(ss);
+    retval.set_symbol_set(ss_copy);
 
     ::std::vector<int> tmp;
-    tmp.reserve(static_cast<decltype(tmp.size())>(ss.size()));
+    tmp.reserve(static_cast<decltype(tmp.size())>(ss_copy.size()));
 
     bool s_found = false;
-    for (const auto &n : ss) {
+    for (const auto &n : ss_copy) {
         if (n == s) {
             s_found = true;
             tmp.push_back(1);
@@ -372,18 +365,44 @@ inline T make_polynomial(const symbol_set &ss, const ::std::string &s)
     return retval;
 }
 
-// TODO auto+decltype for SFINAE.
-template <typename T, typename... Args>
-inline auto make_polynomials(const Args &... args)
+namespace detail
 {
-    return ::std::make_tuple(::piranha::make_polynomial<T>(args)...);
+
+template <typename T>
+inline auto make_polynomials_impl(const ::std::tuple<> &)
+{
+    return ::std::array<T, 0>{};
 }
 
+template <typename T, typename Tuple, ::std::size_t... I>
+inline auto make_polynomials_impl_with_ss(const Tuple &t, ::std::index_sequence<I...>)
+    PIRANHA_SS_FORWARD_FUNCTION((::std::array<T, ::std::tuple_size_v<Tuple> - 1u>{
+        ::piranha::make_polynomial<T>(::std::get<I>(t), ::std::get<::std::tuple_size_v<Tuple> - 1u>(t))...}));
+
+template <typename T, typename Arg0, typename... Args,
+          ::std::enable_if_t<::std::is_same_v<::std::tuple_element_t<sizeof...(Args), ::std::tuple<Arg0, Args...>>,
+                                              const symbol_set &>,
+                             int> = 0>
+inline auto make_polynomials_impl(const ::std::tuple<Arg0, Args...> &t) PIRANHA_SS_FORWARD_FUNCTION(
+    detail::make_polynomials_impl_with_ss<T>(t, ::std::make_index_sequence<sizeof...(Args)>{}));
+
+template <typename T, typename Tuple, ::std::size_t... I>
+inline auto make_polynomials_impl_no_ss(const Tuple &t, ::std::index_sequence<I...>)
+    PIRANHA_SS_FORWARD_FUNCTION((::std::array<T, ::std::tuple_size_v<Tuple>>{
+        ::piranha::make_polynomial<T>(::std::get<I>(t))...}));
+
+template <typename T, typename Arg0, typename... Args,
+          ::std::enable_if_t<!::std::is_same_v<::std::tuple_element_t<sizeof...(Args), ::std::tuple<Arg0, Args...>>,
+                                               const symbol_set &>,
+                             int> = 0>
+inline auto make_polynomials_impl(const ::std::tuple<Arg0, Args...> &t) PIRANHA_SS_FORWARD_FUNCTION(
+    detail::make_polynomials_impl_no_ss<T>(t, ::std::make_index_sequence<sizeof...(Args) + 1u>{}));
+
+} // namespace detail
+
 template <typename T, typename... Args>
-inline auto make_polynomials(const symbol_set &ss, const Args &... args)
-{
-    return ::std::make_tuple(::piranha::make_polynomial<T>(ss, args)...);
-}
+inline auto make_polynomials(const Args &... args)
+    PIRANHA_SS_FORWARD_FUNCTION(detail::make_polynomials_impl<T>(::std::forward_as_tuple(args...)));
 
 } // namespace piranha
 
