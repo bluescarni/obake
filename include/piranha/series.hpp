@@ -321,7 +321,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
         if constexpr (CheckZero == sat_check_zero::on) {
             // If requested, check whether the term we inserted
             // or modified is zero. If it is, erase it.
-            if (piranha_unlikely(::piranha::key_is_zero(static_cast<const key_type &>(res.first->first), ss)
+            if (piranha_unlikely(::piranha::key_is_zero(res.first->first, ss)
                                  || ::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
                 t.erase(res.first);
             }
@@ -726,10 +726,10 @@ public:
             // Check all terms.
             for (const auto &p : *this) {
                 // No zero terms.
-                assert(!::piranha::key_is_zero(static_cast<const K &>(p.first), m_symbol_set)
+                assert(!::piranha::key_is_zero(p.first, m_symbol_set)
                        && !::piranha::is_zero(static_cast<const C &>(p.second)));
                 // No incompatible keys.
-                assert(::piranha::key_is_compatible(static_cast<const K &>(p.first), m_symbol_set));
+                assert(::piranha::key_is_compatible(p.first, m_symbol_set));
             }
 
             // Check that, in a segmented table, all terms are in the table they
@@ -737,7 +737,7 @@ public:
             if (m_log2_size > 0u) {
                 for (s_size_t i = 0; i < m_s_table.size(); ++i) {
                     for (const auto &p : m_s_table[i]) {
-                        assert((::piranha::hash(static_cast<const K &>(p.first)) & (m_log2_size - 1u)) == i);
+                        assert((::piranha::hash(p.first) & (m_log2_size - 1u)) == i);
                     }
                 }
             }
@@ -1555,8 +1555,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
         for (auto &t : from._get_s_table()) {
             for (auto &p : t) {
                 // Compute the merged key.
-                auto merged_key = ::piranha::key_merge_symbols(
-                    static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
+                auto merged_key = ::piranha::key_merge_symbols(p.first, ins_map, orig_ss);
 
                 // Insert the term. We need the following checks:
                 // - zero check, in case the coefficient type changes,
@@ -1579,8 +1578,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
 
         for (auto &p : from._get_s_table()[0]) {
             // Compute the merged key.
-            auto merged_key = ::piranha::key_merge_symbols(
-                static_cast<const series_key_t<remove_cvref_t<From>> &>(p.first), ins_map, orig_ss);
+            auto merged_key = ::piranha::key_merge_symbols(p.first, ins_map, orig_ss);
 
             // Insert the term: the only check we may need is check_zero, in case
             // the coefficient type changes. We know that the table size cannot be
