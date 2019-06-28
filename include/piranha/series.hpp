@@ -2479,8 +2479,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     // and its coefficient equal to rhs, return true,
                     // otherwise return false.
                     const auto it = lhs.begin();
-                    const auto key_is_one = ::piranha::key_is_one(it->first, lhs.get_symbol_set());
-                    return key_is_one && it->second == rhs;
+                    return ::piranha::key_is_one(it->first, lhs.get_symbol_set()) && it->second == rhs;
                 }
                 default:
                     // lhs has more than 1 term, return false.
