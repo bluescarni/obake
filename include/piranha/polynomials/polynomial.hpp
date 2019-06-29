@@ -106,22 +106,38 @@ constexpr auto poly_mul_algorithm_impl()
             if constexpr (is_cf_v<ret_cf_t>) {
                 // The coefficient is valid.
                 //
-                // We need to perform monomial range checking on the input series,
-                // after having copied their terms into local vectors.
-                // Verify that we can do that.
+                // We need to perform monomial range checking on the input series.
+                // Depending on runtime conditions, the check will be done on either
+                // vector of copies of the original terms, or directly on the terms of the
+                // series operands.
+
+                // The vectors of copies of input terms.
                 using xv_t = ::std::vector<::std::pair<series_key_t<rT>, cf1_t>>;
                 using yv_t = ::std::vector<::std::pair<series_key_t<rU>, cf2_t>>;
 
-                // Determine the range types to use for the overflow check.
-                using xr_t = decltype(::piranha::detail::make_range(
+                // The corresponding range types.
+                using xr1_t = decltype(::piranha::detail::make_range(
                     ::boost::make_transform_iterator(::std::declval<xv_t &>().cbegin(), poly_term_key_ref_extractor{}),
                     ::boost::make_transform_iterator(::std::declval<xv_t &>().cend(), poly_term_key_ref_extractor{})));
-                using yr_t = decltype(::piranha::detail::make_range(
+                using yr1_t = decltype(::piranha::detail::make_range(
                     ::boost::make_transform_iterator(::std::declval<yv_t &>().cbegin(), poly_term_key_ref_extractor{}),
                     ::boost::make_transform_iterator(::std::declval<yv_t &>().cend(), poly_term_key_ref_extractor{})));
 
+                // The original range types. We will be using const_iterator rvalues from the input series.
+                using xr2_t = decltype(::piranha::detail::make_range(
+                    ::boost::make_transform_iterator(::std::declval<typename rT::const_iterator>(),
+                                                     poly_term_key_ref_extractor{}),
+                    ::boost::make_transform_iterator(::std::declval<typename rT::const_iterator>(),
+                                                     poly_term_key_ref_extractor{})));
+                using yr2_t = decltype(::piranha::detail::make_range(
+                    ::boost::make_transform_iterator(::std::declval<typename rU::const_iterator>(),
+                                                     poly_term_key_ref_extractor{}),
+                    ::boost::make_transform_iterator(::std::declval<typename rU::const_iterator>(),
+                                                     poly_term_key_ref_extractor{})));
+
                 if constexpr (::std::conjunction_v<
-                                  is_overflow_testable_monomial_range<xr_t, yr_t>,
+                                  is_overflow_testable_monomial_range<xr1_t, yr1_t>,
+                                  is_overflow_testable_monomial_range<xr2_t, yr2_t>,
                                   // We may need to merge new symbols into the original key type.
                                   // NOTE: the key types of T and U must be identical at the moment,
                                   // so checking only T's key type is enough.
@@ -155,45 +171,47 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
-// Implementation of poly multiplication with identical symbol sets.
-template <typename T, typename U>
-inline auto poly_mul_impl(T &&x, U &&y)
+// A small wrapper representing the lazy multiplication
+// of two coefficients.
+template <typename C1, typename C2, typename CR>
+struct poly_cf_mul_expr {
+    // The two factors.
+    const C1 &c1;
+    const C2 &c2;
+
+    // Conversion operator to compute
+    // and fetch the result of the multiplication.
+    explicit operator CR() const
+    {
+        return c1 * c2;
+    }
+};
+
+// Simple poly mult implementation: just multiply
+// term by term, no parallelisation, no segmentation,
+// no tiling, no copying of the operands, etc.
+template <typename Ret, typename T, typename U>
+inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
 {
-    // Fetch the return type and related types.
-    using ret_t = poly_mul_ret_t<T &&, U &&>;
-    using ret_cf_t = series_cf_t<ret_t>;
-    using ret_key_t = series_key_t<ret_t>;
+    using ret_key_t = series_key_t<Ret>;
+    using ret_cf_t = series_cf_t<Ret>;
+    using cf1_t = series_cf_t<T>;
+    using cf2_t = series_cf_t<U>;
 
-    // Shortcuts to the original types.
-    using rT = remove_cvref_t<T>;
-    using rU = remove_cvref_t<U>;
-    using cf1_t = series_cf_t<rT>;
-    using cf2_t = series_cf_t<rU>;
+    assert(retval.get_symbol_set() == x.get_symbol_set());
+    assert(retval.get_symbol_set() == y.get_symbol_set());
+    assert(retval.empty());
+    assert(retval._get_s_table().size() == 1u);
 
-    assert(x.get_symbol_set() == y.get_symbol_set());
-    const auto &ss = x.get_symbol_set();
-
-    // Create vectors containing copies of
-    // the input terms.
-    // NOTE: in theory, it would be possible here
-    // to move the coefficients (in conjunction with
-    // rref_cleaner, as usual).
-    // NOTE: perhaps the copying should be avoided
-    // if we have small enough series (just operate
-    // directly on the original iterators). Keep it in
-    // mind for possible future tuning.
-    auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
-    ::std::vector<::std::pair<series_key_t<rT>, cf1_t>> v1(::boost::make_transform_iterator(x.cbegin(), p_transform),
-                                                           ::boost::make_transform_iterator(x.cend(), p_transform));
-    ::std::vector<::std::pair<series_key_t<rU>, cf2_t>> v2(::boost::make_transform_iterator(y.cbegin(), p_transform),
-                                                           ::boost::make_transform_iterator(y.cend(), p_transform));
+    // Cache the symbol set.
+    const auto &ss = retval.get_symbol_set();
 
     // Do the monomial overflow checking.
     const bool overflow = !::piranha::monomial_range_overflow_check(
-        ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
-        ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
+        ::piranha::detail::make_range(::boost::make_transform_iterator(x.begin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(x.end(), poly_term_key_ref_extractor{})),
+        ::piranha::detail::make_range(::boost::make_transform_iterator(y.begin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(y.end(), poly_term_key_ref_extractor{})),
         ss);
     if (piranha_unlikely(overflow)) {
         piranha_throw(
@@ -201,40 +219,25 @@ inline auto poly_mul_impl(T &&x, U &&y)
             "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
     }
 
-    // Init the return value.
-    ret_t retval;
-    retval.set_symbol_set(ss);
+    // Proceed with the multiplication.
     auto &tab = retval._get_s_table()[0];
-
-    // A small wrapper representing the lazy multiplication
-    // of two coefficients.
-    struct cf_mul_expr {
-        // The two factors.
-        const cf1_t &c1;
-        const cf2_t &c2;
-
-        // Conversion operator to compute
-        // and fetch the result of the multiplication.
-        explicit operator ret_cf_t() const
-        {
-            return c1 * c2;
-        }
-    };
 
     try {
         // Proceed with the multiplication.
         ret_key_t tmp_key;
-        for (const auto &[k1, c1] : v1) {
-            for (const auto &[k2, c2] : v2) {
+        for (const auto &[k1, c1] : x) {
+            for (const auto &[k2, c2] : y) {
                 // Multiply the monomial.
                 ::piranha::monomial_mul(tmp_key, k1, k2, ss);
 
                 // Try to insert the new term.
-                const auto res = tab.try_emplace(tmp_key, cf_mul_expr{c1, c2});
+                const auto res = tab.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
 
+                // NOTE: optimise with likely/unlikely here?
                 if (!res.second) {
                     // The insertion failed, accumulate c1*c2 into the
                     // existing coefficient.
+                    // NOTE: do it with fma3(), if possible.
                     if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
                         ::piranha::fma3(res.first->second, c1, c2);
                     } else {
@@ -262,6 +265,59 @@ inline auto poly_mul_impl(T &&x, U &&y)
         tab.clear();
         throw;
     }
+}
+
+// Implementation of poly multiplication with identical symbol sets.
+template <typename T, typename U>
+inline auto poly_mul_impl(T &&x, U &&y)
+{
+    // Fetch the return type and related types.
+    using ret_t = poly_mul_ret_t<T &&, U &&>;
+    // using ret_cf_t = series_cf_t<ret_t>;
+    // using ret_key_t = series_key_t<ret_t>;
+
+    // Shortcuts to the original types.
+    // using rT = remove_cvref_t<T>;
+    // using rU = remove_cvref_t<U>;
+    // using cf1_t = series_cf_t<rT>;
+    // using cf2_t = series_cf_t<rU>;
+
+    assert(x.get_symbol_set() == y.get_symbol_set());
+    // const auto &ss = x.get_symbol_set();
+
+    // Create vectors containing copies of
+    // the input terms.
+    // NOTE: in theory, it would be possible here
+    // to move the coefficients (in conjunction with
+    // rref_cleaner, as usual).
+    // NOTE: perhaps the copying should be avoided
+    // if we have small enough series (just operate
+    // directly on the original iterators). Keep it in
+    // mind for possible future tuning.
+    // auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
+    // ::std::vector<::std::pair<series_key_t<rT>, cf1_t>> v1(::boost::make_transform_iterator(x.cbegin(), p_transform),
+    //                                                        ::boost::make_transform_iterator(x.cend(), p_transform));
+    // ::std::vector<::std::pair<series_key_t<rU>, cf2_t>> v2(::boost::make_transform_iterator(y.cbegin(), p_transform),
+    //                                                        ::boost::make_transform_iterator(y.cend(), p_transform));
+
+    // // Do the monomial overflow checking.
+    // const bool overflow = !::piranha::monomial_range_overflow_check(
+    //     ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+    //                                   ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
+    //     ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+    //                                   ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
+    //     ss);
+    // if (piranha_unlikely(overflow)) {
+    //     piranha_throw(
+    //         ::std::overflow_error,
+    //         "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    // }
+
+    // Init the return value.
+    ret_t retval;
+    retval.set_symbol_set(x.get_symbol_set());
+
+    poly_mul_impl_simple(retval, x, y);
 
     return retval;
 }
