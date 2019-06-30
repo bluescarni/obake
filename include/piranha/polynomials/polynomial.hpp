@@ -9,6 +9,7 @@
 #ifndef PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <stdexcept>
@@ -25,6 +26,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
+#include <piranha/math/safe_cast.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/ranges.hpp>
@@ -406,23 +408,13 @@ inline T make_polynomial(const ::std::string &s, const symbol_set &ss = symbol_s
         T retval;
         retval.set_symbol_set(ss);
 
-        PIRANHA_MAYBE_TLS ::std::vector<int> tmp;
-        tmp.clear();
-        tmp.reserve(static_cast<decltype(tmp.size())>(ss.size()));
-
-        bool s_found = false;
-        for (const auto &n : ss) {
-            if (n == s) {
-                s_found = true;
-                tmp.push_back(1);
-            } else {
-                tmp.push_back(0);
-            }
-        }
-        if (piranha_unlikely(!s_found)) {
+        ::std::vector<int> tmp(::piranha::safe_cast<::std::vector<int>::size_type>(ss.size()));
+        const auto it = ::std::lower_bound(ss.begin(), ss.end(), s);
+        if (piranha_unlikely(it == ss.end() || *it != s)) {
             // TODO error message.
             piranha_throw(::std::invalid_argument, "");
         }
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
         retval.add_term(
             series_key_t<T>(static_cast<const int *>(tmp.data()), static_cast<const int *>(tmp.data() + tmp.size())),
