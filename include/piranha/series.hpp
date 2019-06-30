@@ -28,6 +28,7 @@
 
 #include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
+#include <piranha/cost_model.hpp>
 #include <piranha/detail/abseil.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
@@ -1296,9 +1297,9 @@ namespace customisation::internal
 
 struct series_default_is_zero_impl {
     template <typename T>
-    bool operator()(T &&x) const
+    bool operator()(const T &x) const
     {
-        return ::std::forward<T>(x).empty();
+        return x.empty();
     }
 };
 
@@ -1309,6 +1310,39 @@ requires CvrSeries<T> inline constexpr auto is_zero<T>
 inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
 #endif
     = series_default_is_zero_impl{};
+
+} // namespace customisation::internal
+
+// Customise piranha::cost_model() for series types.
+namespace customisation::internal
+{
+
+struct series_default_cost_model_impl {
+    template <typename T>
+    double operator()(const T &x) const
+    {
+        // Start up with a fixed cost of 1000 due to memory allocation, then add up
+        // the cost models for all terms.
+        return ::std::accumulate(x.begin(), x.end(), 1000., [](double cur, const auto &p) {
+            return cur + (::piranha::cost_model(p.first) + ::piranha::cost_model(p.second));
+        });
+    }
+};
+
+// NOTE: in the default implementation, we compute
+// the terms' cost models via const lvalue references.
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires CvrSeries<T> &&CostModelable<const series_key_t<remove_cvref_t<T>> &>
+    &&CostModelable<const series_cf_t<remove_cvref_t<T>> &> inline constexpr auto cost_model<T>
+#else
+inline constexpr auto
+    cost_model<T, ::std::enable_if_t<::std::conjunction_v<
+                      is_cvr_series<T>,
+                      has_cost_model<::std::add_lvalue_reference_t<const detected_t<series_key_t, remove_cvref_t<T>>>>,
+                      has_cost_model<::std::add_lvalue_reference_t<const detected_t<series_cf_t, remove_cvref_t<T>>>>>>>
+#endif
+    = series_default_cost_model_impl{};
 
 } // namespace customisation::internal
 

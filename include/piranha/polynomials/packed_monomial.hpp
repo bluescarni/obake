@@ -23,6 +23,7 @@
 #include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/cost_model.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
@@ -521,6 +522,15 @@ template <typename R1, typename R2,
     }
 
     return true;
+}
+
+// Implementation of the cost model.
+// NOTE: use the same cost model as the internal
+// data member.
+template <typename T>
+inline double cost_model(const packed_monomial<T> &p)
+{
+    return ::piranha::cost_model(p.get_value());
 }
 
 } // namespace polynomials
