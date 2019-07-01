@@ -34,7 +34,10 @@ unsigned hc()
 
     return retval;
 #else
-    return 1;
+    // Return always 1 if piranha is not configured
+    // with support for TBB (in that case, we have no
+    // use for detecting the hardware concurrency).
+    return 1u;
 #endif
 }
 
