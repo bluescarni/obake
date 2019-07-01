@@ -19,15 +19,20 @@
 namespace piranha::detail
 {
 
+// Return the hardware concurrency, i.e.,
+// the number of logical cores on the system.
 unsigned hc()
 {
 #if defined(PIRANHA_WITH_TBB)
-    const static thread_local unsigned candidate = []() {
-        const auto ret = ::std::thread::hardware_concurrency();
-        return ret ? ret : 1u;
+    // NOTE: cache locally for each thread, so that we
+    // avoid invoking a potentially costly function.
+    const static thread_local unsigned retval = []() {
+        const auto candidate = ::std::thread::hardware_concurrency();
+        // If hardware_concurrency() fails, just return 1.
+        return candidate ? candidate : 1u;
     }();
 
-    return candidate;
+    return retval;
 #else
     return 1;
 #endif
