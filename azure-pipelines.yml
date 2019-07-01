@@ -49,6 +49,8 @@ jobs:
                         ninja ^
                         mpir ^
                         mpfr ^
+                        tbb ^
+                        tbb-devel ^
                         boost-cpp ^
                         python=3.6
           conda list
@@ -152,6 +154,8 @@ jobs:
           conda install cmake ^
                         mpir ^
                         mpfr ^
+                        tbb ^
+                        tbb-devel ^
                         boost-cpp ^
                         python=3.6
           conda list

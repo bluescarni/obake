@@ -7,7 +7,7 @@ set -x
 set -e
 
 # Core deps.
-sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang libboost-dev
+sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget clang libboost-dev libtbb-dev
 
 # Create the build dir and cd into it.
 mkdir build

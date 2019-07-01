@@ -22,6 +22,7 @@ endif()
 # The build options.
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
 option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
+option(PIRANHA_WITH_TBB "Enable multithreaded parallelisation via TBB." ON)
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -124,6 +125,12 @@ if(PIRANHA_WITH_LIBBACKTRACE)
     find_package(libbacktrace REQUIRED)
 endif()
 
+# TBB.
+if(PIRANHA_WITH_TBB)
+    set(PIRANHA_ENABLE_TBB "#define PIRANHA_WITH_TBB")
+    find_package(TBB REQUIRED)
+endif()
+
 # Depend on DbgEng on MSVC, for the stack trace support.
 if(YACMA_COMPILER_IS_MSVC)
     find_package(DbgEng REQUIRED)
@@ -132,6 +139,7 @@ endif()
 # Initial setup of the piranha target.
 set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/bit_packing.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/hc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/series.cpp"
@@ -173,6 +181,11 @@ else()
     # we may have to sort this out (CMAKE_DL_LIBS does not
     # look like an imported target).
     target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
+endif()
+
+# TBB.
+if(PIRANHA_WITH_TBB)
+    target_link_libraries(piranha PUBLIC TBB::tbb)
 endif()
 
 # Link to DbgEng on MSVC.
