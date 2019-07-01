@@ -28,13 +28,13 @@ git clone https://github.com/abseil/abseil-cpp.git
 cd abseil-cpp
 mkdir build
 cd build
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
+cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
 make install -j2 VERBOSE=1
 cd ..
 cd ..
 rm -fr abseil-cpp
 
-cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Debug -DPIRANHA_BUILD_TESTS=yes ../
+cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPIRANHA_BUILD_TESTS=yes ../
 make -j2 VERBOSE=1
 ctest -V
 
