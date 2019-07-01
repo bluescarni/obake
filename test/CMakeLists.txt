@@ -9,6 +9,7 @@ function(ADD_PIRANHA_TESTCASE arg1)
   add_test(${arg1} ${arg1})
 endfunction()
 
+ADD_PIRANHA_TESTCASE(atomic_utils)
 ADD_PIRANHA_TESTCASE(cf_cf_stream_insert)
 ADD_PIRANHA_TESTCASE(exceptions)
 ADD_PIRANHA_TESTCASE(hash)
