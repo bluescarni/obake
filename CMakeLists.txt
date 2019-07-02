@@ -21,6 +21,7 @@ endif()
 
 # The build options.
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
+option(PIRANHA_BUILD_BENCHMARKS "Build benchmarks." OFF)
 option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
 option(PIRANHA_WITH_TBB "Enable multithreaded parallelisation via TBB." ON)
 
@@ -215,4 +216,8 @@ install(TARGETS piranha
 if(PIRANHA_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
+endif()
+
+if(PIRANHA_BUILD_BENCHMARKS)
+    add_subdirectory(benchmark)
 endif()
