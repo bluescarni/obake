@@ -18,6 +18,20 @@
 namespace piranha::detail
 {
 
+#if defined(_MSC_VER)
+
+// NOTE: MSVC complains about the fact that we are using
+// a class from the standard library (std::unique_ptr) in
+// a DLL-exported class (atomic flag array). Because the
+// unique_ptr is a private member of our class, we can
+// safely ignore this warning:
+// https://stackoverflow.com/questions/16419318/one-way-of-eliminating-c4251-warning-when-using-stl-classes-in-the-dll-interface/22054743
+// https://stackoverflow.com/questions/2132747/warning-c4251-when-building-a-dll-that-exports-a-class-containing-an-atlcstrin
+#pragma warning(push)
+#pragma warning(disable : 4251)
+
+#endif
+
 // Helper to manage an array of atomic flags.
 // The flags will all be cleared upon construction
 // from a size.
@@ -53,6 +67,12 @@ private:
     ::std::unique_ptr<unsigned char[]> m_ptr;
     [[maybe_unused]] const size_type m_size;
 };
+
+#if defined(_MSC_VER)
+
+#pragma warning(pop)
+
+#endif
 
 } // namespace piranha::detail
 
