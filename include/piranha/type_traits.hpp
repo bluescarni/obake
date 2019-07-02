@@ -543,6 +543,39 @@ PIRANHA_CONCEPT_DECL EqualityComparable = requires(T &&x, U &&y)
 namespace detail
 {
 
+template <typename T, typename U>
+using lt_cmp_t = decltype(::std::declval<T>() < ::std::declval<U>());
+
+} // namespace detail
+
+// Less-than comparable type trait.
+template <typename T, typename U = T>
+using is_less_than_comparable = ::std::conjunction<::std::is_convertible<detected_t<detail::lt_cmp_t, T, U>, bool>,
+                                                   ::std::is_convertible<detected_t<detail::lt_cmp_t, U, T>, bool>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_less_than_comparable_v = is_less_than_comparable<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+PIRANHA_CONCEPT_DECL LessThanComparable = requires(T &&x, U &&y)
+{
+    {
+        ::std::forward<T>(x) < ::std::forward<U>(y)
+    }
+    ->bool;
+    {
+        ::std::forward<U>(y) < ::std::forward<T>(x)
+    }
+    ->bool;
+};
+
+#endif
+
+namespace detail
+{
+
 // Helpers for the detection of the typedefs in std::iterator_traits.
 // Use a macro (yuck) to reduce typing.
 #define PIRANHA_DECLARE_IT_TRAITS_TYPE(type)                                                                           \
