@@ -51,7 +51,7 @@ public:
 
 private:
     ::std::unique_ptr<unsigned char[]> m_ptr;
-    const size_type m_size;
+    [[maybe_unused]] const size_type m_size;
 };
 
 } // namespace piranha::detail
