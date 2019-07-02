@@ -6,8 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_TCAST_HPP
-#define PIRANHA_DETAIL_TCAST_HPP
+#ifndef PIRANHA_DETAIL_FCAST_HPP
+#define PIRANHA_DETAIL_FCAST_HPP
 
 #include <type_traits>
 
@@ -16,7 +16,7 @@
 namespace piranha::detail
 {
 
-// A transforming cast: if the input is a nonconst
+// A filtering cast: if the input is a nonconst
 // rvalue reference, return it, otherwise transform
 // it into a const lvalue reference.
 
@@ -26,27 +26,27 @@ namespace piranha::detail
 // implementation below.
 
 template <typename T>
-constexpr T &&tcast_impl(T &&x, ::std::true_type) noexcept
+constexpr T &&fcast_impl(T &&x, ::std::true_type) noexcept
 {
     return static_cast<T &&>(x);
 }
 
 template <typename T>
-constexpr const remove_cvref_t<T> &tcast_impl(T &&x, ::std::false_type) noexcept
+constexpr const remove_cvref_t<T> &fcast_impl(T &&x, ::std::false_type) noexcept
 {
     return static_cast<const remove_cvref_t<T> &>(x);
 }
 
 template <typename T>
-constexpr decltype(auto) tcast(T &&x) noexcept
+constexpr decltype(auto) fcast(T &&x) noexcept
 {
-    return detail::tcast_impl(::std::forward<T>(x), is_mutable_rvalue_reference<T &&>{});
+    return detail::fcast_impl(::std::forward<T>(x), is_mutable_rvalue_reference<T &&>{});
 }
 
 #else
 
 template <typename T>
-constexpr decltype(auto) tcast(T &&x) noexcept
+constexpr decltype(auto) fcast(T &&x) noexcept
 {
     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
         return static_cast<T &&>(x);

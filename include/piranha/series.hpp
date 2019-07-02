@@ -29,12 +29,12 @@
 #include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
+#include <piranha/detail/fcast.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/detail/tcast.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/type_c.hpp>
 #include <piranha/detail/visibility.hpp>
@@ -269,7 +269,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     }
 
     // Attempt the insertion.
-    const auto res = t.try_emplace(detail::tcast(::std::forward<T>(key)), ::std::forward<Args>(args)...);
+    const auto res = t.try_emplace(detail::fcast(::std::forward<T>(key)), ::std::forward<Args>(args)...);
 
     if constexpr (AssumeUnique == sat_assume_unique::on) {
         // Assert that we actually performed an insertion,
@@ -303,7 +303,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             if constexpr (Sign) {
                 if constexpr (args_is_cf) {
                     // NOTE: if we are inserting a coefficient, use it directly.
-                    res.first->second += detail::tcast(::std::forward<Args>(args)...);
+                    res.first->second += detail::fcast(::std::forward<Args>(args)...);
                 } else {
                     // Otherwise, construct a coefficient from the input pack
                     // and add that instead.
@@ -311,7 +311,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
                 }
             } else {
                 if constexpr (args_is_cf) {
-                    res.first->second -= detail::tcast(::std::forward<Args>(args)...);
+                    res.first->second -= detail::fcast(::std::forward<Args>(args)...);
                 } else {
                     res.first->second -= cf_type(::std::forward<Args>(args)...);
                 }
