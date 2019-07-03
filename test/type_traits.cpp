@@ -480,6 +480,59 @@ TEST_CASE("is_equality_comparable")
 #endif
 }
 
+struct nonlt_0 {
+};
+
+struct nonlt_1 {
+    friend void operator<(const nonlt_1 &, const nonlt_1 &) {}
+};
+
+struct lt_0 {
+    friend int operator<(const lt_0 &, const lt_0 &)
+    {
+        return 1;
+    }
+    friend int operator<(const lt_0 &, const nonlt_0 &)
+    {
+        return 1;
+    }
+};
+
+TEST_CASE("is_less_than_comparable")
+{
+    REQUIRE(!is_less_than_comparable_v<void>);
+    REQUIRE(!is_less_than_comparable_v<void, void>);
+    REQUIRE(!is_less_than_comparable_v<int, void>);
+    REQUIRE(!is_less_than_comparable_v<void, int>);
+    REQUIRE(is_less_than_comparable_v<int>);
+    REQUIRE(is_less_than_comparable_v<int, int>);
+    REQUIRE(is_less_than_comparable_v<int, long>);
+    REQUIRE(is_less_than_comparable_v<std::string, std::string>);
+    REQUIRE(!is_less_than_comparable_v<std::string, int>);
+    REQUIRE(!is_less_than_comparable_v<int, std::string>);
+    REQUIRE(!is_less_than_comparable_v<nonlt_0>);
+    REQUIRE(!is_less_than_comparable_v<nonlt_1>);
+    REQUIRE(is_less_than_comparable_v<lt_0>);
+    REQUIRE(!is_less_than_comparable_v<lt_0, nonlt_0>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!LessThanComparable<void>);
+    REQUIRE(!LessThanComparable<void, void>);
+    REQUIRE(!LessThanComparable<int, void>);
+    REQUIRE(!LessThanComparable<void, int>);
+    REQUIRE(LessThanComparable<int>);
+    REQUIRE(LessThanComparable<int, int>);
+    REQUIRE(LessThanComparable<int, long>);
+    REQUIRE(LessThanComparable<std::string, std::string>);
+    REQUIRE(!LessThanComparable<std::string, int>);
+    REQUIRE(!LessThanComparable<int, std::string>);
+    REQUIRE(!LessThanComparable<nonlt_0>);
+    REQUIRE(!LessThanComparable<nonlt_1>);
+    REQUIRE(LessThanComparable<lt_0>);
+    REQUIRE(!LessThanComparable<lt_0, nonlt_0>);
+#endif
+}
+
 TEST_CASE("is_pre_incrementable")
 {
     REQUIRE(!is_pre_incrementable_v<void>);
