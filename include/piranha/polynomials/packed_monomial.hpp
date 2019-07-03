@@ -153,6 +153,13 @@ private:
     T m_value;
 };
 
+// Implement less-than comparison.
+template <typename T>
+constexpr bool operator<(const packed_monomial<T> &p1, const packed_monomial<T> &p2)
+{
+    return p1.get_value() < p2.get_value();
+}
+
 // Implementation of key_is_zero(). A monomial is never zero.
 template <typename T>
 constexpr bool key_is_zero(const packed_monomial<T> &, const symbol_set &)

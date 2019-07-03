@@ -9,9 +9,12 @@
 #ifndef PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
 #define PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
 
+#include <piranha/config.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -20,10 +23,22 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 
-#include <piranha/config.hpp>
+#if defined(PIRANHA_WITH_TBB)
+
+#include <tbb/blocked_range2d.h>
+#include <tbb/parallel_for.h>
+
+#endif
+
+#include <mp++/integer.hpp>
+
+#include <piranha/detail/atomic_flag_array.hpp>
+#include <piranha/detail/atomic_lock_guard.hpp>
+#include <piranha/detail/hc.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/type_c.hpp>
 #include <piranha/exceptions.hpp>
+#include <piranha/hash.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/safe_cast.hpp>
@@ -269,57 +284,154 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
     }
 }
 
-// Implementation of poly multiplication with identical symbol sets.
-template <typename T, typename U>
-inline auto poly_mul_impl(T &&x, U &&y)
+#if defined(PIRANHA_WITH_TBB)
+
+template <typename Ret, typename T, typename U>
+inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_nthreads)
 {
-    // Fetch the return type and related types.
-    using ret_t = poly_mul_ret_t<T &&, U &&>;
-    // using ret_cf_t = series_cf_t<ret_t>;
-    // using ret_key_t = series_key_t<ret_t>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+    using cf1_t = series_cf_t<rT>;
+    using cf2_t = series_cf_t<rU>;
+    using ret_key_t = series_key_t<Ret>;
+    using ret_cf_t = series_cf_t<Ret>;
 
-    // Shortcuts to the original types.
-    // using rT = remove_cvref_t<T>;
-    // using rU = remove_cvref_t<U>;
-    // using cf1_t = series_cf_t<rT>;
-    // using cf2_t = series_cf_t<rU>;
+    assert(retval.get_symbol_set() == x.get_symbol_set());
+    assert(retval.get_symbol_set() == y.get_symbol_set());
+    assert(retval.empty());
+    assert(retval._get_s_table().size() == 1u);
 
-    assert(x.get_symbol_set() == y.get_symbol_set());
-    // const auto &ss = x.get_symbol_set();
+    // Cache the symbol set.
+    const auto &ss = retval.get_symbol_set();
 
     // Create vectors containing copies of
     // the input terms.
     // NOTE: in theory, it would be possible here
     // to move the coefficients (in conjunction with
     // rref_cleaner, as usual).
-    // NOTE: perhaps the copying should be avoided
-    // if we have small enough series (just operate
-    // directly on the original iterators). Keep it in
-    // mind for possible future tuning.
-    // auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
-    // ::std::vector<::std::pair<series_key_t<rT>, cf1_t>> v1(::boost::make_transform_iterator(x.cbegin(), p_transform),
-    //                                                        ::boost::make_transform_iterator(x.cend(), p_transform));
-    // ::std::vector<::std::pair<series_key_t<rU>, cf2_t>> v2(::boost::make_transform_iterator(y.cbegin(), p_transform),
-    //                                                        ::boost::make_transform_iterator(y.cend(), p_transform));
+    auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
+    ::std::vector<::std::pair<series_key_t<rT>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
+                                                           ::boost::make_transform_iterator(x.end(), p_transform));
+    ::std::vector<::std::pair<series_key_t<rU>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
+                                                           ::boost::make_transform_iterator(y.end(), p_transform));
 
-    // // Do the monomial overflow checking.
-    // const bool overflow = !::piranha::monomial_range_overflow_check(
-    //     ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-    //                                   ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
-    //     ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-    //                                   ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
-    //     ss);
-    // if (piranha_unlikely(overflow)) {
-    //     piranha_throw(
-    //         ::std::overflow_error,
-    //         "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
-    // }
+    // Do the monomial overflow checking.
+    const bool overflow = !::piranha::monomial_range_overflow_check(
+        ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
+        ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
+        ss);
+    if (piranha_unlikely(overflow)) {
+        piranha_throw(
+            ::std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    }
+
+    if constexpr (::std::conjunction_v<is_less_than_comparable<const series_key_t<rT> &>,
+                                       is_less_than_comparable<const series_key_t<rU> &>>) {
+        const auto cmp_first = [](const auto &p1, const auto &p2) { return p1.first < p2.first; };
+
+        ::std::sort(v1.begin(), v1.end(), cmp_first);
+        ::std::sort(v2.begin(), v2.end(), cmp_first);
+    }
+
+    // Setup the number of segments in retval.
+    retval.set_n_segments(log2_nthreads);
+
+    // Init the array of spinlocks.
+    // TODO: overflow check? Or clamp to nbits of size_t?
+    ::piranha::detail::atomic_flag_array afa(::std::size_t(1) << log2_nthreads);
+
+    ::tbb::parallel_for(
+        ::tbb::blocked_range2d<::std::size_t>(0, ::piranha::safe_cast<::std::size_t>(v1.size()), 0,
+                                              ::piranha::safe_cast<::std::size_t>(v2.size())),
+        [ptr1 = v1.data(), ptr2 = v2.data(), &afa, &ss, log2_nthreads, &stab = retval._get_s_table()](const auto &r) {
+            ret_key_t tmp_key;
+            const auto ssize = stab.size();
+            for (auto i = r.rows().begin(); i != r.rows().end(); ++i) {
+                const auto &[k1, c1] = ptr1[i];
+                for (auto j = r.cols().begin(); j != r.cols().end(); ++j) {
+                    const auto &[k2, c2] = ptr2[j];
+                    // Multiply the keys.
+                    ::piranha::monomial_mul(tmp_key, k1, k2, ss);
+
+                    // Compute the destination table.
+                    const auto k_hash = ::piranha::hash(tmp_key);
+                    const auto idx = static_cast<decltype(stab.size())>(k_hash & (ssize - 1u));
+                    auto &tab = stab[idx];
+
+                    // Perform the coefficient multiplication.
+                    auto new_cf = c1 * c2;
+
+                    // Lock the corresponding table.
+                    ::piranha::detail::atomic_lock_guard spinlock(afa[static_cast<::std::size_t>(idx)]);
+
+                    const auto res = tab.try_emplace(tmp_key, ::std::move(new_cf));
+                    if (!res.second) {
+                        res.first->second += ::std::move(new_cf);
+                    }
+
+#if 0
+                    // Lock the corresponding table.
+                    ::piranha::detail::atomic_lock_guard spinlock(afa[static_cast<::std::size_t>(idx)]);
+
+                    // Try to insert the new term.
+                    const auto res = tab.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+
+                    // NOTE: optimise with likely/unlikely here?
+                    if (!res.second) {
+                        // The insertion failed, accumulate c1*c2 into the
+                        // existing coefficient.
+                        // NOTE: do it with fma3(), if possible.
+                        if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
+                            ::piranha::fma3(res.first->second, c1, c2);
+                        } else {
+                            res.first->second += c1 * c2;
+                        }
+                    }
+#endif
+                }
+            }
+        });
+}
+
+#endif
+
+// Implementation of poly multiplication with identical symbol sets.
+template <typename T, typename U>
+inline auto poly_mul_impl(T &&x, U &&y)
+{
+    using ret_t = poly_mul_ret_t<T &&, U &&>;
+
+    assert(x.get_symbol_set() == y.get_symbol_set());
 
     // Init the return value.
     ret_t retval;
     retval.set_symbol_set(x.get_symbol_set());
 
-    poly_mul_impl_simple(retval, x, y);
+#if defined(PIRANHA_WITH_TBB)
+    const auto hc = ::piranha::detail::hc();
+
+    if (hc == 1u) {
+        // We have only a single core available,
+        // run the simple implementation.
+        detail::poly_mul_impl_simple(retval, x, y);
+    } else {
+        using int_t = ::mppp::integer<1>;
+
+        // TODO: proper heuristic for mt mode.
+        // TODO: ensure hc cannot possibly be zero.
+        // For now, hard code to circa number of cores * 2.
+        const auto log2_nthreads
+            = ::std::min(::piranha::safe_cast<unsigned>(int_t{hc}.nbits()), retval._get_max_log2_size());
+
+        detail::poly_mul_impl_mt(retval, x, y, /*log2_nthreads*/ 10);
+    }
+
+#else
+    detail::poly_mul_impl_simple(retval, x, y);
+#endif
 
     return retval;
 }
