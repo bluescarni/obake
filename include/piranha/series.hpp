@@ -344,10 +344,11 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
     using key_type = series_key_t<::std::remove_reference_t<S>>;
     static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
-    const auto log2_size = s._get_log2_size();
     auto &s_table = s._get_s_table();
+    const auto s_table_size = s_table.size();
+    assert(s_table_size > 0u);
 
-    if (log2_size == 0u) {
+    if (s_table_size == 1u) {
         // NOTE: forcibly set the table size check to off (for a single
         // table, the size limit is always the full range of size_type).
         detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off, AssumeUnique>(
@@ -357,7 +358,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
         const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
 
         // Determine the destination table.
-        const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (log2_size - 1u));
+        const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s_table_size - 1u));
 
         // Proceed to the insertion.
         detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize, AssumeUnique>(
@@ -589,7 +590,7 @@ public:
             m_symbol_set = ::std::forward<T>(x).m_symbol_set;
 
             // Set the number of segments.
-            const auto x_log2_size = x._get_log2_size();
+            const auto x_log2_size = x.m_log2_size;
             set_n_segments(x_log2_size);
 
             // Insert the terms from x. Although the coefficients
@@ -599,7 +600,7 @@ public:
             // NOTE: this could be parallelised, if needed.
             for (s_size_t i = 0; i < (s_size_t(1) << x_log2_size); ++i) {
                 // Extract references to the tables in x and this.
-                auto &xt = x._get_s_table()[i];
+                auto &xt = x.m_s_table[i];
                 auto &tab = m_s_table[i];
 
                 // Reserve space in the current table.
@@ -734,9 +735,10 @@ public:
             // Check that, in a segmented table, all terms are in the table they
             // belong to, according to the first-level hash.
             if (m_log2_size > 0u) {
-                for (s_size_t i = 0; i < m_s_table.size(); ++i) {
+                const auto s_table_size = m_s_table.size();
+                for (s_size_t i = 0; i < s_table_size; ++i) {
                     for (const auto &p : m_s_table[i]) {
-                        assert((::piranha::hash(p.first) & (m_log2_size - 1u)) == i);
+                        assert((::piranha::hash(p.first) & (s_table_size - 1u)) == i);
                     }
                 }
             }
@@ -1154,15 +1156,14 @@ private:
             }
         };
 
-        const auto log2_size = s.m_log2_size;
-
-        if (log2_size == 0u) {
+        const auto s_table_size = s.m_s_table.size();
+        if (s_table_size == 1u) {
             // Single table case.
             return find_single_table(s.m_s_table, 0);
         } else {
             // Segmented table case.
             const auto k_hash = ::piranha::hash(k);
-            const auto idx = static_cast<s_size_t>(k_hash & (log2_size - 1u));
+            const auto idx = static_cast<s_size_t>(k_hash & (s_table_size - 1u));
             return find_single_table(s.m_s_table, idx);
         }
     }
