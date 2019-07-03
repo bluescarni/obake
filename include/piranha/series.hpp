@@ -1297,9 +1297,9 @@ namespace customisation::internal
 
 struct series_default_is_zero_impl {
     template <typename T>
-    bool operator()(T &&x) const
+    bool operator()(const T &x) const
     {
-        return ::std::forward<T>(x).empty();
+        return x.empty();
     }
 };
 

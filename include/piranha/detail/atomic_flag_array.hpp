@@ -18,8 +18,6 @@
 namespace piranha::detail
 {
 
-<<<<<<< HEAD
-=======
 #if defined(_MSC_VER)
 
 // NOTE: MSVC complains about the fact that we are using
@@ -34,7 +32,6 @@ namespace piranha::detail
 
 #endif
 
->>>>>>> master
 // Helper to manage an array of atomic flags.
 // The flags will all be cleared upon construction
 // from a size.
@@ -68,11 +65,6 @@ public:
 
 private:
     ::std::unique_ptr<unsigned char[]> m_ptr;
-<<<<<<< HEAD
-    const size_type m_size;
-};
-
-=======
     [[maybe_unused]] const size_type m_size;
 };
 
@@ -82,7 +74,6 @@ private:
 
 #endif
 
->>>>>>> master
 } // namespace piranha::detail
 
 #endif
