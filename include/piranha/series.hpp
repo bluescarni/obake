@@ -358,11 +358,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
         const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
 
         // Determine the destination table.
-<<<<<<< Updated upstream
         const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s_table_size - 1u));
-=======
-        const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s._get_s_table().size() - 1u));
->>>>>>> Stashed changes
 
         // Proceed to the insertion.
         detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize, AssumeUnique>(
@@ -742,11 +738,7 @@ public:
                 const auto s_table_size = m_s_table.size();
                 for (s_size_t i = 0; i < s_table_size; ++i) {
                     for (const auto &p : m_s_table[i]) {
-<<<<<<< Updated upstream
                         assert((::piranha::hash(p.first) & (s_table_size - 1u)) == i);
-=======
-                        assert((::piranha::hash(p.first) & (m_s_table.size() - 1u)) == i);
->>>>>>> Stashed changes
                     }
                 }
             }
@@ -1171,11 +1163,7 @@ private:
         } else {
             // Segmented table case.
             const auto k_hash = ::piranha::hash(k);
-<<<<<<< Updated upstream
             const auto idx = static_cast<s_size_t>(k_hash & (s_table_size - 1u));
-=======
-            const auto idx = static_cast<s_size_t>(k_hash & (s.m_s_table.size() - 1u));
->>>>>>> Stashed changes
             return find_single_table(s.m_s_table, idx);
         }
     }
