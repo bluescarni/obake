@@ -98,15 +98,17 @@ namespace piranha::detail
     ::std::string retval;
     auto it_indices_fnames = indices_fnames.crbegin();
     for (auto it = st.crbegin(); it != st.crend(); ++it, ++it_indices_fnames) {
-        // NOTE: it seems like in some cases Boost.stacktrace on Windows
-        // might return a string ending with the null character.
-        // Make sure to remove it as a workaround.
         auto it_name = it->name();
-        auto null_pos = it_name.find('\0');
-        while (null_pos != ::std::string::npos) {
-            it_name.erase(null_pos, 1);
-            null_pos = it_name.find('\0');
+
+#if defined(_WIN32)
+        // NOTE: earlier versions of Boost stacktrace might produce names with trailing
+        // null chars on Windows with the DbgEng backend:
+        // https://github.com/boostorg/stacktrace/commit/36734b15319902de1dbfe287bc229141df3c04b8
+        // In the future, we should put a version check here.
+        while (!it_name.empty() && it_name.back() == '\0') {
+            it_name.pop_back();
         }
+#endif
 
         retval += "# " + ::std::string(max_idx_width - (*it_indices_fnames)[0].size(), ' ') + (*it_indices_fnames)[0]
                   + " | " + (*it_indices_fnames)[1]
