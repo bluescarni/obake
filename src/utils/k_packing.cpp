@@ -51,9 +51,10 @@ struct xoroshiro128_plus {
         // NOTE: generate using the unsigned counterpart,
         // cast to Int at the end.
         using uint_t = make_unsigned_t<Int>;
+        // Total number of bits in the *unsigned* counterpart.
         constexpr auto tot_nbits = limits_digits<uint_t>;
 
-        // Compute the first 64 bits.
+        // Generate the first 64 bits.
         auto u_retval = static_cast<uint_t>(next());
 
         if constexpr (tot_nbits > 64) {
@@ -73,17 +74,17 @@ struct xoroshiro128_plus {
     ::std::uint64_t m_state[2];
 };
 
-constexpr auto val1 = xoroshiro128_plus{1, 0}.random<int>();
-constexpr auto val2 = xoroshiro128_plus{2, 0}.random<unsigned>();
-constexpr auto val3 = xoroshiro128_plus{3, 0}.random<long>();
-constexpr auto val4 = xoroshiro128_plus{4, 0}.random<unsigned long>();
-constexpr auto val5 = xoroshiro128_plus{5, 0}.random<long long>();
-constexpr auto val6 = xoroshiro128_plus{6, 0}.random<unsigned long long>();
+[[maybe_unused]] constexpr auto val1 = xoroshiro128_plus{1, 0}.random<int>();
+[[maybe_unused]] constexpr auto val2 = xoroshiro128_plus{2, 0}.random<unsigned>();
+[[maybe_unused]] constexpr auto val3 = xoroshiro128_plus{3, 0}.random<long>();
+[[maybe_unused]] constexpr auto val4 = xoroshiro128_plus{4, 0}.random<unsigned long>();
+[[maybe_unused]] constexpr auto val5 = xoroshiro128_plus{5, 0}.random<long long>();
+[[maybe_unused]] constexpr auto val6 = xoroshiro128_plus{6, 0}.random<unsigned long long>();
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-constexpr auto val7 = xoroshiro128_plus{7, 0}.random<__int128_t>();
-constexpr auto val8 = xoroshiro128_plus{8, 0}.random<__uint128_t>();
+[[maybe_unused]] constexpr auto val7 = xoroshiro128_plus{7, 0}.random<__int128_t>();
+[[maybe_unused]] constexpr auto val8 = xoroshiro128_plus{8, 0}.random<__uint128_t>();
 
 #endif
 
