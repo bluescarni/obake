@@ -8,6 +8,7 @@ set -e
 
 git clone https://github.com/abseil/abseil-cpp.git
 cd abseil-cpp
+git checkout 20190808
 mkdir build
 cd build
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=~/.local -DCMAKE_CXX_STANDARD=17

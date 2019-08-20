@@ -86,6 +86,7 @@ jobs:
           call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
           git clone https://github.com/abseil/abseil-cpp.git
           cd abseil-cpp
+          git checkout 20190808
           mkdir build
           cd build
           cmake .. -G Ninja ^
@@ -183,6 +184,7 @@ jobs:
           setlocal EnableDelayedExpansion
           git clone https://github.com/abseil/abseil-cpp.git
           cd abseil-cpp
+          git checkout 20190808
           mkdir build
           cd build
           cmake .. -G "Visual Studio 16 2019" ^

@@ -44,6 +44,7 @@ build_script:
 # abseil setup.
 - git clone https://github.com/abseil/abseil-cpp.git
 - cd abseil-cpp
+- git checkout 20190808
 - mkdir build
 - cd build
 
