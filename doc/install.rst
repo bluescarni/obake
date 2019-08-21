@@ -72,7 +72,7 @@ Additionally, there are various useful CMake variables you can set, such as:
   defaults to ``Release``.
 * ``CMAKE_INSTALL_PREFIX``: the path into which Piranha will be installed
   (e.g., this defaults to ``/usr/local`` on Unix-like platforms).
-* ``CMAKE_PREFIX_PATH``: additional paths that will be search by CMake
+* ``CMAKE_PREFIX_PATH``: additional paths that will be searched by CMake
   when looking for dependencies.
 
 Please consult `CMake's documentation <https://cmake.org/cmake/help/latest/>`_
