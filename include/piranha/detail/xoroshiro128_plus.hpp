@@ -6,29 +6,39 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+// xoroshiro128+ implementation, slightly adapted from:
+// http://vigna.di.unimi.it/xorshift/xoroshiro128plus.c
+// See also:
+// https://en.wikipedia.org/wiki/Xoroshiro128%2B
+// Original copyright notice follows:
+
+/*  Written in 2016-2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
+
+To the extent possible under law, the author has dedicated all copyright
+and related and neighboring rights to this software to the public domain
+worldwide. This software is distributed without any warranty.
+
+See <http://creativecommons.org/publicdomain/zero/1.0/>. */
+
+#ifndef PIRANHA_DETAIL_XOROSHIRO128_PLUS_HPP
+#define PIRANHA_DETAIL_XOROSHIRO128_PLUS_HPP
+
 #include <cstdint>
 
-#include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
-#include <piranha/k_packing.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha::detail
 {
 
-namespace
-{
-
-// xoroshiro128+ implementation, slightly adapted from:
-// http://vigna.di.unimi.it/xorshift/xoroshiro128plus.c
-// See also:
-// https://en.wikipedia.org/wiki/Xoroshiro128%2B
 struct xoroshiro128_plus {
     static constexpr ::std::uint64_t rotl(const ::std::uint64_t &x, int k)
     {
         return (x << k) | (x >> (64 - k));
     }
-    explicit constexpr xoroshiro128_plus(const ::std::uint64_t &s0, const ::std::uint64_t &s1) : m_state{s0, s1} {}
+
+    constexpr explicit xoroshiro128_plus(const ::std::uint64_t &s0, const ::std::uint64_t &s1) : m_state{s0, s1} {}
+
     constexpr ::std::uint64_t next()
     {
         const auto s0 = m_state[0];
@@ -41,7 +51,8 @@ struct xoroshiro128_plus {
 
         return result;
     }
-    // Generated an integral value of type Int
+
+    // Generate an integral value of type Int
     // with uniform probability within the whole range.
     template <typename Int>
     constexpr Int random()
@@ -74,20 +85,6 @@ struct xoroshiro128_plus {
     ::std::uint64_t m_state[2];
 };
 
-[[maybe_unused]] constexpr auto val1 = xoroshiro128_plus{1, 0}.random<int>();
-[[maybe_unused]] constexpr auto val2 = xoroshiro128_plus{2, 0}.random<unsigned>();
-[[maybe_unused]] constexpr auto val3 = xoroshiro128_plus{3, 0}.random<long>();
-[[maybe_unused]] constexpr auto val4 = xoroshiro128_plus{4, 0}.random<unsigned long>();
-[[maybe_unused]] constexpr auto val5 = xoroshiro128_plus{5, 0}.random<long long>();
-[[maybe_unused]] constexpr auto val6 = xoroshiro128_plus{6, 0}.random<unsigned long long>();
-
-#if defined(PIRANHA_HAVE_GCC_INT128)
-
-[[maybe_unused]] constexpr auto val7 = xoroshiro128_plus{7, 0}.random<__int128_t>();
-[[maybe_unused]] constexpr auto val8 = xoroshiro128_plus{8, 0}.random<__uint128_t>();
+} // namespace piranha::detail
 
 #endif
-
-} // namespace
-
-} // namespace piranha::detail
