@@ -315,7 +315,7 @@ public:
         if (size) {
             const auto nbits = static_cast<unsigned>(detail::limits_digits<T>) / size;
             if (piranha_unlikely(nbits < 3u)) {
-                piranha_throw(::std::invalid_argument,
+                piranha_throw(::std::overflow_error,
                               "Invalid size specified in the constructor of a Kronecker packer for the type '"
                                   + ::piranha::type_name<T>() + "': the maximum possible size is "
                                   + detail::to_string(detail::limits_digits<T> / 3) + ", but a size of "
@@ -413,7 +413,7 @@ public:
         if (size) {
             const auto nbits = static_cast<unsigned>(detail::limits_digits<T>) / size;
             if (piranha_unlikely(nbits < 3u)) {
-                piranha_throw(::std::invalid_argument,
+                piranha_throw(::std::overflow_error,
                               "Invalid size specified in the constructor of a Kronecker unpacker for the type '"
                                   + ::piranha::type_name<T>() + "': the maximum possible size is "
                                   + detail::to_string(detail::limits_digits<T> / 3) + ", but a size of "
