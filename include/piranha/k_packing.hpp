@@ -25,6 +25,13 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/utils/type_name.hpp>
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4307)
+
+#endif
+
 namespace piranha
 {
 
@@ -109,7 +116,7 @@ constexpr auto k_packing_compute_deltas()
     // with nonzero values. The other rows will be right-padded with zeroes
     // as the number of components decreases while the number of bits
     // for the deltas increases.
-    carray<carray<T, ncols>, nrows> retval{};
+    carray<carray<T, ncols>, nrows> retval{{}};
 
     // Compile-time pseudo-random generator.
     // https://xkcd.com/221/
@@ -156,7 +163,7 @@ constexpr auto k_packing_compute_cvs()
     constexpr auto nrows = static_cast<::std::size_t>(bit_width - 3u);
     constexpr auto ncols = static_cast<::std::size_t>(bit_width / 3u + 1u);
 
-    carray<carray<T, ncols>, nrows> retval{};
+    carray<carray<T, ncols>, nrows> retval{{}};
 
     constexpr auto deltas = detail::k_packing_compute_deltas<T>();
 
@@ -189,7 +196,7 @@ constexpr auto k_packing_compute_limits()
     constexpr auto deltas = detail::k_packing_compute_deltas<T>();
 
     if constexpr (is_signed_v<T>) {
-        carray<carray<::std::pair<T, T>, ncols>, nrows> retval{};
+        carray<carray<::std::pair<T, T>, ncols>, nrows> retval{{}};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -213,7 +220,7 @@ constexpr auto k_packing_compute_limits()
 
         return retval;
     } else {
-        carray<carray<T, ncols>, nrows> retval{};
+        carray<carray<T, ncols>, nrows> retval{{}};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -389,5 +396,11 @@ private:
 };
 
 } // namespace piranha
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
 
 #endif
