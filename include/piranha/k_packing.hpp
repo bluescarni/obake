@@ -15,7 +15,6 @@
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
-#include <utility>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/carray.hpp>
@@ -116,7 +115,7 @@ constexpr auto k_packing_compute_deltas()
     // with nonzero values. The other rows will be right-padded with zeroes
     // as the number of components decreases while the number of bits
     // for the deltas increases.
-    carray<carray<T, ncols>, nrows> retval{{}};
+    carray<carray<T, ncols>, nrows> retval{};
 
     // Compile-time pseudo-random generator.
     // https://xkcd.com/221/
@@ -163,7 +162,7 @@ constexpr auto k_packing_compute_cvs()
     constexpr auto nrows = static_cast<::std::size_t>(bit_width - 3u);
     constexpr auto ncols = static_cast<::std::size_t>(bit_width / 3u + 1u);
 
-    carray<carray<T, ncols>, nrows> retval{{}};
+    carray<carray<T, ncols>, nrows> retval{};
 
     constexpr auto deltas = detail::k_packing_compute_deltas<T>();
 
@@ -196,7 +195,7 @@ constexpr auto k_packing_compute_limits()
     constexpr auto deltas = detail::k_packing_compute_deltas<T>();
 
     if constexpr (is_signed_v<T>) {
-        carray<carray<::std::pair<T, T>, ncols>, nrows> retval{{}};
+        carray<carray<carray<T, 2>, ncols>, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -209,18 +208,18 @@ constexpr auto k_packing_compute_limits()
                 // limits if possible (i.e., even delta), or symmetric limits
                 // (odd delta).
                 if (delta % T(2)) {
-                    retval[i][j].first = (T(1) - delta) / T(2);
-                    retval[i][j].second = -retval[i][j].first;
+                    retval[i][j][0] = (T(1) - delta) / T(2);
+                    retval[i][j][1] = -retval[i][j][0];
                 } else {
-                    retval[i][j].first = -delta / T(2);
-                    retval[i][j].second = delta / T(2) - T(1);
+                    retval[i][j][0] = -delta / T(2);
+                    retval[i][j][1] = delta / T(2) - T(1);
                 }
             }
         }
 
         return retval;
     } else {
-        carray<carray<T, ncols>, nrows> retval{{}};
+        carray<carray<T, ncols>, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -251,7 +250,7 @@ constexpr auto k_packing_compute_encoded_limits()
     constexpr auto limits = detail::k_packing_compute_limits<T>();
 
     if constexpr (is_signed_v<T>) {
-        carray<::std::pair<T, T>, nrows> retval{};
+        carray<carray<T, 2>, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -260,14 +259,14 @@ constexpr auto k_packing_compute_encoded_limits()
             T lim_min(0), lim_max(0);
 
             for (::std::size_t j = 0; j < cur_ncols; ++j) {
-                lim_min += cvs[i][j] * limits[i][j].first;
-                lim_max += cvs[i][j] * limits[i][j].second;
+                lim_min += cvs[i][j] * limits[i][j][0];
+                lim_max += cvs[i][j] * limits[i][j][1];
             }
 
             assert(lim_max > lim_min);
 
-            retval[i].first = lim_min;
-            retval[i].second = lim_max;
+            retval[i][0] = lim_min;
+            retval[i][1] = lim_max;
         }
 
         return retval;
@@ -352,11 +351,11 @@ public:
 
         // Check that n is within the allowed limits for the current component.
         if constexpr (is_signed_v<T>) {
-            if (piranha_unlikely(n < lims.first || n > lims.second)) {
+            if (piranha_unlikely(n < lims[0] || n > lims[1])) {
                 piranha_throw(::std::overflow_error,
                               "Cannot push the value " + detail::to_string(n)
                                   + " to this Kronecker packer: the value is outside the allowed range ["
-                                  + detail::to_string(lims.first) + ", " + detail::to_string(lims.second) + "]");
+                                  + detail::to_string(lims[0]) + ", " + detail::to_string(lims[1]) + "]");
             }
         } else {
             if (piranha_unlikely(n > lims)) {
