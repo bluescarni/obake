@@ -301,7 +301,11 @@ inline constexpr auto k_packing_data
 } // namespace detail
 
 // Kronecker packer.
-template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <KPackable T>
+#else
+template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
+#endif
 class k_packer
 {
 public:
@@ -324,6 +328,7 @@ public:
             m_data_idx = nbits - 3u;
         }
     }
+
     // Insert the next value into the packer.
     constexpr k_packer &operator<<(const T &n)
     {
@@ -335,7 +340,7 @@ public:
         }
 
         // Special case for size 1: in that case, we don't
-        // pack anything and just employ the full range of T.
+        // pack anything and just copy n into m_value.
         if (m_size == 1u) {
             m_value = n;
             ++m_index;
@@ -385,6 +390,105 @@ public:
                               + detail::to_string(m_size) + ")");
         }
         return m_value;
+    }
+
+private:
+    T m_value;
+    unsigned m_index;
+    unsigned m_size;
+    unsigned m_data_idx;
+};
+
+// Kronecker unpacker.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <KPackable T>
+#else
+template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
+#endif
+class k_unpacker
+{
+public:
+    constexpr explicit k_unpacker(const T &n, unsigned size) : m_value(n), m_index(0), m_size(size), m_data_idx(0)
+    {
+        if (size) {
+            const auto nbits = static_cast<unsigned>(detail::limits_digits<T>) / size;
+            if (piranha_unlikely(nbits < 3u)) {
+                piranha_throw(::std::invalid_argument,
+                              "Invalid size specified in the constructor of a Kronecker unpacker for the type '"
+                                  + ::piranha::type_name<T>() + "': the maximum possible size is "
+                                  + detail::to_string(detail::limits_digits<T> / 3) + ", but a size of "
+                                  + detail::to_string(size) + " was specified instead");
+            }
+
+            // NOTE: m_data_idx corresponds to the row index of the
+            // k_packing table data. m_index corresponds to the column
+            // index.
+            m_data_idx = nbits - 3u;
+
+            if (size > 1u) {
+                // For a non-unitary size, check that the input encoded value is within the
+                // allowed range.
+                const auto &e_lim = ::std::get<3>(detail::k_packing_data<T>)[m_data_idx];
+                if constexpr (is_signed_v<T>) {
+                    if (piranha_unlikely(n < e_lim[0] || n > e_lim[1])) {
+                        piranha_throw(::std::overflow_error,
+                                      "The value " + detail::to_string(n) + " passed to a Kronecker unpacker of size "
+                                          + detail::to_string(size) + " is outside the allowed range ["
+                                          + detail::to_string(e_lim[0]) + ", " + detail::to_string(e_lim[1]) + "]");
+                    }
+                } else {
+                    if (piranha_unlikely(n > e_lim)) {
+                        piranha_throw(::std::overflow_error,
+                                      "The value " + detail::to_string(n) + " passed to a Kronecker unpacker of size "
+                                          + detail::to_string(size) + " is outside the allowed range [0, "
+                                          + detail::to_string(e_lim) + "]");
+                    }
+                }
+            }
+        } else {
+            if (piranha_unlikely(n)) {
+                piranha_throw(::std::invalid_argument, "Only a value of zero can be used in a Kronecker unpacker "
+                                                       "with a size of zero, but a value of "
+                                                           + detail::to_string(n) + " was provided instead");
+            }
+        }
+    }
+
+    k_unpacker &operator>>(T &n)
+    {
+        if (piranha_unlikely(m_index == m_size)) {
+            piranha_throw(::std::out_of_range,
+                          "Cannot unpack any more values from this Kronecker unpacker: the number of "
+                          "values already unpacked is equal to the size used for construction ("
+                              + detail::to_string(m_size) + ")");
+        }
+
+        // Special case for size 1: in that case, we don't
+        // unpack anything and just copy m_value to n.
+        if (m_size == 1u) {
+            n = m_value;
+            ++m_index;
+            return *this;
+        }
+
+        // Get the index-th and index+1-th elements of the coding vector.
+        const auto &c_value0 = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index];
+        const auto &c_value1 = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index + 1u];
+
+        if constexpr (is_signed_v<T>) {
+            // Extract the minimum encodable value and the index-th
+            // lower component limit.
+            const auto &e_min = ::std::get<3>(detail::k_packing_data<T>)[m_data_idx][0];
+            const auto &c_min = ::std::get<2>(detail::k_packing_data<T>)[m_data_idx][m_index][0];
+
+            n = ((m_value - e_min) % c_value1) / c_value0 + c_min;
+        } else {
+            n = (m_value % c_value1) / c_value0;
+        }
+
+        ++m_index;
+
+        return *this;
     }
 
 private:

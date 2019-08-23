@@ -45,6 +45,11 @@ TEST_CASE("k_packer")
     // }
 
     k_packer<long> kp(6);
-    kp << 1 << 2 << 3 << 4 << 5 << 6;
+    kp << 1 << -2 << 3 << -4 << 5 << -6;
     std::cout << kp.get() << '\n';
+
+    k_unpacker<long> ku(kp.get(), 6);
+    long n1, n2, n3, n4, n5, n6;
+    ku >> n1 >> n2 >> n3 >> n4 >> n5 >> n6;
+    std::cout << n1 << ", " << n2 << ", " << n3 << ", " << n4 << ", " << n5 << ", " << n6 << "\n";
 }
