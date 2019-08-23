@@ -26,7 +26,7 @@ export CC=clang
 
 git clone https://github.com/abseil/abseil-cpp.git
 cd abseil-cpp
-git checkout 20190808
+git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
 mkdir build
 cd build
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
