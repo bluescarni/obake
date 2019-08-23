@@ -24,6 +24,13 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/utils/type_name.hpp>
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4307)
+
+#endif
+
 namespace piranha
 {
 
@@ -492,5 +499,11 @@ private:
 };
 
 } // namespace piranha
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
 
 #endif
