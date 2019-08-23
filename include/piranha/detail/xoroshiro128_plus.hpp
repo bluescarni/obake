@@ -28,6 +28,13 @@ See <http://creativecommons.org/publicdomain/zero/1.0/>. */
 #include <piranha/detail/limits.hpp>
 #include <piranha/type_traits.hpp>
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4307)
+
+#endif
+
 namespace piranha::detail
 {
 
@@ -94,5 +101,11 @@ struct xoroshiro128_plus {
 };
 
 } // namespace piranha::detail
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
 
 #endif
