@@ -31,14 +31,17 @@ See <http://creativecommons.org/publicdomain/zero/1.0/>. */
 namespace piranha::detail
 {
 
+// NOTE: constexpr implementation, thus usable at compile-time.
 struct xoroshiro128_plus {
     static constexpr ::std::uint64_t rotl(const ::std::uint64_t &x, int k)
     {
         return (x << k) | (x >> (64 - k));
     }
 
+    // Constructor from seed state (2 64-bit values).
     constexpr explicit xoroshiro128_plus(const ::std::uint64_t &s0, const ::std::uint64_t &s1) : m_state{s0, s1} {}
 
+    // Compute the next 64-bit value in the sequence.
     constexpr ::std::uint64_t next()
     {
         const auto s0 = m_state[0];
@@ -79,6 +82,11 @@ struct xoroshiro128_plus {
         }
 
         // Cast back to the original type.
+        // NOTE: in case Int is signed, this operation is
+        // implementation-defined up to C++20, and from C++20
+        // this follows the rules of two's complement arithmetic.
+        // In practice, all implementations follow two's complement
+        // even before C++20.
         return static_cast<Int>(u_retval);
     }
 

@@ -14,33 +14,37 @@
 
 using namespace piranha;
 
-TEST_CASE("k_packer_unsigned")
+TEST_CASE("k_packer")
 {
-    const auto &[table, cvs, minmaxes] = detail::k_packing_unsigned_data<long long>;
+    // const auto &[table, cvs, minmaxes] = detail::k_packing_data<long long>;
 
-    for (const auto &r : table) {
-        for (const auto &n : r) {
-            std::cout << n << " ";
-        }
-        std::cout << '\n';
-    }
+    // for (const auto &r : table) {
+    //     for (const auto &n : r) {
+    //         std::cout << n << " ";
+    //     }
+    //     std::cout << '\n';
+    // }
 
-    std::cout << '\n';
+    // std::cout << '\n';
 
-    for (const auto &r : cvs) {
-        for (const auto &n : r) {
-            std::cout << n << " ";
-        }
-        std::cout << '\n';
-    }
+    // for (const auto &r : cvs) {
+    //     for (const auto &n : r) {
+    //         std::cout << n << " ";
+    //     }
+    //     std::cout << '\n';
+    // }
 
-    std::cout << '\n';
+    // std::cout << '\n';
 
-    for (const auto &r : minmaxes) {
-        for (const auto &p : r) {
-            std::cout << "[" << p.first << ", " << p.second << "]"
-                      << " ";
-        }
-        std::cout << '\n';
-    }
+    // for (const auto &r : minmaxes) {
+    //     for (const auto &p : r) {
+    //         std::cout << "[" << p.first << ", " << p.second << "]"
+    //                   << " ";
+    //     }
+    //     std::cout << '\n';
+    // }
+
+    k_packer<long> kp(6);
+    kp << 1 << 2 << 3 << 4 << 5 << 6;
+    std::cout << kp.get() << '\n';
 }
