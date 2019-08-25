@@ -34,28 +34,6 @@
 namespace piranha
 {
 
-// Only allow certain integral types to be packable (this is due to the complications arising
-// from integral promotion rules for short ints and char types).
-template <typename T>
-using is_k_packable = ::std::disjunction<::std::is_same<T, int>, ::std::is_same<T, unsigned>, ::std::is_same<T, long>,
-                                         ::std::is_same<T, unsigned long>, ::std::is_same<T, long long>,
-                                         ::std::is_same<T, unsigned long long>
-#if defined(PIRANHA_HAVE_GCC_INT128)
-                                         ,
-                                         ::std::is_same<T, __int128_t>, ::std::is_same<T, __uint128_t>
-#endif
-                                         >;
-
-template <typename T>
-inline constexpr bool is_k_packable_v = is_k_packable<T>::value;
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-
-template <typename T>
-PIRANHA_CONCEPT_DECL KPackable = is_k_packable_v<T>;
-
-#endif
-
 namespace detail
 {
 
@@ -63,13 +41,13 @@ namespace detail
 // From the deltas, we will then deduce the components'
 // limits, the coding vectors, etc.
 //
-// The strategy we follow is to dedicate a fixed number
-// of bits N for each delta. We start from N = 3 up to
+// The strategy we follow is to dedicate a fixed number of bits N
+// for each delta (the delta bit width). We start from N = 3 up to
 // bit_width - 1 (and not bit_width, because in that case
 // we want to allow for only 1 component using the full range
 // of the type). For each value of N, we deduce the size M of
-// the coding vector (i.e., the number of N-bit components that can be
-// packed in a singe instance of T) by enforcing that the product
+// the coding vector (i.e., the max number of N-bit components that can be
+// packed in a single instance of T) by enforcing that the product
 // of all deltas must be still representable by T.
 //
 // E.g., if N == 3 and T is a 64-bit unsigned integer, then we have
@@ -90,11 +68,15 @@ namespace detail
 // - if T is unsigned, the min component value is always chosen zero,
 // - if T is signed, the min component value is always chosen negative and the
 //   max component value is always chosen positive.
+//
+// Note that the table returned by this function has a row for each delta
+// bit width, and that a delta bit width may correspond to more
+// than one vector size. E.g., in a 64-bit unsigned integer, with a delta
+// bit width of 3 bits we can have a vector size of 21 but also 20, 19,
+// 18, and 17. Starting from a vector size of 16, the delta bit width becomes 4.
 template <typename T>
 constexpr auto k_packing_compute_deltas()
 {
-    static_assert(is_integral_v<T>, "T must be an integral type.");
-
     // NOTE: the bit width for signed integral types does *not* include
     // the sign bit already.
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
@@ -124,7 +106,7 @@ constexpr auto k_packing_compute_deltas()
     for (::std::size_t i = 0; i < nrows; ++i) {
         // Current number of bits for the deltas.
         const auto cur_nbits = i + 3u;
-        // Current number of components.
+        // Current size of the coding vector.
         const auto cur_ncols = bit_width / cur_nbits;
 
         for (::std::size_t j = 0; j < cur_ncols; ++j) {
@@ -154,8 +136,6 @@ constexpr auto k_packing_compute_deltas()
 template <typename T>
 constexpr auto k_packing_compute_cvs()
 {
-    static_assert(is_integral_v<T>, "T must be an integral type.");
-
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
     static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
 
@@ -185,8 +165,6 @@ constexpr auto k_packing_compute_cvs()
 template <typename T>
 constexpr auto k_packing_compute_limits()
 {
-    static_assert(is_integral_v<T>, "T must be an integral type.");
-
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
     static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
 
@@ -207,7 +185,7 @@ constexpr auto k_packing_compute_limits()
 
                 // NOTE: for signed integers, we choose two's-complement-style
                 // limits if possible (i.e., even delta), or symmetric limits
-                // (odd delta).
+                // otherwise (i.e., odd delta).
                 if (delta % T(2)) {
                     retval[i][j][0] = (T(1) - delta) / T(2);
                     retval[i][j][1] = -retval[i][j][0];
@@ -246,30 +224,37 @@ constexpr auto k_packing_compute_limits()
 template <typename T>
 constexpr auto k_packing_compute_encoded_limits()
 {
-    static_assert(is_integral_v<T>, "T must be an integral type.");
-
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
     static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
 
-    // Number of rows: from the max size (bit_width / 3u) down to 2.
+    // Number of rows: from the max vector size (bit_width / 3u) down to 2.
     constexpr auto nrows = static_cast<::std::size_t>(bit_width / 3u - 2u + 1u);
 
     // Get the cvs and the components' limits.
     constexpr auto cvs = detail::k_packing_compute_cvs<T>();
     constexpr auto limits = detail::k_packing_compute_limits<T>();
 
-    if constexpr (is_signed_v<T>) {
-        carray<carray<T, 2>, nrows> retval{};
+    // Init the return value.
+    auto retval = []() {
+        if constexpr (is_signed_v<T>) {
+            return carray<carray<T, 2>, nrows>{};
+        } else {
+            return carray<T, nrows>{};
+        }
+    }();
 
-        for (::std::size_t i = 0; i < nrows; ++i) {
-            // The current vector size.
-            const auto cur_size = bit_width / 3u - i;
-            // The delta bit width corresponding to the current size.
-            const auto cur_nbits = bit_width / cur_size;
-            // The index into cvs/limits corresponding to
-            // the delta bit width.
-            const auto data_idx = cur_nbits - 3u;
+    // Compute the min/max encoded values for all possible
+    // vector sizes.
+    for (::std::size_t i = 0; i < nrows; ++i) {
+        // The current vector size.
+        const auto cur_size = bit_width / 3u - i;
+        // The delta bit width corresponding to the current size.
+        const auto cur_nbits = bit_width / cur_size;
+        // The index into cvs/limits corresponding to
+        // the delta bit width.
+        const auto data_idx = cur_nbits - 3u;
 
+        if constexpr (is_signed_v<T>) {
             T lim_min(0), lim_max(0);
 
             for (::std::size_t j = 0; j < cur_size; ++j) {
@@ -281,21 +266,7 @@ constexpr auto k_packing_compute_encoded_limits()
 
             retval[i][0] = lim_min;
             retval[i][1] = lim_max;
-        }
-
-        return retval;
-    } else {
-        carray<T, nrows> retval{};
-
-        for (::std::size_t i = 0; i < nrows; ++i) {
-            // The current vector size.
-            const auto cur_size = bit_width / 3u - i;
-            // The delta bit width corresponding to the current size.
-            const auto cur_nbits = bit_width / cur_size;
-            // The index into cvs/limits corresponding to
-            // the delta bit width.
-            const auto data_idx = cur_nbits - 3u;
-
+        } else {
             T lim(0);
 
             for (::std::size_t j = 0; j < cur_size; ++j) {
@@ -304,9 +275,9 @@ constexpr auto k_packing_compute_encoded_limits()
 
             retval[i] = lim;
         }
-
-        return retval;
     }
+
+    return retval;
 }
 
 // Package the data necessary for encoding/decoding in a compile-time tuple,
@@ -318,6 +289,28 @@ inline constexpr auto k_packing_data
                         detail::k_packing_compute_limits<T>(), detail::k_packing_compute_encoded_limits<T>());
 
 } // namespace detail
+
+// Only allow certain integral types to be packable (this is due to the complications arising
+// from integral promotion rules for short ints and char types).
+template <typename T>
+using is_k_packable = ::std::disjunction<::std::is_same<T, int>, ::std::is_same<T, unsigned>, ::std::is_same<T, long>,
+                                         ::std::is_same<T, unsigned long>, ::std::is_same<T, long long>,
+                                         ::std::is_same<T, unsigned long long>
+#if defined(PIRANHA_HAVE_GCC_INT128)
+                                         ,
+                                         ::std::is_same<T, __int128_t>, ::std::is_same<T, __uint128_t>
+#endif
+                                         >;
+
+template <typename T>
+inline constexpr bool is_k_packable_v = is_k_packable<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL KPackable = is_k_packable_v<T>;
+
+#endif
 
 // Kronecker packer.
 #if defined(PIRANHA_HAVE_CONCEPTS)
@@ -332,6 +325,7 @@ public:
     constexpr explicit k_packer(unsigned size) : m_value(0), m_index(0), m_size(size), m_data_idx(0)
     {
         if (size) {
+            // Get the delta bit width corresponding to the input size.
             const auto nbits = static_cast<unsigned>(detail::limits_digits<T>) / size;
             if (piranha_unlikely(nbits < 3u)) {
                 piranha_throw(::std::overflow_error,
@@ -341,9 +335,8 @@ public:
                                   + detail::to_string(size) + " was specified instead");
             }
 
-            // NOTE: m_data_idx corresponds to the row index of the
-            // k_packing table data. m_index corresponds to the column
-            // index.
+            // NOTE: this is used for indexing into the the first three
+            // tables of k_packing.
             m_data_idx = nbits - 3u;
         }
     }
@@ -391,6 +384,8 @@ public:
         }
 
         // Do the encoding.
+        // NOTE: the coding vector might have excess components past m_index, we just
+        // don't use them.
         const auto &c_value = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index];
         m_value += n * c_value;
         ++m_index;
@@ -439,9 +434,8 @@ public:
                                   + detail::to_string(size) + " was specified instead");
             }
 
-            // NOTE: m_data_idx corresponds to the row index of the
-            // k_packing table data. m_index corresponds to the column
-            // index.
+            // NOTE: this is used for indexing into the the first three
+            // tables of k_packing.
             m_data_idx = nbits - 3u;
 
             if (size > 1u) {
@@ -492,6 +486,8 @@ public:
         }
 
         // Get the index-th and index+1-th elements of the coding vector.
+        // NOTE: the coding vector might have excess components past m_index+1, we just
+        // don't use them.
         const auto &c_value0 = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index];
         const auto &c_value1 = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index + 1u];
 
