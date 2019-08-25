@@ -181,6 +181,7 @@ constexpr auto k_packing_compute_cvs()
 }
 
 // Compute the component limits for the type T.
+// The component limits are computed from the deltas.
 template <typename T>
 constexpr auto k_packing_compute_limits()
 {
@@ -236,6 +237,12 @@ constexpr auto k_packing_compute_limits()
 }
 
 // Compute the min/max encoded values.
+// NOTE: contrary to the other functions above,
+// here we return a table with a row for each available
+// vector *size* (rather than delta bit width), starting from
+// the largest possible one down to 2. The reason is that the
+// same bit width might be associated to different vector sizes,
+// thus producing different min/max encoded values.
 template <typename T>
 constexpr auto k_packing_compute_encoded_limits()
 {
@@ -244,8 +251,10 @@ constexpr auto k_packing_compute_encoded_limits()
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
     static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
 
-    constexpr auto nrows = static_cast<::std::size_t>(bit_width - 3u);
+    // Number of rows: from the max size (bit_width / 3u) down to 2.
+    constexpr auto nrows = static_cast<::std::size_t>(bit_width / 3u - 2u + 1u);
 
+    // Get the cvs and the components' limits.
     constexpr auto cvs = detail::k_packing_compute_cvs<T>();
     constexpr auto limits = detail::k_packing_compute_limits<T>();
 
@@ -253,14 +262,19 @@ constexpr auto k_packing_compute_encoded_limits()
         carray<carray<T, 2>, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
-            const auto cur_nbits = i + 3u;
-            const auto cur_ncols = bit_width / cur_nbits;
+            // The current vector size.
+            const auto cur_size = bit_width / 3u - i;
+            // The delta bit width corresponding to the current size.
+            const auto cur_nbits = bit_width / cur_size;
+            // The index into cvs/limits corresponding to
+            // the delta bit width.
+            const auto data_idx = cur_nbits - 3u;
 
             T lim_min(0), lim_max(0);
 
-            for (::std::size_t j = 0; j < cur_ncols; ++j) {
-                lim_min += cvs[i][j] * limits[i][j][0];
-                lim_max += cvs[i][j] * limits[i][j][1];
+            for (::std::size_t j = 0; j < cur_size; ++j) {
+                lim_min += cvs[data_idx][j] * limits[data_idx][j][0];
+                lim_max += cvs[data_idx][j] * limits[data_idx][j][1];
             }
 
             assert(lim_max > lim_min);
@@ -274,13 +288,18 @@ constexpr auto k_packing_compute_encoded_limits()
         carray<T, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
-            const auto cur_nbits = i + 3u;
-            const auto cur_ncols = bit_width / cur_nbits;
+            // The current vector size.
+            const auto cur_size = bit_width / 3u - i;
+            // The delta bit width corresponding to the current size.
+            const auto cur_nbits = bit_width / cur_size;
+            // The index into cvs/limits corresponding to
+            // the delta bit width.
+            const auto data_idx = cur_nbits - 3u;
 
             T lim(0);
 
-            for (::std::size_t j = 0; j < cur_ncols; ++j) {
-                lim += cvs[i][j] * limits[i][j];
+            for (::std::size_t j = 0; j < cur_size; ++j) {
+                lim += cvs[data_idx][j] * limits[data_idx][j];
             }
 
             retval[i] = lim;
@@ -428,7 +447,8 @@ public:
             if (size > 1u) {
                 // For a non-unitary size, check that the input encoded value is within the
                 // allowed range.
-                const auto &e_lim = ::std::get<3>(detail::k_packing_data<T>)[m_data_idx];
+                const auto &e_lim = ::std::get<3>(
+                    detail::k_packing_data<T>)[static_cast<unsigned>(detail::limits_digits<T>) / 3u - size];
                 if constexpr (is_signed_v<T>) {
                     if (piranha_unlikely(n < e_lim[0] || n > e_lim[1])) {
                         piranha_throw(::std::overflow_error,
@@ -478,7 +498,8 @@ public:
         if constexpr (is_signed_v<T>) {
             // Extract the minimum encodable value and the index-th
             // lower component limit.
-            const auto &e_min = ::std::get<3>(detail::k_packing_data<T>)[m_data_idx][0];
+            const auto &e_min = ::std::get<3>(
+                detail::k_packing_data<T>)[static_cast<unsigned>(detail::limits_digits<T>) / 3u - m_size][0];
             const auto &c_min = ::std::get<2>(detail::k_packing_data<T>)[m_data_idx][m_index][0];
 
             n = ((m_value - e_min) % c_value1) / c_value0 + c_min;

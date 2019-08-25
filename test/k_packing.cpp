@@ -9,6 +9,8 @@
 #include <random>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
+#include <vector>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
@@ -108,5 +110,153 @@ TEST_CASE("k_packer_unpacker")
         ku1 = ku_t(kp1.get(), 1);
         ku1 >> out;
         REQUIRE(out == lim_max);
+
+        // Random testing.
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
+#endif
+        {
+            std::uniform_int_distribution<int_t> idist(lim_min, lim_max);
+            for (auto i = 0; i < ntrials; ++i) {
+                const auto tmp = idist(rng);
+                kp1 = kp_t(1);
+                kp1 << tmp;
+                ku1 = ku_t(kp1.get(), 1);
+                ku1 >> out;
+                REQUIRE(tmp == out);
+            }
+        }
+
+        // Random testing with variable sizes.
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
+#endif
+        {
+            if constexpr (is_signed_v<int_t>) {
+                for (auto size = 2u; size <= nbits / 3u; ++size) {
+                    // Number of bits corresponding to the current size.
+                    const auto cur_nb = static_cast<unsigned>(detail::limits_digits<int_t>) / size;
+
+                    // Get the components' limits for the current number of bits.
+                    const auto &lims = std::get<2>(detail::k_packing_data<int_t>)[cur_nb - 3u];
+
+                    std::vector<int_t> v(size);
+
+                    for (auto k = 0; k < ntrials; ++k) {
+                        kp1 = kp_t(size);
+                        for (auto j = 0u; j < size; ++j) {
+                            std::uniform_int_distribution<int_t> idist(lims[j][0], lims[j][1]);
+                            v[j] = idist(rng);
+                            kp1 << v[j];
+                        }
+                        ku1 = ku_t(kp1.get(), size);
+                        for (const auto &x : v) {
+                            ku1 >> out;
+                            REQUIRE(out == x);
+                        }
+                    }
+
+                    // Check that packing zeroes gives a zero value.
+                    kp1 = kp_t(size);
+                    for (auto j = 0u; j < size; ++j) {
+                        kp1 << int_t(0);
+                    }
+                    REQUIRE(kp1.get() == int_t(0));
+                    ku1 = ku_t(kp1.get(), size);
+                    for (auto j = 0u; j < size; ++j) {
+                        ku1 >> out;
+                        REQUIRE(out == int_t(0));
+                    }
+
+                    // Check out of range packing.
+                    kp1 = kp_t(size);
+                    REQUIRE_THROWS_WITH(kp1 << (lims[0][1] + int_t(1)),
+                                        Contains("Cannot push the value " + detail::to_string(lims[0][1] + int_t(1))
+                                                 + " to this Kronecker packer: the value is outside the allowed range ["
+                                                 + detail::to_string(lims[0][0]) + ", " + detail::to_string(lims[0][1])
+                                                 + "]"));
+                    REQUIRE_THROWS_WITH(kp1 << (lims[0][0] - int_t(1)),
+                                        Contains("Cannot push the value " + detail::to_string(lims[0][0] - int_t(1))
+                                                 + " to this Kronecker packer: the value is outside the allowed range ["
+                                                 + detail::to_string(lims[0][0]) + ", " + detail::to_string(lims[0][1])
+                                                 + "]"));
+                    REQUIRE_THROWS_AS(kp1 << (lims[0][0] - int_t(1)), std::overflow_error);
+#if 0
+                    REQUIRE_THROWS_WITH(
+                        bp1 << (cur_min - int_t(1)),
+                        Contains("Cannot push the value " + detail::to_string(cur_min - int_t(1))
+                                 + " to this signed bit packer: the value is outside the allowed range ["
+                                 + detail::to_string(cur_min) + ", " + detail::to_string(cur_max) + "]"));
+                    REQUIRE_THROWS_AS(bp1 << (cur_min - int_t(1)), std::overflow_error);
+
+                const auto [min_dec, max_dec] = detail::sbp_get_mmp<int_t>()[i - 1u];
+
+                REQUIRE_THROWS_WITH(bu_t(max_dec + int_t(1), i),
+                                    Contains("The value " + detail::to_string(max_dec + int_t(1))
+                                             + " passed to a signed bit unpacker of size " + detail::to_string(i)
+                                             + " is outside the allowed range [" + detail::to_string(min_dec) + ", "
+                                             + detail::to_string(max_dec) + "]"));
+                REQUIRE_THROWS_AS(bu_t(max_dec + int_t(1), i), std::overflow_error);
+
+                REQUIRE_THROWS_WITH(bu_t(min_dec - int_t(1), i),
+                                    Contains("The value " + detail::to_string(min_dec - int_t(1))
+                                             + " passed to a signed bit unpacker of size " + detail::to_string(i)
+                                             + " is outside the allowed range [" + detail::to_string(min_dec) + ", "
+                                             + detail::to_string(max_dec) + "]"));
+                REQUIRE_THROWS_AS(bu_t(min_dec - int_t(1), i), std::overflow_error);
+#endif
+                }
+            } else {
+#if 0
+                for (auto i = 2u; i <= nbits; ++i) {
+                    const auto pbits = nbits / i;
+                    const auto cur_max = (int_t(1) << pbits) - int_t(1);
+                    std::uniform_int_distribution<int_t> idist(int_t(0), cur_max);
+                    std::vector<int_t> v(i);
+                    for (auto k = 0; k < ntrials; ++k) {
+                        bp1 = bp_t(i);
+                        for (auto &x : v) {
+                            x = idist(rng);
+                            bp1 << x;
+                        }
+                        bu1 = bu_t(bp1.get(), i);
+                        for (const auto &x : v) {
+                            bu1 >> out;
+                            REQUIRE(out == x);
+                        }
+                    }
+
+                    // Check out of range packing.
+                    bp1 = bp_t(i);
+                    REQUIRE_THROWS_WITH(
+                        bp1 << (cur_max + int_t(1)),
+                        Contains("Cannot push the value " + detail::to_string(cur_max + int_t(1))
+                                 + " to this unsigned bit packer: the value is outside the allowed range [0, "
+                                 + detail::to_string(cur_max) + "]"));
+                    REQUIRE_THROWS_AS(bp1 << (cur_max + int_t(1)), std::overflow_error);
+
+                    // If the current size does not divide nbits exactly, we can
+                    // construct a value which is larger than the max decodable value.
+                    if (nbits % i) {
+                        const auto max_decodable = int_t(-1) >> (nbits % i);
+
+                        REQUIRE_THROWS_WITH(bu_t(max_decodable + 1u, i),
+                                            Contains("The value " + detail::to_string(max_decodable + 1u)
+                                                     + " passed to an unsigned bit unpacker of size "
+                                                     + detail::to_string(i) + " is outside the allowed range [0, "
+                                                     + detail::to_string(max_decodable) + "]"));
+                        REQUIRE_THROWS_AS(bu_t(max_decodable + 1u, i), std::overflow_error);
+
+                        REQUIRE_THROWS_WITH(bu_t(max_decodable + 2u, i),
+                                            Contains("The value " + detail::to_string(max_decodable + 2u)
+                                                     + " passed to an unsigned bit unpacker of size "
+                                                     + detail::to_string(i) + " is outside the allowed range [0, "
+                                                     + detail::to_string(max_decodable) + "]"));
+                        REQUIRE_THROWS_AS(bu_t(max_decodable + 2u, i), std::overflow_error);
+                    }
+                }
+#endif
+            }
+        }
     });
 }
