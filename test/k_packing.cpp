@@ -25,7 +25,7 @@
 using namespace piranha;
 
 using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(PIRANHA_HAVE_GCC_INT128) && !defined(PIRANHA_TEST_CLANG_UBSAN)
                              ,
                              __int128_t, __uint128_t
 #endif
@@ -39,6 +39,7 @@ constexpr auto ntrials = 100;
 
 #pragma warning(push)
 #pragma warning(disable : 4146)
+#pragma warning(disable : 4307)
 
 #endif
 
