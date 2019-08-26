@@ -305,7 +305,7 @@ inline constexpr auto k_packing_data
                         detail::k_packing_compute_limits<T>(), detail::k_packing_compute_encoded_limits<T>(),
                         detail::k_packing_compute_size_to_bits_table<T>());
 
-// Small helper to compute the delta bit width from a vector size.
+// Small helper to compute the delta bit width corresponding to a vector size.
 // Requires size in [1u, max_vector_size].
 template <typename T>
 constexpr unsigned k_packing_size_to_bits(unsigned size)
@@ -314,6 +314,59 @@ constexpr unsigned k_packing_size_to_bits(unsigned size)
     const auto idx = size - 1u;
     assert(idx < ::std::get<4>(k_packing_data<T>).size());
     return ::std::get<4>(k_packing_data<T>)[idx];
+}
+
+// Small helper to fetch the maximum vector size for the type T.
+template <typename T>
+constexpr auto k_packing_get_max_size()
+{
+    return ::std::get<4>(k_packing_data<T>).size();
+}
+
+// Return the component limits at index idx, given a type T and
+// a delta bit width nbits.
+template <typename T>
+constexpr decltype(auto) k_packing_get_climits(unsigned nbits, unsigned idx)
+{
+    assert(nbits >= 3u);
+    assert(nbits - 3u < ::std::get<2>(k_packing_data<T>).size());
+    assert(idx < ::std::get<2>(k_packing_data<T>)[nbits - 3u].size());
+
+    // NOTE: no component limit can ever be zero, if it is it means we
+    // have something wrong in the indexing.
+    if constexpr (is_signed_v<T>) {
+        assert(::std::get<2>(k_packing_data<T>)[nbits - 3u][idx][0] != T(0));
+        assert(::std::get<2>(k_packing_data<T>)[nbits - 3u][idx][1] != T(0));
+    } else {
+        assert(::std::get<2>(k_packing_data<T>)[nbits - 3u][idx] != T(0));
+    }
+
+    return ::std::get<2>(k_packing_data<T>)[nbits - 3u][idx];
+}
+
+// Return the component at index idx of the coding vector, given a type
+// T and a delta bit width nbits.
+template <typename T>
+constexpr decltype(auto) k_packing_get_cvc(unsigned nbits, unsigned idx)
+{
+    assert(nbits >= 3u);
+    assert(nbits - 3u < ::std::get<1>(k_packing_data<T>).size());
+    assert(idx < ::std::get<1>(k_packing_data<T>)[nbits - 3u].size());
+    // NOTE: no CV component can ever be zero, if it is it means we
+    // have something wrong in the indexing.
+    assert(::std::get<1>(k_packing_data<T>)[nbits - 3u][idx] != T(0));
+
+    return ::std::get<1>(k_packing_data<T>)[nbits - 3u][idx];
+}
+
+// Return the encoded limits for a given vector size.
+template <typename T>
+constexpr decltype(auto) k_packing_get_elimits(unsigned size)
+{
+    assert(static_cast<unsigned>(limits_digits<T>) / 3u >= size);
+    assert(static_cast<unsigned>(limits_digits<T>) / 3u - size < ::std::get<3>(k_packing_data<T>).size());
+
+    return ::std::get<3>(k_packing_data<T>)[static_cast<unsigned>(limits_digits<T>) / 3u - size];
 }
 
 } // namespace detail
@@ -350,22 +403,18 @@ class k_packer
 {
 public:
     // Constructor from size.
-    constexpr explicit k_packer(unsigned size) : m_value(0), m_index(0), m_size(size), m_data_idx(0)
+    constexpr explicit k_packer(unsigned size) : m_value(0), m_index(0), m_size(size), m_nbits(0)
     {
         if (size) {
             // Get the delta bit width corresponding to the input size.
-            if (piranha_unlikely(size > ::std::get<4>(detail::k_packing_data<T>).size())) {
+            if (piranha_unlikely(size > detail::k_packing_get_max_size<T>())) {
                 piranha_throw(::std::overflow_error,
                               "Invalid size specified in the constructor of a Kronecker packer for the type '"
                                   + ::piranha::type_name<T>() + "': the maximum possible size is "
-                                  + detail::to_string(::std::get<4>(detail::k_packing_data<T>).size())
-                                  + ", but a size of " + detail::to_string(size) + " was specified instead");
+                                  + detail::to_string(detail::k_packing_get_max_size<T>()) + ", but a size of "
+                                  + detail::to_string(size) + " was specified instead");
             }
-            const auto nbits = detail::k_packing_size_to_bits<T>(size);
-
-            // NOTE: this is used for indexing into the the first three
-            // tables of k_packing.
-            m_data_idx = nbits - 3u;
+            m_nbits = detail::k_packing_size_to_bits<T>(size);
         }
     }
 
@@ -390,11 +439,8 @@ public:
             return *this;
         }
 
-        assert(m_data_idx < ::std::get<2>(detail::k_packing_data<T>).size());
-        assert(m_index < ::std::get<2>(detail::k_packing_data<T>)[m_data_idx].size());
-
-        // Get the limits of the components.
-        const auto &lims = ::std::get<2>(detail::k_packing_data<T>)[m_data_idx][m_index];
+        // Get the limits for the current component.
+        const auto &lims = detail::k_packing_get_climits<T>(m_nbits, m_index);
 
         // Check that n is within the allowed limits for the current component.
         if constexpr (is_signed_v<T>) {
@@ -417,7 +463,7 @@ public:
         // Do the encoding.
         // NOTE: the coding vector might have excess components past m_index, we just
         // don't use them.
-        const auto &c_value = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index];
+        const auto &c_value = detail::k_packing_get_cvc<T>(m_nbits, m_index);
         m_value += n * c_value;
         ++m_index;
 
@@ -441,7 +487,7 @@ private:
     T m_value;
     unsigned m_index;
     unsigned m_size;
-    unsigned m_data_idx;
+    unsigned m_nbits;
 };
 
 // Kronecker unpacker.
@@ -453,28 +499,23 @@ template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
 class k_unpacker
 {
 public:
-    constexpr explicit k_unpacker(const T &n, unsigned size) : m_value(n), m_index(0), m_size(size), m_data_idx(0)
+    constexpr explicit k_unpacker(const T &n, unsigned size) : m_value(n), m_index(0), m_size(size), m_nbits(0)
     {
         if (size) {
             // Get the delta bit width corresponding to the input size.
-            if (piranha_unlikely(size > ::std::get<4>(detail::k_packing_data<T>).size())) {
+            if (piranha_unlikely(size > detail::k_packing_get_max_size<T>())) {
                 piranha_throw(::std::overflow_error,
                               "Invalid size specified in the constructor of a Kronecker unpacker for the type '"
                                   + ::piranha::type_name<T>() + "': the maximum possible size is "
-                                  + detail::to_string(::std::get<4>(detail::k_packing_data<T>).size())
-                                  + ", but a size of " + detail::to_string(size) + " was specified instead");
+                                  + detail::to_string(detail::k_packing_get_max_size<T>()) + ", but a size of "
+                                  + detail::to_string(size) + " was specified instead");
             }
-            const auto nbits = detail::k_packing_size_to_bits<T>(size);
-
-            // NOTE: this is used for indexing into the the first three
-            // tables of k_packing.
-            m_data_idx = nbits - 3u;
+            m_nbits = detail::k_packing_size_to_bits<T>(size);
 
             if (size > 1u) {
                 // For a non-unitary size, check that the input encoded value is within the
                 // allowed range.
-                const auto &e_lim = ::std::get<3>(
-                    detail::k_packing_data<T>)[static_cast<unsigned>(detail::limits_digits<T>) / 3u - size];
+                const auto &e_lim = detail::k_packing_get_elimits<T>(size);
                 if constexpr (is_signed_v<T>) {
                     if (piranha_unlikely(n < e_lim[0] || n > e_lim[1])) {
                         piranha_throw(::std::overflow_error,
@@ -520,15 +561,14 @@ public:
         // Get the index-th and index+1-th elements of the coding vector.
         // NOTE: the coding vector might have excess components past m_index+1, we just
         // don't use them.
-        const auto &c_value0 = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index];
-        const auto &c_value1 = ::std::get<1>(detail::k_packing_data<T>)[m_data_idx][m_index + 1u];
+        const auto &c_value0 = detail::k_packing_get_cvc<T>(m_nbits, m_index);
+        const auto &c_value1 = detail::k_packing_get_cvc<T>(m_nbits, m_index + 1u);
 
         if constexpr (is_signed_v<T>) {
             // Extract the minimum encodable value and the index-th
             // lower component limit.
-            const auto &e_min = ::std::get<3>(
-                detail::k_packing_data<T>)[static_cast<unsigned>(detail::limits_digits<T>) / 3u - m_size][0];
-            const auto &c_min = ::std::get<2>(detail::k_packing_data<T>)[m_data_idx][m_index][0];
+            const auto &e_min = detail::k_packing_get_elimits<T>(m_size)[0];
+            const auto &c_min = detail::k_packing_get_climits<T>(m_nbits, m_index)[0];
 
             n = ((m_value - e_min) % c_value1) / c_value0 + c_min;
         } else {
@@ -544,7 +584,7 @@ private:
     T m_value;
     unsigned m_index;
     unsigned m_size;
-    unsigned m_data_idx;
+    unsigned m_nbits;
 };
 
 } // namespace piranha

@@ -209,14 +209,14 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
     // For non-unitary packing, we have to check that:
     // - the size of the symbol set is not too large,
     // - the current encoded value is within the limits.
-    if (s_size > ::std::get<4>(::piranha::detail::k_packing_data<T>).size()) {
+    if (s_size > detail::k_packing_get_max_size<T>()) {
         return false;
     }
 
     // The size of the symbol set is at least 2 and within the
     // limits. Check the encoded value.
-    const auto &e_lim = ::std::get<3>(
-        ::piranha::detail::k_packing_data<T>)[static_cast<unsigned>(::piranha::detail::limits_digits<T>) / 3u - s_size];
+    // NOTE: static cast is fine, s_size is within the limits.
+    const auto &e_lim = ::piranha::detail::k_packing_get_elimits<T>(static_cast<unsigned>(s_size));
     if constexpr (is_signed_v<T>) {
         return m.get_value() >= e_lim[0] && m.get_value() <= e_lim[1];
     } else {
@@ -506,7 +506,7 @@ template <typename R1, typename R2,
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
 
             // Fetch the current component limits.
-            const auto &lims = ::std::get<2>(::piranha::detail::k_packing_data<value_type>)[nbits - 3u][i];
+            const auto &lims = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
             if (add_min < lims[0] || add_max > lims[1]) {
                 return false;
@@ -516,7 +516,7 @@ template <typename R1, typename R2,
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_max = int_t{limits1[i]} + limits2[i];
 
-            const auto &lim = ::std::get<2>(::piranha::detail::k_packing_data<value_type>)[nbits - 3u][i];
+            const auto &lim = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
             if (add_max > lim) {
                 return false;

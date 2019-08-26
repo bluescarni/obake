@@ -212,7 +212,7 @@ TEST_CASE("key_is_compatible_test")
 
         if constexpr (is_signed_v<int_t>) {
             // Test with a symbol set with maximum size.
-            const auto max_ss_size = std::get<4>(detail::k_packing_data<int_t>).size();
+            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
 
             symbol_set s;
             for (auto i = 0u; i < max_ss_size; ++i) {
@@ -281,7 +281,7 @@ TEST_CASE("key_is_compatible_test")
             }
         } else {
             // Test with a symbol set with maximum size.
-            const auto max_ss_size = std::get<4>(detail::k_packing_data<int_t>).size();
+            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
 
             symbol_set s;
             for (auto i = 0u; i < max_ss_size; ++i) {
@@ -526,7 +526,7 @@ TEST_CASE("monomial_range_overflow_check")
         // Get the delta bit width corresponding to a vector size of 3.
         const auto nbits = detail::k_packing_size_to_bits<int_t>(3u);
         // Get the limits of the component at index 2.
-        const auto &lims = std::get<2>(detail::k_packing_data<int_t>)[nbits - 3u][2];
+        const auto &lims = detail::k_packing_get_climits<int_t>(nbits, 2);
         if constexpr (is_signed_v<int_t>) {
             v1.emplace_back(pm_t{int_t(0), int_t(4), lims[0]});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
