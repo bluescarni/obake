@@ -340,8 +340,10 @@ public:
     {
         if (piranha_unlikely(m_index == m_size)) {
             piranha_throw(::std::out_of_range,
-                          "Cannot push any more values to this Kronecker packer: the number of "
-                          "values already pushed to the packer is equal to the size used for construction ("
+                          "Cannot push any more values to this Kronecker packer for the type '"
+                              + ::piranha::type_name<T>()
+                              + "': the number of "
+                                "values already pushed to the packer is equal to the size used for construction ("
                               + detail::to_string(m_size) + ")");
         }
 
@@ -365,15 +367,16 @@ public:
             if (piranha_unlikely(n < lims[0] || n > lims[1])) {
                 piranha_throw(::std::overflow_error,
                               "Cannot push the value " + detail::to_string(n)
-                                  + " to this Kronecker packer: the value is outside the allowed range ["
-                                  + detail::to_string(lims[0]) + ", " + detail::to_string(lims[1]) + "]");
+                                  + " to this Kronecker packer for the type '" + ::piranha::type_name<T>()
+                                  + "': the value is outside the allowed range [" + detail::to_string(lims[0]) + ", "
+                                  + detail::to_string(lims[1]) + "]");
             }
         } else {
             if (piranha_unlikely(n > lims)) {
                 piranha_throw(::std::overflow_error,
                               "Cannot push the value " + detail::to_string(n)
-                                  + " to this Kronecker packer: the value is outside the allowed range [0, "
-                                  + detail::to_string(lims) + "]");
+                                  + " to this Kronecker packer for the type '" + ::piranha::type_name<T>()
+                                  + "': the value is outside the allowed range [0, " + detail::to_string(lims) + "]");
             }
         }
 

@@ -18,6 +18,7 @@
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/k_packing.hpp>
 #include <piranha/type_traits.hpp>
+#include <piranha/utils/type_name.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -66,8 +67,9 @@ TEST_CASE("k_packer_unpacker")
         // Check that adding a value to the packer throws.
         REQUIRE_THROWS_WITH(
             kp0 << int_t{0},
-            Contains("Cannot push any more values to this Kronecker packer: the number of "
-                     "values already pushed to the packer is equal to the size used for construction (0)"));
+            Contains("Cannot push any more values to this Kronecker packer for the type '" + type_name<int_t>()
+                     + "': the number of "
+                       "values already pushed to the packer is equal to the size used for construction (0)"));
         REQUIRE_THROWS_AS(kp0 << int_t{0}, std::out_of_range);
 
         // Empty unpacker.
@@ -181,22 +183,24 @@ TEST_CASE("k_packer_unpacker")
                 if constexpr (is_signed_v<int_t>) {
                     REQUIRE_THROWS_WITH(kp1 << (lims[0][1] + int_t(1)),
                                         Contains("Cannot push the value " + detail::to_string(lims[0][1] + int_t(1))
-                                                 + " to this Kronecker packer: the value is outside the allowed range ["
+                                                 + " to this Kronecker packer for the type '" + type_name<int_t>()
+                                                 + "': the value is outside the allowed range ["
                                                  + detail::to_string(lims[0][0]) + ", " + detail::to_string(lims[0][1])
                                                  + "]"));
                     REQUIRE_THROWS_AS(kp1 << (lims[0][1] + int_t(1)), std::overflow_error);
                     REQUIRE_THROWS_WITH(kp1 << (lims[0][0] - int_t(1)),
                                         Contains("Cannot push the value " + detail::to_string(lims[0][0] - int_t(1))
-                                                 + " to this Kronecker packer: the value is outside the allowed range ["
+                                                 + " to this Kronecker packer for the type '" + type_name<int_t>()
+                                                 + "': the value is outside the allowed range ["
                                                  + detail::to_string(lims[0][0]) + ", " + detail::to_string(lims[0][1])
                                                  + "]"));
                     REQUIRE_THROWS_AS(kp1 << (lims[0][0] - int_t(1)), std::overflow_error);
                 } else {
-                    REQUIRE_THROWS_WITH(
-                        kp1 << (lims[0] + int_t(1)),
-                        Contains("Cannot push the value " + detail::to_string(lims[0] + int_t(1))
-                                 + " to this Kronecker packer: the value is outside the allowed range [0, "
-                                 + detail::to_string(lims[0]) + "]"));
+                    REQUIRE_THROWS_WITH(kp1 << (lims[0] + int_t(1)),
+                                        Contains("Cannot push the value " + detail::to_string(lims[0] + int_t(1))
+                                                 + " to this Kronecker packer for the type '" + type_name<int_t>()
+                                                 + "': the value is outside the allowed range [0, "
+                                                 + detail::to_string(lims[0]) + "]"));
                     REQUIRE_THROWS_AS(kp1 << (lims[0] + int_t(1)), std::overflow_error);
                 }
 
@@ -270,5 +274,80 @@ TEST_CASE("k_packer_unpacker")
                 }
             }
         }
+
+        // Some additional error checking.
+        REQUIRE_THROWS_WITH(kp_t(nbits / 3u + 1u),
+                            Contains("Invalid size specified in the constructor of a Kronecker packer for the type '"
+                                     + type_name<int_t>() + "': the maximum possible size is "
+                                     + detail::to_string(nbits / 3u) + ", but a size of "
+                                     + detail::to_string(nbits / 3u + 1u) + " was specified instead"));
+        REQUIRE_THROWS_AS(kp_t(nbits / 3u + 1u), std::overflow_error);
+
+        kp1 = kp_t(3);
+        kp1 << int_t(0) << int_t(0) << int_t(0);
+        REQUIRE_THROWS_WITH(
+            kp1 << int_t(0),
+            Contains("Cannot push any more values to this Kronecker packer for the type '" + type_name<int_t>()
+                     + "': the number of "
+                       "values already pushed to the packer is equal to the size used for construction (3)"));
+        REQUIRE_THROWS_AS(kp1 << int_t(0), std::out_of_range);
+    });
+}
+
+TEST_CASE("homomorphism")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (std::is_same_v<int_t, __int128_t> || std::is_same_v<int_t, __uint128_t>) {
+            return;
+        } else {
+#endif
+            using kp_t = k_packer<int_t>;
+
+            static constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
+
+            for (auto i = 1u; i <= nbits / 3u; ++i) {
+                // Number of bits corresponding to the current size.
+                const auto cur_nb = nbits / i;
+
+                std::vector<int_t> a(i), b(i), c(i);
+                std::uniform_int_distribution<int_t> idist;
+                for (auto k = 0; k < ntrials; ++k) {
+                    kp_t kp_a(i), kp_b(i), kp_c(i);
+                    for (auto j = 0u; j < i; ++j) {
+                        if (i == 1u) {
+                            a[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                                  std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
+                                                  std::get<1>(detail::limits_minmax<int_t>) / int_t(2)});
+                            b[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                                  std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
+                                                  std::get<1>(detail::limits_minmax<int_t>) / int_t(2)});
+                        } else {
+                            const auto &lims = std::get<2>(detail::k_packing_data<int_t>)[cur_nb - 3u];
+
+                            if constexpr (is_signed_v<int_t>) {
+                                a[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                                      lims[j][0] / int_t(2), lims[j][1] / int_t(2)});
+                                b[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                                      lims[j][0] / int_t(2), lims[j][1] / int_t(2)});
+                            } else {
+                                a[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                                      int_t(0), lims[j] / int_t(2)});
+                                b[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                                      int_t(0), lims[j] / int_t(2)});
+                            }
+                        }
+                        c[j] = a[j] + b[j];
+                        kp_a << a[j];
+                        kp_b << b[j];
+                        kp_c << c[j];
+                    }
+                    REQUIRE(kp_a.get() + kp_b.get() == kp_c.get());
+                }
+            }
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        }
+#endif
     });
 }
