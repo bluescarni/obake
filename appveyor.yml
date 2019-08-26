@@ -12,8 +12,9 @@ environment:
       BUILD_TYPE: MSVC15_clang_64
 
 install:
-- set PATH=C:\Miniconda36-x64\Scripts;%PATH%
+- call "C:\\Miniconda36-x64\\Scripts\\activate.bat"
 - conda config --set always_yes yes
+- conda update -n base conda
 - conda config --add channels conda-forge --force
 - conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
 - call activate piranha
