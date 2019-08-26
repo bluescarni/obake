@@ -47,6 +47,13 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
 struct foo {
 };
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4307)
+
+#endif
+
 TEST_CASE("ctor_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {

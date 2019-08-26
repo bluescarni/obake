@@ -276,7 +276,7 @@ constexpr auto k_packing_compute_encoded_limits()
 
 // Construct a table for connecting a vector size to
 // its corresponding delta bit width. This allows to
-// avoid divisions at runtime.
+// avoid divisions at runtime in the packer/unpacker code.
 template <typename T>
 constexpr auto k_packing_compute_size_to_bits_table()
 {
@@ -296,7 +296,7 @@ constexpr auto k_packing_compute_size_to_bits_table()
     return retval;
 }
 
-// Package the data necessary for encoding/decoding in a compile-time tuple,
+// Package various data necessary for encoding/decoding in a compile-time tuple,
 // so that we can take advantage of constexpr's UB checking (e.g., for signed
 // overflows, out of bounds read writes, etc.).
 template <typename T>
