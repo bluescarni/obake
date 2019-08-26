@@ -6,11 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/utils/type_name.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <iostream>
 #include <string>
 #include <thread>
@@ -20,6 +15,9 @@
 #include <mp++/rational.hpp>
 
 #include <piranha/config.hpp>
+#include <piranha/utils/type_name.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 

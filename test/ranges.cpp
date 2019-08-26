@@ -6,16 +6,15 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/ranges.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <array>
 #include <initializer_list>
 #include <iterator>
 #include <list>
 #include <vector>
+
+#include <piranha/ranges.hpp>
+
+#include "catch.hpp"
 
 // Test constexpr capabilities.
 constexpr std::array<int, 3> aint{1, 2, 3};

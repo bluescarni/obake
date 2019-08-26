@@ -6,18 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/cf/cf_stream_insert.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <ostream>
 #include <sstream>
 #include <string>
 #include <type_traits>
 
+#include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
 #include <piranha/type_traits.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 

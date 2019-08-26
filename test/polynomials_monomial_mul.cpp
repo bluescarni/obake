@@ -6,13 +6,11 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/polynomials/monomial_mul.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <piranha/config.hpp>
+#include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/symbols.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 

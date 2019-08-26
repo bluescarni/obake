@@ -1,5 +1,14 @@
 cmake_minimum_required(VERSION 3.3.0)
 
+# Set default build type to "Release".
+# NOTE: this should be done before the project command since the latter can set
+# CMAKE_BUILD_TYPE itself (it does so for nmake).
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release CACHE STRING
+		"Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+	FORCE)
+endif()
+
 # NOTE: piranha is C++, however we are linking to C
 # libraries (e.g., libbacktrace). Moreover, if we don't
 # enable C here, on some configurations (e.g., Ubuntu
@@ -12,13 +21,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRE
 message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "piranha version: ${piranha_VERSION}")
 
-# Set default build type to "Release".
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release CACHE STRING
-		"Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-	FORCE)
-endif()
-
 # The build options.
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
 option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
@@ -28,6 +30,28 @@ option(PIRANHA_WITH_TBB "Enable multithreaded parallelisation via TBB." ON)
 include(YACMACompilerLinkerSettings)
 # Also the threading setup.
 include(YACMAThreadingSetup)
+
+# NOTE: on Unix systems, the correct library installation path
+# could be something other than just "lib", such as "lib64",
+# "lib32", etc., depending on platform/configuration. Apparently,
+# CMake provides this information via the GNUInstallDirs module.
+# Let's enable this for now on all Unixes except OSX.
+# NOTE: potentially, this could be applicable to Cygwin as well.
+#
+# https://cmake.org/cmake/help/v3.15/module/GNUInstallDirs.html
+# https://cmake.org/pipermail/cmake/2013-July/055375.html
+if(UNIX AND NOT APPLE)
+    include(GNUInstallDirs)
+    set(_PIRANHA_INSTALL_LIBDIR_DEFAULT "${CMAKE_INSTALL_LIBDIR}")
+else()
+    set(_PIRANHA_INSTALL_LIBDIR_DEFAULT "lib")
+endif()
+if(NOT PIRANHA_INSTALL_LIBDIR)
+    set(PIRANHA_INSTALL_LIBDIR "${_PIRANHA_INSTALL_LIBDIR_DEFAULT}" CACHE STRING
+        "Library installation directory." FORCE)
+endif()
+mark_as_advanced(PIRANHA_INSTALL_LIBDIR)
+message(STATUS "Library installation directory: ${PIRANHA_INSTALL_LIBDIR}")
 
 # Assemble the flags.
 set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
@@ -206,8 +230,8 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" DESTINATI
 # Installation of the library.
 install(TARGETS piranha
     EXPORT piranha_export
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION "${PIRANHA_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${PIRANHA_INSTALL_LIBDIR}"
     RUNTIME DESTINATION bin
 )
 
