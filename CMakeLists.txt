@@ -31,6 +31,28 @@ include(YACMACompilerLinkerSettings)
 # Also the threading setup.
 include(YACMAThreadingSetup)
 
+# NOTE: on Unix systems, the correct library installation path
+# could be something other than just "lib", such as "lib64",
+# "lib32", etc., depending on platform/configuration. Apparently,
+# CMake provides this information via the GNUInstallDirs module.
+# Let's enable this for now on all Unixes except OSX.
+# NOTE: potentially, this could be applicable to Cygwin as well.
+#
+# https://cmake.org/cmake/help/v3.15/module/GNUInstallDirs.html
+# https://cmake.org/pipermail/cmake/2013-July/055375.html
+if(UNIX AND NOT APPLE)
+    include(GNUInstallDirs)
+    set(_PIRANHA_INSTALL_LIBDIR_DEFAULT "${CMAKE_INSTALL_LIBDIR}")
+else()
+    set(_PIRANHA_INSTALL_LIBDIR_DEFAULT "lib")
+endif()
+if(NOT PIRANHA_INSTALL_LIBDIR)
+    set(PIRANHA_INSTALL_LIBDIR "${_PIRANHA_INSTALL_LIBDIR_DEFAULT}" CACHE STRING
+        "Library installation directory." FORCE)
+endif()
+mark_as_advanced(PIRANHA_INSTALL_LIBDIR)
+message(STATUS "Library installation directory: ${PIRANHA_INSTALL_LIBDIR}")
+
 # Assemble the flags.
 set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
 set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
@@ -208,8 +230,8 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" DESTINATI
 # Installation of the library.
 install(TARGETS piranha
     EXPORT piranha_export
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION "${PIRANHA_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${PIRANHA_INSTALL_LIBDIR}"
     RUNTIME DESTINATION bin
 )
 
