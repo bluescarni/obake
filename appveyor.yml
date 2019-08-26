@@ -16,9 +16,9 @@ install:
 - conda config --set always_yes yes
 - conda update -n base conda
 - conda config --add channels conda-forge --force
-- conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
-- call "C:\\Miniconda36-x64\\Scripts\\activate.bat" piranha
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda install clangdev ninja
+- if [%BUILD_TYPE%]==[MSVC19_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel clangdev ninja
+- call activate piranha
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] clang-cl -v
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
