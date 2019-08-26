@@ -235,13 +235,7 @@ constexpr auto k_packing_compute_encoded_limits()
     constexpr auto limits = detail::k_packing_compute_limits<T>();
 
     // Init the return value.
-    auto retval = []() {
-        if constexpr (is_signed_v<T>) {
-            return carray<carray<T, 2>, nrows>{};
-        } else {
-            return carray<T, nrows>{};
-        }
-    }();
+    auto retval = ::std::conditional_t<is_signed_v<T>, carray<carray<T, 2>, nrows>, carray<T, nrows>>{};
 
     // Compute the min/max encoded values for all possible
     // vector sizes.
