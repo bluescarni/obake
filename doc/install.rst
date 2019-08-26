@@ -171,7 +171,7 @@ Clang:
 
 * Due to a compiler bug, Clang 8.0.0 may fail to compile Piranha's
   test suite with debugging information. The issue appears to have been
-  rectified in Clan 8.0.1.
+  rectified in Clang 8.0.1.
 
 OSX:
 
