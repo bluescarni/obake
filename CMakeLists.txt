@@ -1,5 +1,14 @@
 cmake_minimum_required(VERSION 3.3.0)
 
+# Set default build type to "Release".
+# NOTE: this should be done before the project command since the latter can set
+# CMAKE_BUILD_TYPE itself (it does so for nmake).
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release CACHE STRING
+		"Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+	FORCE)
+endif()
+
 # NOTE: piranha is C++, however we are linking to C
 # libraries (e.g., libbacktrace). Moreover, if we don't
 # enable C here, on some configurations (e.g., Ubuntu
@@ -11,13 +20,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRE
 
 message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "piranha version: ${piranha_VERSION}")
-
-# Set default build type to "Release".
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Release CACHE STRING
-		"Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
-	FORCE)
-endif()
 
 # The build options.
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
