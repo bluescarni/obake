@@ -6,14 +6,12 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/math/safe_cast.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <string>
 
 #include <piranha/config.hpp>
+#include <piranha/math/safe_cast.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 

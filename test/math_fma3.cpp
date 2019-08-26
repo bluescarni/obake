@@ -6,11 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/math/fma3.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <mp++/config.hpp>
 #include <mp++/integer.hpp>
 
@@ -21,6 +16,9 @@
 #endif
 
 #include <piranha/config.hpp>
+#include <piranha/math/fma3.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 

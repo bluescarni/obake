@@ -6,14 +6,13 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/utils/stack_trace.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <atomic>
 #include <future>
+#include <iostream>
 
+#include <piranha/utils/stack_trace.hpp>
+
+#include "catch.hpp"
 #include "test_utils.hpp"
 
 using namespace piranha;

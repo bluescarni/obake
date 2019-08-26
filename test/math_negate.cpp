@@ -6,11 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/math/negate.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <limits>
 #include <type_traits>
 
@@ -23,7 +18,10 @@
 #endif
 
 #include <piranha/config.hpp>
+#include <piranha/math/negate.hpp>
 #include <piranha/type_traits.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 
