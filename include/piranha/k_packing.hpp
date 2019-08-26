@@ -11,7 +11,6 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstdint>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
