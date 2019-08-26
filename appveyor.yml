@@ -6,8 +6,8 @@ branches:
 
 environment:
   matrix:
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      BUILD_TYPE: MSVC19_64
+    # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    #   BUILD_TYPE: MSVC19_64
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: MSVC15_clang_64
 
@@ -17,7 +17,7 @@ install:
 - conda update -n base conda
 - conda config --add channels conda-forge --force
 - conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
-- call activate piranha
+- call "C:\\Miniconda36-x64\\Scripts\\activate.bat" piranha
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] conda install clangdev ninja
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] clang-cl -v
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
