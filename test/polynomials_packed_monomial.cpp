@@ -58,7 +58,7 @@ TEST_CASE("ctor_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
-        using bp_t = k_packer<int_t>;
+        using kp_t = k_packer<int_t>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_semi_regular_v<pm_t>);
@@ -87,21 +87,21 @@ TEST_CASE("ctor_test")
         // Ctor from input iterator and size.
         int_t arr[] = {1, 2, 3};
         pm_t pm1(arr, 3);
-        bp_t bp1(3);
-        bp1 << arr[0] << arr[1] << arr[2];
-        REQUIRE(pm1.get_value() == bp1.get());
+        kp_t kp1(3);
+        kp1 << arr[0] << arr[1] << arr[2];
+        REQUIRE(pm1.get_value() == kp1.get());
 
         // Ctor from pair of fwd iterators.
         pm_t pm2(arr, arr + 3);
-        REQUIRE(pm2.get_value() == bp1.get());
+        REQUIRE(pm2.get_value() == kp1.get());
 
         // Ctor from range.
         pm_t pm3(arr);
-        REQUIRE(pm3.get_value() == bp1.get());
+        REQUIRE(pm3.get_value() == kp1.get());
 
         // Ctor form init list.
         pm_t pm4{1, 2, 3};
-        REQUIRE(pm4.get_value() == bp1.get());
+        REQUIRE(pm4.get_value() == kp1.get());
 
         struct sfoo {
         };
