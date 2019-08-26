@@ -27,11 +27,11 @@
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/exceptions.hpp>
+#include <piranha/k_packing.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/bit_packing.hpp>
 
 namespace piranha
 {
@@ -40,9 +40,9 @@ namespace polynomials
 {
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-template <BitPackable T>
+template <KPackable T>
 #else
-template <typename T, typename = ::std::enable_if_t<is_bit_packable_v<T>>>
+template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
 #endif
 class packed_monomial
 {
@@ -69,11 +69,11 @@ public:
 #endif
         constexpr explicit packed_monomial(It it, unsigned n)
     {
-        bit_packer<T> bp(n);
+        k_packer<T> kp(n);
         for (auto i = 0u; i < n; ++i, ++it) {
-            bp << ::piranha::safe_cast<T>(*it);
+            kp << ::piranha::safe_cast<T>(*it);
         }
-        m_value = bp.get();
+        m_value = kp.get();
     }
 
 private:
@@ -82,11 +82,11 @@ private:
     template <typename It>
     constexpr explicit packed_monomial(fwd_it_ctor_tag, It b, It e)
     {
-        bit_packer<T> bp(::piranha::safe_cast<unsigned>(::std::distance(b, e)));
+        k_packer<T> kp(::piranha::safe_cast<unsigned>(::std::distance(b, e)));
         for (; b != e; ++b) {
-            bp << ::piranha::safe_cast<T>(*b);
+            kp << ::piranha::safe_cast<T>(*b);
         }
-        m_value = bp.get();
+        m_value = kp.get();
     }
 
 public:
@@ -192,6 +192,7 @@ template <typename T>
 inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
 {
     const auto s_size = s.size();
+
     if (s_size == 0u) {
         // In case of an empty symbol set,
         // the only valid value for the monomial
@@ -199,26 +200,27 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
         return m.get_value() == T(0);
     }
 
-    // The index for looking into the limits vectors
-    // for the packed value. The elements at index
-    // 0 in the limits vectors refer to size 1,
-    // hence we must decrease by 1 the size.
-    const auto idx = s_size - 1u;
+    if (s_size == 1u) {
+        // For unitary packing, all possible
+        // values for T are allowed.
+        return true;
+    }
 
+    // For non-unitary packing, we have to check that:
+    // - the size of the symbol set is not too large,
+    // - the current encoded value is within the limits.
+    if (s_size > ::piranha::detail::k_packing_get_max_size<T>()) {
+        return false;
+    }
+
+    // The size of the symbol set is at least 2 and within the
+    // limits. Check the encoded value.
+    // NOTE: static cast is fine, s_size is within the limits.
+    const auto &e_lim = ::piranha::detail::k_packing_get_elimits<T>(static_cast<unsigned>(s_size));
     if constexpr (is_signed_v<T>) {
-        const auto &mmp_arr = ::piranha::detail::sbp_get_mmp<T>();
-        using size_type = decltype(mmp_arr.size());
-        // Check that the size of the symbol set is not
-        // too large for the current integral type,
-        // and that the value of the monomial fits
-        // within the boundaries of the packed
-        // value for the given symbol set size.
-        return idx < mmp_arr.size() && m.get_value() >= mmp_arr[static_cast<size_type>(idx)][0]
-               && m.get_value() <= mmp_arr[static_cast<size_type>(idx)][1];
+        return m.get_value() >= e_lim[0] && m.get_value() <= e_lim[1];
     } else {
-        const auto &umax_arr = ::piranha::detail::ubp_get_max<T>();
-        using size_type = decltype(umax_arr.size());
-        return idx < umax_arr.size() && m.get_value() <= umax_arr[static_cast<size_type>(idx)];
+        return m.get_value() <= e_lim;
     }
 }
 
@@ -232,11 +234,11 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
     bool wrote_something = false;
-    bit_unpacker bu(m.get_value(), s_size);
+    k_unpacker ku(m.get_value(), s_size);
     T tmp;
 
     for (const auto &var : s) {
-        bu >> tmp;
+        ku >> tmp;
         if (tmp != T(0)) {
             // The exponent of the current variable
             // is nonzero.
@@ -296,8 +298,8 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     // Init the unpacker and the packer.
     // NOTE: we know s.size() is small enough thanks to the
     // assertion at the beginning.
-    bit_unpacker bu(m.get_value(), static_cast<unsigned>(s.size()));
-    bit_packer<T> bp(::piranha::safe_cast<unsigned>(merged_size));
+    k_unpacker ku(m.get_value(), static_cast<unsigned>(s.size()));
+    k_packer<T> kp(::piranha::safe_cast<unsigned>(merged_size));
 
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
@@ -308,27 +310,27 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
             // zeroes as necessary in the packer.
             for (const auto &_ : map_it->second) {
                 ::piranha::detail::ignore(_);
-                bp << T(0);
+                kp << T(0);
             }
             // Move to the next element in the map.
             ++map_it;
         }
         // Add the existing element to the packer.
         T tmp;
-        bu >> tmp;
-        bp << tmp;
+        ku >> tmp;
+        kp << tmp;
     }
 
     // We could still have symbols which need to be appended at the end.
     if (map_it != map_end) {
         for (const auto &_ : map_it->second) {
             ::piranha::detail::ignore(_);
-            bp << T(0);
+            kp << T(0);
         }
         assert(map_it + 1 == map_end);
     }
 
-    return packed_monomial<T>(bp.get());
+    return packed_monomial<T>(kp.get());
 }
 
 // Implementation of monomial_mul().
@@ -408,6 +410,9 @@ template <typename R1, typename R2,
         return true;
     }
 
+    // Fetch the delta bit width from the size.
+    const auto nbits = ::piranha::detail::k_packing_size_to_bits<value_type>(s_size);
+
     // Prepare the limits vectors.
     auto [limits1, limits2] = [s_size]() {
         if constexpr (is_signed_v<value_type>) {
@@ -437,17 +442,17 @@ template <typename R1, typename R2,
         assert(polynomials::key_is_compatible(init1, ss));
         assert(polynomials::key_is_compatible(init2, ss));
 
-        bit_unpacker bu1(init1.get_value(), s_size);
-        bit_unpacker bu2(init2.get_value(), s_size);
+        k_unpacker ku1(init1.get_value(), s_size);
+        k_unpacker ku2(init2.get_value(), s_size);
         value_type tmp;
         for (auto i = 0u; i < s_size; ++i) {
-            bu1 >> tmp;
+            ku1 >> tmp;
             if constexpr (is_signed_v<value_type>) {
                 limits1.emplace_back(tmp, tmp);
             } else {
                 limits1.emplace_back(tmp);
             }
-            bu2 >> tmp;
+            ku2 >> tmp;
             if constexpr (is_signed_v<value_type>) {
                 limits2.emplace_back(tmp, tmp);
             } else {
@@ -462,10 +467,10 @@ template <typename R1, typename R2,
 
         assert(polynomials::key_is_compatible(cur, ss));
 
-        bit_unpacker bu(cur.get_value(), s_size);
+        k_unpacker ku(cur.get_value(), s_size);
         value_type tmp;
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
-            bu >> tmp;
+            ku >> tmp;
             if constexpr (is_signed_v<value_type>) {
                 limits1[i].first = ::std::min(limits1[i].first, tmp);
                 limits1[i].second = ::std::max(limits1[i].second, tmp);
@@ -480,10 +485,10 @@ template <typename R1, typename R2,
 
         assert(polynomials::key_is_compatible(cur, ss));
 
-        bit_unpacker bu(cur.get_value(), s_size);
+        k_unpacker ku(cur.get_value(), s_size);
         value_type tmp;
         for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
-            bu >> tmp;
+            ku >> tmp;
             if constexpr (is_signed_v<value_type>) {
                 limits2[i].first = ::std::min(limits2[i].first, tmp);
                 limits2[i].second = ::std::max(limits2[i].second, tmp);
@@ -496,25 +501,24 @@ template <typename R1, typename R2,
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
     if constexpr (is_signed_v<value_type>) {
-        const auto &[_, min, max] = ::piranha::detail::sbp_get_minmax_elem<value_type>(s_size);
-        ::piranha::detail::ignore(_);
-
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
 
-            if (add_min < min || add_max > max) {
+            // Fetch the current component limits.
+            const auto &lims = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+
+            if (add_min < lims[0] || add_max > lims[1]) {
                 return false;
             }
         }
     } else {
-        const auto &[_, max] = ::piranha::detail::ubp_get_max_elem<value_type>(s_size);
-        ::piranha::detail::ignore(_);
-
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_max = int_t{limits1[i]} + limits2[i];
 
-            if (add_max > max) {
+            const auto &lim = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+
+            if (add_max > lim) {
                 return false;
             }
         }

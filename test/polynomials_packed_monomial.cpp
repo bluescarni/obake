@@ -6,11 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/polynomials/packed_monomial.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
@@ -25,6 +20,7 @@
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/hash.hpp>
+#include <piranha/k_packing.hpp>
 #include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
@@ -32,14 +28,17 @@
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
+#include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/bit_packing.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 
 using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
-#if defined(PIRANHA_HAVE_GCC_INT128)
+// NOTE: clang + ubsan fail to compile with 128bit integers in this test.
+#if defined(PIRANHA_HAVE_GCC_INT128) && !defined(PIRANHA_TEST_CLANG_UBSAN)
                              ,
                              __int128_t, __uint128_t
 #endif
@@ -48,11 +47,18 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
 struct foo {
 };
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4307)
+
+#endif
+
 TEST_CASE("ctor_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
-        using bp_t = bit_packer<int_t>;
+        using kp_t = k_packer<int_t>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_semi_regular_v<pm_t>);
@@ -81,21 +87,21 @@ TEST_CASE("ctor_test")
         // Ctor from input iterator and size.
         int_t arr[] = {1, 2, 3};
         pm_t pm1(arr, 3);
-        bp_t bp1(3);
-        bp1 << arr[0] << arr[1] << arr[2];
-        REQUIRE(pm1.get_value() == bp1.get());
+        kp_t kp1(3);
+        kp1 << arr[0] << arr[1] << arr[2];
+        REQUIRE(pm1.get_value() == kp1.get());
 
         // Ctor from pair of fwd iterators.
         pm_t pm2(arr, arr + 3);
-        REQUIRE(pm2.get_value() == bp1.get());
+        REQUIRE(pm2.get_value() == kp1.get());
 
         // Ctor from range.
         pm_t pm3(arr);
-        REQUIRE(pm3.get_value() == bp1.get());
+        REQUIRE(pm3.get_value() == kp1.get());
 
         // Ctor form init list.
         pm_t pm4{1, 2, 3};
-        REQUIRE(pm4.get_value() == bp1.get());
+        REQUIRE(pm4.get_value() == kp1.get());
 
         struct sfoo {
         };
@@ -205,11 +211,11 @@ TEST_CASE("key_is_compatible_test")
         REQUIRE(!key_is_compatible(pm_t{1, 2}, symbol_set{}));
 
         if constexpr (is_signed_v<int_t>) {
-            const auto &mmp_arr = detail::sbp_get_mmp<int_t>();
+            // Test with a symbol set with maximum size.
+            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
 
-            // Test with a maximal symbol set.
             symbol_set s;
-            for (decltype(mmp_arr.size()) i = 0; i < mmp_arr.size(); ++i) {
+            for (auto i = 0u; i < max_ss_size; ++i) {
                 s.insert("sym_" + std::to_string(i));
             }
             REQUIRE(key_is_compatible(pm_t{}, s));
@@ -217,47 +223,118 @@ TEST_CASE("key_is_compatible_test")
             s.insert("x");
             REQUIRE(!key_is_compatible(pm_t{}, s));
 
-            // Test with maximal values for the packed value.
+            // Test with extremal packed values.
             pm_t p;
+            // Size 1.
             p._set_value(std::get<0>(detail::limits_minmax<int_t>));
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
             p._set_value(std::get<1>(detail::limits_minmax<int_t>));
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
-            p._set_value(mmp_arr[2][0]);
-            REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
-            p._set_value(mmp_arr[2][1]);
-            REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
+
+            // Size 2.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
+                p._set_value(e_lim[0]);
+                REQUIRE(key_is_compatible(p, symbol_set{"a", "b"}));
+                p._set_value(e_lim[1]);
+                REQUIRE(key_is_compatible(p, symbol_set{"a", "b"}));
+            }
+
+            // Size 3.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
+                p._set_value(e_lim[0]);
+                REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
+                p._set_value(e_lim[1]);
+                REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
+            }
 
             // Try to go out of the limits, if possible.
-            if (mmp_arr[2][0] > std::get<0>(detail::limits_minmax<int_t>)) {
-                p._set_value(mmp_arr[2][0] - int_t(1));
-                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+            // Size 2.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
+                if (e_lim[0] > std::get<0>(detail::limits_minmax<int_t>)) {
+                    p._set_value(e_lim[0] - int_t(1));
+                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
+                }
+                if (e_lim[1] < std::get<1>(detail::limits_minmax<int_t>)) {
+                    p._set_value(e_lim[1] + int_t(1));
+                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
+                }
             }
-            if (mmp_arr[2][1] < std::get<1>(detail::limits_minmax<int_t>)) {
-                p._set_value(mmp_arr[2][1] + int_t(1));
-                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+
+            // Size 3.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
+                if (e_lim[0] > std::get<0>(detail::limits_minmax<int_t>)) {
+                    p._set_value(e_lim[0] - int_t(1));
+                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+                }
+                if (e_lim[1] < std::get<1>(detail::limits_minmax<int_t>)) {
+                    p._set_value(e_lim[1] + int_t(1));
+                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+                }
             }
         } else {
-            const auto &umax_arr = detail::ubp_get_max<int_t>();
+            // Test with a symbol set with maximum size.
+            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
 
             symbol_set s;
-            for (decltype(umax_arr.size()) i = 0; i < umax_arr.size(); ++i) {
+            for (auto i = 0u; i < max_ss_size; ++i) {
                 s.insert("sym_" + std::to_string(i));
             }
             REQUIRE(key_is_compatible(pm_t{}, s));
+            // Now make it too large.
             s.insert("x");
             REQUIRE(!key_is_compatible(pm_t{}, s));
 
+            // Test with extremal packed values.
             pm_t p;
+            // Size 1.
             p._set_value(std::get<0>(detail::limits_minmax<int_t>));
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
             p._set_value(std::get<1>(detail::limits_minmax<int_t>));
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
-            p._set_value(umax_arr[2]);
-            REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
-            if (umax_arr[2] < std::get<1>(detail::limits_minmax<int_t>)) {
-                p._set_value(umax_arr[2] + int_t(1));
-                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+
+            // Size 2.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
+                p._set_value(e_lim);
+                REQUIRE(key_is_compatible(p, symbol_set{"a", "b"}));
+            }
+
+            // Size 3.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
+                p._set_value(e_lim);
+                REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
+            }
+
+            // Try to go out of the limits, if possible.
+            // Size 2.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
+                if (e_lim < std::get<1>(detail::limits_minmax<int_t>)) {
+                    p._set_value(e_lim + int_t(1));
+                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
+                }
+            }
+
+            // Size 3.
+            {
+                const auto &e_lim = std::get<3>(
+                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
+                if (e_lim < std::get<1>(detail::limits_minmax<int_t>)) {
+                    p._set_value(e_lim + int_t(1));
+                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+                }
             }
         }
     });
@@ -446,16 +523,20 @@ TEST_CASE("monomial_range_overflow_check")
         }
 
         // Check overflow now.
+        // Get the delta bit width corresponding to a vector size of 3.
+        const auto nbits = detail::k_packing_size_to_bits<int_t>(3u);
+        // Get the limits of the component at index 2.
+        const auto &lims = detail::k_packing_get_climits<int_t>(nbits, 2);
         if constexpr (is_signed_v<int_t>) {
-            v1.emplace_back(pm_t{int_t(0), int_t(4), std::get<2>(detail::sbp_get_minmax_elem<int_t>(3u))});
+            v1.emplace_back(pm_t{int_t(0), int_t(4), lims[0]});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
             v1.pop_back();
 
-            v1.emplace_back(pm_t{int_t(0), int_t(4), std::get<1>(detail::sbp_get_minmax_elem<int_t>(3u))});
+            v1.emplace_back(pm_t{int_t(0), int_t(4), lims[1]});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
             v1.pop_back();
         } else {
-            v1.emplace_back(pm_t{int_t(0), int_t(4), std::get<1>(detail::ubp_get_max_elem<int_t>(3u))});
+            v1.emplace_back(pm_t{int_t(0), int_t(4), lims});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
         }
 

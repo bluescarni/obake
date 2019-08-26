@@ -15,7 +15,7 @@
 #include <piranha/config.hpp>
 
 // Wrappers for some std::numeric_limits properties, extended to support
-/// 128bit integers.
+// 128bit integers.
 
 namespace piranha::detail
 {

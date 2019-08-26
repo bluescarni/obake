@@ -12,12 +12,13 @@ environment:
       BUILD_TYPE: MSVC15_clang_64
 
 install:
-- set PATH=C:\Miniconda36-x64\Scripts;%PATH%
+- call "C:\\Miniconda36-x64\\Scripts\\activate.bat"
 - conda config --set always_yes yes
+- conda update -n base conda
 - conda config --add channels conda-forge --force
-- conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
+- if [%BUILD_TYPE%]==[MSVC19_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel clangdev ninja
 - call activate piranha
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda install clangdev ninja
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] clang-cl -v
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
@@ -44,6 +45,7 @@ build_script:
 # abseil setup.
 - git clone https://github.com/abseil/abseil-cpp.git
 - cd abseil-cpp
+- git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
 - mkdir build
 - cd build
 
