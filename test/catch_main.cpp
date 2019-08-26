@@ -6,16 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <iostream>
+// Minimal main file to reduce catch compile times:
+// https://github.com/catchorg/Catch2/blob/master/docs/slow-compiles.md
 
-#include <piranha/detail/hc.hpp>
-
+#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
-
-using namespace piranha;
-
-TEST_CASE("hc_test")
-{
-    REQUIRE(detail::hc() > 0u);
-    std::cout << "The detected hardware concurrency is: " << detail::hc() << '\n';
-}

@@ -6,14 +6,13 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/exceptions.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <iostream>
 #include <new>
 #include <stdexcept>
+
+#include <piranha/exceptions.hpp>
+
+#include "catch.hpp"
 
 [[noreturn]] void foo()
 {

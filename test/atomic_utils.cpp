@@ -6,18 +6,17 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/detail/atomic_flag_array.hpp>
-#include <piranha/detail/atomic_lock_guard.hpp>
-
-#define CATCH_CONFIG_MAIN
-#include "catch.hpp"
-
 #include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <thread>
 #include <type_traits>
 #include <vector>
+
+#include <piranha/detail/atomic_flag_array.hpp>
+#include <piranha/detail/atomic_lock_guard.hpp>
+
+#include "catch.hpp"
 
 using namespace piranha;
 

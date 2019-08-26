@@ -23,7 +23,7 @@ namespace piranha::detail
 
 template <typename T, ::std::size_t N>
 struct carray {
-    constexpr carray() : m_value{} {}
+    static_assert(N > 0u, "Cannot declare an array of size 0.");
     constexpr T &operator[](::std::size_t n)
     {
         assert(n < N);
@@ -38,7 +38,7 @@ struct carray {
     {
         return N;
     }
-    // NOTE: supply get() functions
+    // NOTE: provide get() functions
     // for use in structured bindings.
     template <::std::size_t M>
     friend constexpr T &get(carray &a)
@@ -49,6 +49,23 @@ struct carray {
     friend constexpr const T &get(const carray &a)
     {
         return a[M];
+    }
+    // begin/end.
+    constexpr auto begin() const
+    {
+        return &m_value[0];
+    }
+    constexpr auto end() const
+    {
+        return &m_value[0] + N;
+    }
+    constexpr auto begin()
+    {
+        return &m_value[0];
+    }
+    constexpr auto end()
+    {
+        return &m_value[0] + N;
     }
     T m_value[N];
 };
