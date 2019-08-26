@@ -274,13 +274,47 @@ constexpr auto k_packing_compute_encoded_limits()
     return retval;
 }
 
+// Construct a table for connecting a vector size to
+// its corresponding delta bit width. This allows to
+// avoid divisions at runtime.
+template <typename T>
+constexpr auto k_packing_compute_size_to_bits_table()
+{
+    constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
+    static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
+
+    // Number of rows: from vector size 1 to the max size (bit_width / 3u).
+    constexpr auto nrows = static_cast<::std::size_t>(bit_width / 3u);
+
+    carray<unsigned, nrows> retval{};
+
+    for (::std::size_t i = 0; i < nrows; ++i) {
+        const auto cur_size = i + 1u;
+        retval[i] = static_cast<unsigned>(bit_width / cur_size);
+    }
+
+    return retval;
+}
+
 // Package the data necessary for encoding/decoding in a compile-time tuple,
 // so that we can take advantage of constexpr's UB checking (e.g., for signed
 // overflows, out of bounds read writes, etc.).
 template <typename T>
 inline constexpr auto k_packing_data
     = ::std::make_tuple(detail::k_packing_compute_deltas<T>(), detail::k_packing_compute_cvs<T>(),
-                        detail::k_packing_compute_limits<T>(), detail::k_packing_compute_encoded_limits<T>());
+                        detail::k_packing_compute_limits<T>(), detail::k_packing_compute_encoded_limits<T>(),
+                        detail::k_packing_compute_size_to_bits_table<T>());
+
+// Small helper to compute the delta bit width from a vector size.
+// Requires size in [1u, max_vector_size].
+template <typename T>
+constexpr unsigned k_packing_size_to_bits(unsigned size)
+{
+    assert(size > 0u);
+    const auto idx = size - 1u;
+    assert(idx < ::std::get<4>(k_packing_data<T>).size());
+    return ::std::get<4>(k_packing_data<T>)[idx];
+}
 
 } // namespace detail
 
@@ -320,14 +354,14 @@ public:
     {
         if (size) {
             // Get the delta bit width corresponding to the input size.
-            const auto nbits = static_cast<unsigned>(detail::limits_digits<T>) / size;
-            if (piranha_unlikely(nbits < 3u)) {
+            if (piranha_unlikely(size > ::std::get<4>(detail::k_packing_data<T>).size())) {
                 piranha_throw(::std::overflow_error,
                               "Invalid size specified in the constructor of a Kronecker packer for the type '"
                                   + ::piranha::type_name<T>() + "': the maximum possible size is "
-                                  + detail::to_string(detail::limits_digits<T> / 3) + ", but a size of "
-                                  + detail::to_string(size) + " was specified instead");
+                                  + detail::to_string(::std::get<4>(detail::k_packing_data<T>).size())
+                                  + ", but a size of " + detail::to_string(size) + " was specified instead");
             }
+            const auto nbits = detail::k_packing_size_to_bits<T>(size);
 
             // NOTE: this is used for indexing into the the first three
             // tables of k_packing.
@@ -422,14 +456,15 @@ public:
     constexpr explicit k_unpacker(const T &n, unsigned size) : m_value(n), m_index(0), m_size(size), m_data_idx(0)
     {
         if (size) {
-            const auto nbits = static_cast<unsigned>(detail::limits_digits<T>) / size;
-            if (piranha_unlikely(nbits < 3u)) {
+            // Get the delta bit width corresponding to the input size.
+            if (piranha_unlikely(size > ::std::get<4>(detail::k_packing_data<T>).size())) {
                 piranha_throw(::std::overflow_error,
                               "Invalid size specified in the constructor of a Kronecker unpacker for the type '"
                                   + ::piranha::type_name<T>() + "': the maximum possible size is "
-                                  + detail::to_string(detail::limits_digits<T> / 3) + ", but a size of "
-                                  + detail::to_string(size) + " was specified instead");
+                                  + detail::to_string(::std::get<4>(detail::k_packing_data<T>).size())
+                                  + ", but a size of " + detail::to_string(size) + " was specified instead");
             }
+            const auto nbits = detail::k_packing_size_to_bits<T>(size);
 
             // NOTE: this is used for indexing into the the first three
             // tables of k_packing.
