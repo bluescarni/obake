@@ -209,7 +209,7 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
     // For non-unitary packing, we have to check that:
     // - the size of the symbol set is not too large,
     // - the current encoded value is within the limits.
-    if (s_size > detail::k_packing_get_max_size<T>()) {
+    if (s_size > ::piranha::detail::k_packing_get_max_size<T>()) {
         return false;
     }
 
