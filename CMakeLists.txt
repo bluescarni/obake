@@ -24,7 +24,6 @@ message(STATUS "piranha version: ${piranha_VERSION}")
 # The build options.
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
 option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
-option(PIRANHA_WITH_TBB "Enable multithreaded parallelisation via TBB." ON)
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -150,10 +149,7 @@ if(PIRANHA_WITH_LIBBACKTRACE)
 endif()
 
 # TBB.
-if(PIRANHA_WITH_TBB)
-    set(PIRANHA_ENABLE_TBB "#define PIRANHA_WITH_TBB")
-    find_package(TBB REQUIRED)
-endif()
+find_package(TBB REQUIRED)
 
 # Depend on DbgEng on MSVC, for the stack trace support.
 if(YACMA_COMPILER_IS_MSVC)

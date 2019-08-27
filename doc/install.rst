@@ -12,7 +12,8 @@ Currently, piranha has the following mandatory dependencies:
 
 * the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.14),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65),
-* the `Abseil <https://abseil.io/>`_ C++ libraries.
+* the `Abseil <https://abseil.io/>`_ C++ libraries,
+* the `Intel TBB <https://github.com/intel/tbb>`__ library.
 
 Piranha also depends on other libraries for optional features:
 

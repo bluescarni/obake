@@ -15,7 +15,6 @@
 #define PIRANHA_VERSION_MAJOR @piranha_VERSION_MAJOR@
 #define PIRANHA_VERSION_MINOR @piranha_VERSION_MINOR@
 @PIRANHA_ENABLE_LIBBACKTRACE@
-@PIRANHA_ENABLE_TBB@
 // clang-format on
 // End of defines instantiated by CMake.
 
