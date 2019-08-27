@@ -13,9 +13,9 @@
 #include <type_traits>
 #include <utility>
 
+#include <piranha/stack_trace.hpp>
+#include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/stack_trace.hpp>
-#include <piranha/utils/type_name.hpp>
 
 namespace piranha::detail
 {

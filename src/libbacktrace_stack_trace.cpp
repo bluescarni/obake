@@ -34,7 +34,7 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/to_string.hpp>
-#include <piranha/utils/stack_trace.hpp>
+#include <piranha/stack_trace.hpp>
 
 namespace piranha::detail
 {

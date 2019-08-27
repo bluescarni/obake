@@ -17,8 +17,8 @@
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/k_packing.hpp>
+#include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/type_name.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"

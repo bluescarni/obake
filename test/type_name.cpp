@@ -15,7 +15,7 @@
 #include <mp++/rational.hpp>
 
 #include <piranha/config.hpp>
-#include <piranha/utils/type_name.hpp>
+#include <piranha/type_name.hpp>
 
 #include "catch.hpp"
 

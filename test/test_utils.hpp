@@ -10,7 +10,7 @@
 #define PIRANHA_TEST_UTILS_HPP
 
 #include <piranha/config.hpp>
-#include <piranha/utils/stack_trace.hpp>
+#include <piranha/stack_trace.hpp>
 
 namespace piranha_test
 {

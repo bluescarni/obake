@@ -17,8 +17,8 @@
 #include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/math/safe_convert.hpp>
+#include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/type_name.hpp>
 
 namespace piranha
 {

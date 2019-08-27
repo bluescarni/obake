@@ -49,8 +49,8 @@
 #include <piranha/math/negate.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/symbols.hpp>
+#include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
-#include <piranha/utils/type_name.hpp>
 
 namespace piranha
 {
