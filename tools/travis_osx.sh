@@ -29,13 +29,13 @@ cd abseil-cpp
 git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
 mkdir build
 cd build
-cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
+cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_FLAGS="-lc++abi"
 make install -j2 VERBOSE=1
 cd ..
 cd ..
 rm -fr abseil-cpp
 
-cmake -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPIRANHA_BUILD_TESTS=yes ../
+cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPIRANHA_BUILD_TESTS=yes -DCMAKE_CXX_FLAGS="-lc++abi"
 make -j2 VERBOSE=1
 ctest -V
 
