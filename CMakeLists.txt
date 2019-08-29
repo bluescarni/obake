@@ -24,7 +24,6 @@ message(STATUS "piranha version: ${piranha_VERSION}")
 # The build options.
 option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
 option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
-option(PIRANHA_WITH_TBB "Enable multithreaded parallelisation via TBB." ON)
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -150,10 +149,7 @@ if(PIRANHA_WITH_LIBBACKTRACE)
 endif()
 
 # TBB.
-if(PIRANHA_WITH_TBB)
-    set(PIRANHA_ENABLE_TBB "#define PIRANHA_WITH_TBB")
-    find_package(TBB REQUIRED)
-endif()
+find_package(TBB REQUIRED)
 
 # Depend on DbgEng on MSVC, for the stack trace support.
 if(YACMA_COMPILER_IS_MSVC)
@@ -165,15 +161,15 @@ set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/atomic_flag_array.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/hc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/stack_trace.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/stack_trace.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/series.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
 )
 
 if(PIRANHA_WITH_LIBBACKTRACE)
-    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
+    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
 else()
-    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/boost_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
+    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/boost_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
 endif()
 
 add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
@@ -208,9 +204,7 @@ else()
 endif()
 
 # TBB.
-if(PIRANHA_WITH_TBB)
-    target_link_libraries(piranha PUBLIC TBB::tbb)
-endif()
+target_link_libraries(piranha PUBLIC TBB::tbb)
 
 # Link to DbgEng on MSVC.
 if(YACMA_COMPILER_IS_MSVC)

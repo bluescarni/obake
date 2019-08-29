@@ -10,9 +10,9 @@ branches:
 
 matrix:
   include:
-    - env: PIRANHA_BUILD="xcode10.2"
+    - env: PIRANHA_BUILD="xcode10.3"
       os: osx
-      osx_image: xcode10.2
+      osx_image: xcode10.3
 script:
     - mkdir build
     - cd build

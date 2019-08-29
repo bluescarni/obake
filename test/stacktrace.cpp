@@ -10,7 +10,7 @@
 #include <future>
 #include <iostream>
 
-#include <piranha/utils/stack_trace.hpp>
+#include <piranha/stack_trace.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -44,7 +44,7 @@ constexpr bool release_build =
 #endif
     ;
 
-TEST_CASE("utils_stack_trace")
+TEST_CASE("stack_trace")
 {
     if (release_build) {
         // NOTE: don't run tests in non-debug builds.

@@ -21,7 +21,7 @@
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/xoroshiro128_plus.hpp>
 #include <piranha/exceptions.hpp>
-#include <piranha/utils/type_name.hpp>
+#include <piranha/type_name.hpp>
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
