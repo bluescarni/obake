@@ -83,6 +83,8 @@ using monomial_mul_t = decltype(::piranha::monomial_mul(::std::declval<T>(), ::s
 
 }
 
+// NOTE: runtime requirement: the result of the multiplication
+// must be compatible with the reference symbol set.
 template <typename T, typename U, typename V>
 using is_multipliable_monomial = is_detected<detail::monomial_mul_t, T, U, V>;
 
