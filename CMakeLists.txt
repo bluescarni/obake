@@ -56,12 +56,6 @@ message(STATUS "Library installation directory: ${PIRANHA_INSTALL_LIBDIR}")
 set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
 set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 
-if(APPLE AND YACMA_COMPILER_IS_CLANGXX)
-    message(STATUS "Clang compiler on OSX detected, setting the standard library to 'libc++'.")
-    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-stdlib=libc++")
-    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-stdlib=libc++")
-endif()
-
 if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
     # Also, enable the bigobj flag.
