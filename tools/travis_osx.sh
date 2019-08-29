@@ -12,7 +12,7 @@ export PATH="$HOME/miniconda/bin:$PATH"
 bash miniconda.sh -b -p $HOME/miniconda
 conda config --add channels conda-forge --force
 
-conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel clang<8 clangdev<8"
+conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel clang<5 clangdev<5"
 
 conda create -q -p $deps_dir -y $conda_pkgs
 source activate $deps_dir
