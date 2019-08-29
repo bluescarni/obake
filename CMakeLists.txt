@@ -58,7 +58,7 @@ set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 
 if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
-    # Also, enable the bigobj flag and the WIN32_LEAN_AND_MEAN definition:
+    # Also, enable the bigobj flag and the WIN32_LEAN_AND_MEAN definitions:
     # https://stackoverflow.com/questions/11040133/what-does-defining-win32-lean-and-mean-exclude-exactly
     list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
     list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
