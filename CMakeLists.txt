@@ -59,8 +59,8 @@ set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
     # Also, enable the bigobj flag.
-    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj")
-    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj")
+    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
+    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
     # Enable strict conformance mode, if supported.
     set(CMAKE_REQUIRED_QUIET TRUE)
     check_cxx_compiler_flag("/permissive-" _PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
