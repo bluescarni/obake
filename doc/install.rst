@@ -160,8 +160,8 @@ Visual Studio:
   MSVC 2015 (these occurrences are detailed in the API
   documentation).
 * When using Visual Studio, the Piranha library is compiled
-  with the ``NOMINMAX`` definition and
-  with the ``/permissive-`` compiler flag.
+  with the ``NOMINMAX`` and ``WIN32_LEAN_AND_MEAN`` definitions,
+  and, if supported, with the ``/permissive-`` compiler flag.
 
 GCC:
 
