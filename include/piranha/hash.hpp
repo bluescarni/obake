@@ -125,6 +125,86 @@ PIRANHA_CONCEPT_DECL Hashable = requires(T &&x)
 
 #endif
 
+namespace customisation
+{
+
+// External customisation point for hash_is_homomorphic.
+template <typename T
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+struct hash_is_homomorphic {
+};
+
+} // namespace customisation
+
+// Main hash_is_homomorphic implementation.
+// Defaults to false.
+template <typename T
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+struct hash_is_homomorphic : ::std::false_type {
+};
+
+namespace detail
+{
+
+// Detect the presence of a valid customisation::hash_is_homomorphic implementation
+// (i.e., must have static const bool value member).
+template <typename T>
+using customised_hash_is_homomorphic_t = decltype(customisation::hash_is_homomorphic<T>::value);
+
+template <typename T>
+using has_customised_hash_is_homomorphic = ::std::is_same<detected_t<customised_hash_is_homomorphic_t, T>, const bool>;
+
+// Detect the presence of a valid hash_is_homomorphic implementation
+// (i.e., must have static const bool value member).
+template <typename T>
+using hash_is_homomorphic_t = decltype(hash_is_homomorphic<T>::value);
+
+template <typename T>
+using has_hash_is_homomorphic = ::std::is_same<detected_t<hash_is_homomorphic_t, T>, const bool>;
+
+// Implementation of has_homomorphic_hash:
+// - if a valid implementation of customisation::hash_is_homomorphic is provided,
+//   use that, otherwise,
+// - if a valid implementation of hash_is_homomorphic is provided,
+//   use that, otherwise,
+// - defaults to false.
+template <typename T, typename = void>
+struct has_homomorphic_hash_impl
+    : ::std::conditional_t<has_hash_is_homomorphic<T>::value, hash_is_homomorphic<T>, ::std::false_type> {
+};
+
+template <typename T>
+struct has_homomorphic_hash_impl<T, ::std::enable_if_t<has_customised_hash_is_homomorphic<T>::value>>
+    : customisation::hash_is_homomorphic<T> {
+};
+
+} // namespace detail
+
+// Detect the availability of homomorphic hashing.
+// NOTE: the detection is independent of the availability
+// of a hash function.
+// NOTE: remove cvref for ease of use.
+template <typename T>
+using has_homomorphic_hash = detail::has_homomorphic_hash_impl<remove_cvref_t<T>>;
+
+template <typename T>
+inline constexpr bool has_homomorphic_hash_v = has_homomorphic_hash<T>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T>
+PIRANHA_CONCEPT_DECL HasHomomorphicHash = has_homomorphic_hash_v<T>;
+
+#endif
+
 } // namespace piranha
 
 #endif
