@@ -252,8 +252,8 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
                 static_cast<::std::ostream &>(oss) << static_cast<const key_type &>(key);
-                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, \"" + oss.str()
-                                                           + "\", is not compatible with the series' symbol set, "
+                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '" + oss.str()
+                                                           + "', is not compatible with the series' symbol set, "
                                                            + detail::to_string(ss));
             } else {
                 piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key is not "
