@@ -88,15 +88,15 @@ using monomial_range_overflow_check_t = decltype(::piranha::monomial_range_overf
 }
 
 template <typename T, typename U>
-using is_overflow_testable_monomial_range = is_detected<detail::monomial_range_overflow_check_t, T, U>;
+using are_overflow_testable_monomial_ranges = is_detected<detail::monomial_range_overflow_check_t, T, U>;
 
 template <typename T, typename U>
-inline constexpr bool is_overflow_testable_monomial_range_v = is_overflow_testable_monomial_range<T, U>::value;
+inline constexpr bool are_overflow_testable_monomial_ranges_v = are_overflow_testable_monomial_ranges<T, U>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL OverflowTestableMonomialRange = requires(T &&x, U &&y, const symbol_set &ss)
+PIRANHA_CONCEPT_DECL OverflowTestableMonomialRanges = requires(T &&x, U &&y, const symbol_set &ss)
 {
     ::piranha::monomial_range_overflow_check(::std::forward<T>(x), ::std::forward<U>(y), ss);
 };

@@ -62,40 +62,40 @@ inline constexpr auto monomial_range_overflow_check<const std::vector<nomroc01> 
 
 TEST_CASE("monomial_range_overflow_check_test")
 {
-    REQUIRE(!is_overflow_testable_monomial_range_v<void, void>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<void, void>);
 
-    REQUIRE(!is_overflow_testable_monomial_range_v<std::vector<ns::mroc00>, void>);
-    REQUIRE(!is_overflow_testable_monomial_range_v<void, std::vector<ns::mroc00>>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<ns::mroc00>, void>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<ns::mroc00>>);
 
     REQUIRE(!monomial_range_overflow_check(std::vector<ns::mroc00>{}, std::vector<ns::mroc00>{}, symbol_set{}));
     REQUIRE(monomial_range_overflow_check(std::vector<ns::mroc00>{}, std::list<ns::mroc00>{}, symbol_set{}));
     REQUIRE(monomial_range_overflow_check(std::list<ns::mroc00>{}, std::vector<ns::mroc00>{}, symbol_set{}));
 
-    REQUIRE(!is_overflow_testable_monomial_range_v<std::vector<ns::nomroc00>, std::vector<ns::nomroc00>>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<ns::nomroc00>, std::vector<ns::nomroc00>>);
 
-    REQUIRE(!is_overflow_testable_monomial_range_v<std::vector<mroc01>, void>);
-    REQUIRE(!is_overflow_testable_monomial_range_v<void, std::vector<mroc01>>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<mroc01>, void>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<mroc01>>);
 
     REQUIRE(monomial_range_overflow_check(std::vector<mroc01>{}, std::vector<mroc01>{}, symbol_set{}));
     REQUIRE(!monomial_range_overflow_check(static_cast<const std::vector<mroc01> &>(std::vector<mroc01>{}),
                                            static_cast<const std::vector<mroc01> &>(std::vector<mroc01>{}),
                                            symbol_set{}));
 
-    REQUIRE(is_overflow_testable_monomial_range_v<std::vector<nomroc01>, std::vector<nomroc01>>);
-    REQUIRE(!is_overflow_testable_monomial_range_v<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
+    REQUIRE(are_overflow_testable_monomial_ranges_v<std::vector<nomroc01>, std::vector<nomroc01>>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-    REQUIRE(!OverflowTestableMonomialRange<void, void>);
+    REQUIRE(!OverflowTestableMonomialRanges<void, void>);
 
-    REQUIRE(!OverflowTestableMonomialRange<std::vector<ns::mroc00>, void>);
-    REQUIRE(!OverflowTestableMonomialRange<void, std::vector<ns::mroc00>>);
+    REQUIRE(!OverflowTestableMonomialRanges<std::vector<ns::mroc00>, void>);
+    REQUIRE(!OverflowTestableMonomialRanges<void, std::vector<ns::mroc00>>);
 
-    REQUIRE(!OverflowTestableMonomialRange<std::vector<ns::nomroc00>, std::vector<ns::nomroc00>>);
+    REQUIRE(!OverflowTestableMonomialRanges<std::vector<ns::nomroc00>, std::vector<ns::nomroc00>>);
 
-    REQUIRE(!OverflowTestableMonomialRange<std::vector<mroc01>, void>);
-    REQUIRE(!OverflowTestableMonomialRange<void, std::vector<mroc01>>);
+    REQUIRE(!OverflowTestableMonomialRanges<std::vector<mroc01>, void>);
+    REQUIRE(!OverflowTestableMonomialRanges<void, std::vector<mroc01>>);
 
-    REQUIRE(OverflowTestableMonomialRange<std::vector<nomroc01>, std::vector<nomroc01>>);
-    REQUIRE(!OverflowTestableMonomialRange<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
+    REQUIRE(OverflowTestableMonomialRanges<std::vector<nomroc01>, std::vector<nomroc01>>);
+    REQUIRE(!OverflowTestableMonomialRanges<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
 #endif
 }
