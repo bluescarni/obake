@@ -95,19 +95,19 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!is_homomorphically_hashable_monomial_v<std::string>);
 
     REQUIRE(is_homomorphically_hashable_monomial_v<hh0>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh0 &>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh0 &&>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<const hh0 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh0 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh0 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<const hh0 &>);
 
     REQUIRE(is_homomorphically_hashable_monomial_v<hh1>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh1 &>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh1 &&>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<const hh1 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh1 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh1 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<const hh1 &>);
 
     REQUIRE(is_homomorphically_hashable_monomial_v<hh2>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh2 &>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh2 &&>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<const hh2 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh2 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh2 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<const hh2 &&>);
 
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh0>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh0 &>);
@@ -120,9 +120,9 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!is_homomorphically_hashable_monomial_v<const nhh1 &>);
 
     REQUIRE(is_homomorphically_hashable_monomial_v<hh3>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh3 &>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<hh3 &&>);
-    REQUIRE(is_homomorphically_hashable_monomial_v<const hh3 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh3 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh3 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<const hh3 &&>);
 
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2 &>);
@@ -134,19 +134,19 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!HomomorphicallyHashableMonomial<std::string>);
 
     REQUIRE(HomomorphicallyHashableMonomial<hh0>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh0 &>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh0 &&>);
-    REQUIRE(HomomorphicallyHashableMonomial<const hh0 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh0 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh0 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<const hh0 &>);
 
     REQUIRE(HomomorphicallyHashableMonomial<hh1>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh1 &>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh1 &&>);
-    REQUIRE(HomomorphicallyHashableMonomial<const hh1 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh1 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh1 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<const hh1 &>);
 
     REQUIRE(HomomorphicallyHashableMonomial<hh2>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh2 &>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh2 &&>);
-    REQUIRE(HomomorphicallyHashableMonomial<const hh2 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh2 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh2 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<const hh2 &&>);
 
     REQUIRE(!HomomorphicallyHashableMonomial<nhh0>);
     REQUIRE(!HomomorphicallyHashableMonomial<nhh0 &>);
@@ -159,9 +159,9 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!HomomorphicallyHashableMonomial<const nhh1 &>);
 
     REQUIRE(HomomorphicallyHashableMonomial<hh3>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh3 &>);
-    REQUIRE(HomomorphicallyHashableMonomial<hh3 &&>);
-    REQUIRE(HomomorphicallyHashableMonomial<const hh3 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh3 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh3 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<const hh3 &&>);
 
     REQUIRE(!HomomorphicallyHashableMonomial<nhh2>);
     REQUIRE(!HomomorphicallyHashableMonomial<nhh2 &>);

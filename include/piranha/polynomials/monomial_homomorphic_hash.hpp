@@ -86,9 +86,8 @@ struct is_homomorphically_hashable_monomial_impl<
 // Detect the availability of homomorphic hashing in monomials.
 // NOTE: the detection is independent of the availability
 // of a hash function.
-// NOTE: remove cvref for ease of use.
 template <typename T>
-using is_homomorphically_hashable_monomial = detail::is_homomorphically_hashable_monomial_impl<remove_cvref_t<T>>;
+using is_homomorphically_hashable_monomial = detail::is_homomorphically_hashable_monomial_impl<T>;
 
 template <typename T>
 inline constexpr bool is_homomorphically_hashable_monomial_v = is_homomorphically_hashable_monomial<T>::value;

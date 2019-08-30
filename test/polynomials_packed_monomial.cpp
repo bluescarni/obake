@@ -597,15 +597,15 @@ TEST_CASE("homomorphic_hash")
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_homomorphically_hashable_monomial_v<pm_t>);
-        REQUIRE(is_homomorphically_hashable_monomial_v<pm_t &>);
-        REQUIRE(is_homomorphically_hashable_monomial_v<pm_t &&>);
-        REQUIRE(is_homomorphically_hashable_monomial_v<const pm_t &>);
+        REQUIRE(!is_homomorphically_hashable_monomial_v<pm_t &>);
+        REQUIRE(!is_homomorphically_hashable_monomial_v<pm_t &&>);
+        REQUIRE(!is_homomorphically_hashable_monomial_v<const pm_t &>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
         REQUIRE(HomomorphicallyHashableMonomial<pm_t>);
-        REQUIRE(HomomorphicallyHashableMonomial<pm_t &>);
-        REQUIRE(HomomorphicallyHashableMonomial<pm_t &&>);
-        REQUIRE(HomomorphicallyHashableMonomial<const pm_t &>);
+        REQUIRE(!HomomorphicallyHashableMonomial<pm_t &>);
+        REQUIRE(!HomomorphicallyHashableMonomial<pm_t &&>);
+        REQUIRE(!HomomorphicallyHashableMonomial<const pm_t &>);
 #endif
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
