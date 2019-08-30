@@ -587,16 +587,16 @@ TEST_CASE("homomorphic_hash")
         using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
-        REQUIRE(monomial_has_homomorphic_hash_v<pm_t>);
-        REQUIRE(monomial_has_homomorphic_hash_v<pm_t &>);
-        REQUIRE(monomial_has_homomorphic_hash_v<pm_t &&>);
-        REQUIRE(monomial_has_homomorphic_hash_v<const pm_t &>);
+        REQUIRE(is_homomorphically_hashable_monomial_v<pm_t>);
+        REQUIRE(is_homomorphically_hashable_monomial_v<pm_t &>);
+        REQUIRE(is_homomorphically_hashable_monomial_v<pm_t &&>);
+        REQUIRE(is_homomorphically_hashable_monomial_v<const pm_t &>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
-        REQUIRE(MonomialHasHomomorphicHash<pm_t>);
-        REQUIRE(MonomialHasHomomorphicHash<pm_t &>);
-        REQUIRE(MonomialHasHomomorphicHash<pm_t &&>);
-        REQUIRE(MonomialHasHomomorphicHash<const pm_t &>);
+        REQUIRE(HomomorphicallyHashableMonomial<pm_t>);
+        REQUIRE(HomomorphicallyHashableMonomial<pm_t &>);
+        REQUIRE(HomomorphicallyHashableMonomial<pm_t &&>);
+        REQUIRE(HomomorphicallyHashableMonomial<const pm_t &>);
 #endif
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
@@ -629,5 +629,81 @@ TEST_CASE("homomorphic_hash")
                 REQUIRE(h1 + h2 == h3);
             }
         }
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (std::is_same_v<int_t, __uint128_t>) {
+            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
+            const auto nbits = detail::k_packing_size_to_bits<int_t>(max_ss_size);
+
+            std::vector<int_t> v1, v2, v3;
+            v1.resize(max_ss_size);
+            v2.resize(max_ss_size);
+            v3.resize(max_ss_size);
+
+            for (auto i = 0u; i < max_ss_size; ++i) {
+                v1[i] = detail::k_packing_get_climits<int_t>(nbits, i) / 2u;
+                v2[i] = detail::k_packing_get_climits<int_t>(nbits, i) / 2u;
+                v3[i] = v1[i] + v2[i];
+            }
+
+            const auto h1 = hash(pm_t(v1));
+            const auto h2 = hash(pm_t(v2));
+            const auto h3 = hash(pm_t(v3));
+
+            REQUIRE(h1 + h2 == h3);
+        }
+
+        if constexpr (std::is_same_v<int_t, __int128_t>) {
+            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
+            const auto nbits = detail::k_packing_size_to_bits<int_t>(max_ss_size);
+
+            std::vector<int_t> v1, v2, v3;
+            v1.resize(max_ss_size);
+            v2.resize(max_ss_size);
+            v3.resize(max_ss_size);
+
+            {
+                for (auto i = 0u; i < max_ss_size; ++i) {
+                    v1[i] = detail::k_packing_get_climits<int_t>(nbits, i)[0] / 2u;
+                    v2[i] = detail::k_packing_get_climits<int_t>(nbits, i)[0] / 2u;
+                    v3[i] = v1[i] + v2[i];
+                }
+
+                const auto h1 = hash(pm_t(v1));
+                const auto h2 = hash(pm_t(v2));
+                const auto h3 = hash(pm_t(v3));
+
+                REQUIRE(h1 + h2 == h3);
+            }
+
+            {
+                for (auto i = 0u; i < max_ss_size; ++i) {
+                    v1[i] = detail::k_packing_get_climits<int_t>(nbits, i)[1] / 2u;
+                    v2[i] = detail::k_packing_get_climits<int_t>(nbits, i)[1] / 2u;
+                    v3[i] = v1[i] + v2[i];
+                }
+
+                const auto h1 = hash(pm_t(v1));
+                const auto h2 = hash(pm_t(v2));
+                const auto h3 = hash(pm_t(v3));
+
+                REQUIRE(h1 + h2 == h3);
+            }
+
+            {
+                for (auto i = 0u; i < max_ss_size; ++i) {
+                    v1[i] = detail::k_packing_get_climits<int_t>(nbits, i)[0] / 2u;
+                    v2[i] = detail::k_packing_get_climits<int_t>(nbits, i)[1] / 2u;
+                    v3[i] = v1[i] + v2[i];
+                }
+
+                const auto h1 = hash(pm_t(v1));
+                const auto h2 = hash(pm_t(v2));
+                const auto h3 = hash(pm_t(v3));
+
+                REQUIRE(h1 + h2 == h3);
+            }
+        }
+#endif
     });
 }

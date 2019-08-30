@@ -63,19 +63,21 @@ using monomial_hash_is_homomorphic_t = decltype(monomial_hash_is_homomorphic<T>:
 template <typename T>
 using has_monomial_hash_is_homomorphic = ::std::is_same<detected_t<monomial_hash_is_homomorphic_t, T>, const bool>;
 
-// Implementation of monomial_has_homomorphic_hash:
+// Implementation of is_homomorphically_hashable_monomial:
 // - if a valid implementation of customisation::monomial_hash_is_homomorphic is provided,
 //   use that, otherwise,
 // - if a valid implementation of monomial_hash_is_homomorphic is provided,
 //   use that, otherwise,
 // - defaults to false.
 template <typename T, typename = void>
-struct monomial_has_homomorphic_hash_impl : ::std::conditional_t<has_monomial_hash_is_homomorphic<T>::value,
-                                                                 monomial_hash_is_homomorphic<T>, ::std::false_type> {
+struct is_homomorphically_hashable_monomial_impl
+    : ::std::conditional_t<has_monomial_hash_is_homomorphic<T>::value, monomial_hash_is_homomorphic<T>,
+                           ::std::false_type> {
 };
 
 template <typename T>
-struct monomial_has_homomorphic_hash_impl<T, ::std::enable_if_t<has_customised_monomial_hash_is_homomorphic<T>::value>>
+struct is_homomorphically_hashable_monomial_impl<
+    T, ::std::enable_if_t<has_customised_monomial_hash_is_homomorphic<T>::value>>
     : customisation::monomial_hash_is_homomorphic<T> {
 };
 
@@ -86,15 +88,15 @@ struct monomial_has_homomorphic_hash_impl<T, ::std::enable_if_t<has_customised_m
 // of a hash function.
 // NOTE: remove cvref for ease of use.
 template <typename T>
-using monomial_has_homomorphic_hash = detail::monomial_has_homomorphic_hash_impl<remove_cvref_t<T>>;
+using is_homomorphically_hashable_monomial = detail::is_homomorphically_hashable_monomial_impl<remove_cvref_t<T>>;
 
 template <typename T>
-inline constexpr bool monomial_has_homomorphic_hash_v = monomial_has_homomorphic_hash<T>::value;
+inline constexpr bool is_homomorphically_hashable_monomial_v = is_homomorphically_hashable_monomial<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL MonomialHasHomomorphicHash = monomial_has_homomorphic_hash_v<T>;
+PIRANHA_CONCEPT_DECL HomomorphicallyHashableMonomial = is_homomorphically_hashable_monomial_v<T>;
 
 #endif
 
