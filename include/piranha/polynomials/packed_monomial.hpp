@@ -29,6 +29,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/k_packing.hpp>
 #include <piranha/math/safe_cast.hpp>
+#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
@@ -532,6 +533,11 @@ template <typename R1, typename R2,
 // Lift to the piranha namespace.
 template <typename T>
 using packed_monomial = polynomials::packed_monomial<T>;
+
+// Specialise monomial_has_homomorphic_hash.
+template <typename T>
+struct monomial_hash_is_homomorphic<packed_monomial<T>> : ::std::true_type {
+};
 
 } // namespace piranha
 

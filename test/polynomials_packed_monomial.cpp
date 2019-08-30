@@ -6,10 +6,14 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <bitset>
 #include <cstddef>
 #include <initializer_list>
+#include <iostream>
 #include <iterator>
+#include <limits>
 #include <list>
+#include <random>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -26,10 +30,12 @@
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/key/key_stream_insert.hpp>
+#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
+#include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
 
 #include "catch.hpp"
@@ -43,6 +49,8 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
                              __int128_t, __uint128_t
 #endif
                              >;
+
+static std::mt19937 rng(42);
 
 struct foo {
 };
@@ -191,6 +199,27 @@ TEST_CASE("hash_test")
 
         REQUIRE(hash(pm_t{1, 2, 3}) == static_cast<std::size_t>(pm_t{1, 2, 3}.get_value()));
         REQUIRE(hash(pm_t{4, 5, 6}) == static_cast<std::size_t>(pm_t{4, 5, 6}.get_value()));
+
+        // Print a few randomly-generated hash values.
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
+#endif
+        {
+            std::uniform_int_distribution<int_t> idist;
+            std::cout << "Int type: " << type_name<int_t>() << '\n';
+
+            std::vector<int_t> v_int;
+            for (auto i = 0; i < 6; ++i) {
+                if constexpr (is_signed_v<int_t>) {
+                    v_int.push_back(idist(rng, typename std::uniform_int_distribution<int_t>::param_type{-2, 2}));
+                } else {
+                    v_int.push_back(idist(rng, typename std::uniform_int_distribution<int_t>::param_type{0, 5}));
+                }
+            }
+
+            std::cout << "Hash value: " << std::bitset<std::numeric_limits<std::size_t>::digits>(hash(pm_t(v_int)))
+                      << '\n';
+        }
     });
 }
 
@@ -547,5 +576,58 @@ TEST_CASE("monomial_range_overflow_check")
 
         REQUIRE(!is_overflow_testable_monomial_range_v<std::vector<pm_t>, void>);
         REQUIRE(!is_overflow_testable_monomial_range_v<void, std::vector<pm_t>>);
+    });
+}
+
+const int ntrials = 100;
+
+TEST_CASE("homomorphic_hash")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(monomial_has_homomorphic_hash_v<pm_t>);
+        REQUIRE(monomial_has_homomorphic_hash_v<pm_t &>);
+        REQUIRE(monomial_has_homomorphic_hash_v<pm_t &&>);
+        REQUIRE(monomial_has_homomorphic_hash_v<const pm_t &>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+        REQUIRE(MonomialHasHomomorphicHash<pm_t>);
+        REQUIRE(MonomialHasHomomorphicHash<pm_t &>);
+        REQUIRE(MonomialHasHomomorphicHash<pm_t &&>);
+        REQUIRE(MonomialHasHomomorphicHash<const pm_t &>);
+#endif
+
+#if defined(PIRANHA_HAVE_GCC_INT128)
+        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
+#endif
+        {
+            std::vector<int_t> v1, v2, v3;
+            v1.resize(6u);
+            v2.resize(6u);
+            v3.resize(6u);
+
+            std::uniform_int_distribution<int_t> idist;
+
+            for (auto k = 0; k < ntrials; ++k) {
+                for (auto i = 0u; i < 6u; ++i) {
+                    if constexpr (is_signed_v<int_t>) {
+                        v1[i] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{-2, 2});
+                        v2[i] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{-2, 2});
+                    } else {
+                        v1[i] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{0, 5});
+                        v2[i] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{0, 5});
+                    }
+                    v3[i] = v1[i] + v2[i];
+                }
+
+                const auto h1 = hash(pm_t(v1));
+                const auto h2 = hash(pm_t(v2));
+                const auto h3 = hash(pm_t(v3));
+
+                REQUIRE(h1 + h2 == h3);
+            }
+        }
     });
 }
