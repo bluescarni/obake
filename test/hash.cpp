@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <functional>
 #include <string>
+#include <type_traits>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
