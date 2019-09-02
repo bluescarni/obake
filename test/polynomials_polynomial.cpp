@@ -127,3 +127,12 @@ TEST_CASE("polynomial_mul_detail_test")
     REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p1_t, p3_t>>);
     REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p3_t, p1_t>>);
 }
+
+TEST_CASE("polynomial_mul_test")
+{
+    using poly_t = polynomial<packed_monomial<long>, double>;
+
+    auto [a, b] = make_polynomials<poly_t>("a", "b");
+
+    std::cout << a * b << '\n';
+}

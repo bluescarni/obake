@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -19,10 +20,15 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
+
 #include <piranha/config.hpp>
+#include <piranha/detail/hc.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/type_c.hpp>
 #include <piranha/exceptions.hpp>
+#include <piranha/hash.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
@@ -301,7 +307,159 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
+template <typename Ret, typename T, typename U>
+inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_nsegs)
+{
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+    using cf1_t = series_cf_t<rT>;
+    using cf2_t = series_cf_t<rU>;
+    // using ret_key_t = series_key_t<Ret>;
+    // using ret_cf_t = series_cf_t<Ret>;
+
+    assert(retval.get_symbol_set() == x.get_symbol_set());
+    assert(retval.get_symbol_set() == y.get_symbol_set());
+    assert(retval.empty());
+    assert(retval._get_s_table().size() == 1u);
+
+    // Cache the symbol set.
+    const auto &ss = retval.get_symbol_set();
+
+    // Create vectors containing copies of
+    // the input terms.
+    // NOTE: in theory, it would be possible here
+    // to move the coefficients (in conjunction with
+    // rref_cleaner, as usual).
+    auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
+    ::std::vector<::std::pair<series_key_t<rT>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
+                                                           ::boost::make_transform_iterator(x.end(), p_transform));
+    ::std::vector<::std::pair<series_key_t<rU>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
+                                                           ::boost::make_transform_iterator(y.end(), p_transform));
+
+    // Do the monomial overflow checking.
+    const bool overflow = !::piranha::monomial_range_overflow_check(
+        ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
+        ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
+        ss);
+    if (piranha_unlikely(overflow)) {
+        piranha_throw(
+            ::std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    }
+
+    // Sort the input terms according to the hash value modulo
+    // 2**log2_nsegs.
+    auto t_sorter = [log2_nsegs](const auto &p1, const auto &p2) {
+        const auto h1 = ::piranha::hash(p1.first);
+        const auto h2 = ::piranha::hash(p2.first);
+
+        return (h1 % (1u << log2_nsegs)) < (h2 % (1u << log2_nsegs));
+    };
+    ::std::sort(v1.begin(), v1.end(), t_sorter);
+    ::std::sort(v2.begin(), v2.end(), t_sorter);
+
+    ::tbb::parallel_for(::tbb::blocked_range(0u, 1u << log2_nsegs), [](const auto &) {});
+
+    // Setup the number of segments in retval.
+    retval.set_n_segments(log2_nsegs);
+}
+
+// Implementation of poly multiplication with identical symbol sets.
+template <typename T, typename U>
+inline auto poly_mul_impl(T &&x, U &&y)
+{
+    using ret_t = poly_mul_ret_t<T &&, U &&>;
+
+    assert(x.get_symbol_set() == y.get_symbol_set());
+
+    // Init the return value.
+    ret_t retval;
+    retval.set_symbol_set(x.get_symbol_set());
+
+    // Fetch the hardware concurrency.
+    // const auto hc = ::piranha::detail::hc();
+
+    // if (hc == 1u) {
+    //     // We have only a single core available,
+    //     // run the simple implementation.
+    //     detail::poly_mul_impl_simple(retval, x, y);
+    // } else {
+    //     using int_t = ::mppp::integer<1>;
+
+    //     // TODO: proper heuristic for mt mode.
+    //     // TODO: ensure hc cannot possibly be zero.
+    //     // For now, hard code to circa number of cores * 2.
+    //     const auto log2_nthreads
+    //         = ::std::min(::piranha::safe_cast<unsigned>(int_t{hc}.nbits()), retval._get_max_log2_size());
+
+    // NOTE: hard-code to 32 for the time being.
+    // NOTE: also need to check for homomorphicity.
+    detail::poly_mul_impl_mt(retval, x, y, 5);
+    // }
+
+    return retval;
+}
+
 } // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
+{
+    if (x.get_symbol_set() == y.get_symbol_set()) {
+        return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+    } else {
+        using rT = remove_cvref_t<T>;
+        using rU = remove_cvref_t<U>;
+
+        // Merge the symbol sets.
+        const auto &[merged_ss, ins_map_x, ins_map_y]
+            = ::piranha::detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+
+        // The insertion maps cannot be both empty, as we already handled
+        // the identical symbol sets case above.
+        assert(!ins_map_x.empty() || !ins_map_y.empty());
+
+        // Create a flag indicating empty insertion maps:
+        // - 0 -> both non-empty,
+        // - 1 -> x is empty,
+        // - 2 -> y is empty.
+        // (Cannot both be empty as we handled identical symbol sets already).
+        const auto flag = static_cast<unsigned>(ins_map_x.empty()) + (static_cast<unsigned>(ins_map_y.empty()) << 1);
+
+        switch (flag) {
+            case 1u: {
+                // x already has the correct symbol
+                // set, extend only y.
+                rU b;
+                b.set_symbol_set(merged_ss);
+                ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+
+                return detail::poly_mul_impl(::std::forward<T>(x), ::std::move(b));
+            }
+            case 2u: {
+                // y already has the correct symbol
+                // set, extend only x.
+                rT a;
+                a.set_symbol_set(merged_ss);
+                ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+
+                return detail::poly_mul_impl(::std::move(a), ::std::forward<U>(y));
+            }
+        }
+
+        // Both x and y need to be extended.
+        rT a;
+        rU b;
+        a.set_symbol_set(merged_ss);
+        b.set_symbol_set(merged_ss);
+        ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+        ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+
+        return detail::poly_mul_impl(::std::move(a), ::std::move(b));
+    }
+}
 
 } // namespace polynomials
 
