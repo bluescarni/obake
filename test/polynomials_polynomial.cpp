@@ -10,6 +10,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 
 #if defined(PIRANHA_HAVE_STRING_VIEW)
 
@@ -105,4 +106,24 @@ TEST_CASE("is_polynomial_test")
     REQUIRE(!Polynomial<poly_t &&>);
     REQUIRE(!Polynomial<const poly_t>);
 #endif
+}
+
+TEST_CASE("polynomial_mul_detail_test")
+{
+    using p1_t = polynomial<packed_monomial<long>, double>;
+    using p2_t = polynomial<packed_monomial<int>, double>;
+    using p3_t = polynomial<packed_monomial<long>, float>;
+
+    REQUIRE(polynomials::detail::poly_mul_algo<void, void> == 0);
+    REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<void, void>>);
+
+    REQUIRE(polynomials::detail::poly_mul_algo<p1_t, p2_t> == 0);
+    REQUIRE(polynomials::detail::poly_mul_algo<p2_t, p1_t> == 0);
+    REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<p1_t, p2_t>>);
+    REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<p2_t, p1_t>>);
+
+    REQUIRE(polynomials::detail::poly_mul_algo<p1_t, p3_t> == 1);
+    REQUIRE(polynomials::detail::poly_mul_algo<p3_t, p1_t> == 1);
+    REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p1_t, p3_t>>);
+    REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p3_t, p1_t>>);
 }
