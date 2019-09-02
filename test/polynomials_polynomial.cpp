@@ -81,3 +81,28 @@ TEST_CASE("make_polynomials_test")
     REQUIRE_THROWS_AS(make_polynomials<poly_t>(symbol_set{"b"}, "a"), std::invalid_argument);
     REQUIRE_THROWS_AS(make_polynomials<poly_t>(symbol_set{}, "ada"), std::invalid_argument);
 }
+
+TEST_CASE("is_polynomial_test")
+{
+    using poly_t = polynomial<packed_monomial<long>, double>;
+
+    REQUIRE(is_polynomial_v<poly_t>);
+    REQUIRE(!is_polynomial_v<void>);
+    REQUIRE(!is_polynomial_v<int>);
+    REQUIRE(!is_polynomial_v<double>);
+    REQUIRE(!is_polynomial_v<const poly_t &>);
+    REQUIRE(!is_polynomial_v<poly_t &>);
+    REQUIRE(!is_polynomial_v<poly_t &&>);
+    REQUIRE(!is_polynomial_v<const poly_t>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(Polynomial<poly_t>);
+    REQUIRE(!Polynomial<void>);
+    REQUIRE(!Polynomial<int>);
+    REQUIRE(!Polynomial<double>);
+    REQUIRE(!Polynomial<const poly_t &>);
+    REQUIRE(!Polynomial<poly_t &>);
+    REQUIRE(!Polynomial<poly_t &&>);
+    REQUIRE(!Polynomial<const poly_t>);
+#endif
+}

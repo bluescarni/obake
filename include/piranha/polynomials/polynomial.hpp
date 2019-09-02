@@ -35,6 +35,11 @@ struct tag {
 template <typename K, typename C>
 using polynomial = series<K, C, tag>;
 
+} // namespace polynomials
+
+template <typename K, typename C>
+using polynomial = polynomials::polynomial<K, C>;
+
 namespace detail
 {
 
@@ -49,34 +54,17 @@ struct is_polynomial_impl<polynomial<K, C>> : ::std::true_type {
 } // namespace detail
 
 template <typename T>
-using is_cvr_polynomial = detail::is_polynomial_impl<remove_cvref_t<T>>;
+using is_polynomial = detail::is_polynomial_impl<T>;
 
 template <typename T>
-inline constexpr bool is_cvr_polynomial_v = is_cvr_polynomial<T>::value;
+inline constexpr bool is_polynomial_v = is_polynomial<T>::value;
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CvrPolynomial = is_cvr_polynomial_v<T>;
+PIRANHA_CONCEPT_DECL Polynomial = is_polynomial_v<T>;
 
 #endif
-
-#if defined(PIRANHA_HAVE_CONCEPTS)
-template <typename T, typename U>
-requires CvrPolynomial<T> &&FloatingPoint<U>
-#else
-template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<is_cvr_polynomial<T>, ::std::is_floating_point<U>>, int> = 0>
-#endif
-    inline auto pow(const T &, const U &)
-{
-    return 1;
-}
-
-} // namespace polynomials
-
-template <typename K, typename C>
-using polynomial = polynomials::polynomial<K, C>;
 
 namespace detail
 {
@@ -88,8 +76,7 @@ namespace detail
 // - poly cf can be constructed from an integral literal.
 template <typename T, typename... Args>
 using make_polynomials_enabler
-    = ::std::enable_if_t<::std::conjunction_v<polynomials::detail::is_polynomial_impl<T>,
-                                              ::std::is_constructible<::std::string, const Args &>...,
+    = ::std::enable_if_t<::std::conjunction_v<is_polynomial<T>, ::std::is_constructible<::std::string, const Args &>...,
                                               ::std::is_constructible<series_key_t<T>, const int *, const int *>,
                                               ::std::is_constructible<series_cf_t<T>, int>>,
                          int>;
