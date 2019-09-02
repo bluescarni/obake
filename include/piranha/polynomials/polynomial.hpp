@@ -22,6 +22,7 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/type_c.hpp>
+#include <piranha/exceptions.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
