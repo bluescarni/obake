@@ -152,6 +152,45 @@ PIRANHA_CONCEPT_DECL MutableForwardRange = Range<T> &&MutableForwardIterator<ran
 
 #endif
 
+namespace detail
+{
+
+// Machinery to construct a minimal range
+// type from a pair of begin/end iterators.
+// This is useful when we have functions taking
+// ranges in input and we want to use them
+// with iterator pairs instead.
+namespace range_impl
+{
+
+template <typename T>
+struct range {
+    T b;
+    T e;
+};
+
+template <typename T>
+constexpr T begin(const range<T> &r) noexcept(::std::is_nothrow_copy_constructible_v<T>)
+{
+    return r.b;
+}
+
+template <typename T>
+constexpr T end(const range<T> &r) noexcept(::std::is_nothrow_copy_constructible_v<T>)
+{
+    return r.e;
+}
+
+} // namespace range_impl
+
+template <typename T>
+constexpr auto make_range(T b, T e) noexcept(::std::is_nothrow_copy_constructible_v<T>)
+{
+    return range_impl::range<T>{b, e};
+}
+
+} // namespace detail
+
 } // namespace piranha
 
 #endif
