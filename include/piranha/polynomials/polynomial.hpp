@@ -307,6 +307,13 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4334)
+
+#endif
+
 template <typename Ret, typename T, typename U>
 inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_nsegs)
 {
@@ -365,6 +372,12 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
     // Setup the number of segments in retval.
     retval.set_n_segments(log2_nsegs);
 }
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
 
 // Implementation of poly multiplication with identical symbol sets.
 template <typename T, typename U>
