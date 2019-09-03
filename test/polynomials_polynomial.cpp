@@ -132,7 +132,10 @@ TEST_CASE("polynomial_mul_test")
 {
     using poly_t = polynomial<packed_monomial<long>, double>;
 
-    auto [a, b] = make_polynomials<poly_t>("a", "b");
+    auto [a, b, c] = make_polynomials<poly_t>("a", "b", "c");
 
-    std::cout << a * b << '\n';
+    auto p1 = 3 * a + 4 * b + 5 * c;
+    auto p2 = -a + 6 * b - 7 * c;
+
+    std::cout << p1 * p2 << '\n';
 }

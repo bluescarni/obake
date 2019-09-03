@@ -506,21 +506,31 @@ template <typename R1, typename R2,
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
 
-            // Fetch the current component limits.
-            const auto &lims = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+            // Fetch the current component limits. TODO.
+            if (s_size == 1u) {
+                return add_min >= ::std::get<0>(::piranha::detail::limits_minmax<value_type>)
+                       && add_max <= ::std::get<1>(::piranha::detail::limits_minmax<value_type>);
+            } else {
+                const auto &lims
+                    = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
-            if (add_min < lims[0] || add_max > lims[1]) {
-                return false;
+                if (add_min < lims[0] || add_max > lims[1]) {
+                    return false;
+                }
             }
         }
     } else {
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_max = int_t{limits1[i]} + limits2[i];
 
-            const auto &lim = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+            if (s_size == 1u) {
+                return add_max <= ::std::get<1>(::piranha::detail::limits_minmax<value_type>);
+            } else {
+                const auto &lim = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
-            if (add_max > lim) {
-                return false;
+                if (add_max > lim) {
+                    return false;
+                }
             }
         }
     }

@@ -30,6 +30,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
+#include <piranha/math/fma3.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
@@ -307,6 +308,22 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
+// A small wrapper representing the lazy multiplication
+// of two coefficients.
+template <typename C1, typename C2, typename CR>
+struct poly_cf_mul_expr {
+    // The two factors.
+    const C1 &c1;
+    const C2 &c2;
+
+    // Conversion operator to compute
+    // and fetch the result of the multiplication.
+    explicit operator CR() const
+    {
+        return c1 * c2;
+    }
+};
+
 #if defined(_MSC_VER) && !defined(__clang__)
 
 #pragma warning(push)
@@ -321,8 +338,8 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
     using rU = remove_cvref_t<U>;
     using cf1_t = series_cf_t<rT>;
     using cf2_t = series_cf_t<rU>;
-    // using ret_key_t = series_key_t<Ret>;
-    // using ret_cf_t = series_cf_t<Ret>;
+    using ret_key_t = series_key_t<Ret>;
+    using ret_cf_t = series_cf_t<Ret>;
 
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
@@ -357,7 +374,9 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
     }
 
     // Sort the input terms according to the hash value modulo
-    // 2**log2_nsegs.
+    // 2**log2_nsegs. That is, sort them according to the bucket
+    // they would occupy in a segmented table with 2**log2_nsegs
+    // segments.
     auto t_sorter = [log2_nsegs](const auto &p1, const auto &p2) {
         const auto h1 = ::piranha::hash(p1.first);
         const auto h2 = ::piranha::hash(p2.first);
@@ -367,10 +386,103 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
     ::std::sort(v1.begin(), v1.end(), t_sorter);
     ::std::sort(v2.begin(), v2.end(), t_sorter);
 
-    ::tbb::parallel_for(::tbb::blocked_range(0u, 1u << log2_nsegs), [](const auto &) {});
+    // Cache the number of segments.
+    const auto nsegs = 1u << log2_nsegs;
+
+    auto compute_vseg = [nsegs, log2_nsegs](auto &v) {
+        using it_t = decltype(v.begin());
+
+        ::std::vector<::std::pair<it_t, it_t>> vseg;
+        vseg.resize(::piranha::safe_cast<decltype(vseg.size())>(nsegs));
+
+        it_t it = v.begin();
+        const auto v_end = v.end();
+        for (auto i = 0u; i < nsegs; ++i) {
+            vseg[i].first = it;
+            it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &idx, const auto &p) {
+                const auto h = ::piranha::hash(p.first);
+                return idx < (h % (1u << log2_nsegs));
+            });
+            vseg[i].second = it;
+        }
+
+        return vseg;
+    };
+
+    const auto vseg1 = compute_vseg(v1);
+    const auto vseg2 = compute_vseg(v2);
+
+#if !defined(NDEBUG)
+    {
+        assert(vseg1.size() == nsegs);
+        assert(vseg2.size() == nsegs);
+
+        decltype(v1.size()) counter1 = 0;
+        decltype(v2.size()) counter2 = 0;
+
+        auto verify_seg = [log2_nsegs](unsigned i, const auto &p, auto &counter) {
+            for (auto it = p.first; it != p.second; ++it) {
+                const auto h = ::piranha::hash(it->first);
+                assert((h % (1u << log2_nsegs)) == i);
+                ++counter;
+            }
+        };
+
+        for (auto i = 0u; i < nsegs; ++i) {
+            verify_seg(i, vseg1[i], counter1);
+            verify_seg(i, vseg2[i], counter2);
+        }
+
+        assert(counter1 == v1.size());
+        assert(counter2 == v2.size());
+    }
+#endif
 
     // Setup the number of segments in retval.
     retval.set_n_segments(log2_nsegs);
+
+    ::tbb::parallel_for(::tbb::blocked_range(0u, nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval,
+                                                          &ss](const auto &range) {
+        ret_key_t tmp_key;
+
+        for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
+            auto &table = retval._get_s_table()[seg_idx];
+
+            for (auto i = 0u; i < nsegs; ++i) {
+                const auto j = (seg_idx - i) % (1u << log2_nsegs);
+                assert(j < vseg2.size());
+
+                auto r1 = vseg1[i];
+                auto r2 = vseg2[j];
+
+                for (; r1.first != r1.second; ++r1.first) {
+                    const auto &k1 = r1.first->first;
+                    const auto &c1 = r1.first->second;
+
+                    for (; r2.first != r2.second; ++r2.first) {
+                        const auto &c2 = r2.first->second;
+                        ::piranha::monomial_mul(tmp_key, k1, r2.first->first, ss);
+
+                        assert(::piranha::hash(tmp_key) % (1u << log2_nsegs) == seg_idx);
+
+                        const auto res = table.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+
+                        // NOTE: optimise with likely/unlikely here?
+                        if (!res.second) {
+                            // The insertion failed, accumulate c1*c2 into the
+                            // existing coefficient.
+                            // NOTE: do it with fma3(), if possible.
+                            if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
+                                ::piranha::fma3(res.first->second, c1, c2);
+                            } else {
+                                res.first->second += c1 * c2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -409,6 +521,9 @@ inline auto poly_mul_impl(T &&x, U &&y)
 
     // NOTE: hard-code to 32 for the time being.
     // NOTE: also need to check for homomorphicity.
+    // NOTE: ensure that log2_nsegs is within the
+    // retval._get_max_log2_size(), which ensures we can
+    // always use it as a shift argument for unsigned.
     detail::poly_mul_impl_mt(retval, x, y, 5);
     // }
 
