@@ -201,9 +201,9 @@ namespace detail
 // input pair p).
 struct poly_term_key_ref_extractor {
     template <typename P>
-    constexpr decltype(auto) operator()(const P &p) const noexcept
+    constexpr const typename P::first_type &operator()(const P &p) const noexcept
     {
-        return static_cast<const typename P::first_type &>(p.first);
+        return p.first;
     }
 };
 
@@ -381,7 +381,7 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
         const auto h1 = ::piranha::hash(p1.first);
         const auto h2 = ::piranha::hash(p2.first);
 
-        return (h1 % (1u << log2_nsegs)) < (h2 % (1u << log2_nsegs));
+        return h1 % (1u << log2_nsegs) < h2 % (1u << log2_nsegs);
     };
     ::std::sort(v1.begin(), v1.end(), t_sorter);
     ::std::sort(v2.begin(), v2.end(), t_sorter);
@@ -401,7 +401,7 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
             vseg[i].first = it;
             it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &idx, const auto &p) {
                 const auto h = ::piranha::hash(p.first);
-                return idx < (h % (1u << log2_nsegs));
+                return idx < h % (1u << log2_nsegs);
             });
             vseg[i].second = it;
         }
@@ -423,7 +423,7 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
         auto verify_seg = [log2_nsegs](unsigned i, const auto &p, auto &counter) {
             for (auto it = p.first; it != p.second; ++it) {
                 const auto h = ::piranha::hash(it->first);
-                assert((h % (1u << log2_nsegs)) == i);
+                assert(h % (1u << log2_nsegs) == i);
                 ++counter;
             }
         };
