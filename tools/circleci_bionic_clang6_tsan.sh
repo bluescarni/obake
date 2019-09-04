@@ -25,10 +25,10 @@ bash ../tools/circleci_install_mppp.sh
 bash ../tools/circleci_install_abseil.sh
 
 # clang build.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=thread"
+cmake ../ -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=thread"
 make -j2 VERBOSE=1
 # Run the tests.
-ctest -V
+TSAN_OPTIONS="suppressions=/home/circleci/project/tools/tsan.supp history_size=7" ctest -V
 
 set +e
 set +x
