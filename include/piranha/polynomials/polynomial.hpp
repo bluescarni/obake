@@ -336,10 +336,8 @@ struct poly_cf_mul_expr {
 template <typename Ret, typename T, typename U>
 inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_nsegs)
 {
-    using rT = remove_cvref_t<T>;
-    using rU = remove_cvref_t<U>;
-    using cf1_t = series_cf_t<rT>;
-    using cf2_t = series_cf_t<rU>;
+    using cf1_t = series_cf_t<T>;
+    using cf2_t = series_cf_t<U>;
     using ret_key_t = series_key_t<Ret>;
     using ret_cf_t = series_cf_t<Ret>;
 
@@ -358,10 +356,10 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
     // to move the coefficients (in conjunction with
     // rref_cleaner, as usual).
     auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
-    ::std::vector<::std::pair<series_key_t<rT>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
-                                                           ::boost::make_transform_iterator(x.end(), p_transform));
-    ::std::vector<::std::pair<series_key_t<rU>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
-                                                           ::boost::make_transform_iterator(y.end(), p_transform));
+    ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
+                                                          ::boost::make_transform_iterator(x.end(), p_transform));
+    ::std::vector<::std::pair<series_key_t<U>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
+                                                          ::boost::make_transform_iterator(y.end(), p_transform));
 
     // Do the monomial overflow checking.
     const bool overflow = !::piranha::monomial_range_overflow_check(
