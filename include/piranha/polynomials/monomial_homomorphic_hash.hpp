@@ -45,44 +45,20 @@ inline constexpr auto monomial_hash_is_homomorphic = false;
 namespace detail
 {
 
-// Small helper to check if an mhh implementation is constexpr.
-template <bool>
-void monomial_hh_constexpr_checker();
-
 // Detect the presence of a valid customisation::monomial_hash_is_homomorphic implementation:
-// must be a constexpr bool variable.
+// must be a const bool variable.
 template <typename T>
 using c_monomial_hh_checker_t = decltype(customisation::monomial_hash_is_homomorphic<T>);
 
 template <typename T>
-using c_monomial_hh_constexpr_checker_t
-    = decltype(detail::monomial_hh_constexpr_checker<customisation::monomial_hash_is_homomorphic<T>>());
-
-template <typename T>
-inline constexpr bool has_c_monomial_hh
-    = ::std::conjunction_v<::std::is_same<detected_t<c_monomial_hh_checker_t, T>, const bool>
-#if !defined(_MSC_VER)
-                           ,
-                           is_detected<c_monomial_hh_constexpr_checker_t, T>
-#endif
-                           >;
+inline constexpr bool has_c_monomial_hh = ::std::is_same_v<detected_t<c_monomial_hh_checker_t, T>, const bool>;
 
 // Do the same for monomial_hash_is_homomorphic.
 template <typename T>
 using monomial_hh_checker_t = decltype(monomial_hash_is_homomorphic<T>);
 
 template <typename T>
-using monomial_hh_constexpr_checker_t
-    = decltype(detail::monomial_hh_constexpr_checker<monomial_hash_is_homomorphic<T>>());
-
-template <typename T>
-inline constexpr bool has_monomial_hh
-    = ::std::conjunction_v<::std::is_same<detected_t<monomial_hh_checker_t, T>, const bool>
-#if !defined(_MSC_VER)
-                           ,
-                           is_detected<monomial_hh_constexpr_checker_t, T>
-#endif
-                           >;
+inline constexpr bool has_monomial_hh = ::std::is_same_v<detected_t<monomial_hh_checker_t, T>, const bool>;
 
 // Implementation of is_homomorphically_hashable_monomial:
 // - if we have a valid implementation in the external customisation
