@@ -132,6 +132,23 @@ namespace detail
 {
 
 template <typename>
+struct series_term_t_impl {
+};
+
+template <typename K, typename C, typename Tag>
+struct series_term_t_impl<series<K, C, Tag>> {
+    using type = remove_cvref_t<decltype(*::std::declval<series<K, C, Tag> &>().begin())>;
+};
+
+} // namespace detail
+
+template <typename T>
+using series_term_t = typename detail::series_term_t_impl<T>::type;
+
+namespace detail
+{
+
+template <typename>
 struct series_cf_t_impl {
 };
 
