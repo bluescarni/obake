@@ -67,7 +67,7 @@ inline constexpr bool has_monomial_hh = ::std::is_same_v<detected_t<monomial_hh_
 //   otherwise,
 // - return false.
 template <typename T>
-inline constexpr bool is_hh_monomial__impl()
+constexpr bool is_hh_monomial_impl()
 {
     if constexpr (has_c_monomial_hh<T>) {
         return customisation::monomial_hash_is_homomorphic<T>;
@@ -89,7 +89,7 @@ inline constexpr bool is_hh_monomial__impl()
 // NOTE: the detection is independent of the availability
 // of a hash function.
 template <typename T>
-using is_homomorphically_hashable_monomial = ::std::integral_constant<bool, detail::is_hh_monomial__impl<T>()>;
+using is_homomorphically_hashable_monomial = ::std::integral_constant<bool, detail::is_hh_monomial_impl<T>()>;
 
 template <typename T>
 inline constexpr bool is_homomorphically_hashable_monomial_v = is_homomorphically_hashable_monomial<T>::value;
