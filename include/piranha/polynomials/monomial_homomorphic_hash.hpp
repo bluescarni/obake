@@ -88,6 +88,10 @@ constexpr bool is_hh_monomial_impl()
 // Detect the availability of homomorphic hashing in monomials.
 // NOTE: the detection is independent of the availability
 // of a hash function.
+// NOTE: the implementation ensures that the type trait is always
+// usable (i.e., using it will never generate any sort of error,
+// if errors in the user implementations arise, we get the default
+// behaviour).
 template <typename T>
 using is_homomorphically_hashable_monomial = ::std::integral_constant<bool, detail::is_hh_monomial_impl<T>()>;
 
