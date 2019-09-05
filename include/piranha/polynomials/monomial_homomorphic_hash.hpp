@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #include <piranha/config.hpp>
+#include <piranha/detail/not_implemented.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
@@ -27,8 +28,7 @@ template <typename T
           typename = void
 #endif
           >
-struct monomial_hash_is_homomorphic {
-};
+inline constexpr auto monomial_hash_is_homomorphic = not_implemented;
 
 } // namespace customisation
 
@@ -40,46 +40,58 @@ template <typename T
           typename = void
 #endif
           >
-struct monomial_hash_is_homomorphic : ::std::false_type {
-};
+inline constexpr auto monomial_hash_is_homomorphic = false;
 
 namespace detail
 {
 
-// Detect the presence of a valid customisation::monomial_hash_is_homomorphic implementation
-// (i.e., must have static const bool value member).
+// Small helper to check if an mhh implementation is constexpr.
+template <bool>
+void mhh_constexpr_checker();
+
+// Detect the presence of a valid customisation::monomial_hash_is_homomorphic implementation:
+// must be a constexpr bool variable.
 template <typename T>
-using customised_monomial_hash_is_homomorphic_t = decltype(customisation::monomial_hash_is_homomorphic<T>::value);
+using cmhh_checker_t = decltype(customisation::monomial_hash_is_homomorphic<T>);
 
 template <typename T>
-using has_customised_monomial_hash_is_homomorphic
-    = ::std::is_same<detected_t<customised_monomial_hash_is_homomorphic_t, T>, const bool>;
-
-// Detect the presence of a valid monomial_hash_is_homomorphic implementation
-// (i.e., must have static const bool value member).
-template <typename T>
-using monomial_hash_is_homomorphic_t = decltype(monomial_hash_is_homomorphic<T>::value);
+using cmhh_constexpr_checker_t
+    = decltype(detail::mhh_constexpr_checker<customisation::monomial_hash_is_homomorphic<T>>());
 
 template <typename T>
-using has_monomial_hash_is_homomorphic = ::std::is_same<detected_t<monomial_hash_is_homomorphic_t, T>, const bool>;
+inline constexpr bool has_cmhh = ::std::conjunction_v<::std::is_same<detected_t<cmhh_checker_t, T>, const bool>,
+                                                      is_detected<cmhh_constexpr_checker_t, T>>;
+
+// Do the same for monomial_hash_is_homomorphic.
+template <typename T>
+using mhh_checker_t = decltype(monomial_hash_is_homomorphic<T>);
+
+template <typename T>
+using mhh_constexpr_checker_t = decltype(detail::mhh_constexpr_checker<monomial_hash_is_homomorphic<T>>());
+
+template <typename T>
+inline constexpr bool has_mhh = ::std::conjunction_v<::std::is_same<detected_t<mhh_checker_t, T>, const bool>,
+                                                     is_detected<mhh_constexpr_checker_t, T>>;
 
 // Implementation of is_homomorphically_hashable_monomial:
-// - if a valid implementation of customisation::monomial_hash_is_homomorphic is provided,
-//   use that, otherwise,
-// - if a valid implementation of monomial_hash_is_homomorphic is provided,
-//   use that, otherwise,
-// - defaults to false.
-template <typename T, typename = void>
-struct is_homomorphically_hashable_monomial_impl
-    : ::std::conditional_t<has_monomial_hash_is_homomorphic<T>::value, monomial_hash_is_homomorphic<T>,
-                           ::std::false_type> {
-};
-
+// - if we have a valid implementation in the external customisation
+//   namespace, use that, otherwise,
+// - if we have a valid implementation in the main namespace, use that,
+//   otherwise,
+// - return false.
 template <typename T>
-struct is_homomorphically_hashable_monomial_impl<
-    T, ::std::enable_if_t<has_customised_monomial_hash_is_homomorphic<T>::value>>
-    : customisation::monomial_hash_is_homomorphic<T> {
-};
+inline constexpr bool is_hhm_impl()
+{
+    if constexpr (has_cmhh<T>) {
+        return customisation::monomial_hash_is_homomorphic<T>;
+    } else {
+        if constexpr (has_mhh<T>) {
+            return monomial_hash_is_homomorphic<T>;
+        } else {
+            return false;
+        }
+    }
+}
 
 } // namespace detail
 
@@ -87,7 +99,7 @@ struct is_homomorphically_hashable_monomial_impl<
 // NOTE: the detection is independent of the availability
 // of a hash function.
 template <typename T>
-using is_homomorphically_hashable_monomial = detail::is_homomorphically_hashable_monomial_impl<T>;
+using is_homomorphically_hashable_monomial = ::std::integral_constant<bool, detail::is_hhm_impl<T>()>;
 
 template <typename T>
 inline constexpr bool is_homomorphically_hashable_monomial_v = is_homomorphically_hashable_monomial<T>::value;

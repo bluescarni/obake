@@ -546,8 +546,7 @@ using packed_monomial = polynomials::packed_monomial<T>;
 
 // Specialise monomial_has_homomorphic_hash.
 template <typename T>
-struct monomial_hash_is_homomorphic<packed_monomial<T>> : ::std::true_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
 
 } // namespace piranha
 
