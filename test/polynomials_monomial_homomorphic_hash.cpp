@@ -75,7 +75,7 @@ template <>
 inline constexpr bool monomial_hash_is_homomorphic<hh3> = true;
 
 template <>
-constexpr inline bool monomial_hash_is_homomorphic<hh4> = true;
+inline constexpr bool monomial_hash_is_homomorphic<hh4> = true;
 
 // Wrong specialisation.
 template <>
