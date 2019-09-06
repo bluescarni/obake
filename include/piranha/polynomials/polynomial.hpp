@@ -24,10 +24,12 @@
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 
+#include <piranha/byte_size.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/hc.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/type_c.hpp>
+#include <piranha/detail/xoroshiro128_plus.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
@@ -202,10 +204,17 @@ namespace detail
 // a term's key (that is, the first element of the
 // input pair p).
 struct poly_term_key_ref_extractor {
+    // Reference overload.
     template <typename P>
     constexpr const typename P::first_type &operator()(const P &p) const noexcept
     {
         return p.first;
+    }
+    // Pointer overload.
+    template <typename P>
+    constexpr const typename P::first_type &operator()(const P *p) const noexcept
+    {
+        return p->first;
     }
 };
 
@@ -247,14 +256,21 @@ constexpr auto poly_mul_algorithm_impl()
                 //
                 // We need to perform monomial range checking on the input series.
                 // Depending on runtime conditions, the check will be done on either
-                // vector of copies of the original terms, or directly on the terms of the
-                // series operands.
+                // vector of copies of the original terms, or on vectors of const
+                // pointers to the original terms.
 
                 // The vectors of copies of input terms.
+                // NOTE: need to drop the const on the key in order to enable sorting.
                 using xv_t = ::std::vector<::std::pair<series_key_t<rT>, cf1_t>>;
                 using yv_t = ::std::vector<::std::pair<series_key_t<rU>, cf2_t>>;
 
+                // The vectors of pointers to the input terms.
+                using xp_t = ::std::vector<const series_term_t<rT> *>;
+                using yp_t = ::std::vector<const series_term_t<rU> *>;
+
                 // The corresponding range types.
+                // NOTE: in the code below, we always use cbegin()/cend() for the construction
+                // of the ranges.
                 using xr1_t = decltype(::piranha::detail::make_range(
                     ::boost::make_transform_iterator(::std::declval<xv_t &>().cbegin(), poly_term_key_ref_extractor{}),
                     ::boost::make_transform_iterator(::std::declval<xv_t &>().cend(), poly_term_key_ref_extractor{})));
@@ -262,17 +278,12 @@ constexpr auto poly_mul_algorithm_impl()
                     ::boost::make_transform_iterator(::std::declval<yv_t &>().cbegin(), poly_term_key_ref_extractor{}),
                     ::boost::make_transform_iterator(::std::declval<yv_t &>().cend(), poly_term_key_ref_extractor{})));
 
-                // The original range types. We will be using const_iterator rvalues from the input series.
                 using xr2_t = decltype(::piranha::detail::make_range(
-                    ::boost::make_transform_iterator(::std::declval<typename rT::const_iterator>(),
-                                                     poly_term_key_ref_extractor{}),
-                    ::boost::make_transform_iterator(::std::declval<typename rT::const_iterator>(),
-                                                     poly_term_key_ref_extractor{})));
+                    ::boost::make_transform_iterator(::std::declval<xp_t &>().cbegin(), poly_term_key_ref_extractor{}),
+                    ::boost::make_transform_iterator(::std::declval<xp_t &>().cend(), poly_term_key_ref_extractor{})));
                 using yr2_t = decltype(::piranha::detail::make_range(
-                    ::boost::make_transform_iterator(::std::declval<typename rU::const_iterator>(),
-                                                     poly_term_key_ref_extractor{}),
-                    ::boost::make_transform_iterator(::std::declval<typename rU::const_iterator>(),
-                                                     poly_term_key_ref_extractor{})));
+                    ::boost::make_transform_iterator(::std::declval<yp_t &>().cbegin(), poly_term_key_ref_extractor{}),
+                    ::boost::make_transform_iterator(::std::declval<yp_t &>().cend(), poly_term_key_ref_extractor{})));
 
                 if constexpr (::std::conjunction_v<
                                   are_overflow_testable_monomial_ranges<xr1_t, yr1_t>,
@@ -333,8 +344,9 @@ struct poly_cf_mul_expr {
 
 #endif
 
+// The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U>
-inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_nsegs)
+inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned log2_nsegs)
 {
     using cf1_t = series_cf_t<T>;
     using cf2_t = series_cf_t<U>;
@@ -355,6 +367,8 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
     // NOTE: in theory, it would be possible here
     // to move the coefficients (in conjunction with
     // rref_cleaner, as usual).
+    // NOTE: drop the const from the key type in order
+    // to allow mutability.
     auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
     ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
                                                           ::boost::make_transform_iterator(x.end(), p_transform));
@@ -565,6 +579,103 @@ inline void poly_mul_impl_mt(Ret &retval, const T &x, const U &y, unsigned log2_
 
 #endif
 
+// Simple poly mult implementation: just multiply
+// term by term, no parallelisation, no segmentation,
+// no copying of the operands, etc.
+template <typename Ret, typename T, typename U>
+inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
+{
+    using ret_key_t = series_key_t<Ret>;
+    using ret_cf_t = series_cf_t<Ret>;
+    using cf1_t = series_cf_t<T>;
+    using cf2_t = series_cf_t<U>;
+
+    // Preconditions.
+    assert(retval.get_symbol_set() == x.get_symbol_set());
+    assert(retval.get_symbol_set() == y.get_symbol_set());
+    assert(retval.empty());
+    assert(retval._get_s_table().size() == 1u);
+
+    // Cache the symbol set.
+    const auto &ss = retval.get_symbol_set();
+
+    // Construct the vectors of pointer to the terms.
+    auto ptr_extractor = [](const auto &p) { return &p; };
+    ::std::vector<const series_term_t<T> *> v1(::boost::make_transform_iterator(x.begin(), ptr_extractor),
+                                               ::boost::make_transform_iterator(x.end(), ptr_extractor));
+    ::std::vector<const series_term_t<U> *> v2(::boost::make_transform_iterator(y.begin(), ptr_extractor),
+                                               ::boost::make_transform_iterator(y.end(), ptr_extractor));
+
+    // Do the monomial overflow checking.
+    const bool overflow = !::piranha::monomial_range_overflow_check(
+        ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
+        ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
+        ss);
+    if (piranha_unlikely(overflow)) {
+        piranha_throw(
+            ::std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    }
+
+    // Proceed with the multiplication.
+    auto &tab = retval._get_s_table()[0];
+
+    // Wrap in try/catch to avoid assertion failures in
+    // debug mode.
+    try {
+        // Temporary variable used in monomial multiplication.
+        ret_key_t tmp_key;
+
+        for (auto t1 : v1) {
+            const auto &k1 = t1->first;
+            const auto &c1 = t1->second;
+
+            for (auto t2 : v2) {
+                const auto &c2 = t2->second;
+
+                // Multiply the monomial.
+                ::piranha::monomial_mul(tmp_key, k1, t2->first, ss);
+
+                // Try to insert the new term.
+                const auto res = tab.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+
+                // NOTE: optimise with likely/unlikely here?
+                if (!res.second) {
+                    // The insertion failed, accumulate c1*c2 into the
+                    // existing coefficient.
+                    // NOTE: do it with fma3(), if possible.
+                    if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
+                        ::piranha::fma3(res.first->second, c1, c2);
+                    } else {
+                        res.first->second += c1 * c2;
+                    }
+                }
+            }
+        }
+
+        // Determine and remove the keys whose coefficients are zero
+        // in the return value.
+        const auto it_f = tab.end();
+        for (auto it = tab.begin(); it != it_f;) {
+            // NOTE: abseil's flat_hash_map returns void on erase(),
+            // thus we need to increase 'it' before possibly erasing.
+            // erase() does not cause rehash and thus will not invalidate
+            // any other iterator apart from the one being erased.
+            auto tmp_it = it++;
+            if (piranha_unlikely(::piranha::is_zero(static_cast<const ret_cf_t &>(tmp_it->second)))) {
+                tab.erase(tmp_it);
+            }
+        }
+    } catch (...) {
+        // retval may now contain zero coefficients.
+        // Make sure to clear it before rethrowing.
+        tab.clear();
+        throw;
+    }
+}
+
 // Implementation of poly multiplication with identical symbol sets.
 template <typename T, typename U>
 inline auto poly_mul_impl(T &&x, U &&y)
@@ -593,12 +704,13 @@ inline auto poly_mul_impl(T &&x, U &&y)
     //     const auto log2_nthreads
     //         = ::std::min(::piranha::safe_cast<unsigned>(int_t{hc}.nbits()), retval._get_max_log2_size());
 
-    // NOTE: hard-code to 32 for the time being.
     // NOTE: also need to check for homomorphicity.
     // NOTE: ensure that log2_nsegs is within the
     // retval._get_max_log2_size(), which ensures we can
     // always use it as a shift argument for unsigned.
-    detail::poly_mul_impl_mt(retval, x, y, 11);
+
+    // detail::poly_mul_impl_mt(retval, x, y, 11);
+    detail::poly_mul_impl_simple(retval, x, y);
     // }
 
     return retval;

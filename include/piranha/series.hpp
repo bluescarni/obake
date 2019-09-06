@@ -26,6 +26,7 @@
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
+#include <piranha/byte_size.hpp>
 #include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/abseil.hpp>
@@ -1327,6 +1328,44 @@ requires CvrSeries<T> inline constexpr auto is_zero<T>
 inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
 #endif
     = series_default_is_zero_impl{};
+
+} // namespace customisation::internal
+
+// Customise piranha::byte_size() for series types.
+namespace customisation::internal
+{
+
+struct series_default_byte_size_impl {
+    template <typename T>
+    ::std::size_t operator()(const T &x) const
+    {
+        using table_t = remove_cvref_t<decltype(x._get_s_table()[0])>;
+
+        auto retval = sizeof(T) + x._get_s_table().size() * sizeof(table_t);
+
+        for (const auto &[k, c] : x) {
+            // NOTE: account for possible padding in the series term class.
+            static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
+
+            retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
+                      + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
+        }
+
+        return retval;
+    }
+};
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+requires CvrSeries<T> &&SizeMeasurable<const series_key_t<remove_cvref_t<T>> &>
+    &&SizeMeasurable<const series_cf_t<remove_cvref_t<T>> &> inline constexpr auto byte_size<T>
+#else
+inline constexpr auto
+    byte_size<T, ::std::enable_if_t<
+                     ::std::conjunction_v<is_cvr_series<T>, is_size_measurable<const series_key_t<remove_cvref_t<T>> &>,
+                                          is_size_measurable<const series_cf_t<remove_cvref_t<T>> &>>>>
+#endif
+    = series_default_byte_size_impl{};
 
 } // namespace customisation::internal
 
