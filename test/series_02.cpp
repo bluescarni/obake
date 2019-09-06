@@ -562,3 +562,17 @@ TEST_CASE("series_default_mul")
     REQUIRE(!is_multipliable_v<ns::s1_t, void>);
     REQUIRE(!is_multipliable_v<void, ns::s1_t>);
 }
+
+TEST_CASE("series_typedefs")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(std::is_same_v<series_term_t<s1_t>, std::pair<const series_key_t<s1_t>, series_cf_t<s1_t>>>);
+    REQUIRE(std::is_same_v<series_tag_t<s1_t>, void>);
+
+    REQUIRE(!is_detected_v<series_term_t, void>);
+    REQUIRE(!is_detected_v<series_key_t, int>);
+    REQUIRE(!is_detected_v<series_cf_t, float>);
+    REQUIRE(!is_detected_v<series_tag_t, char>);
+}

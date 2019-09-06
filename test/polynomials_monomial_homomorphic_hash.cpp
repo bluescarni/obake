@@ -28,6 +28,9 @@ struct hh2 {
 struct hh3 {
 };
 
+struct hh4 {
+};
+
 struct nhh0 {
 };
 
@@ -41,49 +44,46 @@ namespace piranha
 {
 
 template <>
-struct monomial_hash_is_homomorphic<hh0> : std::true_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<hh0> = true;
 
 template <>
-struct monomial_hash_is_homomorphic<hh2> : std::false_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<hh2> = false;
 
 // Wrong specialisation here, correct one in the
 // customisation namespace.
 template <>
-struct monomial_hash_is_homomorphic<hh3> {
-};
+inline constexpr int monomial_hash_is_homomorphic<hh3> = 3;
+
+// Not constexpr here, constexpr in customisation.
+template <>
+inline bool monomial_hash_is_homomorphic<hh4> = false;
 
 // Wrong specialisation.
 template <>
-struct monomial_hash_is_homomorphic<nhh0> {
-};
-
-// Wrong value type.
-template <>
-struct monomial_hash_is_homomorphic<nhh2> {
-    static constexpr int value = 1;
-};
+inline constexpr int monomial_hash_is_homomorphic<nhh0> = 4;
 
 namespace customisation
 {
 
 template <>
-struct monomial_hash_is_homomorphic<hh1> : std::true_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<hh1> = true;
 
 template <>
-struct monomial_hash_is_homomorphic<hh2> : std::true_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<hh2> = true;
 
 template <>
-struct monomial_hash_is_homomorphic<hh3> : std::true_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<hh3> = true;
+
+template <>
+inline constexpr bool monomial_hash_is_homomorphic<hh4> = true;
 
 // Wrong specialisation.
 template <>
-struct monomial_hash_is_homomorphic<nhh1> {
-};
+inline constexpr float monomial_hash_is_homomorphic<nhh1> = 1.f;
+
+// Not constexpr.
+template <>
+inline bool monomial_hash_is_homomorphic<nhh2> = true;
 
 } // namespace customisation
 
@@ -124,6 +124,11 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!is_homomorphically_hashable_monomial_v<hh3 &&>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<const hh3 &&>);
 
+    REQUIRE(is_homomorphically_hashable_monomial_v<hh4>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh4 &>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<hh4 &&>);
+    REQUIRE(!is_homomorphically_hashable_monomial_v<const hh4 &&>);
+
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2 &>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2 &&>);
@@ -162,6 +167,11 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!HomomorphicallyHashableMonomial<hh3 &>);
     REQUIRE(!HomomorphicallyHashableMonomial<hh3 &&>);
     REQUIRE(!HomomorphicallyHashableMonomial<const hh3 &&>);
+
+    REQUIRE(HomomorphicallyHashableMonomial<hh4>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh4 &>);
+    REQUIRE(!HomomorphicallyHashableMonomial<hh4 &&>);
+    REQUIRE(!HomomorphicallyHashableMonomial<const hh4 &&>);
 
     REQUIRE(!HomomorphicallyHashableMonomial<nhh2>);
     REQUIRE(!HomomorphicallyHashableMonomial<nhh2 &>);

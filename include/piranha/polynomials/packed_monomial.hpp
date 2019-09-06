@@ -506,10 +506,22 @@ template <typename R1, typename R2,
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
 
-            // Fetch the current component limits.
-            const auto &lims = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+            const auto [lim_min, lim_max] = [s_size, i, nbits]() {
+                // NOTE: need to special-case s_size == 1, in which case
+                // the component limits are the full numerical range of the type.
+                if (s_size == 1u) {
+                    return ::piranha::detail::limits_minmax<value_type>;
+                } else {
+                    const auto &lims
+                        = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
-            if (add_min < lims[0] || add_max > lims[1]) {
+                    return ::std::make_tuple(lims[0], lims[1]);
+                }
+            }();
+
+            // NOTE: an overflow condition will likely result in an exception
+            // or some other error handling. Optimise for the non-overflow case.
+            if (piranha_unlikely(add_min < lim_min || add_max > lim_max)) {
                 return false;
             }
         }
@@ -517,9 +529,12 @@ template <typename R1, typename R2,
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_max = int_t{limits1[i]} + limits2[i];
 
-            const auto &lim = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+            // NOTE: like above, special-case s_size == 1.
+            const auto lim_max
+                = s_size == 1u ? ::std::get<1>(::piranha::detail::limits_minmax<value_type>)
+                               : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
-            if (add_max > lim) {
+            if (piranha_unlikely(add_max > lim_max)) {
                 return false;
             }
         }
@@ -536,8 +551,7 @@ using packed_monomial = polynomials::packed_monomial<T>;
 
 // Specialise monomial_has_homomorphic_hash.
 template <typename T>
-struct monomial_hash_is_homomorphic<packed_monomial<T>> : ::std::true_type {
-};
+inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
 
 } // namespace piranha
 

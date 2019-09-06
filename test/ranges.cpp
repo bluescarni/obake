@@ -223,3 +223,34 @@ TEST_CASE("ranges_test")
     REQUIRE(piranha::begin(arr_d) == &arr_d[0]);
     REQUIRE(piranha::end(arr_d) == &arr_d[0] + 3);
 }
+
+#if !defined(_MSC_VER) || _MSC_VER >= 1910
+
+// Verify constexpr capabilities.
+constexpr std::array<int, 3> carr{};
+[[maybe_unused]] constexpr auto carr_range = piranha::detail::make_range(carr.begin(), carr.end());
+
+#endif
+
+TEST_CASE("make_range_test")
+{
+    std::vector<int> v{1, 2, 3};
+
+    auto r = piranha::detail::make_range(v.begin(), v.end());
+    REQUIRE(r.b == v.begin());
+    REQUIRE(r.e == v.end());
+    REQUIRE(std::is_same_v<decltype(r.b), std::vector<int>::iterator>);
+    REQUIRE(piranha::is_range_v<decltype(r)>);
+    REQUIRE(piranha::is_input_range_v<decltype(r)>);
+    REQUIRE(piranha::is_forward_range_v<decltype(r)>);
+    REQUIRE(piranha::is_mutable_forward_range_v<decltype(r)>);
+
+    auto rc = piranha::detail::make_range(v.cbegin(), v.cend());
+    REQUIRE(rc.b == v.cbegin());
+    REQUIRE(rc.e == v.cend());
+    REQUIRE(std::is_same_v<decltype(rc.b), std::vector<int>::const_iterator>);
+    REQUIRE(piranha::is_range_v<decltype(rc)>);
+    REQUIRE(piranha::is_input_range_v<decltype(rc)>);
+    REQUIRE(piranha::is_forward_range_v<decltype(rc)>);
+    REQUIRE(!piranha::is_mutable_forward_range_v<decltype(rc)>);
+}
