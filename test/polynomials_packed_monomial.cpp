@@ -569,6 +569,48 @@ TEST_CASE("monomial_range_overflow_check")
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
         }
 
+        // Special-casing for size 1.
+        v1.clear();
+        v2.clear();
+        ss = symbol_set{"x"};
+
+        v1.emplace_back(pm_t{1});
+        v2.emplace_back(pm_t{2});
+        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+        v1.emplace_back(pm_t{4});
+        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+        v1.emplace_back(pm_t{2});
+        v1.emplace_back(pm_t{2});
+        v1.emplace_back(pm_t{0});
+        v2.emplace_back(pm_t{2});
+        v2.emplace_back(pm_t{1});
+        v2.emplace_back(pm_t{0});
+        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+
+        if constexpr (is_signed_v<int_t>) {
+            v1.emplace_back(pm_t{-2});
+            v1.emplace_back(pm_t{2});
+            v1.emplace_back(pm_t{0});
+            v2.emplace_back(pm_t{-2});
+            v2.emplace_back(pm_t{1});
+            v2.emplace_back(pm_t{0});
+            REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+        }
+
+        // Overflow check.
+        if constexpr (is_signed_v<int_t>) {
+            v1.emplace_back(pm_t{std::get<0>(detail::limits_minmax<int_t>)});
+            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+            v1.pop_back();
+
+            v1.emplace_back(pm_t{std::get<1>(detail::limits_minmax<int_t>)});
+            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+            v1.pop_back();
+        } else {
+            v1.emplace_back(pm_t{std::get<1>(detail::limits_minmax<int_t>)});
+            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+        }
+
         // Check the type trait.
         REQUIRE(are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, std::vector<pm_t>>);
         REQUIRE(are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, std::list<pm_t>>);
