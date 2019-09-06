@@ -17,6 +17,7 @@
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -1341,8 +1342,21 @@ struct series_default_byte_size_impl {
     {
         using table_t = remove_cvref_t<decltype(x._get_s_table()[0])>;
 
+        // NOTE: start out with the size of the series class, plus
+        // the class size of all the tables. This is slightly incorrect,
+        // since, if we only have a single table, its class size will be
+        // included in sizeof(T) due to SBO, but it's just a small inaccuracy.
         auto retval = sizeof(T) + x._get_s_table().size() * sizeof(table_t);
 
+        // Add some size for the symbols. This is not 100% accurate
+        // due to SBO in strings.
+        for (const auto &s : x.get_symbol_set()) {
+            // NOTE: s.size() gives the number of chars,
+            // thus it's a size in bytes.
+            retval += sizeof(::std::string) + s.size();
+        }
+
+        // Accumulate the byte size for all terms in the table.
         for (const auto &[k, c] : x) {
             // NOTE: account for possible padding in the series term class.
             static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
