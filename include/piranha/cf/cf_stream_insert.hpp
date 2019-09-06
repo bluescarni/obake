@@ -16,6 +16,7 @@
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
+#include <piranha/detail/visibility.hpp>
 #include <piranha/type_traits.hpp>
 
 namespace piranha
@@ -51,6 +52,14 @@ inline constexpr auto cf_stream_insert = not_implemented;
 
 namespace detail
 {
+
+#if defined(MPPP_HAVE_GCC_INT128)
+
+// Implementation for 128-bit integers.
+PIRANHA_DLL_PUBLIC void cf_stream_insert(::std::ostream &, const __int128_t &);
+PIRANHA_DLL_PUBLIC void cf_stream_insert(::std::ostream &, const __uint128_t &);
+
+#endif
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>

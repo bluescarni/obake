@@ -159,6 +159,7 @@ endif()
 
 # Initial setup of the piranha target.
 set(PIRANHA_SRC_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/cf/cf_stream_insert.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/atomic_flag_array.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/hc.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/to_string.cpp"
