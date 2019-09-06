@@ -18,9 +18,7 @@
 #include <mp++/rational.hpp>
 
 #if defined(MPPP_WITH_MPFR)
-
 #include <mp++/real.hpp>
-
 #endif
 
 #include <piranha/config.hpp>
@@ -63,28 +61,45 @@ inline constexpr auto byte_size = not_implemented;
 namespace detail
 {
 
+// Overloads for the mp++ classes.
+// NOTE: for real128, the default implementation
+// (based on sizeof()) is correct.
 template <::std::size_t SSize>
 inline ::std::size_t byte_size(const ::mppp::integer<SSize> &n)
 {
-    const auto s = n.size();
-
-    auto retval = sizeof(n);
-    if (s > SSize) {
-        retval += s * sizeof(::mp_limb_t);
+    if (n.is_static()) {
+        // Static storage, everything
+        // is stored within the object.
+        return sizeof(n);
+    } else {
+        // Dynamic storage: add the space
+        // occupied by the dynamically-allocated limbs.
+        // NOTE: not ideal here to use directly a GMP
+        // type, perhaps in the future we can provide
+        // a type alias in mp++ or even a function for
+        // this computation.
+        return sizeof(n) + n.size() * sizeof(::mp_limb_t);
     }
-    return retval;
 }
 
 template <::std::size_t SSize>
 inline ::std::size_t byte_size(const ::mppp::rational<SSize> &q)
 {
-    return detail::byte_size(q.get_num()) + detail::byte_size(q.get_den());
+    // Take care of potential padding.
+    static_assert(sizeof(q) >= sizeof(::mppp::integer<SSize>) * 2u);
+    const auto pad_size = sizeof(q) - sizeof(::mppp::integer<SSize>) * 2u;
+
+    return detail::byte_size(q.get_num()) + detail::byte_size(q.get_den()) + pad_size;
 }
 
 #if defined(MPPP_WITH_MPFR)
 
 inline ::std::size_t byte_size(const ::mppp::real &r)
 {
+    // Size of r plus the dynamically-allocated storage.
+    // NOTE: not ideal here to use directly an MPFR
+    // function, perhaps in the future we can provide
+    // an implementation in mp++.
     return sizeof(r) + mpfr_custom_get_size(r.get_prec());
 }
 
@@ -104,11 +119,11 @@ template <typename T>
 constexpr auto byte_size_impl(T &&x, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::byte_size<T &&>)(::std::forward<T>(x)));
 
-// Lowest priority: use sizeof().
+// Lowest priority: default implementation, using sizeof().
 template <typename T>
-constexpr auto byte_size_impl(T &&, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(sizeof(remove_cvref_t<T>));
+constexpr auto byte_size_impl(T &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(sizeof(x));
 
-// Machinery to enable the byte_size implementation only if the return
+// Machinery to enable the byte_size() implementation only if the return
 // type is std::size_t.
 template <typename T>
 using byte_size_impl_ret_t = decltype(detail::byte_size_impl(::std::declval<T>(), priority_tag<3>{}));
