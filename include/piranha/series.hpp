@@ -523,7 +523,7 @@ struct series_rref_clearer {
 
 } // namespace detail
 
-// TODO: document that moved-from series are destructible and assignable.
+// NOTE: document that moved-from series are destructible and assignable.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -808,6 +808,10 @@ public:
     {
         return m_log2_size;
     }
+    // NOTE: the guarantee that we can
+    // always shift a s_size_type by this
+    // value is important and needs to be
+    // documents.
     static unsigned get_max_s_size()
     {
         return max_log2_size;
