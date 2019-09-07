@@ -370,6 +370,10 @@ inline constexpr bool same_packed_monomial_v = same_packed_monomial<T, U>::value
 // Monomial overflow checking.
 // NOTE: this assumes that all the monomials in the 2 ranges
 // are compatible with ss.
+// NOTE: this can be parallelised. We need:
+// - a good heuristic (should not be too difficult given
+//   the constraints on packed_monomial),
+// - the random-access iterator concept.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <typename R1, typename R2>
 requires InputRange<R1> &&InputRange<R2> &&
