@@ -13,6 +13,8 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -20,14 +22,18 @@
 #include <vector>
 
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+
+#include <mp++/integer.hpp>
 
 #include <piranha/byte_size.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/hc.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/detail/type_c.hpp>
 #include <piranha/detail/xoroshiro128_plus.hpp>
 #include <piranha/exceptions.hpp>
@@ -36,6 +42,7 @@
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/safe_cast.hpp>
+#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/ranges.hpp>
@@ -337,6 +344,82 @@ struct poly_cf_mul_expr {
     }
 };
 
+// Helper to estimate an appropriate log2 of the number of segments
+// of the destination polynomial in a multithreaded homomorphic
+// polynomial multiplication.
+template <typename RetCf, typename T1, typename T2>
+inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &v1, const ::std::vector<T2> &v2,
+                                                       const symbol_set &ss)
+{
+    using ret_key_t = typename T1::first_type;
+    static_assert(::std::is_same_v<ret_key_t, typename T2::first_type>);
+
+    // Compute the padding in the term class.
+    constexpr auto pad_size = sizeof(series_term_t<polynomial<ret_key_t, RetCf>>) - (sizeof(RetCf) + sizeof(ret_key_t));
+
+    // Preconditions.
+    assert(!v1.empty());
+    assert(!v2.empty());
+
+    // Init a xoroshiro rng, with some compile-time
+    // randomness mixed in with the sizes of v1/v2.
+    constexpr ::std::uint64_t s1 = 18379758338774109289ull;
+    constexpr ::std::uint64_t s2 = 15967298767098049689ull;
+    ::piranha::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
+                                             s2 + static_cast<::std::uint64_t>(v2.size())};
+
+    // The idea now is to compute a small amount of term-by-term
+    // multiplications and determine the average size in bytes
+    // of the produced terms. From there, we'll try to estimate the
+    // size in bytes of the series product and finally infer an
+    // adequately small number of segments.
+    constexpr int ntrials = 10;
+
+    // Temporary monomial used for term-by-term multiplications.
+    ret_key_t tmp_key;
+
+    // Cache the series sizes.
+    const auto v1_size = v1.size();
+    const auto v2_size = v2.size();
+
+    // Run the trials.
+    ::std::size_t acc = 0;
+    for (auto i = 0; i < ntrials; ++i) {
+        // Pick a random term in each series.
+        const auto idx1 = rng.template random<decltype(v1.size())>() % v1_size;
+        const auto idx2 = rng.template random<decltype(v2.size())>() % v2_size;
+
+        // Multiply monomial and coefficient.
+        ::piranha::monomial_mul(tmp_key, v1[idx1].first, v2[idx2].first, ss);
+        const auto tmp_cf = v1[idx1].second * v2[idx2].second;
+
+        // Accumulate the size of the produced term: size of monomial,
+        // coefficient, and, if present, padding.
+        acc += ::piranha::byte_size(static_cast<const ret_key_t &>(tmp_key)) + ::piranha::byte_size(tmp_cf) + pad_size;
+    }
+    // Compute the average term size.
+    const auto avg_size = static_cast<double>(acc) / ntrials;
+
+    // Estimate the total byte size of the series product. The heuristic
+    // is based on a very sparse case (i.e., we take a small percentage
+    // of the size of the product of a completely sparse multitplication). If the multiplication
+    // is denser, we overestimate the total size and we have a higher
+    // number of segments than necessary. Luckily, this does not
+    // seem to hurt performance much.
+    const auto est_total_size = 10. / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
+
+    // Compute the number of segments by enforcing a fixed
+    // amount of bytes per segment.
+    const auto nsegs
+        = ::boost::numeric_cast<typename polynomial<ret_key_t, RetCf>::s_size_type>(est_total_size / (500. * 1024.));
+
+    // Finally, compute the log2 + 1 of nsegs and return it, but
+    // make sure that it is not greater than the max_log2_size()
+    // allowed in a series.
+    return ::std::min(::piranha::safe_cast<unsigned>(::mppp::integer<1>{nsegs}.nbits()),
+                      polynomial<ret_key_t, RetCf>::get_max_s_size());
+}
+
 #if defined(_MSC_VER) && !defined(__clang__)
 
 #pragma warning(push)
@@ -346,14 +429,17 @@ struct poly_cf_mul_expr {
 
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U>
-inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned log2_nsegs)
+inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
 {
     using cf1_t = series_cf_t<T>;
     using cf2_t = series_cf_t<U>;
     using ret_key_t = series_key_t<Ret>;
     using ret_cf_t = series_cf_t<Ret>;
+    using s_size_t = typename Ret::s_size_type;
 
     // Preconditions.
+    assert(!x.empty());
+    assert(!y.empty());
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
     assert(retval.empty());
@@ -388,21 +474,26 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
             "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
     }
 
+    // Determination of log2_nsegs.
+    const auto log2_nsegs = detail::poly_mul_impl_mt_hm_compute_log2_nsegs<ret_cf_t>(v1, v2, ss);
+
     // Sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
     // they would occupy in a segmented table with 2**log2_nsegs
     // segments.
+    // NOTE: there are parallelisation opportunities here: parallel sort,
+    // computation of the segmentation in parallel, etc. Need to profile first.
     auto t_sorter = [log2_nsegs](const auto &p1, const auto &p2) {
         const auto h1 = ::piranha::hash(p1.first);
         const auto h2 = ::piranha::hash(p2.first);
 
-        return h1 % (1u << log2_nsegs) < h2 % (1u << log2_nsegs);
+        return h1 % (s_size_t(1) << log2_nsegs) < h2 % (s_size_t(1) << log2_nsegs);
     };
     ::std::sort(v1.begin(), v1.end(), t_sorter);
     ::std::sort(v2.begin(), v2.end(), t_sorter);
 
     // Cache the number of segments.
-    const auto nsegs = 1u << log2_nsegs;
+    const auto nsegs = s_size_t(1) << log2_nsegs;
 
     // Compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
@@ -419,11 +510,11 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
 
         it_t it = v.begin();
         const auto v_end = v.end();
-        for (auto i = 0u; i < nsegs; ++i) {
+        for (s_size_t i = 0; i < nsegs; ++i) {
             vseg[i].first = it;
             it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &idx, const auto &p) {
                 const auto h = ::piranha::hash(p.first);
-                return idx < h % (1u << log2_nsegs);
+                return idx < h % (s_size_t(1) << log2_nsegs);
             });
             vseg[i].second = it;
         }
@@ -442,15 +533,15 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
         decltype(v1.size()) counter1 = 0;
         decltype(v2.size()) counter2 = 0;
 
-        auto verify_seg = [log2_nsegs](unsigned i, const auto &p, auto &counter) {
+        auto verify_seg = [log2_nsegs](s_size_t i, const auto &p, auto &counter) {
             for (auto it = p.first; it != p.second; ++it) {
                 const auto h = ::piranha::hash(it->first);
-                assert(h % (1u << log2_nsegs) == i);
+                assert(h % (s_size_t(1) << log2_nsegs) == i);
                 ++counter;
             }
         };
 
-        for (auto i = 0u; i < nsegs; ++i) {
+        for (s_size_t i = 0; i < nsegs; ++i) {
             verify_seg(i, vseg1[i], counter1);
             verify_seg(i, vseg2[i], counter2);
         }
@@ -475,10 +566,11 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
     try {
         // Parallel iteration over the number of buckets of the
         // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range(0u, nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss
+        ::tbb::parallel_for(::tbb::blocked_range(s_size_t(0), nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
+                                                                       mts = retval._get_max_table_size()
 #if !defined(NDEBUG)
-                                                              ,
-                                                              &n_mults
+                                                                           ,
+                                                                       &n_mults
 #endif
         ](const auto &range) {
             // Temporary variable used in monomial multiplication.
@@ -496,10 +588,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
                 // ranges vseg1[i] * vseg2[j] end up at the bucket
                 // (i + j) % nsegs in retval. Thus, we need to select
                 // all i, j pairs such that (i + j) % nsegs == seg_idx.
-                for (auto i = 0u; i < nsegs; ++i) {
+                for (s_size_t i = 0; i < nsegs; ++i) {
                     // NOTE: if seg_idx - i ends up negative, we wrap around
                     // and the modulo reduction does the right thing.
-                    const auto j = (seg_idx - i) % (1u << log2_nsegs);
+                    const auto j = (seg_idx - i) % (s_size_t(1) << log2_nsegs);
                     assert(j < vseg2.size());
 
                     // Fetch the corresponding ranges.
@@ -518,7 +610,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
                             ::piranha::monomial_mul(tmp_key, k1, it2->first, ss);
 
                             // Check that the result ends up in the correct bucket.
-                            assert(::piranha::hash(tmp_key) % (1u << log2_nsegs) == seg_idx);
+                            assert(::piranha::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
 
                             // Attempt the insertion. The coefficients are lazily multiplied
                             // only if the insertion actually takes place.
@@ -558,6 +650,15 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, unsigned lo
                         table.erase(tmp_it);
                     }
                 }
+
+                // Check the table size against the max allowed size.
+                if (piranha_unlikely(table.size() > mts)) {
+                    piranha_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
+                                                         "polynomials resulted in a table whose size ("
+                                                             + ::piranha::detail::to_string(table.size())
+                                                             + ") is larger than the maximum allowed value ("
+                                                             + ::piranha::detail::to_string(mts) + ")");
+                }
             }
         });
 
@@ -591,6 +692,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
     using cf2_t = series_cf_t<U>;
 
     // Preconditions.
+    assert(!x.empty());
+    assert(!y.empty());
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
     assert(retval.empty());
@@ -668,6 +771,9 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
                 tab.erase(tmp_it);
             }
         }
+
+        // NOTE: no need to check the table size, as retval
+        // is not segmented.
     } catch (...) {
         // retval may now contain zero coefficients.
         // Make sure to clear it before rethrowing.
@@ -681,6 +787,7 @@ template <typename T, typename U>
 inline auto poly_mul_impl(T &&x, U &&y)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
+    using ret_key_t = series_key_t<ret_t>;
 
     assert(x.get_symbol_set() == y.get_symbol_set());
 
@@ -688,30 +795,34 @@ inline auto poly_mul_impl(T &&x, U &&y)
     ret_t retval;
     retval.set_symbol_set(x.get_symbol_set());
 
-    // Fetch the hardware concurrency.
-    // const auto hc = ::piranha::detail::hc();
+    if (x.empty() || y.empty()) {
+        // Exit early if either series is empty.
+        return retval;
+    }
 
-    // if (hc == 1u) {
-    //     // We have only a single core available,
-    //     // run the simple implementation.
-    //     detail::poly_mul_impl_simple(retval, x, y);
-    // } else {
-    //     using int_t = ::mppp::integer<1>;
-
-    //     // TODO: proper heuristic for mt mode.
-    //     // TODO: ensure hc cannot possibly be zero.
-    //     // For now, hard code to circa number of cores * 2.
-    //     const auto log2_nthreads
-    //         = ::std::min(::piranha::safe_cast<unsigned>(int_t{hc}.nbits()), retval._get_max_log2_size());
-
-    // NOTE: also need to check for homomorphicity.
-    // NOTE: ensure that log2_nsegs is within the
-    // retval._get_max_log2_size(), which ensures we can
-    // always use it as a shift argument for unsigned.
-
-    // detail::poly_mul_impl_mt(retval, x, y, 11);
-    detail::poly_mul_impl_simple(retval, x, y);
-    // }
+    if constexpr (::std::conjunction_v<is_homomorphically_hashable_monomial<ret_key_t>,
+                                       // Need also to be able to measure the byte size
+                                       // of the key/cf of ret_t, via const lvalue references.
+                                       is_size_measurable<const ret_key_t &>,
+                                       is_size_measurable<const series_cf_t<ret_t> &>>) {
+        // Homomorphic hashing is available, we can run
+        // the multi-threaded implementation.
+        if (x.size() < 1000u / y.size() || ::piranha::detail::hc() == 1u) {
+            // If the operands are "small" (less than N
+            // term-by-term mults), or we just have 1 core
+            // available, just run the simple
+            // implementation.
+            detail::poly_mul_impl_simple(retval, x, y);
+        } else {
+            // "Large" operands and multiple cores available,
+            // run the MT implementation.
+            detail::poly_mul_impl_mt_hm(retval, x, y);
+        }
+    } else {
+        // The monomial does not have homomorphic hashing,
+        // just use the simple implementation.
+        detail::poly_mul_impl_simple(retval, x, y);
+    }
 
     return retval;
 }
