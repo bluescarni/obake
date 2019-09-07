@@ -805,7 +805,7 @@ public:
     {
         return m_log2_size;
     }
-    unsigned _get_max_log2_size() const
+    static unsigned _get_max_log2_size()
     {
         return max_log2_size;
     }
