@@ -521,7 +521,7 @@ struct series_rref_clearer {
 
 } // namespace detail
 
-// TODO: document that moved-from series are destructible and assignable.
+// NOTE: document that moved-from series are destructible and assignable.
 #if defined(PIRANHA_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
@@ -538,18 +538,20 @@ class series
               >
     friend class series;
 
+public:
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
     using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
     using s_table_type = ::boost::container::small_vector<table_type, 1>;
 
     // Shortcut for the segmented table size type.
-    using s_size_t = typename s_table_type::size_type;
+    using s_size_type = typename s_table_type::size_type;
 
+private:
     // The maximum value of the m_log2_size member. Fix
     // it to the number of bits - 1 so that it's always
-    // safe to bit shift a value of type s_size_t by
+    // safe to bit shift a value of type s_size_type by
     // this amount.
-    static constexpr unsigned max_log2_size = static_cast<unsigned>(detail::limits_digits<s_size_t> - 1);
+    static constexpr unsigned max_log2_size = static_cast<unsigned>(detail::limits_digits<s_size_type> - 1);
 
 public:
     using size_type = typename table_type::size_type;
@@ -615,7 +617,7 @@ public:
             // table by table, relying on the fact that the new keys
             // will hash to the same table indices as the original ones.
             // NOTE: this could be parallelised, if needed.
-            for (s_size_t i = 0; i < (s_size_t(1) << x_log2_size); ++i) {
+            for (s_size_type i = 0; i < (s_size_type(1) << x_log2_size); ++i) {
                 // Extract references to the tables in x and this.
                 auto &xt = x.m_s_table[i];
                 auto &tab = m_s_table[i];
@@ -733,7 +735,7 @@ public:
 
             // Make sure the number of tables is consistent
             // with the log2 size.
-            assert(m_s_table.size() == (s_size_t(1) << m_log2_size));
+            assert(m_s_table.size() == (s_size_type(1) << m_log2_size));
 
             // Make sure the size of each table does not exceed the limit.
             const auto mts = _get_max_table_size();
@@ -753,7 +755,7 @@ public:
             // belong to, according to the first-level hash.
             if (m_log2_size > 0u) {
                 const auto s_table_size = m_s_table.size();
-                for (s_size_t i = 0; i < s_table_size; ++i) {
+                for (s_size_type i = 0; i < s_table_size; ++i) {
                     for (const auto &p : m_s_table[i]) {
                         assert((::piranha::hash(p.first) & (s_table_size - 1u)) == i);
                     }
@@ -796,14 +798,19 @@ public:
         // so that we don't have to worry about shifting
         // too much. This will anyway be optimised into a
         // shift by the compiler.
-        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>) / (s_size_t(1) << m_log2_size));
+        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>)
+                                      / (s_size_type(1) << m_log2_size));
     }
 
-    unsigned _get_log2_size() const
+    unsigned get_s_size() const
     {
         return m_log2_size;
     }
-    unsigned _get_max_log2_size() const
+    // NOTE: the guarantee that we can
+    // always shift a s_size_type by this
+    // value is important and needs to be
+    // documents.
+    static unsigned get_max_s_size()
     {
         return max_log2_size;
     }
@@ -862,14 +869,14 @@ private:
         // NOTE: ensure m_local_it is default-inited, so it is in
         // a known state. This is also exploited in the implementation
         // of begin()/end().
-        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_t idx)
+        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_type idx)
             : m_s_table_ptr(s_table_ptr), m_idx(idx), m_local_it{}
         {
         }
 
         // Init with a pointer to the segmented table, an index and a local iterator.
         // Used in the find() implementations.
-        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_t idx, local_it_t<T> local_it)
+        explicit iterator_impl(s_table_ptr_t s_table_ptr, s_size_type idx, local_it_t<T> local_it)
             : m_s_table_ptr(s_table_ptr), m_idx(idx), m_local_it(local_it)
         {
             // NOTE: make sure this is never inited with the end
@@ -1002,7 +1009,7 @@ private:
 
     private:
         s_table_ptr_t m_s_table_ptr;
-        s_size_t m_idx;
+        s_size_type m_idx;
         local_it_t<T> m_local_it;
     };
 
@@ -1093,7 +1100,7 @@ public:
     // Reserve enough space for n elements.
     void reserve(size_type n)
     {
-        const auto n_tables = s_size_t(1) << m_log2_size;
+        const auto n_tables = s_size_type(1) << m_log2_size;
         const auto n_per_table = static_cast<size_type>(n / n_tables + static_cast<unsigned>((n % n_tables) != 0u));
 
         for (auto &t : m_s_table) {
@@ -1127,7 +1134,7 @@ public:
         }
 
         // NOTE: construct + move assign for exception safety.
-        m_s_table = s_table_type(s_size_t(1) << l);
+        m_s_table = s_table_type(s_size_type(1) << l);
         m_log2_size = l;
     }
 
@@ -1153,7 +1160,7 @@ private:
 
         // Helper to find k in a single table belonging
         // to a segmented table st at index idx.
-        auto find_single_table = [&s, &k](auto &st, s_size_t idx) {
+        auto find_single_table = [&s, &k](auto &st, s_size_type idx) {
             assert(idx < st.size());
 
             // Get out a reference to the table.
@@ -1180,7 +1187,7 @@ private:
         } else {
             // Segmented table case.
             const auto k_hash = ::piranha::hash(k);
-            const auto idx = static_cast<s_size_t>(k_hash & (s_table_size - 1u));
+            const auto idx = static_cast<s_size_type>(k_hash & (s_table_size - 1u));
             return find_single_table(s.m_s_table, idx);
         }
     }
@@ -1556,7 +1563,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     const auto &orig_ss = from.get_symbol_set();
 
     // Set the number of segments, reserve space.
-    const auto from_log2_size = from._get_log2_size();
+    const auto from_log2_size = from.get_s_size();
     to.set_n_segments(from_log2_size);
     to.reserve(from.size());
 

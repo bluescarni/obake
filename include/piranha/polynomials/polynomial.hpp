@@ -18,6 +18,7 @@
 
 #include <piranha/config.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
+#include <piranha/detail/to_string.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/series.hpp>
 #include <piranha/symbols.hpp>

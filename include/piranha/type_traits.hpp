@@ -646,6 +646,14 @@ using is_iterator = ::std::conjunction<
     ::std::is_swappable<T>,
     // Valid std::iterator_traits.
     detail::has_iterator_traits<T>,
+    // difference_­type is a signed integer type or void.
+    // NOTE: it seems like this requirement might have been added
+    // somewhere between C++17 and C++20. In previous versions
+    // of these type traits, a requirement similar to this one
+    // was present in the input_iterator type trait.
+    ::std::disjunction<::std::is_same<detected_t<detail::it_traits_difference_type, T>, void>,
+                       ::std::conjunction<::std::is_integral<detected_t<detail::it_traits_difference_type, T>>,
+                                          ::std::is_signed<detected_t<detail::it_traits_difference_type, T>>>>,
     // Lvalue dereferenceable.
     is_detected<detail::deref_t, ::std::add_lvalue_reference_t<T>>,
     // Lvalue preincrementable, returning T &.
@@ -754,17 +762,6 @@ using is_input_iterator = ::std::conjunction<
     // of a specific functionality and on lvalues, unless rvalues
     // are specifically required.
     is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
-    // Quoting the standard:
-    // """
-    // For every iterator type X for which equality is defined, there is a corresponding signed integer type called the
-    // difference type of the iterator.
-    // """
-    // http://eel.is/c++draft/iterator.requirements#general-1
-    // The equality comparable requirement appears in the input iterator requirements,
-    // and it is then inherited by all the other iterator types (i.e., forward iterator,
-    // bidir iterator, etc.).
-    ::std::is_integral<detected_t<detail::it_traits_difference_type, T>>,
-    ::std::is_signed<detected_t<detail::it_traits_difference_type, T>>,
     // *it returns it_traits::reference_type, both in mutable and const forms.
     // NOTE: it_traits::reference_type is never nonesuch, we tested its availability
     // in is_iterator.

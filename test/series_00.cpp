@@ -1205,14 +1205,14 @@ TEST_CASE("series_generic_ctor")
         {
             s1_t s1a{s1_int};
             REQUIRE(s1a.size() == 4u);
-            REQUIRE(s1a._get_log2_size() == s_idx);
+            REQUIRE(s1a.get_s_size() == s_idx);
             for (const auto &p : s1a) {
                 REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
             }
 
             s1_t s2a{std::move(s1_int)};
             REQUIRE(s2a.size() == 4u);
-            REQUIRE(s2a._get_log2_size() == s_idx);
+            REQUIRE(s2a.get_s_size() == s_idx);
             for (const auto &p : s2a) {
                 REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
             }
@@ -1228,7 +1228,7 @@ TEST_CASE("series_generic_ctor")
         s1_double.add_term(pm_t{4, 5, 6}, .2);
         s1_double.add_term(pm_t{7, 8, 9}, -.2);
         REQUIRE(s1_int_t{s1_double}.empty());
-        REQUIRE(s1_int_t{s1_double}._get_log2_size() == s_idx);
+        REQUIRE(s1_int_t{s1_double}.get_s_size() == s_idx);
     }
 
     // Construction from a series with higher rank.
@@ -1344,12 +1344,12 @@ TEST_CASE("series_swap")
     REQUIRE(s1.size() == 1u);
     REQUIRE(s1.get_symbol_set() == symbol_set{});
     REQUIRE(s1._get_s_table().size() == 1u);
-    REQUIRE(s1._get_log2_size() == 0u);
+    REQUIRE(s1.get_s_size() == 0u);
 
     REQUIRE(s0.size() == 4u);
     REQUIRE(s0.get_symbol_set() == symbol_set{"x", "y", "z"});
     REQUIRE(s0._get_s_table().size() == 2u);
-    REQUIRE(s0._get_log2_size() == 1u);
+    REQUIRE(s0.get_s_size() == 1u);
     for (const auto &p : s0) {
         REQUIRE((abs(p.second) == 1 || abs(p.second) == 2));
     }

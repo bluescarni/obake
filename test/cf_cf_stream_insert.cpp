@@ -202,3 +202,39 @@ TEST_CASE("cf_stream_insert_test")
     REQUIRE(!StreamInsertableCf<int_si01 &&>);
 #endif
 }
+
+#if defined(MPPP_HAVE_GCC_INT128)
+
+TEST_CASE("cf_stream_insert_int128_test")
+{
+    REQUIRE(is_stream_insertable_cf_v<__int128_t>);
+    REQUIRE(is_stream_insertable_cf_v<__int128_t &>);
+    REQUIRE(is_stream_insertable_cf_v<const __int128_t &>);
+    REQUIRE(is_stream_insertable_cf_v<__int128_t &&>);
+
+    REQUIRE(is_stream_insertable_cf_v<__uint128_t>);
+    REQUIRE(is_stream_insertable_cf_v<__uint128_t &>);
+    REQUIRE(is_stream_insertable_cf_v<const __uint128_t &>);
+    REQUIRE(is_stream_insertable_cf_v<__uint128_t &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(StreamInsertableCf<__int128_t>);
+    REQUIRE(StreamInsertableCf<__int128_t &>);
+    REQUIRE(StreamInsertableCf<const __int128_t &>);
+    REQUIRE(StreamInsertableCf<__int128_t &&>);
+
+    REQUIRE(StreamInsertableCf<__uint128_t>);
+    REQUIRE(StreamInsertableCf<__uint128_t &>);
+    REQUIRE(StreamInsertableCf<const __uint128_t &>);
+    REQUIRE(StreamInsertableCf<__uint128_t &&>);
+#endif
+
+    std::ostringstream oss;
+    cf_stream_insert(oss, __int128_t(-42));
+    REQUIRE(oss.str() == "-42");
+    oss.str("");
+    cf_stream_insert(oss, __uint128_t(42));
+    REQUIRE(oss.str() == "42");
+}
+
+#endif
