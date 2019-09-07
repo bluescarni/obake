@@ -29,9 +29,6 @@ int main()
     auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
     auto tmp_g(g);
 
-    std::cout << "f: " << f << '\n';
-    std::cout << "g: " << g << '\n';
-
     for (int i = 1; i < 16; ++i) {
         f *= tmp_f;
         g *= tmp_g;
@@ -41,8 +38,6 @@ int main()
         simple_timer t;
         ret = f * g;
     }
-    for (const auto &t : ret._get_s_table()) {
-        std::cout << t.size() << '\n';
-    }
+
     std::cout << ret.size() << '\n';
 }
