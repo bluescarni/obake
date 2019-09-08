@@ -555,7 +555,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     retval.set_n_segments(log2_nsegs);
 
 #if !defined(NDEBUG)
-    // Couple of debug variables that we use to
+    // Debug variable that we use to
     // check that all term-by-term multiplications
     // are performed.
     ::std::atomic<unsigned long long> n_mults(0);
