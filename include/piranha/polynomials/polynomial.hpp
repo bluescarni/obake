@@ -406,7 +406,9 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // is denser, we overestimate the total size and we have a higher
     // number of segments than necessary. Luckily, this does not
     // seem to hurt performance much.
-    const auto est_total_size = 10. / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
+    // NOTE: this factor might become a user-tunable parameter.
+    // Nedd to test more.
+    const auto est_total_size = 5. / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
 
     // Compute the number of segments by enforcing a fixed
     // amount of bytes per segment.

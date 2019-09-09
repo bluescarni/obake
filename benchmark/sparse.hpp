@@ -11,6 +11,7 @@
 
 #include <iostream>
 
+#include <piranha/byte_size.hpp>
 #include <piranha/polynomials/polynomial.hpp>
 
 #include "simple_timer.hpp"
@@ -19,7 +20,7 @@ namespace piranha_benchmark
 {
 
 template <typename M, typename C>
-inline void sparse_benchmark(int n)
+inline auto sparse_benchmark(int n)
 {
     using namespace piranha;
 
@@ -41,7 +42,12 @@ inline void sparse_benchmark(int n)
         ret = f * g;
     }
 
-    std::cout << ret.size() << '\n';
+    std::cout << "Total number of terms             : " << ret.size() << '\n';
+    std::cout << "Total number of tables            : " << ret._get_s_table().size() << '\n';
+    std::cout << "Number of terms in the first table: " << ret._get_s_table()[0].size() << '\n';
+    std::cout << "Total size in bytes               : " << byte_size(ret) << '\n';
+
+    return ret;
 }
 
 } // namespace piranha_benchmark
