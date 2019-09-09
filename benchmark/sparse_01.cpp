@@ -17,5 +17,5 @@ using namespace piranha_benchmark;
 
 int main()
 {
-    sparse_benchmark<packed_monomial<unsigned long>, mppp::integer<2>>(16);
+    sparse_benchmark<packed_monomial<unsigned long>, mppp::integer<2>>(12);
 }
