@@ -418,6 +418,8 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // Finally, compute the log2 + 1 of nsegs and return it, but
     // make sure that it is not greater than the max_log2_size()
     // allowed in a series.
+    // NOTE: even if nsegs is zero, this will still yield some
+    // useful value, as nbits() on zero will return zero.
     return ::std::min(::piranha::safe_cast<unsigned>(::mppp::integer<1>{nsegs}.nbits()),
                       polynomial<ret_key_t, RetCf>::get_max_s_size());
 }
@@ -457,6 +459,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     // rref_cleaner, as usual).
     // NOTE: drop the const from the key type in order
     // to allow mutability.
+    // NOTE: need to better assess the benefits of
+    // copying the input series.
     auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
     ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
                                                           ::boost::make_transform_iterator(x.end(), p_transform));
@@ -775,10 +779,12 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
         // NOTE: no need to check the table size, as retval
         // is not segmented.
     } catch (...) {
+        // LCOV_EXCL_START
         // retval may now contain zero coefficients.
         // Make sure to clear it before rethrowing.
         tab.clear();
         throw;
+        // LCOV_EXCL_STOP
     }
 }
 

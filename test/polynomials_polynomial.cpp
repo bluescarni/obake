@@ -10,6 +10,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
 
 #if defined(PIRANHA_HAVE_STRING_VIEW)
@@ -18,11 +19,16 @@
 
 #endif
 
+#include <mp++/integer.hpp>
+
+#include <piranha/detail/limits.hpp>
+#include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/polynomials/polynomial.hpp>
 #include <piranha/symbols.hpp>
 
 #include "catch.hpp"
+#include "test_utils.hpp"
 
 using namespace piranha;
 
@@ -31,6 +37,8 @@ TEST_CASE("make_polynomials_test")
     using Catch::Matchers::Contains;
 
     using poly_t = polynomial<packed_monomial<long>, double>;
+
+    piranha_test::disable_slow_stack_traces();
 
     REQUIRE(make_polynomials<poly_t>().size() == 0u);
     REQUIRE(make_polynomials<poly_t>(symbol_set{}).size() == 0u);
@@ -128,14 +136,61 @@ TEST_CASE("polynomial_mul_detail_test")
     REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p3_t, p1_t>>);
 }
 
-TEST_CASE("polynomial_mul_test")
+TEST_CASE("polynomial_mul_simpl_test")
 {
-    using poly_t = polynomial<packed_monomial<long>, double>;
+    using Catch::Matchers::Contains;
 
-    auto [a, b, c] = make_polynomials<poly_t>("a", "b", "c");
+    using pm_t = packed_monomial<long>;
 
-    auto p1 = 3 * a + 4 * b + 5 * c;
-    auto p2 = -a + 6 * b - 7 * c;
+    using cf_types = std::tuple<double, mppp::integer<1>>;
 
-    std::cout << p1 * p2 << '\n';
+    detail::tuple_for_each(cf_types{}, [](auto x) {
+        using poly_t = polynomial<pm_t, decltype(x)>;
+
+        // A few simple tests.
+        poly_t retval;
+        polynomials::detail::poly_mul_impl_simple(retval, poly_t{3}, poly_t{4});
+        REQUIRE(retval == 12);
+        retval.clear();
+
+        // Examples with cancellations.
+        auto [a, b, c] = make_polynomials<poly_t>(symbol_set{"a", "b", "c"}, "a", "b", "c");
+        retval.set_symbol_set(symbol_set{"a", "b", "c"});
+        polynomials::detail::poly_mul_impl_simple(retval, a + b, a - b);
+        REQUIRE(retval == a * a - b * b);
+        retval.clear();
+
+        retval.set_symbol_set(symbol_set{"a", "b", "c"});
+        polynomials::detail::poly_mul_impl_simple(retval, a * a + b * b, (a + b) * (a - b));
+        REQUIRE(retval == a * a * a * a - b * b * b * b);
+        retval.clear();
+
+        // An overflowing example.
+        retval.set_symbol_set(symbol_set{"a"});
+        a.clear();
+        a.set_symbol_set(symbol_set{"a"});
+        b.clear();
+        b.set_symbol_set(symbol_set{"a"});
+        a.add_term(pm_t{std::get<1>(detail::limits_minmax<long>)}, 1);
+        b.add_term(pm_t{std::get<1>(detail::limits_minmax<long>)}, 1);
+
+        REQUIRE_THROWS_WITH(
+            polynomials::detail::poly_mul_impl_simple(retval, a, b),
+            Contains(
+                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
+        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error);
+
+        a.clear();
+        a.set_symbol_set(symbol_set{"a"});
+        b.clear();
+        b.set_symbol_set(symbol_set{"a"});
+        a.add_term(pm_t{std::get<0>(detail::limits_minmax<long>)}, 1);
+        b.add_term(pm_t{std::get<0>(detail::limits_minmax<long>)}, 1);
+
+        REQUIRE_THROWS_WITH(
+            polynomials::detail::poly_mul_impl_simple(retval, a, b),
+            Contains(
+                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
+        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error);
+    });
 }
