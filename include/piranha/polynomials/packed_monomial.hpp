@@ -506,6 +506,7 @@ template <typename R1, typename R2,
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
     if constexpr (is_signed_v<value_type>) {
+        std::cout << "s_size is: " << s_size << '\n';
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
