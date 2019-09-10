@@ -18,10 +18,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <utility>
 #include <vector>
-
-#include <boost/iterator/transform_iterator.hpp>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
@@ -37,7 +34,6 @@
 #include <piranha/polynomials/monomial_mul.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
@@ -761,26 +757,4 @@ TEST_CASE("homomorphic_hash")
         }
 #endif
     });
-}
-
-struct poly_term_key_ref_extractor {
-    template <typename P>
-    constexpr const typename P::first_type &operator()(const P *p) const noexcept
-    {
-        return p->first;
-    }
-};
-
-// Test case to verify the ranges we use
-// during polynomial multiplication are overflow-checkable.
-TEST_CASE("poly_mul_overflow_checking_tt")
-{
-    using vptr = std::vector<const std::pair<const packed_monomial<long>, double> *>;
-
-    using rt = decltype(detail::make_range(
-        boost::make_transform_iterator(std::declval<vptr &>().cbegin(), poly_term_key_ref_extractor{}),
-        boost::make_transform_iterator(std::declval<vptr &>().cend(), poly_term_key_ref_extractor{})));
-
-    REQUIRE(
-        std::is_same_v<bool, decltype(piranha::polynomials::monomial_range_overflow_check(rt{}, rt{}, symbol_set{}))>);
 }
