@@ -40,21 +40,14 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
-constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set &ss, priority_tag<2>)
+constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set &ss, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::monomial_range_overflow_check<T &&, U &&>)(::std::forward<T>(x),
                                                                                            ::std::forward<U>(y), ss));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set &ss, priority_tag<1>)
+constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set &ss, priority_tag<0>)
     PIRANHA_SS_FORWARD_FUNCTION(monomial_range_overflow_check(::std::forward<T>(x), ::std::forward<U>(y), ss));
-
-// Lowest priority: default implementation, returns true.
-template <typename T, typename U>
-constexpr bool monomial_range_overflow_check_impl(T &&, U &&, const symbol_set &, priority_tag<0>) noexcept
-{
-    return true;
-}
 
 } // namespace detail
 
@@ -64,7 +57,7 @@ struct monomial_range_overflow_check_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y, const symbol_set &ss) const
         PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::monomial_range_overflow_check_impl(
-            ::std::forward<T>(x), ::std::forward<U>(y), ss, detail::priority_tag<2>{})))
+            ::std::forward<T>(x), ::std::forward<U>(y), ss, detail::priority_tag<1>{})))
 };
 
 inline constexpr auto monomial_range_overflow_check = monomial_range_overflow_check_msvc{};
@@ -74,7 +67,7 @@ inline constexpr auto monomial_range_overflow_check = monomial_range_overflow_ch
 // NOTE: as usual, cast the return value to bool.
 inline constexpr auto monomial_range_overflow_check = [](auto &&x, auto &&y, const symbol_set &ss)
     PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::monomial_range_overflow_check_impl(
-        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss, detail::priority_tag<2>{})));
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss, detail::priority_tag<1>{})));
 
 #endif
 
