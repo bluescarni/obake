@@ -523,6 +523,11 @@ template <typename R1, typename R2,
                 }
             }();
 
+            std::cout << "Checking for overflow.\nLimits1: " << limits1[i].first << ", " << limits1[i].second << '\n';
+            std::cout << limits2[i].first << ", " << limits2[i].second << '\n';
+            std::cout << "Addmin/max are: " << add_min << ", " << add_max << '\n';
+            std::cout << "Limits are: " << lim_min << ", " << lim_max << "\n\n\n";
+
             // NOTE: an overflow condition will likely result in an exception
             // or some other error handling. Optimise for the non-overflow case.
             if (piranha_unlikely(add_min < lim_min || add_max > lim_max)) {
