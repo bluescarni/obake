@@ -287,8 +287,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     for (const auto &p : ins_map) {
         const auto tmp_size = p.second.size();
         // LCOV_EXCL_START
-        if (piranha_unlikely(tmp_size
-                             > ::std::get<1>(::piranha::detail::limits_minmax<decltype(s.size())>) - merged_size)) {
+        if (piranha_unlikely(tmp_size > ::piranha::detail::limits_max<decltype(s.size())> - merged_size)) {
             piranha_throw(::std::overflow_error, "Overflow while trying to merge new symbols in a packed monomial: the "
                                                  "size of the merged monomial is too large");
         }
@@ -514,7 +513,8 @@ template <typename R1, typename R2,
                 // NOTE: need to special-case s_size == 1, in which case
                 // the component limits are the full numerical range of the type.
                 if (s_size == 1u) {
-                    return ::piranha::detail::limits_minmax<value_type>;
+                    return ::std::make_tuple(::piranha::detail::limits_min<value_type>,
+                                             ::piranha::detail::limits_max<value_type>);
                 } else {
                     const auto &lims
                         = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
@@ -535,7 +535,7 @@ template <typename R1, typename R2,
 
             // NOTE: like above, special-case s_size == 1.
             const auto lim_max
-                = s_size == 1u ? ::std::get<1>(::piranha::detail::limits_minmax<value_type>)
+                = s_size == 1u ? ::piranha::detail::limits_max<value_type>
                                : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
             if (piranha_unlikely(add_max > lim_max)) {

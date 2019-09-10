@@ -17,7 +17,6 @@
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -117,7 +116,7 @@ inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> =
     series_rank_impl<C> + 1u
 #else
     []() {
-        static_assert(series_rank_impl<C> < ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error");
+        static_assert(series_rank_impl<C> < limits_max<::std::size_t>, "Overflow error");
         return series_rank_impl<C> + 1u;
     }()
 #endif
@@ -798,8 +797,7 @@ public:
         // so that we don't have to worry about shifting
         // too much. This will anyway be optimised into a
         // shift by the compiler.
-        return static_cast<size_type>(::std::get<1>(detail::limits_minmax<size_type>)
-                                      / (s_size_type(1) << m_log2_size));
+        return static_cast<size_type>(detail::limits_max<size_type> / (s_size_type(1) << m_log2_size));
     }
 
     unsigned get_s_size() const

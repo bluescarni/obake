@@ -79,7 +79,7 @@ constexpr auto k_packing_compute_deltas()
     // NOTE: the bit width for signed integral types does *not* include
     // the sign bit already.
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
-    static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
+    static_assert(bit_width <= limits_max<::std::size_t>, "Overflow error.");
 
     // Number of rows of the table that will be returned. Each row
     // corresponds to a different bit width for the deltas, starting
@@ -136,7 +136,7 @@ template <typename T>
 constexpr auto k_packing_compute_cvs()
 {
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
-    static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
+    static_assert(bit_width <= limits_max<::std::size_t>, "Overflow error.");
 
     constexpr auto nrows = static_cast<::std::size_t>(bit_width - 3u);
     constexpr auto ncols = static_cast<::std::size_t>(bit_width / 3u + 1u);
@@ -165,7 +165,7 @@ template <typename T>
 constexpr auto k_packing_compute_limits()
 {
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
-    static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
+    static_assert(bit_width <= limits_max<::std::size_t>, "Overflow error.");
 
     constexpr auto nrows = static_cast<::std::size_t>(bit_width - 3u);
     constexpr auto ncols = static_cast<::std::size_t>(bit_width / 3u);
@@ -224,7 +224,7 @@ template <typename T>
 constexpr auto k_packing_compute_encoded_limits()
 {
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
-    static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
+    static_assert(bit_width <= limits_max<::std::size_t>, "Overflow error.");
 
     // Number of rows: from the max vector size (bit_width / 3u) down to 2.
     constexpr auto nrows = static_cast<::std::size_t>(bit_width / 3u - 2u + 1u);
@@ -280,7 +280,7 @@ template <typename T>
 constexpr auto k_packing_compute_size_to_bits_table()
 {
     constexpr auto bit_width = static_cast<unsigned>(limits_digits<T>);
-    static_assert(bit_width <= ::std::get<1>(limits_minmax<::std::size_t>), "Overflow error.");
+    static_assert(bit_width <= limits_max<::std::size_t>, "Overflow error.");
 
     // Number of rows: from vector size 1 to the max size (bit_width / 3u).
     constexpr auto nrows = static_cast<::std::size_t>(bit_width / 3u);

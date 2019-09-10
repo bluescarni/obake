@@ -114,10 +114,10 @@ TEST_CASE("safe_convert_integrals")
     REQUIRE(!piranha::safe_convert(u, __int128_t{-30}));
     REQUIRE(u == 30u);
 
-    if constexpr (std::get<1>(piranha::detail::limits_minmax<__int128_t>) > std::numeric_limits<int>::max()
-                  && std::get<1>(piranha::detail::limits_minmax<__uint128_t>) > std::numeric_limits<unsigned>::max()) {
-        REQUIRE(!piranha::safe_convert(n, std::get<1>(piranha::detail::limits_minmax<__int128_t>)));
-        REQUIRE(!piranha::safe_convert(u, std::get<1>(piranha::detail::limits_minmax<__uint128_t>)));
+    if constexpr ((piranha::detail::limits_max<__int128_t>) > std::numeric_limits<int>::max()
+                  && (piranha::detail::limits_max<__uint128_t>) > std::numeric_limits<unsigned>::max()) {
+        REQUIRE(!piranha::safe_convert(n, piranha::detail::limits_max<__int128_t>));
+        REQUIRE(!piranha::safe_convert(u, piranha::detail::limits_max<__uint128_t>));
     }
 
 #endif
@@ -202,8 +202,8 @@ TEST_CASE("safe_convert_mppp_integer")
     REQUIRE(out == -33);
     REQUIRE(piranha::safe_convert(out, __uint128_t{32}));
     REQUIRE(out == 32);
-    REQUIRE(!piranha::safe_convert(i128, int_t{std::get<1>(piranha::detail::limits_minmax<__int128_t>)} + 1));
-    REQUIRE(!piranha::safe_convert(ui128, int_t{std::get<1>(piranha::detail::limits_minmax<__uint128_t>)} + 1));
+    REQUIRE(!piranha::safe_convert(i128, int_t{piranha::detail::limits_max<__int128_t>} + 1));
+    REQUIRE(!piranha::safe_convert(ui128, int_t{piranha::detail::limits_max<__uint128_t>} + 1));
 
 #endif
 
