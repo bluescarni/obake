@@ -58,35 +58,34 @@ namespace detail
 // Implementation for C++ floating-point types.
 // Will use the std::fma() family of functions,
 // if they have fast implementations.
-#if defined(PIRANHA_HAVE_CONCEPTS)
-template <typename T>
-requires FloatingPoint<T>
-#else
-template <typename T, ::std::enable_if_t<::std::is_floating_point_v<T>, int> = 0>
-#endif
-    inline void fma3(T &ret, const T &x, const T &y) noexcept
-{
-    if constexpr (::std::is_same_v<T, float>) {
 #if defined(FP_FAST_FMAF)
-        ret = ::std::fmaf(x, y, ret);
-#else
-        ret += x * y;
-#endif
-    } else if constexpr (::std::is_same_v<T, double>) {
-#if defined(FP_FAST_FMA)
-        ret = ::std::fma(x, y, ret);
-#else
-        ret += x * y;
-#endif
-    } else {
-#if defined(FP_FAST_FMAL)
-        ret = ::std::fmal(x, y, ret);
-#else
-        ret += x * y;
-#endif
-    }
+
+inline void fma3(float &ret, const float &x, const float &y)
+{
+    ret = ::std::fmaf(x, y, ret);
 }
 
+#endif
+
+#if defined(FP_FAST_FMA)
+
+inline void fma3(double &ret, const double &x, const double &y)
+{
+    ret = ::std::fma(x, y, ret);
+}
+
+#endif
+
+#if defined(FP_FAST_FMAL)
+
+inline void fma3(long double &ret, const long double &x, const long double &y)
+{
+    ret = ::std::fmal(x, y, ret);
+}
+
+#endif
+
+// Implementation for the mp++ classes.
 template <::std::size_t SSize>
 inline void fma3(::mppp::integer<SSize> &ret, const ::mppp::integer<SSize> &x, const ::mppp::integer<SSize> &y)
 {
@@ -113,19 +112,14 @@ inline void fma3(::mppp::real128 &ret, const ::mppp::real128 &x, const ::mppp::r
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U, typename V>
-constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<2>)
+constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<1>)
     PIRANHA_SS_FORWARD_FUNCTION((customisation::fma3<T &&, U &&, V &&>)(::std::forward<T>(x), ::std::forward<U>(y),
                                                                         ::std::forward<V>(z)));
 
 // Unqualified function call implementation.
 template <typename T, typename U, typename V>
-constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(fma3(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z)));
-
-// Lowest priority: default implementation.
-template <typename T, typename U, typename V>
 constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) += ::std::forward<U>(y) * ::std::forward<V>(z));
+    PIRANHA_SS_FORWARD_FUNCTION(fma3(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z)));
 
 } // namespace detail
 
@@ -135,7 +129,7 @@ struct fma3_msvc {
     template <typename T, typename U, typename V>
     constexpr auto operator()(T &&x, U &&y, V &&z) const
         PIRANHA_SS_FORWARD_MEMBER_FUNCTION(void(detail::fma3_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                  ::std::forward<V>(z), detail::priority_tag<2>{})))
+                                                                  ::std::forward<V>(z), detail::priority_tag<1>{})))
 };
 
 inline constexpr auto fma3 = fma3_msvc{};
@@ -144,7 +138,7 @@ inline constexpr auto fma3 = fma3_msvc{};
 
 inline constexpr auto fma3 = [](auto &&x, auto &&y, auto &&z)
     PIRANHA_SS_FORWARD_LAMBDA(void(detail::fma3_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y),
-                                                     ::std::forward<decltype(z)>(z), detail::priority_tag<2>{})));
+                                                     ::std::forward<decltype(z)>(z), detail::priority_tag<1>{})));
 
 #endif
 

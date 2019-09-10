@@ -68,20 +68,21 @@ TEST_CASE("monomial_range_overflow_check_test")
     REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<ns::mroc00>>);
 
     REQUIRE(!monomial_range_overflow_check(std::vector<ns::mroc00>{}, std::vector<ns::mroc00>{}, symbol_set{}));
-    REQUIRE(monomial_range_overflow_check(std::vector<ns::mroc00>{}, std::list<ns::mroc00>{}, symbol_set{}));
-    REQUIRE(monomial_range_overflow_check(std::list<ns::mroc00>{}, std::vector<ns::mroc00>{}, symbol_set{}));
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<ns::mroc00>, std::list<ns::mroc00>>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<std::list<ns::mroc00>, std::vector<ns::mroc00>>);
 
     REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<ns::nomroc00>, std::vector<ns::nomroc00>>);
 
     REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<mroc01>, void>);
     REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<mroc01>>);
 
-    REQUIRE(monomial_range_overflow_check(std::vector<mroc01>{}, std::vector<mroc01>{}, symbol_set{}));
     REQUIRE(!monomial_range_overflow_check(static_cast<const std::vector<mroc01> &>(std::vector<mroc01>{}),
                                            static_cast<const std::vector<mroc01> &>(std::vector<mroc01>{}),
                                            symbol_set{}));
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<const std::vector<ns::mroc00> &, const std::list<ns::mroc00> &>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<const std::list<ns::mroc00> &, const std::vector<ns::mroc00> &>);
 
-    REQUIRE(are_overflow_testable_monomial_ranges_v<std::vector<nomroc01>, std::vector<nomroc01>>);
+    REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<nomroc01>, std::vector<nomroc01>>);
     REQUIRE(!are_overflow_testable_monomial_ranges_v<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
 
 #if defined(PIRANHA_HAVE_CONCEPTS)
@@ -95,7 +96,7 @@ TEST_CASE("monomial_range_overflow_check_test")
     REQUIRE(!OverflowTestableMonomialRanges<std::vector<mroc01>, void>);
     REQUIRE(!OverflowTestableMonomialRanges<void, std::vector<mroc01>>);
 
-    REQUIRE(OverflowTestableMonomialRanges<std::vector<nomroc01>, std::vector<nomroc01>>);
+    REQUIRE(!OverflowTestableMonomialRanges<std::vector<nomroc01>, std::vector<nomroc01>>);
     REQUIRE(!OverflowTestableMonomialRanges<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
 #endif
 }

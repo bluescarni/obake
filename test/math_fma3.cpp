@@ -6,6 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cmath>
+
 #include <mp++/config.hpp>
 #include <mp++/integer.hpp>
 
@@ -24,19 +26,31 @@ using namespace piranha;
 
 TEST_CASE("fma3_fp")
 {
+#if defined(FP_FAST_FMAF)
     auto xf = 1.f;
     piranha::fma3(xf, 3.f, 4.f);
     REQUIRE(xf == 13.f);
+#else
+    REQUIRE(!is_mult_addable_v<float &, const float &, const float &>);
+#endif
 
+#if defined(FP_FAST_FMA)
     auto xd = 1.;
     piranha::fma3(xd, 3., 4.);
     REQUIRE(xd == 13.);
+    REQUIRE(std::is_same_v<void, decltype(piranha::fma3(xd, 3., 4.))>);
+#else
+    REQUIRE(!is_mult_addable_v<double &, const double &, const double &>);
+#endif
 
+#if defined(FP_FAST_FMAL)
     auto xld = 1.l;
     piranha::fma3(xld, 3.l, 4.l);
     REQUIRE(xld == 13.l);
-
     REQUIRE(std::is_same_v<void, decltype(piranha::fma3(xld, 3.l, 4.l))>);
+#else
+    REQUIRE(!is_mult_addable_v<long double &, const long double &, const long double &>);
+#endif
 
     REQUIRE(!is_mult_addable_v<const float &, const float &, const float &>);
     REQUIRE(!is_mult_addable_v<const double &, const double &, const double &>);
@@ -61,10 +75,7 @@ TEST_CASE("fma3_fp")
 
 TEST_CASE("fma3_integral")
 {
-    auto n = 5;
-    piranha::fma3(n, 6, 7);
-    REQUIRE(n == 47);
-
+    REQUIRE(!is_mult_addable_v<int &, const int &, const int &>);
     REQUIRE(!is_mult_addable_v<const int &, const int &, const int &>);
 
     REQUIRE(!is_mult_addable_v<void, void, void>);
