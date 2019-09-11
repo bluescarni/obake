@@ -255,9 +255,9 @@ TEST_CASE("key_is_compatible_test")
             // Test with extremal packed values.
             pm_t p;
             // Size 1.
-            p._set_value(std::get<0>(detail::limits_minmax<int_t>));
+            p._set_value(detail::limits_min<int_t>);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
-            p._set_value(std::get<1>(detail::limits_minmax<int_t>));
+            p._set_value(detail::limits_max<int_t>);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
 
             // Size 2.
@@ -285,11 +285,11 @@ TEST_CASE("key_is_compatible_test")
             {
                 const auto &e_lim = std::get<3>(
                     detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
-                if (e_lim[0] > std::get<0>(detail::limits_minmax<int_t>)) {
+                if (e_lim[0] > detail::limits_min<int_t>) {
                     p._set_value(e_lim[0] - int_t(1));
                     REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
                 }
-                if (e_lim[1] < std::get<1>(detail::limits_minmax<int_t>)) {
+                if (e_lim[1] < detail::limits_max<int_t>) {
                     p._set_value(e_lim[1] + int_t(1));
                     REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
                 }
@@ -299,11 +299,11 @@ TEST_CASE("key_is_compatible_test")
             {
                 const auto &e_lim = std::get<3>(
                     detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
-                if (e_lim[0] > std::get<0>(detail::limits_minmax<int_t>)) {
+                if (e_lim[0] > detail::limits_min<int_t>) {
                     p._set_value(e_lim[0] - int_t(1));
                     REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
                 }
-                if (e_lim[1] < std::get<1>(detail::limits_minmax<int_t>)) {
+                if (e_lim[1] < detail::limits_max<int_t>) {
                     p._set_value(e_lim[1] + int_t(1));
                     REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
                 }
@@ -324,9 +324,9 @@ TEST_CASE("key_is_compatible_test")
             // Test with extremal packed values.
             pm_t p;
             // Size 1.
-            p._set_value(std::get<0>(detail::limits_minmax<int_t>));
+            p._set_value(detail::limits_min<int_t>);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
-            p._set_value(std::get<1>(detail::limits_minmax<int_t>));
+            p._set_value(detail::limits_max<int_t>);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
 
             // Size 2.
@@ -350,7 +350,7 @@ TEST_CASE("key_is_compatible_test")
             {
                 const auto &e_lim = std::get<3>(
                     detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
-                if (e_lim < std::get<1>(detail::limits_minmax<int_t>)) {
+                if (e_lim < detail::limits_max<int_t>) {
                     p._set_value(e_lim + int_t(1));
                     REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
                 }
@@ -360,7 +360,7 @@ TEST_CASE("key_is_compatible_test")
             {
                 const auto &e_lim = std::get<3>(
                     detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
-                if (e_lim < std::get<1>(detail::limits_minmax<int_t>)) {
+                if (e_lim < detail::limits_max<int_t>) {
                     p._set_value(e_lim + int_t(1));
                     REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
                 }
@@ -599,15 +599,15 @@ TEST_CASE("monomial_range_overflow_check")
 
         // Overflow check.
         if constexpr (is_signed_v<int_t>) {
-            v1.emplace_back(pm_t{std::get<0>(detail::limits_minmax<int_t>)});
+            v1.emplace_back(pm_t{detail::limits_min<int_t>});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
             v1.pop_back();
 
-            v1.emplace_back(pm_t{std::get<1>(detail::limits_minmax<int_t>)});
+            v1.emplace_back(pm_t{detail::limits_max<int_t>});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
             v1.pop_back();
         } else {
-            v1.emplace_back(pm_t{std::get<1>(detail::limits_minmax<int_t>)});
+            v1.emplace_back(pm_t{detail::limits_max<int_t>});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
         }
 

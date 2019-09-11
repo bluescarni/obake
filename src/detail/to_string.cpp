@@ -10,7 +10,6 @@
 #include <cstddef>
 #include <iterator>
 #include <string>
-#include <tuple>
 #include <type_traits>
 
 #include <piranha/config.hpp>
@@ -45,8 +44,7 @@ template <typename T>
     // digits10 will be 4 because a 16bit unsigned can
     // represent all numbers with 4 decimal digits but only
     // some numbers with 5 decimal digits.
-    static_assert(static_cast<unsigned>(limits_digits10<T>) < ::std::get<1>(limits_minmax<::std::size_t>),
-                  "Overflow error.");
+    static_assert(static_cast<unsigned>(limits_digits10<T>) < limits_max<::std::size_t>, "Overflow error.");
     char buffer[static_cast<::std::size_t>(limits_digits10<T>) + 1u];
 
     // Write the reversed base-10 representation into the buffer.
@@ -108,8 +106,7 @@ template <typename T>
 
     // See the explanation above. We need an extra
     // slot for the minus sign.
-    static_assert(static_cast<unsigned>(limits_digits10<T>) < ::std::get<1>(limits_minmax<::std::size_t>) - 1u,
-                  "Overflow error.");
+    static_assert(static_cast<unsigned>(limits_digits10<T>) < limits_max<::std::size_t> - 1u, "Overflow error.");
     char buffer[static_cast<::std::size_t>(limits_digits10<T>) + 2u];
 
     // Write the reversed base-10 representation into the buffer.

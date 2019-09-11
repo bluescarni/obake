@@ -54,7 +54,7 @@ namespace piranha::detail
     // we can compute that safely.
     // NOTE: the size type of seq is the same size type of symbol_set.
     // LCOV_EXCL_START
-    if (piranha_unlikely(s1.size() > ::std::get<1>(limits_minmax<symbol_set::size_type>) - s2.size())) {
+    if (piranha_unlikely(s1.size() > limits_max<symbol_set::size_type> - s2.size())) {
         piranha_throw(::std::overflow_error,
                       "Overflow in the computation of the size of the union of two symbol sets of sizes "
                           + detail::to_string(s1.size()) + " and " + detail::to_string(s2.size()));
