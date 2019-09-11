@@ -255,21 +255,21 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error);
 
         // Try with larger operands.
-        auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
+        // auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
 
-        auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
-        const auto tmp_f(f);
-        auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
-        const auto tmp_g(g);
+        // auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
+        // const auto tmp_f(f);
+        // auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
+        // const auto tmp_g(g);
 
-        for (int i = 1; i < 10; ++i) {
-            f *= tmp_f;
-            g *= tmp_g;
-        }
+        // for (int i = 1; i < 10; ++i) {
+        //     f *= tmp_f;
+        //     g *= tmp_g;
+        // }
 
-        auto ret = f * g;
+        // auto ret = f * g;
 
-        REQUIRE(ret.size() == 2096600ull);
+        // REQUIRE(ret.size() == 2096600ull);
     });
 }
 
@@ -290,4 +290,29 @@ TEST_CASE("polynomial_mul_general_test")
     REQUIRE(std::is_same_v<p2_t, decltype(p2_t{} * p1_t{})>);
     REQUIRE(std::is_same_v<p1_t, decltype(p1_t{} * p1_t{})>);
     REQUIRE(std::is_same_v<p2_t, decltype(p2_t{} * p2_t{})>);
+
+    {
+        // Some tests with empty series.
+        p1_t x1, y1;
+        x1.set_symbol_set(symbol_set{"x", "y"});
+        y1.set_symbol_set(symbol_set{"x", "y"});
+
+        auto ret1 = x1 * y1;
+        REQUIRE(ret1.empty());
+        REQUIRE(ret1.get_symbol_set() == symbol_set{"x", "y"});
+
+        ret1 = y1 * x1;
+        REQUIRE(ret1.empty());
+        REQUIRE(ret1.get_symbol_set() == symbol_set{"x", "y"});
+
+        x1.set_symbol_set(symbol_set{"x"});
+
+        ret1 = x1 * y1;
+        REQUIRE(ret1.empty());
+        REQUIRE(ret1.get_symbol_set() == symbol_set{"x", "y"});
+
+        ret1 = y1 * x1;
+        REQUIRE(ret1.empty());
+        REQUIRE(ret1.get_symbol_set() == symbol_set{"x", "y"});
+    }
 }
