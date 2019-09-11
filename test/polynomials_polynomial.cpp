@@ -253,31 +253,45 @@ TEST_CASE("polynomial_mul_hm_mt_test")
             Contains(
                 "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
         REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error);
+    });
+}
+
+TEST_CASE("polynomial_mul_larger_hm_mt_test")
+{
+    using Catch::Matchers::Contains;
+
+    using pm_t = packed_monomial<long long>;
+
+    using cf_types = std::tuple<double, mppp::integer<1>>;
+
+    detail::tuple_for_each(cf_types{}, [](auto xs) {
+        using poly_t = polynomial<pm_t, decltype(xs)>;
 
         // Try with larger operands.
-        // auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
+        auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
 
-        // auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
-        // const auto tmp_f(f);
-        // auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
-        // const auto tmp_g(g);
+        auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
+        const auto tmp_f(f);
+        auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
+        const auto tmp_g(g);
 
-        // for (int i = 1; i < 10; ++i) {
-        //     f *= tmp_f;
-        //     g *= tmp_g;
-        // }
+        for (int i = 1; i < 10; ++i) {
+            f *= tmp_f;
+            g *= tmp_g;
+        }
 
-        // auto ret = f * g;
+        auto ret = f * g;
 
-        // REQUIRE(ret.size() == 2096600ull);
+        REQUIRE(ret.size() == 2096600ull);
     });
 }
 
 TEST_CASE("polynomial_mul_general_test")
 {
     // General test cases.
-    using p1_t = polynomial<packed_monomial<long long>, mppp::integer<1>>;
-    using p2_t = polynomial<packed_monomial<long long>, double>;
+    using pm_t = packed_monomial<long long>;
+    using p1_t = polynomial<pm_t, mppp::integer<1>>;
+    using p2_t = polynomial<pm_t, double>;
     using p3_t = polynomial<packed_monomial<long>, mppp::integer<1>>;
 
     REQUIRE(is_multipliable_v<p1_t, p1_t>);
@@ -314,5 +328,47 @@ TEST_CASE("polynomial_mul_general_test")
         ret1 = y1 * x1;
         REQUIRE(ret1.empty());
         REQUIRE(ret1.get_symbol_set() == symbol_set{"x", "y"});
+    }
+
+    {
+        // Test the symbol merging machinery.
+        auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+        p1_t cmp;
+
+        // Try with both operands not needing any symbol merging.
+        auto ret = (x - y) * (x + y);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        cmp.set_symbol_set(symbol_set{"x", "y"});
+        cmp.add_term(pm_t{2, 0}, 1);
+        cmp.add_term(pm_t{0, 2}, -1);
+        REQUIRE(ret == cmp);
+
+        // Try with an operand which needs to be extended.
+        ret = x * (x + y);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        cmp.clear();
+        cmp.set_symbol_set(symbol_set{"x", "y"});
+        cmp.add_term(pm_t{2, 0}, 1);
+        cmp.add_term(pm_t{1, 1}, 1);
+        REQUIRE(ret == cmp);
+
+        // Try with the other operand.
+        ret = y * (x + y);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        cmp.clear();
+        cmp.set_symbol_set(symbol_set{"x", "y"});
+        cmp.add_term(pm_t{1, 1}, 1);
+        cmp.add_term(pm_t{0, 2}, 1);
+        REQUIRE(ret == cmp);
+
+        // An example in which both operands have to be extended.
+        ret = z * (x + y);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y", "z"});
+        cmp.clear();
+        cmp.set_symbol_set(symbol_set{"x", "y", "z"});
+        cmp.add_term(pm_t{1, 0, 1}, 1);
+        cmp.add_term(pm_t{0, 1, 1}, 1);
+        REQUIRE(ret == cmp);
     }
 }
