@@ -37,7 +37,7 @@ TEST_CASE("make_polynomials_test")
 {
     using Catch::Matchers::Contains;
 
-    using poly_t = polynomial<packed_monomial<long>, double>;
+    using poly_t = polynomial<packed_monomial<long long>, double>;
 
     piranha_test::disable_slow_stack_traces();
 
@@ -94,7 +94,7 @@ TEST_CASE("make_polynomials_test")
 
 TEST_CASE("is_polynomial_test")
 {
-    using poly_t = polynomial<packed_monomial<long>, double>;
+    using poly_t = polynomial<packed_monomial<long long>, double>;
 
     REQUIRE(is_polynomial_v<poly_t>);
     REQUIRE(!is_polynomial_v<void>);
@@ -119,9 +119,9 @@ TEST_CASE("is_polynomial_test")
 
 TEST_CASE("polynomial_mul_detail_test")
 {
-    using p1_t = polynomial<packed_monomial<long>, double>;
+    using p1_t = polynomial<packed_monomial<long long>, double>;
     using p2_t = polynomial<packed_monomial<int>, double>;
-    using p3_t = polynomial<packed_monomial<long>, float>;
+    using p3_t = polynomial<packed_monomial<long long>, float>;
 
     REQUIRE(polynomials::detail::poly_mul_algo<void, void> == 0);
     REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<void, void>>);
@@ -141,7 +141,7 @@ TEST_CASE("polynomial_mul_simpl_test")
 {
     using Catch::Matchers::Contains;
 
-    using pm_t = packed_monomial<long>;
+    using pm_t = packed_monomial<long long>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
 
@@ -172,8 +172,8 @@ TEST_CASE("polynomial_mul_simpl_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_max<long>}, 1);
-        b.add_term(pm_t{detail::limits_max<long>}, 1);
+        a.add_term(pm_t{detail::limits_max<long long>}, 1);
+        b.add_term(pm_t{detail::limits_max<long long>}, 1);
 
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_simple(retval, a, b),
@@ -185,8 +185,8 @@ TEST_CASE("polynomial_mul_simpl_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_min<long>}, 1);
-        b.add_term(pm_t{detail::limits_min<long>}, 1);
+        a.add_term(pm_t{detail::limits_min<long long>}, 1);
+        b.add_term(pm_t{detail::limits_min<long long>}, 1);
 
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_simple(retval, a, b),
@@ -200,7 +200,7 @@ TEST_CASE("polynomial_mul_hm_mt_test")
 {
     using Catch::Matchers::Contains;
 
-    using pm_t = packed_monomial<long>;
+    using pm_t = packed_monomial<long long>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
 
@@ -231,8 +231,8 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_max<long>}, 1);
-        b.add_term(pm_t{detail::limits_max<long>}, 1);
+        a.add_term(pm_t{detail::limits_max<long long>}, 1);
+        b.add_term(pm_t{detail::limits_max<long long>}, 1);
 
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_mt_hm(retval, a, b),
@@ -244,8 +244,8 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_min<long>}, 1);
-        b.add_term(pm_t{detail::limits_min<long>}, 1);
+        a.add_term(pm_t{detail::limits_min<long long>}, 1);
+        b.add_term(pm_t{detail::limits_min<long long>}, 1);
 
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_mt_hm(retval, a, b),
