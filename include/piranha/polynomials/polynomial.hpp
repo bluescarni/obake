@@ -643,10 +643,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
         assert(n_mults.load() == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
 #endif
     } catch (...) {
+        // LCOV_EXCL_START
         // In case of exceptions, clear retval before
         // rethrowing to ensure a known sane state.
         retval.clear();
         throw;
+        // LCOV_EXCL_STOP
     }
 }
 

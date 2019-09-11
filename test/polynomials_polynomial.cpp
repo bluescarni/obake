@@ -27,6 +27,7 @@
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/polynomials/polynomial.hpp>
 #include <piranha/symbols.hpp>
+#include <piranha/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -261,13 +262,32 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
         const auto tmp_g(g);
 
-        for (int i = 1; i < 12; ++i) {
+        for (int i = 1; i < 10; ++i) {
             f *= tmp_f;
             g *= tmp_g;
         }
 
         auto ret = f * g;
 
-        REQUIRE(ret.size() == 5821335ull);
+        REQUIRE(ret.size() == 2096600ull);
     });
+}
+
+TEST_CASE("polynomial_mul_general_test")
+{
+    // General test cases.
+    using p1_t = polynomial<packed_monomial<long long>, mppp::integer<1>>;
+    using p2_t = polynomial<packed_monomial<long long>, double>;
+    using p3_t = polynomial<packed_monomial<long>, mppp::integer<1>>;
+
+    REQUIRE(is_multipliable_v<p1_t, p1_t>);
+    REQUIRE(is_multipliable_v<p1_t, p2_t>);
+    REQUIRE(is_multipliable_v<p2_t, p1_t>);
+    REQUIRE(!is_multipliable_v<p1_t, p3_t>);
+    REQUIRE(!is_multipliable_v<p3_t, p1_t>);
+
+    REQUIRE(std::is_same_v<p2_t, decltype(p1_t{} * p2_t{})>);
+    REQUIRE(std::is_same_v<p2_t, decltype(p2_t{} * p1_t{})>);
+    REQUIRE(std::is_same_v<p1_t, decltype(p1_t{} * p1_t{})>);
+    REQUIRE(std::is_same_v<p2_t, decltype(p2_t{} * p2_t{})>);
 }
