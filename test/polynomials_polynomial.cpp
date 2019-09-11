@@ -263,17 +263,31 @@ TEST_CASE("polynomial_mul_general_test")
     using p1_t = polynomial<pm_t, mppp::integer<1>>;
     using p2_t = polynomial<pm_t, double>;
     using p3_t = polynomial<packed_monomial<long>, mppp::integer<1>>;
+    using p11_t = polynomial<pm_t, p1_t>;
+    using p22_t = polynomial<pm_t, p2_t>;
 
     REQUIRE(is_multipliable_v<p1_t, p1_t>);
     REQUIRE(is_multipliable_v<p1_t, p2_t>);
     REQUIRE(is_multipliable_v<p2_t, p1_t>);
     REQUIRE(!is_multipliable_v<p1_t, p3_t>);
     REQUIRE(!is_multipliable_v<p3_t, p1_t>);
+    REQUIRE(is_multipliable_v<p1_t, p11_t>);
+    REQUIRE(is_multipliable_v<p11_t, p1_t>);
+    REQUIRE(is_multipliable_v<p1_t, p22_t>);
+    REQUIRE(is_multipliable_v<p22_t, p1_t>);
+    REQUIRE(is_multipliable_v<p2_t, p11_t>);
+    REQUIRE(is_multipliable_v<p11_t, p2_t>);
 
     REQUIRE(std::is_same_v<p2_t, decltype(p1_t{} * p2_t{})>);
     REQUIRE(std::is_same_v<p2_t, decltype(p2_t{} * p1_t{})>);
     REQUIRE(std::is_same_v<p1_t, decltype(p1_t{} * p1_t{})>);
     REQUIRE(std::is_same_v<p2_t, decltype(p2_t{} * p2_t{})>);
+    REQUIRE(std::is_same_v<p11_t, decltype(p11_t{} * p1_t{})>);
+    REQUIRE(std::is_same_v<p11_t, decltype(p1_t{} * p11_t{})>);
+    REQUIRE(std::is_same_v<p22_t, decltype(p22_t{} * p1_t{})>);
+    REQUIRE(std::is_same_v<p22_t, decltype(p1_t{} * p22_t{})>);
+    REQUIRE(std::is_same_v<p22_t, decltype(p11_t{} * p2_t{})>);
+    REQUIRE(std::is_same_v<p22_t, decltype(p2_t{} * p11_t{})>);
 
     {
         // Some tests with empty series.
@@ -355,6 +369,32 @@ TEST_CASE("polynomial_mul_general_test")
         tmp = x;
         tmp *= a;
         REQUIRE(tmp == a * (1. / 1.5) * x);
+    }
+
+    {
+        // Some testing with higher rank polynomials.
+        auto [x] = make_polynomials<p1_t>("x");
+        auto [y] = make_polynomials<p11_t>("y");
+        y *= 2;
+
+        auto ret = x * y;
+        REQUIRE(ret == y * x);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"y"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(ret.cbegin()->first == pm_t{1});
+        REQUIRE(ret.cbegin()->second.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.cbegin()->second.size() == 1u);
+        REQUIRE(ret.cbegin()->second == 2 * x);
+
+        auto [b] = make_polynomials<p22_t>("b");
+        auto ret2 = x * b;
+        REQUIRE(ret2 == b * x);
+        REQUIRE(ret2.get_symbol_set() == symbol_set{"b"});
+        REQUIRE(ret2.size() == 1u);
+        REQUIRE(ret2.cbegin()->first == pm_t{1});
+        REQUIRE(ret2.cbegin()->second.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret2.cbegin()->second.size() == 1u);
+        REQUIRE(ret2.cbegin()->second == x);
     }
 }
 
