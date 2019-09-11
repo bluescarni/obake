@@ -203,7 +203,7 @@ TEST_CASE("polynomial_mul_hm_mt_test")
 
     using pm_t = packed_monomial<long long>;
 
-    using cf_types = std::tuple<double, mppp::integer<1>>;
+    using cf_types = std::tuple<double>;
 
     detail::tuple_for_each(cf_types{}, [](auto xs) {
         using poly_t = polynomial<pm_t, decltype(xs)>;
