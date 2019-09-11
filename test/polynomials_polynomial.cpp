@@ -395,6 +395,16 @@ TEST_CASE("polynomial_mul_general_test")
         REQUIRE(ret2.cbegin()->second.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret2.cbegin()->second.size() == 1u);
         REQUIRE(ret2.cbegin()->second == x);
+
+        auto [c] = make_polynomials<p2_t>("c");
+        auto ret3 = y * c;
+        REQUIRE(ret3 == c * y);
+        REQUIRE(ret3.get_symbol_set() == symbol_set{"y"});
+        REQUIRE(ret3.size() == 1u);
+        REQUIRE(ret3.cbegin()->first == pm_t{1});
+        REQUIRE(ret3.cbegin()->second.get_symbol_set() == symbol_set{"c"});
+        REQUIRE(ret3.cbegin()->second.size() == 1u);
+        REQUIRE(ret3.cbegin()->second == 2 * c);
     }
 }
 
