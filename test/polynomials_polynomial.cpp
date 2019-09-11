@@ -256,35 +256,35 @@ TEST_CASE("polynomial_mul_hm_mt_test")
     });
 }
 
-TEST_CASE("polynomial_mul_larger_hm_mt_test")
-{
-    using Catch::Matchers::Contains;
+// TEST_CASE("polynomial_mul_larger_hm_mt_test")
+// {
+//     using Catch::Matchers::Contains;
 
-    using pm_t = packed_monomial<long long>;
+//     using pm_t = packed_monomial<long long>;
 
-    using cf_types = std::tuple<double, mppp::integer<1>>;
+//     using cf_types = std::tuple<double, mppp::integer<1>>;
 
-    detail::tuple_for_each(cf_types{}, [](auto xs) {
-        using poly_t = polynomial<pm_t, decltype(xs)>;
+//     detail::tuple_for_each(cf_types{}, [](auto xs) {
+//         using poly_t = polynomial<pm_t, decltype(xs)>;
 
-        // Try with larger operands.
-        auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
+//         // Try with larger operands.
+//         auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
 
-        auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
-        const auto tmp_f(f);
-        auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
-        const auto tmp_g(g);
+//         auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
+//         const auto tmp_f(f);
+//         auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
+//         const auto tmp_g(g);
 
-        for (int i = 1; i < 10; ++i) {
-            f *= tmp_f;
-            g *= tmp_g;
-        }
+//         for (int i = 1; i < 10; ++i) {
+//             f *= tmp_f;
+//             g *= tmp_g;
+//         }
 
-        auto ret = f * g;
+//         auto ret = f * g;
 
-        REQUIRE(ret.size() == 2096600ull);
-    });
-}
+//         REQUIRE(ret.size() == 2096600ull);
+//     });
+// }
 
 TEST_CASE("polynomial_mul_general_test")
 {
