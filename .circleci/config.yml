@@ -25,14 +25,6 @@ jobs:
     - run:
         name: Build and test
         command: bash ./tools/circleci_bionic_gcc7_asan.sh
-  bionic_clang6_tsan:
-    docker:
-    - image: circleci/buildpack-deps:bionic
-    steps:
-    - checkout
-    - run:
-        name: Build and test
-        command: bash ./tools/circleci_bionic_clang6_tsan.sh
 
 workflows:
   version: 2
@@ -41,4 +33,3 @@ workflows:
     - cosmic_gcc8_coverage
     - cosmic_clang7_ubsan
     - bionic_gcc7_asan
-    - bionic_clang6_tsan
