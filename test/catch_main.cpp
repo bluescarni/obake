@@ -10,5 +10,13 @@
 // https://github.com/catchorg/Catch2/blob/master/docs/slow-compiles.md
 
 #define CATCH_CONFIG_MAIN
+#define CATCH_CONFIG_FAST_COMPILE
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
 #define CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+
+#endif
+
 #include "catch.hpp"
