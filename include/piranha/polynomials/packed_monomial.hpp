@@ -16,7 +16,6 @@
 #include <iterator>
 #include <ostream>
 #include <stdexcept>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -509,19 +508,16 @@ template <typename R1, typename R2,
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
 
-            const auto [lim_min, lim_max] = [s_size, i, nbits]() {
-                // NOTE: need to special-case s_size == 1, in which case
-                // the component limits are the full numerical range of the type.
-                if (s_size == 1u) {
-                    return ::std::make_tuple(::piranha::detail::limits_min<value_type>,
-                                             ::piranha::detail::limits_max<value_type>);
-                } else {
-                    const auto &lims
-                        = ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
-
-                    return ::std::make_tuple(lims[0], lims[1]);
-                }
-            }();
+            // NOTE: need to special-case s_size == 1, in which case
+            // the component limits are the full numerical range of the type.
+            const auto lim_min
+                = s_size == 1u
+                      ? ::piranha::detail::limits_min<value_type>
+                      : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[0];
+            const auto lim_max
+                = s_size == 1u
+                      ? ::piranha::detail::limits_max<value_type>
+                      : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[1];
 
             // NOTE: an overflow condition will likely result in an exception
             // or some other error handling. Optimise for the non-overflow case.
