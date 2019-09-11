@@ -174,8 +174,6 @@ TEST_CASE("polynomial_mul_simpl_test")
         a.add_term(pm_t{std::get<1>(detail::limits_minmax<long>)}, 1);
         b.add_term(pm_t{std::get<1>(detail::limits_minmax<long>)}, 1);
 
-        std::cout << "ZE TESSSSSSST\n";
-
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_simple(retval, a, b),
             Contains(

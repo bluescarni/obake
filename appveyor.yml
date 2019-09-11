@@ -70,7 +70,7 @@ test_script:
 # NOTE: ensure the PATH variable contains the path to the piranha dll,
 # otherwise the tests will fail to run.
 - if [%BUILD_TYPE%]==[MSVC19_64] set PATH=%PATH%;%CD%\Debug
-- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug -R polynomials_polynomial
+- if [%BUILD_TYPE%]==[MSVC19_64] ctest -V -C Debug
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] set PATH=%PATH%;%CD%
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] ctest -V .
@@ -78,5 +78,5 @@ test_script:
 # Enable this to be able to login to the build worker. You can use the
 # `remmina` program in Ubuntu, use the login information that the line below
 # prints into the log.
-on_finish:
-- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+# on_finish:
+# - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
