@@ -60,14 +60,14 @@ template <typename T, typename U,
         if constexpr (::std::is_same_v<T, bool>) {
             return 0u;
         } else {
-            return ::std::get<0>(limits_minmax<T>);
+            return limits_min<T>;
         }
     }();
     constexpr auto Tmax = []() {
         if constexpr (::std::is_same_v<T, bool>) {
             return 1u;
         } else {
-            return ::std::get<1>(limits_minmax<T>);
+            return limits_max<T>;
         }
     }();
 

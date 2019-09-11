@@ -56,7 +56,8 @@ TEST_CASE("k_packer_unpacker")
 
         using Catch::Matchers::Contains;
 
-        const auto [lim_min, lim_max] = detail::limits_minmax<int_t>;
+        const auto lim_min = detail::limits_min<int_t>;
+        const auto lim_max = detail::limits_max<int_t>;
 
         constexpr auto nbits = static_cast<unsigned>(detail::limits_digits<int_t>);
 
@@ -317,12 +318,12 @@ TEST_CASE("homomorphism")
                     kp_t kp_a(i), kp_b(i), kp_c(i);
                     for (auto j = 0u; j < i; ++j) {
                         if (i == 1u) {
-                            a[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
-                                                  std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
-                                                  std::get<1>(detail::limits_minmax<int_t>) / int_t(2)});
-                            b[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
-                                                  std::get<0>(detail::limits_minmax<int_t>) / int_t(2),
-                                                  std::get<1>(detail::limits_minmax<int_t>) / int_t(2)});
+                            a[j] = idist(
+                                rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                         detail::limits_min<int_t> / int_t(2), detail::limits_max<int_t> / int_t(2)});
+                            b[j] = idist(
+                                rng, typename std::uniform_int_distribution<int_t>::param_type{
+                                         detail::limits_min<int_t> / int_t(2), detail::limits_max<int_t> / int_t(2)});
                         } else {
                             const auto &lims = std::get<2>(detail::k_packing_data<int_t>)[cur_nb - 3u];
 

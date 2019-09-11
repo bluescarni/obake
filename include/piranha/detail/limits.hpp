@@ -10,7 +10,6 @@
 #define PIRANHA_DETAIL_LIMITS_HPP
 
 #include <limits>
-#include <tuple>
 
 #include <piranha/config.hpp>
 
@@ -21,18 +20,24 @@ namespace piranha::detail
 {
 
 template <typename T>
-inline constexpr auto limits_minmax
-    = ::std::make_tuple(::std::numeric_limits<T>::min(), ::std::numeric_limits<T>::max());
+inline constexpr auto limits_min = ::std::numeric_limits<T>::min();
+
+template <typename T>
+inline constexpr auto limits_max = ::std::numeric_limits<T>::max();
 
 #if defined(PIRANHA_HAVE_GCC_INT128)
 
-inline constexpr auto max_int128_t = static_cast<__int128_t>((__uint128_t(1) << 127u) - 1u);
+template <>
+inline constexpr auto limits_max<__int128_t> = static_cast<__int128_t>((__uint128_t(1) << 127u) - 1u);
 
 template <>
-inline constexpr auto limits_minmax<__int128_t> = ::std::make_tuple(-max_int128_t - 1, max_int128_t);
+inline constexpr auto limits_min<__int128_t> = -limits_max<__int128_t> - 1;
 
 template <>
-inline constexpr auto limits_minmax<__uint128_t> = ::std::make_tuple(__uint128_t(0), ~__uint128_t(0));
+inline constexpr auto limits_max<__uint128_t> = ~__uint128_t(0);
+
+template <>
+inline constexpr auto limits_min<__uint128_t> = __uint128_t(0);
 
 #endif
 
