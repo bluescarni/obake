@@ -346,7 +346,7 @@ TEST_CASE("polynomial_mul_general_test")
 // NOTE: not sure why, but this test results in some weird
 // exception-related issues on MSVC (but it works ok with
 // clang-cl). Need to investigate, let's disable for now.
-#if !defined(_MSC_VER) || defined(__clang__)
+// #if !defined(_MSC_VER) || defined(__clang__)
 
 TEST_CASE("polynomial_mul_larger_hm_mt_test")
 {
@@ -378,4 +378,4 @@ TEST_CASE("polynomial_mul_larger_hm_mt_test")
     });
 }
 
-#endif
+// #endif
