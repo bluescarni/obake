@@ -341,6 +341,21 @@ TEST_CASE("polynomial_mul_general_test")
         cmp.add_term(pm_t{0, 1, 1}, 1);
         REQUIRE(ret == cmp);
     }
+
+    {
+        // Test the in-place operator.
+        auto [x, y] = make_polynomials<p1_t>("x", "y");
+        auto tmp(x);
+        tmp *= (x - y);
+        REQUIRE(tmp == x * x - x * y);
+
+        auto [a] = make_polynomials<p2_t>("a");
+        a *= 1.5;
+
+        tmp = x;
+        tmp *= a;
+        REQUIRE(tmp == a * (1. / 1.5) * x);
+    }
 }
 
 TEST_CASE("polynomial_mul_larger_hm_mt_test")
