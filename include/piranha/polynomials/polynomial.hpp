@@ -514,6 +514,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
         };
 
         for (s_size_t i = 0; i < nsegs; ++i) {
+            if (i) {
+                // Ensure the current range begins
+                // where the previous range ended.
+                assert(vseg1[i].first == vseg1[i - 1u].second);
+                assert(vseg2[i].first == vseg2[i - 1u].second);
+            }
             verify_seg(i, vseg1[i], counter1);
             verify_seg(i, vseg2[i], counter2);
         }
@@ -778,10 +784,15 @@ inline auto poly_mul_impl(T &&x, U &&y)
     if constexpr (::std::conjunction_v<is_homomorphically_hashable_monomial<ret_key_t>,
                                        // Need also to be able to measure the byte size
                                        // of the key/cf of ret_t, via const lvalue references.
+                                       // NOTE: perhaps this is too much of a hard requirement,
+                                       // and we can make this optional (if not supported,
+                                       // fix the nsegs to something like twice the cores).
                                        is_size_measurable<const ret_key_t &>,
                                        is_size_measurable<const series_cf_t<ret_t> &>>) {
         // Homomorphic hashing is available, we can run
         // the multi-threaded implementation.
+        // NOTE: perhaps the heuristic here can be improved
+        // by taking into account the byte sizes of x/y?
         if (x.size() < 1000u / y.size() || ::piranha::detail::hc() == 1u) {
             // If the operands are "small" (less than N
             // term-by-term mults), or we just have 1 core
