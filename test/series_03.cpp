@@ -39,7 +39,7 @@ TEST_CASE("series_byte_size")
     s2.add_term(pm_t{2, 2}, 2);
     s2.add_term(pm_t{3, 3}, 3);
 
-    REQUIRE(byte_size(s2) > byte_size(s1));
+    REQUIRE(byte_size(s2) >= byte_size(s1));
 
     // s3 has more symbols than s2.
     s1_t s3;
@@ -48,5 +48,5 @@ TEST_CASE("series_byte_size")
     s3.add_term(pm_t{2, 2, 2}, 2);
     s3.add_term(pm_t{3, 3, 3}, 3);
 
-    REQUIRE(byte_size(s3) > byte_size(s2));
+    REQUIRE(byte_size(s3) >= byte_size(s2));
 }
