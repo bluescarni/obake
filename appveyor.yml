@@ -60,7 +60,7 @@ build_script:
 
 # piranha
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes
-- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --targets polynomials_polynomial
+- if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target polynomials_polynomial
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DPIRANHA_BUILD_TESTS=ON
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . -- -v
