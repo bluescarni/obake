@@ -10,4 +10,5 @@
 // https://github.com/catchorg/Catch2/blob/master/docs/slow-compiles.md
 
 #define CATCH_CONFIG_MAIN
+#define CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS
 #include "catch.hpp"
