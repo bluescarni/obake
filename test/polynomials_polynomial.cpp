@@ -171,8 +171,8 @@ TEST_CASE("polynomial_mul_simpl_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{std::get<1>(detail::limits_minmax<long>)}, 1);
-        b.add_term(pm_t{std::get<1>(detail::limits_minmax<long>)}, 1);
+        a.add_term(pm_t{detail::limits_max<long>}, 1);
+        b.add_term(pm_t{detail::limits_max<long>}, 1);
 
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_simple(retval, a, b),
@@ -184,8 +184,8 @@ TEST_CASE("polynomial_mul_simpl_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{std::get<0>(detail::limits_minmax<long>)}, 1);
-        b.add_term(pm_t{std::get<0>(detail::limits_minmax<long>)}, 1);
+        a.add_term(pm_t{detail::limits_min<long>}, 1);
+        b.add_term(pm_t{detail::limits_min<long>}, 1);
 
         REQUIRE_THROWS_WITH(
             polynomials::detail::poly_mul_impl_simple(retval, a, b),
