@@ -6,10 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// Minimal main file to reduce catch compile times:
-// https://github.com/catchorg/Catch2/blob/master/docs/slow-compiles.md
+#include <piranha/polynomials/packed_monomial.hpp>
 
-#define CATCH_CONFIG_MAIN
-#define CATCH_CONFIG_FAST_COMPILE
+#include <mp++/integer.hpp>
 
-#include "catch.hpp"
+#include "sparse.hpp"
+
+using namespace piranha;
+using namespace piranha_benchmark;
+
+int main()
+{
+    sparse_benchmark<packed_monomial<unsigned long>, mppp::integer<2>>(20);
+}
