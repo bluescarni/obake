@@ -195,3 +195,79 @@ TEST_CASE("polynomial_mul_simpl_test")
         REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error);
     });
 }
+
+TEST_CASE("polynomial_mul_hm_mt_test")
+{
+    using Catch::Matchers::Contains;
+
+    using pm_t = packed_monomial<long>;
+
+    using cf_types = std::tuple<double, mppp::integer<1>>;
+
+    detail::tuple_for_each(cf_types{}, [](auto xs) {
+        using poly_t = polynomial<pm_t, decltype(xs)>;
+
+        // A few simple tests.
+        poly_t retval;
+        polynomials::detail::poly_mul_impl_mt_hm(retval, poly_t{3}, poly_t{4});
+        REQUIRE(retval == 12);
+        retval.clear();
+
+        // Examples with cancellations.
+        auto [a, b, c] = make_polynomials<poly_t>(symbol_set{"a", "b", "c"}, "a", "b", "c");
+        retval.set_symbol_set(symbol_set{"a", "b", "c"});
+        polynomials::detail::poly_mul_impl_mt_hm(retval, a + b, a - b);
+        REQUIRE(retval == a * a - b * b);
+        retval.clear();
+
+        retval.set_symbol_set(symbol_set{"a", "b", "c"});
+        polynomials::detail::poly_mul_impl_mt_hm(retval, a * a + b * b, (a + b) * (a - b));
+        REQUIRE(retval == a * a * a * a - b * b * b * b);
+        retval.clear();
+
+        // An overflowing example.
+        retval.set_symbol_set(symbol_set{"a"});
+        a.clear();
+        a.set_symbol_set(symbol_set{"a"});
+        b.clear();
+        b.set_symbol_set(symbol_set{"a"});
+        a.add_term(pm_t{detail::limits_max<long>}, 1);
+        b.add_term(pm_t{detail::limits_max<long>}, 1);
+
+        REQUIRE_THROWS_WITH(
+            polynomials::detail::poly_mul_impl_mt_hm(retval, a, b),
+            Contains(
+                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
+        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error);
+
+        a.clear();
+        a.set_symbol_set(symbol_set{"a"});
+        b.clear();
+        b.set_symbol_set(symbol_set{"a"});
+        a.add_term(pm_t{detail::limits_min<long>}, 1);
+        b.add_term(pm_t{detail::limits_min<long>}, 1);
+
+        REQUIRE_THROWS_WITH(
+            polynomials::detail::poly_mul_impl_mt_hm(retval, a, b),
+            Contains(
+                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
+        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error);
+
+        // Try with larger operands.
+        auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
+
+        auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
+        const auto tmp_f(f);
+        auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
+        const auto tmp_g(g);
+
+        for (int i = 1; i < 12; ++i) {
+            f *= tmp_f;
+            g *= tmp_g;
+        }
+
+        auto ret = f * g;
+
+        REQUIRE(ret.size() == 5821335ull);
+    });
+}

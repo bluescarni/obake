@@ -252,8 +252,8 @@ constexpr auto poly_mul_algorithm_impl()
             return failure;
         } else {
             // T and U are both polynomials, same rank, same key.
-            // Determine if we can multiply the coefficients, using
-            // const lvalue refs.
+            // Determine if the cf/key types support all the necessary
+            // bits.
             using cf1_t = series_cf_t<rT>;
             using cf2_t = series_cf_t<rU>;
             using ret_cf_t = detected_t<::piranha::detail::mul_t, const cf1_t &, const cf2_t &>;
