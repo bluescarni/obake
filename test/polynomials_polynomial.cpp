@@ -8,6 +8,7 @@
 
 #include <piranha/config.hpp>
 
+#include <initializer_list>
 #include <stdexcept>
 #include <string>
 #include <tuple>

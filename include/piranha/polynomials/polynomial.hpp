@@ -258,59 +258,22 @@ constexpr auto poly_mul_algorithm_impl()
             using cf2_t = series_cf_t<rU>;
             using ret_cf_t = detected_t<::piranha::detail::mul_t, const cf1_t &, const cf2_t &>;
 
-            if constexpr (is_cf_v<ret_cf_t>) {
-                // The coefficient is valid.
-                //
-                // We need to perform monomial range checking on the input series.
-                // Depending on runtime conditions, the check will be done on either
-                // vector of copies of the original terms, or on vectors of const
-                // pointers to the original terms.
-
-                // The vectors of copies of input terms.
-                // NOTE: need to drop the const on the key in order to enable sorting.
-                using xv_t = ::std::vector<::std::pair<series_key_t<rT>, cf1_t>>;
-                using yv_t = ::std::vector<::std::pair<series_key_t<rU>, cf2_t>>;
-
-                // The vectors of pointers to the input terms.
-                using xp_t = ::std::vector<const series_term_t<rT> *>;
-                using yp_t = ::std::vector<const series_term_t<rU> *>;
-
-                // The corresponding range types.
-                // NOTE: in the code below, we always use cbegin()/cend() for the construction
-                // of the ranges.
-                using xr1_t = decltype(::piranha::detail::make_range(
-                    ::boost::make_transform_iterator(::std::declval<xv_t &>().cbegin(), poly_term_key_ref_extractor{}),
-                    ::boost::make_transform_iterator(::std::declval<xv_t &>().cend(), poly_term_key_ref_extractor{})));
-                using yr1_t = decltype(::piranha::detail::make_range(
-                    ::boost::make_transform_iterator(::std::declval<yv_t &>().cbegin(), poly_term_key_ref_extractor{}),
-                    ::boost::make_transform_iterator(::std::declval<yv_t &>().cend(), poly_term_key_ref_extractor{})));
-
-                using xr2_t = decltype(::piranha::detail::make_range(
-                    ::boost::make_transform_iterator(::std::declval<xp_t &>().cbegin(), poly_term_key_ref_extractor{}),
-                    ::boost::make_transform_iterator(::std::declval<xp_t &>().cend(), poly_term_key_ref_extractor{})));
-                using yr2_t = decltype(::piranha::detail::make_range(
-                    ::boost::make_transform_iterator(::std::declval<yp_t &>().cbegin(), poly_term_key_ref_extractor{}),
-                    ::boost::make_transform_iterator(::std::declval<yp_t &>().cend(), poly_term_key_ref_extractor{})));
-
-                if constexpr (::std::conjunction_v<
-                                  are_overflow_testable_monomial_ranges<xr1_t, yr1_t>,
-                                  are_overflow_testable_monomial_ranges<xr2_t, yr2_t>,
-                                  // We may need to merge new symbols into the original key type.
-                                  // NOTE: the key types of T and U must be identical at the moment,
-                                  // so checking only T's key type is enough.
-                                  // NOTE: the merging is done via a const ref.
-                                  is_symbols_mergeable_key<const series_key_t<rT> &>,
-                                  // Need to be able to multiply monomials. We work with lvalue
-                                  // references, const for the arguments, mutable for the
-                                  // return value.
-                                  // NOTE: the key types of T and U must be identical at the moment,
-                                  // so checking only T's key type is enough.
-                                  is_multipliable_monomial<series_key_t<rT> &, const series_key_t<rT> &,
-                                                           const series_key_t<rT> &>>) {
-                    return ::std::make_pair(1, ::piranha::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
-                } else {
-                    return failure;
-                }
+            if constexpr (::std::conjunction_v<
+                              // If ret_cf_t a coefficient type?
+                              is_cf<ret_cf_t>,
+                              // We may need to merge new symbols into the original key type.
+                              // NOTE: the key types of T and U must be identical at the moment,
+                              // so checking only T's key type is enough.
+                              // NOTE: the merging is done via a const ref.
+                              is_symbols_mergeable_key<const series_key_t<rT> &>,
+                              // Need to be able to multiply monomials. We work with lvalue
+                              // references, const for the arguments, mutable for the
+                              // return value.
+                              // NOTE: the key types of T and U must be identical at the moment,
+                              // so checking only T's key type is enough.
+                              is_multipliable_monomial<series_key_t<rT> &, const series_key_t<rT> &,
+                                                       const series_key_t<rT> &>>) {
+                return ::std::make_pair(1, ::piranha::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
             } else {
                 return failure;
             }
@@ -467,17 +430,20 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     ::std::vector<::std::pair<series_key_t<U>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
                                                           ::boost::make_transform_iterator(y.end(), p_transform));
 
-    // Do the monomial overflow checking.
-    const bool overflow = !::piranha::monomial_range_overflow_check(
-        ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
-        ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
-        ss);
-    if (piranha_unlikely(overflow)) {
-        piranha_throw(
-            ::std::overflow_error,
-            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    // Do the monomial overflow checking, if possible.
+    [[maybe_unused]] const auto r1
+        = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                                        ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+    [[maybe_unused]] const auto r2
+        = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                                        ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+    if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
+        // Do the monomial overflow checking.
+        if (piranha_unlikely(!::piranha::monomial_range_overflow_check(r1, r2, ss))) {
+            piranha_throw(
+                ::std::overflow_error,
+                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+        }
     }
 
     // Determination of log2_nsegs.
@@ -713,17 +679,20 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
     ::std::vector<const series_term_t<U> *> v2(::boost::make_transform_iterator(y.begin(), ptr_extractor),
                                                ::boost::make_transform_iterator(y.end(), ptr_extractor));
 
-    // Do the monomial overflow checking.
-    const bool overflow = !::piranha::monomial_range_overflow_check(
-        ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{})),
-        ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{})),
-        ss);
-    if (piranha_unlikely(overflow)) {
-        piranha_throw(
-            ::std::overflow_error,
-            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    // Do the monomial overflow checking, if possible.
+    [[maybe_unused]] const auto r1
+        = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                                        ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+    [[maybe_unused]] const auto r2
+        = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                                        ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+    if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
+        // Do the monomial overflow checking.
+        if (piranha_unlikely(!::piranha::monomial_range_overflow_check(r1, r2, ss))) {
+            piranha_throw(
+                ::std::overflow_error,
+                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+        }
     }
 
     // Proceed with the multiplication.
