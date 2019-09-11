@@ -1361,13 +1361,18 @@ struct series_default_byte_size_impl {
             retval += sizeof(::std::string) + s.size();
         }
 
-        // Accumulate the byte size for all terms in the table.
-        for (const auto &[k, c] : x) {
-            // NOTE: account for possible padding in the series term class.
-            static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
+        for (const auto &tab : x._get_s_table()) {
+            // Accumulate the byte size for all terms in the table
+            for (const auto &[k, c] : tab) {
+                // NOTE: account for possible padding in the series term class.
+                static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
+                retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
+                          + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
+            }
 
-            retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
-                      + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
+            // Add the space occupied by the unused slots.
+            assert(tab.capacity() >= tab.size());
+            retval += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
         }
 
         return retval;
