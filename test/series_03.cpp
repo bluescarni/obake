@@ -78,6 +78,7 @@ TEST_CASE("series_degree")
 
         auto [x, y, z] = make_polynomials<s1_t>("x", "y", "z");
         REQUIRE(std::is_same_v<decltype(degree(x)), int>);
+        REQUIRE(degree(x * 0 + 1) == 0);
         REQUIRE(degree(x) == 1);
         REQUIRE(degree(y) == 1);
         REQUIRE(degree(z) == 1);
@@ -99,7 +100,9 @@ TEST_CASE("series_degree")
         REQUIRE(std::is_same_v<decltype(degree(x)), int>);
         REQUIRE(std::is_same_v<decltype(degree(y)), int>);
         REQUIRE(std::is_same_v<decltype(degree(x * y)), int>);
+        REQUIRE(degree(x * 0 + 1) == 0);
         REQUIRE(degree(x) == 1);
+        REQUIRE(degree(y * 0 + 1) == 0);
         REQUIRE(degree(y) == 1);
         REQUIRE(degree(z) == 1);
 
