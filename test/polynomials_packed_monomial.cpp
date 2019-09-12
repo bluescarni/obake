@@ -25,6 +25,7 @@
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/k_packing.hpp>
+#include <piranha/key/key_degree.hpp>
 #include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
@@ -756,5 +757,35 @@ TEST_CASE("homomorphic_hash")
             }
         }
 #endif
+    });
+}
+
+TEST_CASE("key_degree_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(key_degree(pm_t{}, symbol_set{}) == int_t(0));
+        REQUIRE(key_degree(pm_t{1}, symbol_set{"x"}) == int_t(1));
+        REQUIRE(key_degree(pm_t{42}, symbol_set{"x"}) == int_t(42));
+
+        if constexpr (is_signed_v<int_t>) {
+            REQUIRE(key_degree(pm_t{-1}, symbol_set{"x"}) == int_t(-1));
+            REQUIRE(key_degree(pm_t{-42}, symbol_set{"x"}) == int_t(-42));
+        }
+
+        REQUIRE(key_degree(pm_t{1, 2}, symbol_set{"x", "y"}) == int_t(3));
+        REQUIRE(key_degree(pm_t{42, 3}, symbol_set{"x", "y"}) == int_t(45));
+
+        if constexpr (is_signed_v<int_t>) {
+            REQUIRE(key_degree(pm_t{-1, 2}, symbol_set{"x", "y"}) == int_t(1));
+            REQUIRE(key_degree(pm_t{-42, 5}, symbol_set{"x", "y"}) == int_t(-37));
+        }
+
+        REQUIRE(is_key_with_degree_v<pm_t>);
+        REQUIRE(is_key_with_degree_v<pm_t &>);
+        REQUIRE(is_key_with_degree_v<const pm_t &>);
+        REQUIRE(is_key_with_degree_v<pm_t &&>);
     });
 }
