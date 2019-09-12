@@ -6,6 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <type_traits>
+
 #include <mp++/rational.hpp>
 
 #include <piranha/byte_size.hpp>
@@ -75,6 +77,28 @@ TEST_CASE("series_degree")
         REQUIRE(degree(s1_t{}) == 0);
 
         auto [x, y, z] = make_polynomials<s1_t>("x", "y", "z");
+        REQUIRE(std::is_same_v<decltype(degree(x)), int>);
+        REQUIRE(degree(x) == 1);
+        REQUIRE(degree(y) == 1);
+        REQUIRE(degree(z) == 1);
+
+        REQUIRE(degree(x * x) == 2);
+        REQUIRE(degree(y * x) == 2);
+        REQUIRE(degree(z * z) == 2);
+        REQUIRE(degree((x + y) * (x - y)) == 2);
+        REQUIRE(degree((x + y) * (x - y) - z) == 2);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y) == 3);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y + 1) == 3);
+    }
+
+    {
+        REQUIRE(degree(s11_t{}) == 0);
+
+        auto [y, z] = make_polynomials<s1_t>("y", "z");
+        auto [x] = make_polynomials<s1_t>("x");
+        REQUIRE(std::is_same_v<decltype(degree(x)), int>);
+        REQUIRE(std::is_same_v<decltype(degree(y)), int>);
+        REQUIRE(std::is_same_v<decltype(degree(x * y)), int>);
         REQUIRE(degree(x) == 1);
         REQUIRE(degree(y) == 1);
         REQUIRE(degree(z) == 1);
