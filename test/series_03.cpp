@@ -10,7 +10,9 @@
 
 #include <piranha/byte_size.hpp>
 #include <piranha/config.hpp>
+#include <piranha/math/degree.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
+#include <piranha/polynomials/polynomial.hpp>
 #include <piranha/series.hpp>
 #include <piranha/symbols.hpp>
 
@@ -49,4 +51,40 @@ TEST_CASE("series_byte_size")
     s3.add_term(pm_t{3, 3, 3}, 3);
 
     REQUIRE(byte_size(s3) >= byte_size(s2));
+}
+
+TEST_CASE("series_degree")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = polynomial<pm_t, rat_t>;
+    using s11_t = polynomial<pm_t, s1_t>;
+
+    REQUIRE(is_with_degree_v<s1_t>);
+    REQUIRE(is_with_degree_v<const s1_t>);
+    REQUIRE(is_with_degree_v<s1_t &>);
+    REQUIRE(is_with_degree_v<const s1_t &>);
+    REQUIRE(is_with_degree_v<s1_t &&>);
+
+    REQUIRE(is_with_degree_v<s11_t>);
+    REQUIRE(is_with_degree_v<const s11_t>);
+    REQUIRE(is_with_degree_v<s11_t &>);
+    REQUIRE(is_with_degree_v<const s11_t &>);
+    REQUIRE(is_with_degree_v<s11_t &&>);
+
+    {
+        REQUIRE(degree(s1_t{}) == 0);
+
+        auto [x, y, z] = make_polynomials<s1_t>("x", "y", "z");
+        REQUIRE(degree(x) == 1);
+        REQUIRE(degree(y) == 1);
+        REQUIRE(degree(z) == 1);
+
+        REQUIRE(degree(x * x) == 2);
+        REQUIRE(degree(y * x) == 2);
+        REQUIRE(degree(z * z) == 2);
+        REQUIRE(degree((x + y) * (x - y)) == 2);
+        REQUIRE(degree((x + y) * (x - y) - z) == 2);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y) == 3);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y + 1) == 3);
+    }
 }

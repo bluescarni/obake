@@ -25,6 +25,7 @@
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 
 #include <piranha/byte_size.hpp>
 #include <piranha/cf/cf_stream_insert.hpp>
@@ -41,11 +42,13 @@
 #include <piranha/detail/visibility.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
+#include <piranha/key/key_degree.hpp>
 #include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/key/key_stream_insert.hpp>
+#include <piranha/math/degree.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
 #include <piranha/math/pow.hpp>
@@ -2617,6 +2620,147 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 #endif
 constexpr auto operator!=(T &&x, U &&y)
     PIRANHA_SS_FORWARD_FUNCTION(!::piranha::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Customise piranha::degree() for series types.
+namespace customisation::internal
+{
+
+struct series_default_degree_impl {
+    // Metaprogramming to establish the algorithm/return
+    // type of the series degree computation.
+    template <typename T>
+    static constexpr auto algorithm_impl()
+    {
+        [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+        if constexpr (!is_cvr_series_v<T>) {
+            // Not a series type.
+            return failure;
+        } else {
+            using rT = remove_cvref_t<T>;
+            using cf_t = series_cf_t<rT>;
+            using key_t = series_key_t<rT>;
+
+            constexpr bool cf_has_degree = is_with_degree_v<const cf_t &>;
+            constexpr bool key_has_degree = is_key_with_degree_v<const key_t &>;
+
+            if constexpr (!cf_has_degree && !key_has_degree) {
+                // Neither key nor cf are with degree.
+                return failure;
+            } else {
+                if constexpr (cf_has_degree && key_has_degree) {
+                    // Both key and cf are with degree.
+                    using cf_degree_t = detail::degree_t<const cf_t &>;
+                    using key_degree_t = detail::key_degree_t<const key_t &>;
+
+                    if constexpr (is_addable_v<key_degree_t, cf_degree_t>) {
+                        // cf and key degree types are addable.
+                        // NOTE: check for addability using rvalues.
+                        using degree_t = detail::add_t<key_degree_t, cf_degree_t>;
+
+                        if constexpr (::std::conjunction_v<
+                                          is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                          ::std::is_constructible<degree_t, int>>) {
+                            // degree_t supports operator< and it can be constructed from int.
+                            // NOTE: lt-comparability is tested via const lvalue refs.
+                            return ::std::make_pair(1, detail::type_c<degree_t>{});
+                        } else {
+                            return failure;
+                        }
+                    } else {
+                        // cf and key degree types are not addable.
+                        return failure;
+                    }
+                } else if constexpr (cf_has_degree) {
+                    // Only the coefficient is with degree.
+                    using degree_t = detail::degree_t<const cf_t &>;
+
+                    if constexpr (::std::conjunction_v<
+                                      is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                      ::std::is_constructible<degree_t, int>>) {
+                        // degree_t supports operator< and it can be constructed from int.
+                        return ::std::make_pair(2, detail::type_c<degree_t>{});
+                    } else {
+                        return failure;
+                    }
+                } else {
+                    // Only the key is with degree.
+                    using degree_t = detail::key_degree_t<const key_t &>;
+
+                    if constexpr (::std::conjunction_v<
+                                      is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                      ::std::is_constructible<degree_t, int>>) {
+                        // degree_t supports operator< and it can be constructed from int.
+                        return ::std::make_pair(3, detail::type_c<degree_t>{});
+                    } else {
+                        return failure;
+                    }
+                }
+            }
+        }
+    }
+
+    // A couple of handy shortcuts.
+    template <typename T>
+    static constexpr auto algo = series_default_degree_impl::algorithm_impl<T>().first;
+
+    template <typename T>
+    using ret_t = typename decltype(series_default_degree_impl::algorithm_impl<T>().second)::type;
+
+    // Helper to extract the degree of a term p.
+    template <typename T>
+    struct d_extractor {
+        auto operator()(const series_term_t<T> &p) const
+        {
+            static_assert(algo<T> != 0);
+
+            if constexpr (algo<T> == 1) {
+                // Both coefficient and key with degree.
+                return ::piranha::key_degree(p.first, *ss) + ::piranha::degree(p.second);
+            } else if constexpr (algo<T> == 2) {
+                // Only coefficient with degree.
+                return ::piranha::degree(p.second);
+            } else {
+                // Only key with degree.
+                return ::piranha::key_degree(p.first, *ss);
+            }
+        }
+        const symbol_set *ss;
+    };
+
+    // Implementation.
+    template <typename T>
+    ret_t<T> operator()(const T &x) const
+    {
+        // Special case for an empty series.
+        if (x.empty()) {
+            return ret_t<T>(0);
+        }
+
+        // The functor to extrat the term's degree.
+        d_extractor<T> d_extract{&x.get_symbol_set()};
+
+        const auto it = ::std::max_element(::boost::make_transform_iterator(x.cbegin(), d_extract),
+                                           ::boost::make_transform_iterator(x.cend(), d_extract),
+                                           // NOTE: override the operator< call to ensure
+                                           // that the comparison happens via const lvalue refs.
+                                           [](const auto &a, const auto &b) { return a < b; });
+
+        assert(it != ::boost::make_transform_iterator(x.cend(), d_extract));
+
+        return d_extract(*(it.base()));
+    }
+};
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    requires series_default_degree_impl::algo<T> != 0 inline constexpr auto degree<T>
+#else
+inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
+#endif
+    = series_default_degree_impl{};
+
+} // namespace customisation::internal
 
 } // namespace piranha
 
