@@ -30,6 +30,7 @@
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
+#include <piranha/key/key_p_degree.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
@@ -787,5 +788,60 @@ TEST_CASE("key_degree_test")
         REQUIRE(is_key_with_degree_v<pm_t &>);
         REQUIRE(is_key_with_degree_v<const pm_t &>);
         REQUIRE(is_key_with_degree_v<pm_t &&>);
+    });
+}
+
+TEST_CASE("key_p_degree_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(key_p_degree(pm_t{}, symbol_idx_set{}, symbol_set{}) == int_t(0));
+        REQUIRE(key_p_degree(pm_t{1}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(1));
+        REQUIRE(key_p_degree(pm_t{1}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+        REQUIRE(key_p_degree(pm_t{42}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(42));
+        REQUIRE(key_p_degree(pm_t{42}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+
+        if constexpr (is_signed_v<int_t>) {
+            REQUIRE(key_p_degree(pm_t{-1}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(-1));
+            REQUIRE(key_p_degree(pm_t{-1}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+            REQUIRE(key_p_degree(pm_t{-42}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(-42));
+            REQUIRE(key_p_degree(pm_t{-42}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+        }
+
+        REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(3));
+        REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(1));
+        REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(2));
+        REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+        REQUIRE(key_p_degree(pm_t{42, 3}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(45));
+        REQUIRE(key_p_degree(pm_t{42, 3}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(42));
+        REQUIRE(key_p_degree(pm_t{42, 3}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(3));
+        REQUIRE(key_p_degree(pm_t{42, 3}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0, 1, 2}, symbol_set{"x", "y", "z"}) == int_t(6));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{}, symbol_set{"x", "y", "z"}) == int_t(0));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0}, symbol_set{"x", "y", "z"}) == int_t(1));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{1}, symbol_set{"x", "y", "z"}) == int_t(2));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{2}, symbol_set{"x", "y", "z"}) == int_t(3));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0, 1}, symbol_set{"x", "y", "z"}) == int_t(3));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{1, 2}, symbol_set{"x", "y", "z"}) == int_t(5));
+        REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0, 2}, symbol_set{"x", "y", "z"}) == int_t(4));
+
+        if constexpr (is_signed_v<int_t>) {
+            REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(1));
+            REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(-1));
+            REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(2));
+            REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+            REQUIRE(key_p_degree(pm_t{-42, 5}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(-37));
+            REQUIRE(key_p_degree(pm_t{-42, 5}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(-42));
+            REQUIRE(key_p_degree(pm_t{-42, 5}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(5));
+            REQUIRE(key_p_degree(pm_t{-42, 5}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+        }
+
+        REQUIRE(is_key_with_p_degree_v<pm_t>);
+        REQUIRE(is_key_with_p_degree_v<pm_t &>);
+        REQUIRE(is_key_with_p_degree_v<const pm_t &>);
+        REQUIRE(is_key_with_p_degree_v<pm_t &&>);
     });
 }

@@ -563,6 +563,34 @@ inline T key_degree(const packed_monomial<T> &p, const symbol_set &ss)
     return retval;
 }
 
+// Implementation of key_p_degree().
+// NOTE: this assumes that p and si are compatible with ss.
+template <typename T>
+inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    assert(si.empty() || *(si.end() - 1) < ss.size());
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    T retval(0), tmp;
+    k_unpacker ku(p.get_value(), s_size);
+    auto si_it = si.begin();
+    const auto si_it_end = si.end();
+    for (auto i = 0u; i < s_size && si_it != si_it_end; ++i) {
+        ku >> tmp;
+        if (i == *si_it) {
+            retval += tmp;
+            ++si_it;
+        }
+    }
+
+    assert(si_it == si_it_end);
+
+    return retval;
+}
+
 } // namespace polynomials
 
 // Lift to the piranha namespace.
