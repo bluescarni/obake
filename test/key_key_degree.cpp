@@ -51,7 +51,7 @@ template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
 requires SameCvr<T, ext_zt00> inline constexpr auto key_degree<T>
 #else
-inline constexpr auto key_degre<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
+inline constexpr auto key_degree<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
 #endif
     = [](auto &&, const symbol_set &) constexpr noexcept
 {
