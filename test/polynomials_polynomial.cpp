@@ -410,8 +410,6 @@ TEST_CASE("polynomial_mul_general_test")
 
 TEST_CASE("polynomial_mul_larger_hm_mt_test")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<long long>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
