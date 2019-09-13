@@ -771,7 +771,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
 
 // Implementation of poly multiplication with identical symbol sets.
 template <typename T, typename U>
-inline auto poly_mul_impl(T &&x, U &&y)
+inline auto poly_mul_impl_identical_ss(T &&x, U &&y)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
     using ret_key_t = series_key_t<ret_t>;
@@ -825,7 +825,7 @@ template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&,
 inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
 {
     if (x.get_symbol_set() == y.get_symbol_set()) {
-        return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+        return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y));
     } else {
         using rT = remove_cvref_t<T>;
         using rU = remove_cvref_t<U>;
@@ -853,7 +853,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
                 b.set_symbol_set(merged_ss);
                 ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                return detail::poly_mul_impl(::std::forward<T>(x), ::std::move(b));
+                return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::move(b));
             }
             case 2u: {
                 // y already has the correct symbol
@@ -862,7 +862,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
                 a.set_symbol_set(merged_ss);
                 ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                return detail::poly_mul_impl(::std::move(a), ::std::forward<U>(y));
+                return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::forward<U>(y));
             }
         }
 
@@ -874,7 +874,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
         ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
         ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-        return detail::poly_mul_impl(::std::move(a), ::std::move(b));
+        return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::move(b));
     }
 }
 
