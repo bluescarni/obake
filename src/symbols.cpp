@@ -161,7 +161,7 @@ symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
         // - an element equal to n (in which case
         //   we will later bump 'it' up),
         // - an element > n (which implies that
-        //   the element before it is < n).
+        //   the element before 'it' is < n).
         it = ::std::lower_bound(it, e, n);
 
         if (it == e) {
