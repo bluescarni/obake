@@ -709,7 +709,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
         }
     }
 
-    auto trunc_skipper = [&x, &y, &ss, &args...]() {
+    [[maybe_unused]] auto trunc_skipper = [&x, &y, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
             ::piranha::detail::ignore(x, y, ss, args...);
             return [](const auto &, const auto &) { return false; };
