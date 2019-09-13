@@ -2712,7 +2712,8 @@ struct series_default_degree_impl {
     // Helper to extract the degree of a term p.
     template <typename T>
     struct d_extractor {
-        auto operator()(const series_term_t<T> &p) const
+        template <typename U>
+        auto operator()(const U &p) const
         {
             static_assert(algo<T> != 0);
 
@@ -2726,6 +2727,11 @@ struct series_default_degree_impl {
                 // Only key with degree.
                 return ::piranha::key_degree(p.first, *ss);
             }
+        }
+        template <typename U>
+        auto operator()(const U *p) const
+        {
+            return operator()(*p);
         }
         const symbol_set *ss;
     };
@@ -2855,7 +2861,8 @@ struct series_default_p_degree_impl {
     // Helper to extract the partial degree of a term p.
     template <typename T>
     struct d_extractor {
-        auto operator()(const series_term_t<T> &p) const
+        template <typename U>
+        auto operator()(const U &p) const
         {
             static_assert(algo<T> != 0);
 
@@ -2869,6 +2876,11 @@ struct series_default_p_degree_impl {
                 // Only key with degree.
                 return ::piranha::key_p_degree(p.first, *si, *ss);
             }
+        }
+        template <typename U>
+        auto operator()(const U *p) const
+        {
+            return operator()(*p);
         }
         const symbol_set *s;
         const symbol_idx_set *si;
