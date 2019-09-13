@@ -435,3 +435,13 @@ TEST_CASE("polynomial_mul_larger_hm_mt_test")
         REQUIRE(ret.size() == 2096600ull);
     });
 }
+
+TEST_CASE("polynomial_truncated_mul_test")
+{
+    using pm_t = packed_monomial<long long>;
+    using poly_t = polynomial<pm_t, mppp::integer<1>>;
+
+    auto [x, y, z] = make_polynomials<poly_t>("x", "y", "z");
+
+    truncated_mul(x, y, 3);
+}

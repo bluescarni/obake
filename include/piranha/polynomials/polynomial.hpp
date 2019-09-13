@@ -32,6 +32,7 @@
 #include <piranha/byte_size.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/hc.hpp>
+#include <piranha/detail/ignore.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/type_c.hpp>
@@ -39,6 +40,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
+#include <piranha/math/degree.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/safe_cast.hpp>
@@ -399,8 +401,8 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
 #endif
 
 // The multi-threaded homomorphic implementation.
-template <typename Ret, typename T, typename U>
-inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
+template <typename Ret, typename T, typename U, typename... Args>
+inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &...)
 {
     using cf1_t = series_cf_t<T>;
     using cf2_t = series_cf_t<U>;
@@ -665,8 +667,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
 // Simple poly mult implementation: just multiply
 // term by term, no parallelisation, no segmentation,
 // no copying of the operands, etc.
-template <typename Ret, typename T, typename U>
-inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
+template <typename Ret, typename T, typename U, typename... Args>
+inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args &... args)
 {
     using ret_key_t = series_key_t<Ret>;
     using ret_cf_t = series_cf_t<Ret>;
@@ -706,6 +708,32 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
                 "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
         }
     }
+
+    auto trunc_skipper = [&x, &y, &ss, &args...]() {
+        if constexpr (sizeof...(args) == 0u) {
+            ::piranha::detail::ignore(x, y, ss, args...);
+            return [](const auto &, const auto &) { return false; };
+        } else if constexpr (sizeof...(args) == 1u) {
+            using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+
+            // TODO fix.
+            using deg1_t = decltype(::piranha::degree(x));
+            using deg2_t = decltype(::piranha::degree(y));
+
+            ::std::vector<deg1_t> vd1_(::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<T>{&ss}),
+                                       ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<T>{&ss}));
+            ::std::vector<deg2_t> vd2_(::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<U>{&ss}),
+                                       ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<U>{&ss}));
+
+            auto ret = [vd1 = ::std::move(vd1_), vd2 = ::std::move(vd2_),
+                        &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](
+                           const auto &idx1, const auto &idx2) { return max_deg < vd1[idx1] + vd2[idx2]; };
+
+            return ret;
+        } else {
+            static_assert(sizeof...(args) == 2u);
+        }
+    }();
 
     // Proceed with the multiplication.
     auto &tab = retval._get_s_table()[0];
@@ -770,8 +798,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
 }
 
 // Implementation of poly multiplication with identical symbol sets.
-template <typename T, typename U>
-inline auto poly_mul_impl_identical_ss(T &&x, U &&y)
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
     using ret_key_t = series_key_t<ret_t>;
@@ -804,28 +832,27 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y)
             // term-by-term mults), or we just have 1 core
             // available, just run the simple
             // implementation.
-            detail::poly_mul_impl_simple(retval, x, y);
+            detail::poly_mul_impl_simple(retval, x, y, args...);
         } else {
             // "Large" operands and multiple cores available,
             // run the MT implementation.
-            detail::poly_mul_impl_mt_hm(retval, x, y);
+            detail::poly_mul_impl_mt_hm(retval, x, y, args...);
         }
     } else {
         // The monomial does not have homomorphic hashing,
         // just use the simple implementation.
-        detail::poly_mul_impl_simple(retval, x, y);
+        detail::poly_mul_impl_simple(retval, x, y, args...);
     }
 
     return retval;
 }
 
-} // namespace detail
-
-template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
+// Top level function for poly multiplication.
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
     if (x.get_symbol_set() == y.get_symbol_set()) {
-        return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y));
+        return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y), args...);
     } else {
         using rT = remove_cvref_t<T>;
         using rU = remove_cvref_t<U>;
@@ -853,7 +880,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
                 b.set_symbol_set(merged_ss);
                 ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::move(b));
+                return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::move(b), args...);
             }
             case 2u: {
                 // y already has the correct symbol
@@ -862,7 +889,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
                 a.set_symbol_set(merged_ss);
                 ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::forward<U>(y));
+                return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::forward<U>(y), args...);
             }
         }
 
@@ -874,8 +901,28 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
         ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
         ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-        return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::move(b));
+        return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::move(b), args...);
     }
+}
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
+{
+    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+template <typename T, typename U, typename V, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
+{
+    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
+}
+
+template <typename T, typename U, typename V, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
+{
+    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
 }
 
 } // namespace polynomials
