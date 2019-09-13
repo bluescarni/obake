@@ -20,9 +20,14 @@
 namespace piranha
 {
 
+// Set of symbols.
 using symbol_set = ::boost::container::flat_set<::std::string>;
 
+// Unsigned integral type for indexing into a symbol_set.
 using symbol_idx = symbol_set::size_type;
+
+// Set of symbol indices.
+using symbol_idx_set = ::boost::container::flat_set<symbol_idx>;
 
 // Map of symbol indices. This sorted data structure maps
 // symbol_idx instances to instances of T.
@@ -33,8 +38,11 @@ namespace detail
 {
 
 PIRANHA_DLL_PUBLIC ::std::string to_string(const symbol_set &);
+
 PIRANHA_DLL_PUBLIC ::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>>
 merge_symbol_sets(const symbol_set &, const symbol_set &);
+
+PIRANHA_DLL_PUBLIC symbol_idx_set ss_intersect_idx(const symbol_set &, const symbol_set &);
 
 } // namespace detail
 

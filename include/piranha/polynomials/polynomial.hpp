@@ -210,6 +210,10 @@ namespace detail
 // Small helper to extract a const reference to
 // a term's key (that is, the first element of the
 // input pair p).
+// NOTE: we used to need this helper to be a public
+// class in earlier implementations, but now this
+// could be turned into a local lambda in the functions where it is
+// used.
 struct poly_term_key_ref_extractor {
     // Reference overload.
     template <typename P>

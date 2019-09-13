@@ -6,11 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <type_traits>
+
 #include <mp++/rational.hpp>
 
 #include <piranha/byte_size.hpp>
 #include <piranha/config.hpp>
+#include <piranha/math/degree.hpp>
+#include <piranha/math/p_degree.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
+#include <piranha/polynomials/polynomial.hpp>
 #include <piranha/series.hpp>
 #include <piranha/symbols.hpp>
 
@@ -49,4 +54,219 @@ TEST_CASE("series_byte_size")
     s3.add_term(pm_t{3, 3, 3}, 3);
 
     REQUIRE(byte_size(s3) >= byte_size(s2));
+}
+
+TEST_CASE("series_degree")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = polynomial<pm_t, rat_t>;
+    using s11_t = polynomial<pm_t, s1_t>;
+
+    REQUIRE(is_with_degree_v<s1_t>);
+    REQUIRE(is_with_degree_v<const s1_t>);
+    REQUIRE(is_with_degree_v<s1_t &>);
+    REQUIRE(is_with_degree_v<const s1_t &>);
+    REQUIRE(is_with_degree_v<s1_t &&>);
+
+    REQUIRE(is_with_degree_v<s11_t>);
+    REQUIRE(is_with_degree_v<const s11_t>);
+    REQUIRE(is_with_degree_v<s11_t &>);
+    REQUIRE(is_with_degree_v<const s11_t &>);
+    REQUIRE(is_with_degree_v<s11_t &&>);
+
+    {
+        REQUIRE(degree(s1_t{}) == 0);
+
+        auto [x, y, z] = make_polynomials<s1_t>("x", "y", "z");
+        REQUIRE(std::is_same_v<decltype(degree(x)), int>);
+        REQUIRE(degree(x * 0 + 1) == 0);
+        REQUIRE(degree(x) == 1);
+        REQUIRE(degree(y) == 1);
+        REQUIRE(degree(z) == 1);
+
+        REQUIRE(degree(x * x) == 2);
+        REQUIRE(degree(y * x) == 2);
+        REQUIRE(degree(z * z) == 2);
+        REQUIRE(degree((x + y) * (x - y)) == 2);
+        REQUIRE(degree((x + y) * (x - y) - z) == 2);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y) == 3);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y + 1) == 3);
+    }
+
+    {
+        REQUIRE(degree(s11_t{}) == 0);
+
+        auto [y, z] = make_polynomials<s11_t>("y", "z");
+        auto [x] = make_polynomials<s1_t>("x");
+        REQUIRE(std::is_same_v<decltype(degree(x)), int>);
+        REQUIRE(std::is_same_v<decltype(degree(y)), int>);
+        REQUIRE(std::is_same_v<decltype(degree(x * y)), int>);
+        REQUIRE(degree(x * 0 + 1) == 0);
+        REQUIRE(degree(x) == 1);
+        REQUIRE(degree(y * 0 + 1) == 0);
+        REQUIRE(degree(y) == 1);
+        REQUIRE(degree(z) == 1);
+
+        REQUIRE(degree(x * x) == 2);
+        REQUIRE(degree(y * x) == 2);
+        REQUIRE(degree(z * z) == 2);
+        REQUIRE(degree((x + y) * (x - y)) == 2);
+        REQUIRE(degree((x + y) * (x - y) - z) == 2);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y) == 3);
+        REQUIRE(degree((x + y) * (x - y) - x * z * y + 1) == 3);
+    }
+}
+
+TEST_CASE("series_p_degree")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = polynomial<pm_t, rat_t>;
+    using s11_t = polynomial<pm_t, s1_t>;
+
+    REQUIRE(is_with_p_degree_v<s1_t>);
+    REQUIRE(is_with_p_degree_v<const s1_t>);
+    REQUIRE(is_with_p_degree_v<s1_t &>);
+    REQUIRE(is_with_p_degree_v<const s1_t &>);
+    REQUIRE(is_with_p_degree_v<s1_t &&>);
+
+    REQUIRE(is_with_p_degree_v<s11_t>);
+    REQUIRE(is_with_p_degree_v<const s11_t>);
+    REQUIRE(is_with_p_degree_v<s11_t &>);
+    REQUIRE(is_with_p_degree_v<const s11_t &>);
+    REQUIRE(is_with_p_degree_v<s11_t &&>);
+
+    {
+        REQUIRE(p_degree(s1_t{}, symbol_set{}) == 0);
+        REQUIRE(p_degree(s1_t{}, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(s1_t{}, symbol_set{"x", "y", "z"}) == 0);
+
+        auto [x, y, z] = make_polynomials<s1_t>("x", "y", "z");
+        REQUIRE(std::is_same_v<decltype(p_degree(x, symbol_set{})), int>);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"x", "y", "z"}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"x", "z"}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"y", "z"}) == 0);
+        REQUIRE(p_degree(x, symbol_set{}) == 0);
+        REQUIRE(p_degree(x, symbol_set{"x"}) == 1);
+        REQUIRE(p_degree(x, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(x, symbol_set{"z"}) == 0);
+        REQUIRE(p_degree(x, symbol_set{"x", "y"}) == 1);
+        REQUIRE(p_degree(x, symbol_set{"x", "z"}) == 1);
+        REQUIRE(p_degree(x, symbol_set{"y", "z"}) == 0);
+        REQUIRE(p_degree(y, symbol_set{"y"}) == 1);
+        REQUIRE(p_degree(y, symbol_set{}) == 0);
+        REQUIRE(p_degree(y, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(y, symbol_set{"x", "y"}) == 1);
+        REQUIRE(p_degree(y, symbol_set{"x", "z"}) == 0);
+        REQUIRE(p_degree(y, symbol_set{"y", "z"}) == 1);
+        REQUIRE(p_degree(z, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree(z, symbol_set{}) == 0);
+        REQUIRE(p_degree(z, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(z, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(z, symbol_set{"x", "y"}) == 0);
+        REQUIRE(p_degree(z, symbol_set{"x", "z"}) == 1);
+        REQUIRE(p_degree(z, symbol_set{"y", "z"}) == 1);
+
+        REQUIRE(p_degree(x * x, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree(x * x, symbol_set{"x"}) == 2);
+        REQUIRE(p_degree(x * x, symbol_set{}) == 0);
+        REQUIRE(p_degree(x * x, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(y * x, symbol_set{"y"}) == 1);
+        REQUIRE(p_degree(y * x, symbol_set{"y", "x"}) == 2);
+        REQUIRE(p_degree(y * x, symbol_set{"x"}) == 1);
+        REQUIRE(p_degree(y * x, symbol_set{"z"}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"x"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"z"}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"x", "y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"x"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x", "y", "z"}) == 3);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 1, symbol_set{"x", "y", "z"}) == 3);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 1, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 2, symbol_set{"x", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 2, symbol_set{"y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 3, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 3, symbol_set{}) == 0);
+    }
+
+    {
+        REQUIRE(p_degree(s11_t{}, symbol_set{}) == 0);
+        REQUIRE(p_degree(s11_t{}, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(s11_t{}, symbol_set{"x", "y"}) == 0);
+
+        auto [y, z] = make_polynomials<s11_t>("y", "z");
+        auto [x] = make_polynomials<s1_t>("x");
+        REQUIRE(std::is_same_v<decltype(p_degree(x, symbol_set{})), int>);
+        REQUIRE(std::is_same_v<decltype(p_degree(y, symbol_set{})), int>);
+        REQUIRE(std::is_same_v<decltype(p_degree(x * y, symbol_set{})), int>);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(x * 0 + 1, symbol_set{"y", "x"}) == 0);
+        REQUIRE(p_degree(x, symbol_set{"x"}) == 1);
+        REQUIRE(p_degree(x, symbol_set{"x", "y"}) == 1);
+        REQUIRE(p_degree(x, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(x, symbol_set{}) == 0);
+        REQUIRE(p_degree(y * 0 + 1, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(y * 0 + 1, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(y * 0 + 1, symbol_set{}) == 0);
+        REQUIRE(p_degree(y, symbol_set{"y"}) == 1);
+        REQUIRE(p_degree(y, symbol_set{"x"}) == 0);
+        REQUIRE(p_degree(y, symbol_set{"x", "y"}) == 1);
+        REQUIRE(p_degree(y, symbol_set{}) == 0);
+        REQUIRE(p_degree(z, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree(z, symbol_set{"z", "x"}) == 1);
+        REQUIRE(p_degree(z, symbol_set{"z", "y"}) == 1);
+        REQUIRE(p_degree(z, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(z, symbol_set{}) == 0);
+
+        REQUIRE(p_degree(x * x, symbol_set{"x"}) == 2);
+        REQUIRE(p_degree(x * x, symbol_set{"y"}) == 0);
+        REQUIRE(p_degree(x * x, symbol_set{"y", "x"}) == 2);
+        REQUIRE(p_degree(x * x, symbol_set{}) == 0);
+        REQUIRE(p_degree(y * x, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree(y * x, symbol_set{"x", "y", "z"}) == 2);
+        REQUIRE(p_degree(y * x, symbol_set{"x"}) == 1);
+        REQUIRE(p_degree(y * x, symbol_set{"y"}) == 1);
+        REQUIRE(p_degree(y * x, symbol_set{"z"}) == 0);
+        REQUIRE(p_degree(y * x, symbol_set{}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"x", "y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"x"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{"z"}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y), symbol_set{}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"x", "y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"x", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree((x + y) * (x - y) - z, symbol_set{}) == 0);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x", "y", "z"}) == 3);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"x"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y, symbol_set{"y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 1, symbol_set{"x", "y", "z"}) == 3);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 1, symbol_set{"x", "y"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 2, symbol_set{"x", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 2, symbol_set{"y", "z"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 3, symbol_set{"z"}) == 1);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 3, symbol_set{"x"}) == 2);
+        REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 4, symbol_set{"y"}) == 2);
+    }
 }

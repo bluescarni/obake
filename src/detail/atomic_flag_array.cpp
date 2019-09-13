@@ -19,9 +19,11 @@ namespace piranha::detail
 
 atomic_flag_array::atomic_flag_array(size_type size) : m_size(size)
 {
+    // LCOV_EXCL_START
     if (piranha_unlikely(size > ::std::numeric_limits<size_type>::max() / sizeof(value_type))) {
         piranha_throw(::std::bad_alloc, );
     }
+    // LCOV_EXCL_STOP
 
     // Dynamically create an array of unsigned char with enough storage.
     // This will throw bad_alloc in case the memory cannot be allocated.
