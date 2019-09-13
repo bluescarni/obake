@@ -15,12 +15,14 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include <boost/iterator/permutation_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
@@ -709,10 +711,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
         }
     }
 
-    [[maybe_unused]] auto trunc_skipper = [&x, &y, &ss, &args...]() {
+    auto compute_j_end = [&v1, &v2, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
-            ::piranha::detail::ignore(x, y, ss, args...);
-            return [](const auto &, const auto &) { return false; };
+            ::piranha::detail::ignore(v1, v2, ss, args...);
+            return [v2_size = v2.size()](const auto &) { return v2_size; };
         } else if constexpr (sizeof...(args) == 1u) {
             using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
 
@@ -720,14 +722,51 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             using deg1_t = decltype(::piranha::degree(x));
             using deg2_t = decltype(::piranha::degree(y));
 
-            ::std::vector<deg1_t> vd1_(::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<T>{&ss}),
-                                       ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<T>{&ss}));
-            ::std::vector<deg2_t> vd2_(::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<U>{&ss}),
-                                       ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<U>{&ss}));
+            // Create the vectors of term degrees.
+            ::std::vector<deg1_t> vd1_(::boost::make_transform_iterator(v1.cbegin(), d_impl::d_extractor<T>{&ss}),
+                                       ::boost::make_transform_iterator(v1.cend(), d_impl::d_extractor<T>{&ss}));
+            ::std::vector<deg2_t> vd2_(::boost::make_transform_iterator(v2.cbegin(), d_impl::d_extractor<U>{&ss}),
+                                       ::boost::make_transform_iterator(v2.cend(), d_impl::d_extractor<U>{&ss}));
+
+            // Vector of indices into vd1/vd2.
+            ::std::vector<decltype(vd1_.size())> vidx1_;
+            ::std::vector<decltype(vd2_.size())> vidx2_;
+            vidx1_.resize(::piranha::safe_cast<decltype(vidx1_.size())>(vd1_.size()));
+            vidx2_.resize(::piranha::safe_cast<decltype(vidx2_.size())>(vd2_.size()));
+            ::std::iota(vidx1_.begin(), vidx1_.end(), decltype(vd1_.size())(0));
+            ::std::iota(vidx2_.begin(), vidx2_.end(), decltype(vd2_.size())(0));
+
+            // Sort indirectly.
+            ::std::sort(vidx1_.begin(), vidx1_.end(),
+                        [&vd1_](const auto &idx1, const auto &idx2) { return vd1_[idx1] < vd1_[idx2]; });
+            ::std::sort(vidx2_.begin(), vidx2_.end(),
+                        [&vd2_](const auto &idx1, const auto &idx2) { return vd2_[idx1] < vd2_[idx2]; });
+
+            // Apply the sorting.
+            vd1_ = ::std::vector<deg1_t>(::boost::make_permutation_iterator(vd1_.begin(), vidx1_.begin()),
+                                         ::boost::make_permutation_iterator(vd1_.end(), vidx1_.end()));
+            vd2_ = ::std::vector<deg2_t>(::boost::make_permutation_iterator(vd2_.begin(), vidx2_.begin()),
+                                         ::boost::make_permutation_iterator(vd2_.end(), vidx2_.end()));
+            v1 = ::std::vector<const series_term_t<T> *>(::boost::make_permutation_iterator(v1.begin(), vidx1_.begin()),
+                                                         ::boost::make_permutation_iterator(v1.end(), vidx1_.end()));
+            v2 = ::std::vector<const series_term_t<U> *>(::boost::make_permutation_iterator(v2.begin(), vidx2_.begin()),
+                                                         ::boost::make_permutation_iterator(v2.end(), vidx2_.end()));
+
+            // TODO debug assertions.
 
             auto ret = [vd1 = ::std::move(vd1_), vd2 = ::std::move(vd2_),
-                        &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](
-                           const auto &idx1, const auto &idx2) { return max_deg < vd1[idx1] + vd2[idx2]; };
+                        &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
+                using idx_t = remove_cvref_t<decltype(i)>;
+
+                const auto &d_i = vd1[i];
+                if (max_deg < d_i) {
+                    return idx_t(0);
+                }
+                const auto it = ::std::upper_bound(vd2.begin(), vd2.end(), max_deg - d_i);
+
+                // TODO overflow check.
+                return static_cast<idx_t>(it - vd2.begin());
+            };
 
             return ret;
         } else {
@@ -744,11 +783,19 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
         // Temporary variable used in monomial multiplication.
         ret_key_t tmp_key;
 
-        for (auto t1 : v1) {
+        const auto v1_size = v1.size();
+        for (decltype(v1.size()) i = 0; i < v1_size; ++i) {
+            const auto &t1 = v1[i];
             const auto &k1 = t1->first;
             const auto &c1 = t1->second;
 
-            for (auto t2 : v2) {
+            const auto j_end = compute_j_end(i);
+            if (j_end == 0u) {
+                break;
+            }
+
+            for (decltype(v2.size()) j = 0; j < j_end; ++j) {
+                const auto &t2 = v2[j];
                 const auto &c2 = t2->second;
 
                 // Multiply the monomial.

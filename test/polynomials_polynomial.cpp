@@ -443,5 +443,7 @@ TEST_CASE("polynomial_truncated_mul_test")
 
     auto [x, y, z] = make_polynomials<poly_t>("x", "y", "z");
 
-    truncated_mul(x, y, 3);
+    std::cout << truncated_mul(x * x + 4 * z + 2, y, 1) << '\n';
+    std::cout << truncated_mul(x * x + 4 * z + 2, y, 2) << '\n';
+    std::cout << truncated_mul(x * x + 4 * z + 2, y, 3) << '\n';
 }
