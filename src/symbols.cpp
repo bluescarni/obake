@@ -19,6 +19,7 @@
 #include <piranha/detail/limits.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/exceptions.hpp>
+#include <piranha/math/safe_cast.hpp>
 #include <piranha/symbols.hpp>
 
 namespace piranha::detail
@@ -137,6 +138,77 @@ namespace piranha::detail
 #endif
 
     return ::std::make_tuple(::std::move(u_set), ::std::move(m1), ::std::move(m2));
+}
+
+// This function first computes the intersection ix of the two sets s and s_ref, and then returns
+// a set with the positional indices of ix in s_ref.
+symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
+{
+    // Use the underlying sequence type
+    // of symbol_idx_set for the computation.
+    symbol_idx_set::sequence_type seq;
+    // Reserve storage. We won't ever need more than
+    // the minimum between s.size() and s_ref.size().
+    seq.reserve(::piranha::safe_cast<decltype(seq.size())>(::std::min(s.size(), s_ref.size())));
+
+    auto it = s_ref.begin();
+    const auto e = s_ref.end();
+
+    for (const auto &n : s) {
+        // Locate n in the current range of s_ref.
+        // NOTE: after this, 'it' will point to either:
+        // - end (in which case we just stop),
+        // - an element equal to n (in which case
+        //   we will later bump 'it' up),
+        // - an element > n (which implies that
+        //   the element before it is < n).
+        it = ::std::lower_bound(it, e, n);
+
+        if (it == e) {
+            // n is > any other string in s_ref,
+            // no more searching is needed.
+            break;
+        }
+
+        if (*it == n) {
+            // n was located in s_ref. Compute its index,
+            // and bump 'it' up so that we start the next search from the
+            // next element in s_ref.
+            seq.push_back(s_ref.index_of(it++));
+        }
+    }
+
+#if !defined(NDEBUG)
+    // Debug mode checks.
+    // seq must be sorted.
+    assert(::std::is_sorted(seq.cbegin(), seq.cend()));
+
+    for (auto idx : seq) {
+        // Every index in seq must be inside s_ref.
+        assert(idx < s_ref.size());
+
+        // The string at index idx in s_ref must be present in s.
+        auto tmp_it = ::std::lower_bound(s.begin(), s.end(), *s_ref.nth(idx));
+        assert(tmp_it != s.end());
+        assert(*tmp_it == *s_ref.nth(idx));
+    }
+
+    for (const auto &n : s) {
+        // Every element of s which is also in s_ref must have
+        // an index in seq.
+        const auto tmp_it = ::std::lower_bound(s_ref.begin(), s_ref.end(), n);
+        if (tmp_it != s_ref.end() && *tmp_it == n) {
+            const auto tmp_it_2 = ::std::lower_bound(seq.begin(), seq.end(), s_ref.index_of(tmp_it));
+            assert(tmp_it_2 != seq.end());
+        }
+    }
+#endif
+
+    // Move seq into the return vale.
+    symbol_idx_set retval;
+    retval.adopt_sequence(::boost::container::ordered_unique_range_t{}, ::std::move(seq));
+
+    return retval;
 }
 
 } // namespace piranha::detail

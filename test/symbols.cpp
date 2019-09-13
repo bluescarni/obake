@@ -104,3 +104,32 @@ TEST_CASE("merge_symbol_sets_test")
              == symbol_idx_map<symbol_set>{{0, {"a"}}, {1, {"c", "d", "f", "g", "m"}}, {2, {"o"}}, {3, {"x"}}}));
     REQUIRE((std::get<2>(ret) == symbol_idx_map<symbol_set>{{1, {"b"}}, {6, {"n"}}, {7, {"t"}}}));
 }
+
+TEST_CASE("ss_intersect_idx_test")
+{
+    REQUIRE(detail::ss_intersect_idx(symbol_set{}, symbol_set{}).size() == 0u);
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"a"}, symbol_set{}).size() == 0u);
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"a", "b", "c"}, symbol_set{}).size() == 0u);
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"b", "c"}, symbol_set{"d"}).size() == 0u);
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"b", "c"}, symbol_set{"a"}).size() == 0u);
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"a", "b", "c"}, symbol_set{"a"}) == symbol_idx_set{0});
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"a", "b", "c"}, symbol_set{"b"}) == symbol_idx_set{0});
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"a", "b", "c"}, symbol_set{"c"}) == symbol_idx_set{0});
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"a"}, symbol_set{"a", "b", "c"}) == symbol_idx_set{0});
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"b"}, symbol_set{"a", "b", "c"}) == symbol_idx_set{1});
+    REQUIRE(detail::ss_intersect_idx(symbol_set{"c"}, symbol_set{"a", "b", "c"}) == symbol_idx_set{2});
+    REQUIRE((detail::ss_intersect_idx(symbol_set{"a", "b", "c", "d", "g"}, symbol_set{"b", "d", "e"})
+             == symbol_idx_set{0, 1}));
+    REQUIRE((detail::ss_intersect_idx(symbol_set{"b", "d", "e"}, symbol_set{"a", "b", "c", "d", "g"})
+             == symbol_idx_set{1, 3}));
+    REQUIRE(
+        (detail::ss_intersect_idx(symbol_set{"a", "b", "c", "d", "g"}, symbol_set{"x", "y", "z"}) == symbol_idx_set{}));
+    REQUIRE(
+        (detail::ss_intersect_idx(symbol_set{"x", "y", "z"}, symbol_set{"a", "b", "c", "d", "g"}) == symbol_idx_set{}));
+    REQUIRE((detail::ss_intersect_idx(symbol_set{"c", "d", "g"}, symbol_set{"a", "b", "e"}) == symbol_idx_set{}));
+    REQUIRE((detail::ss_intersect_idx(symbol_set{"a", "b", "e"}, symbol_set{"c", "d", "g"}) == symbol_idx_set{}));
+    REQUIRE((detail::ss_intersect_idx(symbol_set{"c", "e", "g"}, symbol_set{"a", "b", "e"}) == symbol_idx_set{2}));
+    REQUIRE((detail::ss_intersect_idx(symbol_set{"a", "b", "e"}, symbol_set{"c", "e", "g"}) == symbol_idx_set{1}));
+    REQUIRE(
+        (detail::ss_intersect_idx(symbol_set{"c", "e", "g"}, symbol_set{"c", "e", "g"}) == symbol_idx_set{0, 1, 2}));
+}
