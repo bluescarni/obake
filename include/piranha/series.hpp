@@ -47,10 +47,12 @@
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
+#include <piranha/key/key_p_degree.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/math/degree.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
+#include <piranha/math/p_degree.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_name.hpp>
@@ -2737,7 +2739,7 @@ struct series_default_degree_impl {
             return ret_t<T>(0);
         }
 
-        // The functor to extrat the term's degree.
+        // The functor to extract the term's degree.
         d_extractor<T> d_extract{&x.get_symbol_set()};
 
         const auto it = ::std::max_element(::boost::make_transform_iterator(x.cbegin(), d_extract),
@@ -2759,6 +2761,159 @@ template <typename T>
 inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
 #endif
     = series_default_degree_impl{};
+
+} // namespace customisation::internal
+
+// Customise piranha::p_degree() for series types.
+// NOTE: some overlap with the degree() customisation,
+// I think we can at least share the algorithm_impl implementation.
+namespace customisation::internal
+{
+
+struct series_default_p_degree_impl {
+    // Metaprogramming to establish the algorithm/return
+    // type of the series partial degree computation.
+    template <typename T>
+    static constexpr auto algorithm_impl()
+    {
+        [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+        if constexpr (!is_cvr_series_v<T>) {
+            // Not a series type.
+            return failure;
+        } else {
+            using rT = remove_cvref_t<T>;
+            using cf_t = series_cf_t<rT>;
+            using key_t = series_key_t<rT>;
+
+            constexpr bool cf_has_p_degree = is_with_p_degree_v<const cf_t &>;
+            constexpr bool key_has_p_degree = is_key_with_p_degree_v<const key_t &>;
+
+            if constexpr (!cf_has_p_degree && !key_has_p_degree) {
+                // Neither key nor cf are with partial degree.
+                return failure;
+            } else {
+                if constexpr (cf_has_p_degree && key_has_p_degree) {
+                    // Both key and cf are with partial degree.
+                    using cf_p_degree_t = detail::p_degree_t<const cf_t &>;
+                    using key_p_degree_t = detail::key_p_degree_t<const key_t &>;
+
+                    if constexpr (is_addable_v<key_p_degree_t, cf_p_degree_t>) {
+                        // cf and key partial degree types are addable.
+                        // NOTE: check for addability using rvalues.
+                        using p_degree_t = detail::add_t<key_p_degree_t, cf_p_degree_t>;
+
+                        if constexpr (::std::conjunction_v<
+                                          is_less_than_comparable<::std::add_lvalue_reference_t<const p_degree_t>>,
+                                          ::std::is_constructible<p_degree_t, int>>) {
+                            // p_degree_t supports operator< and it can be constructed from int.
+                            // NOTE: lt-comparability is tested via const lvalue refs.
+                            return ::std::make_pair(1, detail::type_c<p_degree_t>{});
+                        } else {
+                            return failure;
+                        }
+                    } else {
+                        // cf and key partial degree types are not addable.
+                        return failure;
+                    }
+                } else if constexpr (cf_has_p_degree) {
+                    // Only the coefficient is with partial degree.
+                    using p_degree_t = detail::p_degree_t<const cf_t &>;
+
+                    if constexpr (::std::conjunction_v<
+                                      is_less_than_comparable<::std::add_lvalue_reference_t<const p_degree_t>>,
+                                      ::std::is_constructible<p_degree_t, int>>) {
+                        // p_degree_t supports operator< and it can be constructed from int.
+                        return ::std::make_pair(2, detail::type_c<p_degree_t>{});
+                    } else {
+                        return failure;
+                    }
+                } else {
+                    // Only the key is with partial degree.
+                    using p_degree_t = detail::key_p_degree_t<const key_t &>;
+
+                    if constexpr (::std::conjunction_v<
+                                      is_less_than_comparable<::std::add_lvalue_reference_t<const p_degree_t>>,
+                                      ::std::is_constructible<p_degree_t, int>>) {
+                        // p_degree_t supports operator< and it can be constructed from int.
+                        return ::std::make_pair(3, detail::type_c<p_degree_t>{});
+                    } else {
+                        return failure;
+                    }
+                }
+            }
+        }
+    }
+
+    // A couple of handy shortcuts.
+    template <typename T>
+    static constexpr auto algo = series_default_p_degree_impl::algorithm_impl<T>().first;
+
+    template <typename T>
+    using ret_t = typename decltype(series_default_p_degree_impl::algorithm_impl<T>().second)::type;
+
+    // Helper to extract the partial degree of a term p.
+    template <typename T>
+    struct d_extractor {
+        auto operator()(const series_term_t<T> &p) const
+        {
+            static_assert(algo<T> != 0);
+
+            if constexpr (algo<T> == 1) {
+                // Both coefficient and key with partial degree.
+                return ::piranha::key_p_degree(p.first, *si, *ss) + ::piranha::p_degree(p.second, *s);
+            } else if constexpr (algo<T> == 2) {
+                // Only coefficient with partial degree.
+                return ::piranha::p_degree(p.second, *s);
+            } else {
+                // Only key with degree.
+                return ::piranha::key_p_degree(p.first, *si, *ss);
+            }
+        }
+        const symbol_set *s;
+        const symbol_idx_set *si;
+        const symbol_set *ss;
+    };
+
+    // Implementation.
+    template <typename T>
+    ret_t<T> operator()(const T &x, const symbol_set &s) const
+    {
+        // Special case for an empty series.
+        if (x.empty()) {
+            return ret_t<T>(0);
+        }
+
+        // Cache x's symbol set.
+        const auto &ss = x.get_symbol_set();
+
+        // Fetch the indices of s in ss.
+        // NOTE: this computation could be avoided in case the
+        // key type has no degree.
+        const auto si = detail::ss_intersect_idx(s, ss);
+
+        // The functor to extract the term's partial degree.
+        d_extractor<T> d_extract{&s, &si, &ss};
+
+        const auto it = ::std::max_element(::boost::make_transform_iterator(x.cbegin(), d_extract),
+                                           ::boost::make_transform_iterator(x.cend(), d_extract),
+                                           // NOTE: override the operator< call to ensure
+                                           // that the comparison happens via const lvalue refs.
+                                           [](const auto &a, const auto &b) { return a < b; });
+
+        assert(it != ::boost::make_transform_iterator(x.cend(), d_extract));
+
+        return d_extract(*(it.base()));
+    }
+};
+
+template <typename T>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    requires series_default_p_degree_impl::algo<T> != 0 inline constexpr auto p_degree<T>
+#else
+inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
+#endif
+    = series_default_p_degree_impl{};
 
 } // namespace customisation::internal
 
