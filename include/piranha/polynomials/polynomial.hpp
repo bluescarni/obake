@@ -403,6 +403,18 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
 
 #endif
 
+// Functor used in the function below.
+// It will return a copy of the input
+// term p, but with the const removed
+// from the key type.
+struct poly_mul_impl_pair_transform {
+    template <typename T>
+    auto operator()(const T &p) const
+    {
+        return ::std::make_pair(p.first, p.second);
+    }
+};
+
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U, typename... Args>
 inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &...)
@@ -433,11 +445,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // to allow mutability.
     // NOTE: need to better assess the benefits of
     // copying the input series.
-    auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
-    ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
-                                                          ::boost::make_transform_iterator(x.end(), p_transform));
-    ::std::vector<::std::pair<series_key_t<U>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
-                                                          ::boost::make_transform_iterator(y.end(), p_transform));
+    ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(
+        ::boost::make_transform_iterator(x.begin(), poly_mul_impl_pair_transform{}),
+        ::boost::make_transform_iterator(x.end(), poly_mul_impl_pair_transform{}));
+    ::std::vector<::std::pair<series_key_t<U>, cf2_t>> v2(
+        ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
+        ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
     // Do the monomial overflow checking, if possible.
     [[maybe_unused]] const auto r1
@@ -667,17 +680,33 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
 #endif
 
-// NOTE: this helper is used in the implementation
-// TODO
+// NOTE: a couple of helpers used in the
+// transform iterators below.
+
+// Add an input value to another value a reference
+// to which is created on construction.
 template <typename T>
-struct poly_mul_degree_adder {
-    explicit poly_mul_degree_adder(const T *ptr) : x_ptr(ptr) {}
+struct poly_mul_impl_degree_adder {
+    // Ensure def-constructability.
+    poly_mul_impl_degree_adder() : x_ptr(nullptr) {}
+    explicit poly_mul_impl_degree_adder(const T *ptr) : x_ptr(ptr) {}
     template <typename U>
     auto operator()(const U &y) const
     {
+        assert(x_ptr != nullptr);
+
         return *x_ptr + y;
     }
     const T *x_ptr;
+};
+
+// Extract a pointer from a const reference.
+struct poly_mul_impl_ptr_extractor {
+    template <typename T>
+    auto operator()(const T &x) const
+    {
+        return &x;
+    }
 };
 
 // Simple poly mult implementation: just multiply
@@ -703,11 +732,12 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     const auto &ss = retval.get_symbol_set();
 
     // Construct the vectors of pointer to the terms.
-    auto ptr_extractor = [](const auto &p) { return &p; };
-    ::std::vector<const series_term_t<T> *> v1(::boost::make_transform_iterator(x.begin(), ptr_extractor),
-                                               ::boost::make_transform_iterator(x.end(), ptr_extractor));
-    ::std::vector<const series_term_t<U> *> v2(::boost::make_transform_iterator(y.begin(), ptr_extractor),
-                                               ::boost::make_transform_iterator(y.end(), ptr_extractor));
+    ::std::vector<const series_term_t<T> *> v1(
+        ::boost::make_transform_iterator(x.begin(), poly_mul_impl_ptr_extractor{}),
+        ::boost::make_transform_iterator(x.end(), poly_mul_impl_ptr_extractor{}));
+    ::std::vector<const series_term_t<U> *> v2(
+        ::boost::make_transform_iterator(y.begin(), poly_mul_impl_ptr_extractor{}),
+        ::boost::make_transform_iterator(y.end(), poly_mul_impl_ptr_extractor{}));
 
     // Do the monomial overflow checking, if possible.
     [[maybe_unused]] const auto r1
@@ -812,8 +842,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // Find the first term in the second series such
                 // that d_i + d_j > max_deg.
                 const auto it = ::std::upper_bound(
-                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_degree_adder(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_degree_adder(&d_i)), max_deg);
+                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder(&d_i)),
+                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder(&d_i)), max_deg);
 
                 // Turn the iterator in an index and return it.
                 // NOTE: we checked above that the iterator diff

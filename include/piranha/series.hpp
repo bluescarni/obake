@@ -2716,6 +2716,7 @@ struct series_default_degree_impl {
         auto operator()(const U &p) const
         {
             static_assert(algo<T> != 0);
+            assert(ss != nullptr);
 
             if constexpr (algo<T> == 1) {
                 // Both coefficient and key with degree.
@@ -2733,7 +2734,7 @@ struct series_default_degree_impl {
         {
             return operator()(*p);
         }
-        const symbol_set *ss;
+        const symbol_set *ss = nullptr;
     };
 
     // Implementation.
@@ -2865,6 +2866,9 @@ struct series_default_p_degree_impl {
         auto operator()(const U &p) const
         {
             static_assert(algo<T> != 0);
+            assert(s != nullptr);
+            assert(si != nullptr);
+            assert(ss != nullptr);
 
             if constexpr (algo<T> == 1) {
                 // Both coefficient and key with partial degree.
@@ -2882,9 +2886,9 @@ struct series_default_p_degree_impl {
         {
             return operator()(*p);
         }
-        const symbol_set *s;
-        const symbol_idx_set *si;
-        const symbol_set *ss;
+        const symbol_set *s = nullptr;
+        const symbol_idx_set *si = nullptr;
+        const symbol_set *ss = nullptr;
     };
 
     // Implementation.
