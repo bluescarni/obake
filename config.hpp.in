@@ -73,10 +73,8 @@
 #endif
 
 // Detect the availability of std::string_view.
-// NOTE: MSVC 2015 and earlier don't have a
-// std::string_view implementation.
-// NOTE: lift this from mp++ eventually.
-#if !defined(_MSC_VER) || _MSC_VER >= 1910
+// Use the definition from mp++.
+#if defined(MPPP_HAVE_STRING_VIEW)
 
 #define PIRANHA_HAVE_STRING_VIEW
 
