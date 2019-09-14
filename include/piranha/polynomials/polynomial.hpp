@@ -35,6 +35,7 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/hc.hpp>
 #include <piranha/detail/ignore.hpp>
+#include <piranha/detail/limits.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/type_c.hpp>
@@ -666,6 +667,19 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
 #endif
 
+// NOTE: this helper is used in the implementation
+// TODO
+template <typename T>
+struct poly_mul_degree_adder {
+    explicit poly_mul_degree_adder(const T *ptr) : x_ptr(ptr) {}
+    template <typename U>
+    auto operator()(const U &y) const
+    {
+        return *x_ptr + y;
+    }
+    const T *x_ptr;
+};
+
 // Simple poly mult implementation: just multiply
 // term by term, no parallelisation, no segmentation,
 // no copying of the operands, etc.
@@ -711,64 +725,102 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
         }
     }
 
+    // This functor will be used to compute the
+    // upper limit of the j index (in the usual half-open
+    // range fashion) for a given i index
+    // in the nested for-loop below that performs
+    // the term-by-term multiplications.
+    // In the non-truncated case, compute_j_end will
+    // always return the size of y (that is, every
+    // term of x will be multiplied by every term of
+    // of y). In the truncated cases, the returned
+    // j value will ensure that the truncation limits
+    // are respected.
     auto compute_j_end = [&v1, &v2, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
-            ::piranha::detail::ignore(v1, v2, ss, args...);
+            ::piranha::detail::ignore(v1, ss, args...);
+
             return [v2_size = v2.size()](const auto &) { return v2_size; };
         } else if constexpr (sizeof...(args) == 1u) {
-            using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+            // Helper that will:
+            //
+            // - create and return a sorted vector vd
+            //   containing the total degrees of all the
+            //   terms in v,
+            // - sort v according to the order defined in vd.
+            //
+            // v will be one of v1/v2, t is a type_c instance
+            // containing either T or U.
+            auto sorter = [&ss](auto &v, auto t) {
+                // NOTE: we will be using the machinery from the default implementation
+                // of degree() for series, so that we can re-use the concept checking bits
+                // as well.
+                using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                using s_t = typename decltype(t)::type;
+                using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
-            // TODO fix.
-            using deg1_t = decltype(::piranha::degree(x));
-            using deg2_t = decltype(::piranha::degree(y));
+                // Compute the vector of degrees.
+                ::std::vector<deg_t> vd(::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                                        ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
 
-            // Create the vectors of term degrees.
-            ::std::vector<deg1_t> vd1_(::boost::make_transform_iterator(v1.cbegin(), d_impl::d_extractor<T>{&ss}),
-                                       ::boost::make_transform_iterator(v1.cend(), d_impl::d_extractor<T>{&ss}));
-            ::std::vector<deg2_t> vd2_(::boost::make_transform_iterator(v2.cbegin(), d_impl::d_extractor<U>{&ss}),
-                                       ::boost::make_transform_iterator(v2.cend(), d_impl::d_extractor<U>{&ss}));
-
-            // Vector of indices into vd1/vd2.
-            ::std::vector<decltype(vd1_.size())> vidx1_;
-            ::std::vector<decltype(vd2_.size())> vidx2_;
-            vidx1_.resize(::piranha::safe_cast<decltype(vidx1_.size())>(vd1_.size()));
-            vidx2_.resize(::piranha::safe_cast<decltype(vidx2_.size())>(vd2_.size()));
-            ::std::iota(vidx1_.begin(), vidx1_.end(), decltype(vd1_.size())(0));
-            ::std::iota(vidx2_.begin(), vidx2_.end(), decltype(vd2_.size())(0));
-
-            // Sort indirectly.
-            ::std::sort(vidx1_.begin(), vidx1_.end(),
-                        [&vd1_](const auto &idx1, const auto &idx2) { return vd1_[idx1] < vd1_[idx2]; });
-            ::std::sort(vidx2_.begin(), vidx2_.end(),
-                        [&vd2_](const auto &idx1, const auto &idx2) { return vd2_[idx1] < vd2_[idx2]; });
-
-            // Apply the sorting.
-            vd1_ = ::std::vector<deg1_t>(::boost::make_permutation_iterator(vd1_.begin(), vidx1_.begin()),
-                                         ::boost::make_permutation_iterator(vd1_.end(), vidx1_.end()));
-            vd2_ = ::std::vector<deg2_t>(::boost::make_permutation_iterator(vd2_.begin(), vidx2_.begin()),
-                                         ::boost::make_permutation_iterator(vd2_.end(), vidx2_.end()));
-            v1 = ::std::vector<const series_term_t<T> *>(::boost::make_permutation_iterator(v1.begin(), vidx1_.begin()),
-                                                         ::boost::make_permutation_iterator(v1.end(), vidx1_.end()));
-            v2 = ::std::vector<const series_term_t<U> *>(::boost::make_permutation_iterator(v2.begin(), vidx2_.begin()),
-                                                         ::boost::make_permutation_iterator(v2.end(), vidx2_.end()));
-
-            // TODO debug assertions.
-
-            auto ret = [vd1 = ::std::move(vd1_), vd2 = ::std::move(vd2_),
-                        &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
-                using idx_t = remove_cvref_t<decltype(i)>;
-
-                const auto &d_i = vd1[i];
-                if (max_deg < d_i) {
-                    return idx_t(0);
+                // We'll need to use const iterator arithmetics below,
+                // make sure we can do it safely.
+                // LCOV_EXCL_START
+                using vd_it_diff_t = decltype(vd.cend() - vd.cbegin());
+                using vd_it_udiff_t = make_unsigned_t<vd_it_diff_t>;
+                if (piranha_unlikely(vd.size()
+                                     > static_cast<vd_it_udiff_t>(::piranha::detail::limits_max<vd_it_diff_t>))) {
+                    piranha_throw(
+                        ::std::overflow_error,
+                        "An overflow condition was detected in the truncated multiplication of two polynomials");
                 }
-                const auto it = ::std::upper_bound(vd2.begin(), vd2.end(), max_deg - d_i);
+                // LCOV_EXCL_STOP
 
-                // TODO overflow check.
-                return static_cast<idx_t>(it - vd2.begin());
+                // Create a vector of indices into vd.
+                ::std::vector<decltype(vd.size())> vidx;
+                vidx.resize(::piranha::safe_cast<decltype(vidx.size())>(vd.size()));
+                ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
+
+                // Sort indirectly.
+                ::std::sort(vidx.begin(), vidx.end(),
+                            [&vd](const auto &idx1, const auto &idx2) { return vd[idx1] < vd[idx2]; });
+
+                // Apply the sorting to vd and v.
+                vd = ::std::vector<deg_t>(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
+                                          ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
+                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
+
+                // Check the results in debug mode.
+                assert(::std::is_sorted(vd.begin(), vd.end()));
+                assert(::std::equal(vd.begin(), vd.end(),
+                                    ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                                    [](const auto &a, const auto &b) { return a == b; }));
+
+                return vd;
             };
 
-            return ret;
+            using ::piranha::detail::type_c;
+            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
+                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
+                using idx_t = remove_cvref_t<decltype(i)>;
+
+                // Get the degree of the current term
+                // in the first series.
+                const auto &d_i = vd1[i];
+
+                // Find the first term in the second series such
+                // that d_i + d_j > max_deg.
+                const auto it = ::std::upper_bound(
+                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_degree_adder(&d_i)),
+                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_degree_adder(&d_i)), max_deg);
+
+                // Turn the iterator in an index and return it.
+                // NOTE: we checked above that the iterator diff
+                // type can safely be used as an index (for both
+                // vd1 and vd2).
+                return static_cast<idx_t>(it.base() - vd2.cbegin());
+            };
         } else {
             static_assert(sizeof...(args) == 2u);
         }
@@ -789,8 +841,13 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             const auto &k1 = t1->first;
             const auto &c1 = t1->second;
 
+            // Get the upper limit of the multiplication
+            // range in v2.
             const auto j_end = compute_j_end(i);
             if (j_end == 0u) {
+                // If j_end is zero, we don't need to perform
+                // any more term multiplications as the remaining
+                // ones will all end up above the truncation limit.
                 break;
             }
 
