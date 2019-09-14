@@ -136,7 +136,7 @@ endif()
 # Find the dependencies.
 
 # mp++.
-find_package(mp++ 0.14 REQUIRED)
+find_package(mp++ 0.17 REQUIRED)
 
 # abseil.
 find_package(absl REQUIRED)

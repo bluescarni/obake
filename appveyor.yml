@@ -6,10 +6,10 @@ branches:
 
 environment:
   matrix:
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-      BUILD_TYPE: MSVC19_64
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: MSVC15_clang_64
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      BUILD_TYPE: MSVC19_64
 
 install:
 - call "C:\\Miniconda36-x64\\Scripts\\activate.bat"
@@ -17,7 +17,7 @@ install:
 - conda update -n base conda
 - conda config --add channels conda-forge --force
 - if [%BUILD_TYPE%]==[MSVC19_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel clangdev ninja
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name piranha cmake boost-cpp mppp tbb tbb-devel clangdev ninja
 - call activate piranha
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] clang-cl -v
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
@@ -27,20 +27,17 @@ build_script:
 - mkdir build
 - cd build
 
-# mp++ setup.
-- git clone https://github.com/bluescarni/mppp.git
-- cd mppp
-- mkdir build
-- cd build
+# mp++ setup (only for the MSVC19_64 build).
+- if [%BUILD_TYPE%]==[MSVC19_64] git clone https://github.com/bluescarni/mppp.git
+- if [%BUILD_TYPE%]==[MSVC19_64] cd mppp
+- if [%BUILD_TYPE%]==[MSVC19_64] mkdir build
+- if [%BUILD_TYPE%]==[MSVC19_64] cd build
 
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target install
 
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DMPPP_WITH_MPFR=yes -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH%  -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_C_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install -- -v
-
-- cd ..
-- cd ..
+- if [%BUILD_TYPE%]==[MSVC19_64] cd ..
+- if [%BUILD_TYPE%]==[MSVC19_64] cd ..
 
 # abseil setup.
 - git clone https://github.com/abseil/abseil-cpp.git
