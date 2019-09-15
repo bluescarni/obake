@@ -417,7 +417,7 @@ struct poly_mul_impl_pair_transform {
 
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U, typename... Args>
-inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &...)
+inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &... args)
 {
     using cf1_t = series_cf_t<T>;
     using cf2_t = series_cf_t<U>;
@@ -453,10 +453,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
     // Do the monomial overflow checking, if possible.
-    [[maybe_unused]] const auto r1
+    const auto r1
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
-    [[maybe_unused]] const auto r2
+    const auto r2
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
@@ -470,6 +470,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Determination of log2_nsegs.
     const auto log2_nsegs = detail::poly_mul_impl_mt_hm_compute_log2_nsegs<ret_cf_t>(v1, v2, ss);
+
+    // Setup the number of segments in retval.
+    retval.set_n_segments(log2_nsegs);
 
     // Sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
@@ -491,26 +494,40 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
-    // as pairs of iterators into v1/v2)
+    // as pairs of indices into v1/v2)
     // of size nsegs. The index at which each range is stored
     // is the index of the bucket that the terms corresponding
     // to that range would occupy in a segmented table
     // with 2**log2_nsegs segments.
-    auto compute_vseg = [nsegs, log2_nsegs](auto &v) {
-        using it_t = decltype(v.begin());
+    auto compute_vseg = [nsegs, log2_nsegs](const auto &v) {
+        // LCOV_EXCL_START
+        // Ensure that the size of v is representable by
+        // its iterator's diff type. We need to do some
+        // iterator arithmetics below.
+        using it_diff_t = decltype(v.end() - v.begin());
+        using it_udiff_t = make_unsigned_t<it_diff_t>;
+        if (piranha_unlikely(v.size() > static_cast<it_udiff_t>(::piranha::detail::limits_max<it_diff_t>))) {
+            piranha_throw(::std::overflow_error,
+                          "An overflow condition was detected in the multiplication of two polynomials");
+        }
+        // LCOV_EXCL_STOP
 
-        ::std::vector<::std::pair<it_t, it_t>> vseg;
+        using idx_t = decltype(v.size());
+        ::std::vector<::std::pair<idx_t, idx_t>> vseg;
         vseg.resize(::piranha::safe_cast<decltype(vseg.size())>(nsegs));
 
-        it_t it = v.begin();
-        const auto v_end = v.end();
+        idx_t idx = 0;
+        const auto v_begin = v.begin(), v_end = v.end();
+        auto it = v_begin;
         for (s_size_t i = 0; i < nsegs; ++i) {
-            vseg[i].first = it;
-            it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &idx, const auto &p) {
+            vseg[i].first = idx;
+            it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &b_idx, const auto &p) {
                 const auto h = ::piranha::hash(p.first);
-                return idx < h % (s_size_t(1) << log2_nsegs);
+                return b_idx < h % (s_size_t(1) << log2_nsegs);
             });
-            vseg[i].second = it;
+            // NOTE: the overflow check was done earlier.
+            idx = static_cast<idx_t>(it - v_begin);
+            vseg[i].second = idx;
         }
 
         return vseg;
@@ -527,10 +544,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         decltype(v1.size()) counter1 = 0;
         decltype(v2.size()) counter2 = 0;
 
-        auto verify_seg = [log2_nsegs](s_size_t i, const auto &p, auto &counter) {
-            for (auto it = p.first; it != p.second; ++it) {
-                const auto h = ::piranha::hash(it->first);
-                assert(h % (s_size_t(1) << log2_nsegs) == i);
+        auto verify_seg = [log2_nsegs](const auto &v, s_size_t bucket_idx, const auto &range, auto &counter) {
+            for (auto idx = range.first; idx != range.second; ++idx) {
+                const auto h = ::piranha::hash(v[idx].first);
+                assert(h % (s_size_t(1) << log2_nsegs) == bucket_idx);
                 ++counter;
             }
         };
@@ -542,8 +559,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 assert(vseg1[i].first == vseg1[i - 1u].second);
                 assert(vseg2[i].first == vseg2[i - 1u].second);
             }
-            verify_seg(i, vseg1[i], counter1);
-            verify_seg(i, vseg2[i], counter2);
+            verify_seg(v1, i, vseg1[i], counter1);
+            verify_seg(v2, i, vseg2[i], counter2);
         }
 
         assert(counter1 == v1.size());
@@ -551,11 +568,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     }
 #endif
 
-    // Setup the number of segments in retval.
-    retval.set_n_segments(log2_nsegs);
-
 #if !defined(NDEBUG)
-    // Debug variable that we use to
+    // Variable that we use in debug mode to
     // check that all term-by-term multiplications
     // are performed.
     ::std::atomic<unsigned long long> n_mults(0);
@@ -566,13 +580,19 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     try {
         // Parallel iteration over the number of buckets of the
         // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range(s_size_t(0), nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
-                                                                       mts = retval._get_max_table_size()
+        ::tbb::parallel_for(::tbb::blocked_range(s_size_t(0), nsegs), [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs,
+                                                                       &retval, &ss, mts = retval._get_max_table_size()
 #if !defined(NDEBUG)
-                                                                           ,
+                                                                                         ,
                                                                        &n_mults
 #endif
         ](const auto &range) {
+            // Cache the pointers to the terms data.
+            // NOTE: doing it here rather than in the lambda
+            // capture seems to help performance, on GCC anyway.
+            auto vptr1 = v1.data();
+            auto vptr2 = v2.data();
+
             // Temporary variable used in monomial multiplication.
             ret_key_t tmp_key;
 
@@ -597,15 +617,16 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     const auto r2 = vseg2[j];
 
                     // The O(N**2) multiplication loop over the ranges.
-                    for (auto it1 = r1.first; it1 != r1.second; ++it1) {
-                        const auto &k1 = it1->first;
-                        const auto &c1 = it1->second;
+                    const auto end1 = vptr1 + r1.second;
+                    for (auto ptr1 = vptr1 + r1.first; ptr1 != end1; ++ptr1) {
+                        const auto &[k1, c1] = *ptr1;
 
-                        for (auto it2 = r2.first; it2 != r2.second; ++it2) {
-                            const auto &c2 = it2->second;
+                        const auto end2 = vptr2 + r2.second;
+                        for (auto ptr2 = vptr2 + r2.first; ptr2 != end2; ++ptr2) {
+                            const auto &[k2, c2] = *ptr2;
 
                             // Do the monomial multiplication.
-                            ::piranha::monomial_mul(tmp_key, k1, it2->first, ss);
+                            ::piranha::monomial_mul(tmp_key, k1, k2, ss);
 
                             // Check that the result ends up in the correct bucket.
                             assert(::piranha::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
@@ -649,6 +670,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     }
                 }
 
+                // LCOV_EXCL_START
                 // Check the table size against the max allowed size.
                 if (piranha_unlikely(table.size() > mts)) {
                     piranha_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
@@ -657,12 +679,17 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                                                              + ") is larger than the maximum allowed value ("
                                                              + ::piranha::detail::to_string(mts) + ")");
                 }
+                // LCOV_EXCL_STOP
             }
         });
 
 #if !defined(NDEBUG)
-        // Verify the number of term multiplications we performed.
-        assert(n_mults.load() == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
+        // Verify the number of term multiplications we performed,
+        // but only if we are in non-truncated mode.
+        if constexpr (sizeof...(args) == 0u) {
+            assert(n_mults.load()
+                   == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
+        }
 #endif
     } catch (...) {
         // LCOV_EXCL_START
@@ -793,8 +820,9 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 ::std::vector<deg_t> vd(::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
                                         ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
 
-                // We'll need to use const iterator arithmetics below,
-                // make sure we can do it safely.
+                // Ensure that the size of vd is representable by the
+                // diff type of its iterators. We'll need to do some
+                // iterator arithmetics below.
                 // LCOV_EXCL_START
                 using vd_it_diff_t = decltype(vd.cend() - vd.cbegin());
                 using vd_it_udiff_t = make_unsigned_t<vd_it_diff_t>;
