@@ -2627,6 +2627,12 @@ constexpr auto operator!=(T &&x, U &&y)
 namespace customisation::internal
 {
 
+// Metaprogramming to establish the algorithm/return
+// type of the series degree computation. This is shared
+// between total and partial degree computation, since the
+// logic is identical and the only changing parts are the
+// typedef/type traits to establish if the key/cf support
+// the degree computation.
 template <typename T, template <typename> typename IsWithDegree, template <typename> typename IsKeyWithDegree,
           template <typename> typename DegreeT, template <typename> typename KeyDegreeT>
 constexpr auto series_default_degree_algorithm_impl()
@@ -2653,16 +2659,16 @@ constexpr auto series_default_degree_algorithm_impl()
                 using cf_degree_t = DegreeT<const cf_t &>;
                 using key_degree_t = KeyDegreeT<const key_t &>;
 
+                // NOTE: check for addability using rvalues.
                 if constexpr (is_addable_v<key_degree_t, cf_degree_t>) {
                     // cf and key degree types are addable.
-                    // NOTE: check for addability using rvalues.
                     using degree_t = detail::add_t<key_degree_t, cf_degree_t>;
 
+                    // NOTE: lt-comparability is tested via const lvalue refs.
                     if constexpr (::std::conjunction_v<
                                       is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                       ::std::is_constructible<degree_t, int>>) {
                         // degree_t supports operator< and it can be constructed from int.
-                        // NOTE: lt-comparability is tested via const lvalue refs.
                         return ::std::make_pair(1, detail::type_c<degree_t>{});
                     } else {
                         return failure;
