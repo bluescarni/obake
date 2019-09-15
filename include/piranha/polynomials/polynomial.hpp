@@ -587,28 +587,51 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             ::piranha::detail::ignore(ss, v1, v2, vseg1, vseg2);
 
             return [](const auto &, const auto &r2) { return r2.second; };
-        } else if constexpr (sizeof...(args) == 1u) {
+        } else {
             // Helper that, given a list of ranges vseg into v, will:
             //
             // - create and return a vector vd
-            //   containing the total degrees of all the
+            //   containing the total/partial degrees of all the
             //   terms in v, with the degrees within each vseg range sorted
             //   in ascending order,
             // - sort v according to vd.
             //
             // v will be one of v1/v2, t is a type_c instance
             // containing either T or U.
-            auto sorter = [&ss](auto &v, auto t, const auto &vseg) {
+            auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
                 // as well.
-                using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
                 using s_t = typename decltype(t)::type;
-                using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
                 // Compute the vector of degrees.
-                ::std::vector<deg_t> vd(::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                                        ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                auto vd = [&v, &ss, &args...]() {
+                    if constexpr (sizeof...(args) == 1u) {
+                        // Total degree.
+                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+
+                        ::piranha::detail::ignore(args...);
+
+                        return ::std::vector<deg_t>(
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                    } else {
+                        // Partial degree.
+                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+
+                        // Fetch the list of symbols from the arguments and turn it into a
+                        // set of indices.
+                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
+
+                        return ::std::vector<deg_t>(
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                    }
+                }();
 
                 // Ensure that the size of vd is representable by the
                 // diff type of its iterators. We'll need to do some
@@ -640,12 +663,28 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Check the results in debug mode.
                 for (const auto &[idx_begin, idx_end] : vseg) {
                     assert(::std::is_sorted(vd.data() + idx_begin, vd.data() + idx_end));
-                    assert(::std::equal(
-                        vd.data() + idx_begin, vd.data() + idx_end,
-                        ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
-                        [](const auto &a, const auto &b) { return a == b; }));
+
+                    if constexpr (sizeof...(args) == 1u) {
+                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+
+                        assert(::std::equal(
+                            vd.data() + idx_begin, vd.data() + idx_end,
+                            ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
+                            [](const auto &a, const auto &b) { return a == b; }));
+                    } else {
+                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+
+                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+
+                        assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
+                                            ::boost::make_transform_iterator(v.data() + idx_begin,
+                                                                             d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                                            [](const auto &a, const auto &b) { return a == b; }));
+                    }
                 }
 #endif
+
                 return vd;
             };
 
@@ -654,7 +693,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
                 using idx_t = remove_cvref_t<decltype(i)>;
 
-                // Get the degree of the current term
+                // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
 
@@ -670,13 +709,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                                                      poly_mul_impl_degree_adder(&d_i)),
                     max_deg);
 
-                // Turn the iterator in an index and return it.
+                // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
                 // type can safely be used as an index (for both
                 // vd1 and vd2).
                 return static_cast<idx_t>(it.base() - vd2.cbegin());
             };
-        } else {
         }
     }();
 
