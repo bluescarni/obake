@@ -844,8 +844,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                             [&vd](const auto &idx1, const auto &idx2) { return vd[idx1] < vd[idx2]; });
 
                 // Apply the sorting to vd and v.
-                vd = ::std::vector<deg_t>(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
-                                          ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
 
