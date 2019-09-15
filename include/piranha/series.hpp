@@ -2709,16 +2709,15 @@ constexpr auto series_default_degree_algorithm_impl()
 struct series_default_degree_impl {
     // A couple of handy shortcuts.
     template <typename T>
-    static constexpr auto algo
+    static constexpr auto algo_ret
         = internal::series_default_degree_algorithm_impl<T, is_with_degree, is_key_with_degree, detail::degree_t,
-                                                         detail::key_degree_t>()
-              .first;
+                                                         detail::key_degree_t>();
 
     template <typename T>
-    using ret_t =
-        typename decltype(internal::series_default_degree_algorithm_impl<T, is_with_degree, is_key_with_degree,
-                                                                         detail::degree_t, detail::key_degree_t>()
-                              .second)::type;
+    static constexpr auto algo = series_default_degree_impl::algo_ret<T>.first;
+
+    template <typename T>
+    using ret_t = typename decltype(series_default_degree_impl::algo_ret<T>.second)::type;
 
     // Helper to extract the degree of a term p.
     template <typename T>
@@ -2782,16 +2781,15 @@ namespace customisation::internal
 struct series_default_p_degree_impl {
     // A couple of handy shortcuts.
     template <typename T>
-    static constexpr auto algo
+    static constexpr auto algo_ret
         = internal::series_default_degree_algorithm_impl<T, is_with_p_degree, is_key_with_p_degree, detail::p_degree_t,
-                                                         detail::key_p_degree_t>()
-              .first;
+                                                         detail::key_p_degree_t>();
 
     template <typename T>
-    using ret_t =
-        typename decltype(internal::series_default_degree_algorithm_impl<T, is_with_p_degree, is_key_with_p_degree,
-                                                                         detail::p_degree_t, detail::key_p_degree_t>()
-                              .second)::type;
+    static constexpr auto algo = series_default_p_degree_impl::algo_ret<T>.first;
+
+    template <typename T>
+    using ret_t = typename decltype(series_default_p_degree_impl::algo_ret<T>.second)::type;
 
     // Helper to extract the partial degree of a term p.
     template <typename T>
