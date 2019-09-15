@@ -2627,87 +2627,92 @@ constexpr auto operator!=(T &&x, U &&y)
 namespace customisation::internal
 {
 
-struct series_default_degree_impl {
-    // Metaprogramming to establish the algorithm/return
-    // type of the series degree computation.
-    template <typename T>
-    static constexpr auto algorithm_impl()
-    {
-        [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+template <typename T, template <typename> typename IsWithDegree, template <typename> typename IsKeyWithDegree,
+          template <typename> typename DegreeT, template <typename> typename KeyDegreeT>
+constexpr auto series_default_degree_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
 
-        if constexpr (!is_cvr_series_v<T>) {
-            // Not a series type.
+    if constexpr (!is_cvr_series_v<T>) {
+        // Not a series type.
+        return failure;
+    } else {
+        using rT = remove_cvref_t<T>;
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        constexpr bool cf_has_degree = IsWithDegree<const cf_t &>::value;
+        constexpr bool key_has_degree = IsKeyWithDegree<const key_t &>::value;
+
+        if constexpr (!cf_has_degree && !key_has_degree) {
+            // Neither key nor cf are with degree.
             return failure;
         } else {
-            using rT = remove_cvref_t<T>;
-            using cf_t = series_cf_t<rT>;
-            using key_t = series_key_t<rT>;
+            if constexpr (cf_has_degree && key_has_degree) {
+                // Both key and cf are with degree.
+                using cf_degree_t = DegreeT<const cf_t &>;
+                using key_degree_t = KeyDegreeT<const key_t &>;
 
-            constexpr bool cf_has_degree = is_with_degree_v<const cf_t &>;
-            constexpr bool key_has_degree = is_key_with_degree_v<const key_t &>;
-
-            if constexpr (!cf_has_degree && !key_has_degree) {
-                // Neither key nor cf are with degree.
-                return failure;
-            } else {
-                if constexpr (cf_has_degree && key_has_degree) {
-                    // Both key and cf are with degree.
-                    using cf_degree_t = detail::degree_t<const cf_t &>;
-                    using key_degree_t = detail::key_degree_t<const key_t &>;
-
-                    if constexpr (is_addable_v<key_degree_t, cf_degree_t>) {
-                        // cf and key degree types are addable.
-                        // NOTE: check for addability using rvalues.
-                        using degree_t = detail::add_t<key_degree_t, cf_degree_t>;
-
-                        if constexpr (::std::conjunction_v<
-                                          is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                          ::std::is_constructible<degree_t, int>>) {
-                            // degree_t supports operator< and it can be constructed from int.
-                            // NOTE: lt-comparability is tested via const lvalue refs.
-                            return ::std::make_pair(1, detail::type_c<degree_t>{});
-                        } else {
-                            return failure;
-                        }
-                    } else {
-                        // cf and key degree types are not addable.
-                        return failure;
-                    }
-                } else if constexpr (cf_has_degree) {
-                    // Only the coefficient is with degree.
-                    using degree_t = detail::degree_t<const cf_t &>;
+                if constexpr (is_addable_v<key_degree_t, cf_degree_t>) {
+                    // cf and key degree types are addable.
+                    // NOTE: check for addability using rvalues.
+                    using degree_t = detail::add_t<key_degree_t, cf_degree_t>;
 
                     if constexpr (::std::conjunction_v<
                                       is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                       ::std::is_constructible<degree_t, int>>) {
                         // degree_t supports operator< and it can be constructed from int.
-                        return ::std::make_pair(2, detail::type_c<degree_t>{});
+                        // NOTE: lt-comparability is tested via const lvalue refs.
+                        return ::std::make_pair(1, detail::type_c<degree_t>{});
                     } else {
                         return failure;
                     }
                 } else {
-                    // Only the key is with degree.
-                    using degree_t = detail::key_degree_t<const key_t &>;
+                    // cf and key degree types are not addable.
+                    return failure;
+                }
+            } else if constexpr (cf_has_degree) {
+                // Only the coefficient is with degree.
+                using degree_t = DegreeT<const cf_t &>;
 
-                    if constexpr (::std::conjunction_v<
-                                      is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                      ::std::is_constructible<degree_t, int>>) {
-                        // degree_t supports operator< and it can be constructed from int.
-                        return ::std::make_pair(3, detail::type_c<degree_t>{});
-                    } else {
-                        return failure;
-                    }
+                if constexpr (::std::conjunction_v<
+                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                  ::std::is_constructible<degree_t, int>>) {
+                    // degree_t supports operator< and it can be constructed from int.
+                    return ::std::make_pair(2, detail::type_c<degree_t>{});
+                } else {
+                    return failure;
+                }
+            } else {
+                // Only the key is with degree.
+                using degree_t = KeyDegreeT<const key_t &>;
+
+                if constexpr (::std::conjunction_v<
+                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                  ::std::is_constructible<degree_t, int>>) {
+                    // degree_t supports operator< and it can be constructed from int.
+                    return ::std::make_pair(3, detail::type_c<degree_t>{});
+                } else {
+                    return failure;
                 }
             }
         }
     }
+}
 
+struct series_default_degree_impl {
     // A couple of handy shortcuts.
     template <typename T>
-    static constexpr auto algo = series_default_degree_impl::algorithm_impl<T>().first;
+    static constexpr auto algo
+        = internal::series_default_degree_algorithm_impl<T, is_with_degree, is_key_with_degree, detail::degree_t,
+                                                         detail::key_degree_t>()
+              .first;
 
     template <typename T>
-    using ret_t = typename decltype(series_default_degree_impl::algorithm_impl<T>().second)::type;
+    using ret_t =
+        typename decltype(internal::series_default_degree_algorithm_impl<T, is_with_degree, is_key_with_degree,
+                                                                         detail::degree_t, detail::key_degree_t>()
+                              .second)::type;
 
     // Helper to extract the degree of a term p.
     template <typename T>
@@ -2765,92 +2770,22 @@ inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::a
 } // namespace customisation::internal
 
 // Customise piranha::p_degree() for series types.
-// NOTE: some overlap with the degree() customisation,
-// I think we can at least share the algorithm_impl implementation.
 namespace customisation::internal
 {
 
 struct series_default_p_degree_impl {
-    // Metaprogramming to establish the algorithm/return
-    // type of the series partial degree computation.
-    template <typename T>
-    static constexpr auto algorithm_impl()
-    {
-        [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
-
-        if constexpr (!is_cvr_series_v<T>) {
-            // Not a series type.
-            return failure;
-        } else {
-            using rT = remove_cvref_t<T>;
-            using cf_t = series_cf_t<rT>;
-            using key_t = series_key_t<rT>;
-
-            constexpr bool cf_has_p_degree = is_with_p_degree_v<const cf_t &>;
-            constexpr bool key_has_p_degree = is_key_with_p_degree_v<const key_t &>;
-
-            if constexpr (!cf_has_p_degree && !key_has_p_degree) {
-                // Neither key nor cf are with partial degree.
-                return failure;
-            } else {
-                if constexpr (cf_has_p_degree && key_has_p_degree) {
-                    // Both key and cf are with partial degree.
-                    using cf_p_degree_t = detail::p_degree_t<const cf_t &>;
-                    using key_p_degree_t = detail::key_p_degree_t<const key_t &>;
-
-                    if constexpr (is_addable_v<key_p_degree_t, cf_p_degree_t>) {
-                        // cf and key partial degree types are addable.
-                        // NOTE: check for addability using rvalues.
-                        using p_degree_t = detail::add_t<key_p_degree_t, cf_p_degree_t>;
-
-                        if constexpr (::std::conjunction_v<
-                                          is_less_than_comparable<::std::add_lvalue_reference_t<const p_degree_t>>,
-                                          ::std::is_constructible<p_degree_t, int>>) {
-                            // p_degree_t supports operator< and it can be constructed from int.
-                            // NOTE: lt-comparability is tested via const lvalue refs.
-                            return ::std::make_pair(1, detail::type_c<p_degree_t>{});
-                        } else {
-                            return failure;
-                        }
-                    } else {
-                        // cf and key partial degree types are not addable.
-                        return failure;
-                    }
-                } else if constexpr (cf_has_p_degree) {
-                    // Only the coefficient is with partial degree.
-                    using p_degree_t = detail::p_degree_t<const cf_t &>;
-
-                    if constexpr (::std::conjunction_v<
-                                      is_less_than_comparable<::std::add_lvalue_reference_t<const p_degree_t>>,
-                                      ::std::is_constructible<p_degree_t, int>>) {
-                        // p_degree_t supports operator< and it can be constructed from int.
-                        return ::std::make_pair(2, detail::type_c<p_degree_t>{});
-                    } else {
-                        return failure;
-                    }
-                } else {
-                    // Only the key is with partial degree.
-                    using p_degree_t = detail::key_p_degree_t<const key_t &>;
-
-                    if constexpr (::std::conjunction_v<
-                                      is_less_than_comparable<::std::add_lvalue_reference_t<const p_degree_t>>,
-                                      ::std::is_constructible<p_degree_t, int>>) {
-                        // p_degree_t supports operator< and it can be constructed from int.
-                        return ::std::make_pair(3, detail::type_c<p_degree_t>{});
-                    } else {
-                        return failure;
-                    }
-                }
-            }
-        }
-    }
-
     // A couple of handy shortcuts.
     template <typename T>
-    static constexpr auto algo = series_default_p_degree_impl::algorithm_impl<T>().first;
+    static constexpr auto algo
+        = internal::series_default_degree_algorithm_impl<T, is_with_p_degree, is_key_with_p_degree, detail::p_degree_t,
+                                                         detail::key_p_degree_t>()
+              .first;
 
     template <typename T>
-    using ret_t = typename decltype(series_default_p_degree_impl::algorithm_impl<T>().second)::type;
+    using ret_t =
+        typename decltype(internal::series_default_degree_algorithm_impl<T, is_with_p_degree, is_key_with_p_degree,
+                                                                         detail::p_degree_t, detail::key_p_degree_t>()
+                              .second)::type;
 
     // Helper to extract the partial degree of a term p.
     template <typename T>
