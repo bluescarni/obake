@@ -138,7 +138,7 @@ TEST_CASE("polynomial_mul_detail_test")
     REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p3_t, p1_t>>);
 }
 
-TEST_CASE("polynomial_mul_simpl_test")
+TEST_CASE("polynomial_mul_simple_test")
 {
     using Catch::Matchers::Contains;
 
@@ -448,7 +448,6 @@ TEST_CASE("polynomial_truncated_mul_test")
     std::cout << truncated_mul(x * x + 4 * z + 2, y, 3) << '\n';
 }
 
-// poly_mul_impl_mt_hm
 TEST_CASE("polynomial_mul_hm_mt_test_truncated")
 {
     using pm_t = packed_monomial<long long>;
@@ -469,5 +468,28 @@ TEST_CASE("polynomial_mul_hm_mt_test_truncated")
     retval.clear();
     retval.set_symbol_set(symbol_set{"x", "y", "z"});
     polynomials::detail::poly_mul_impl_mt_hm(retval, x * x + 4 * z + 2, y, 3);
+    std::cout << retval << '\n';
+}
+
+TEST_CASE("polynomial_mul_simple_test_truncated")
+{
+    using pm_t = packed_monomial<long long>;
+    using poly_t = polynomial<pm_t, mppp::integer<1>>;
+
+    auto [x, y, z] = make_polynomials<poly_t>(symbol_set{"x", "y", "z"}, "x", "y", "z");
+    poly_t retval;
+    retval.set_symbol_set(symbol_set{"x", "y", "z"});
+
+    polynomials::detail::poly_mul_impl_simple(retval, x * x + 4 * z + 2, y, 1, symbol_set{"z"});
+    std::cout << retval << '\n';
+
+    retval.clear();
+    retval.set_symbol_set(symbol_set{"x", "y", "z"});
+    polynomials::detail::poly_mul_impl_simple(retval, x * x + 4 * z + 2, y, 2, symbol_set{"x", "y"});
+    std::cout << retval << '\n';
+
+    retval.clear();
+    retval.set_symbol_set(symbol_set{"x", "y", "z"});
+    polynomials::detail::poly_mul_impl_simple(retval, x * x + 4 * z + 2, y, 3, symbol_set{"x", "z"});
     std::cout << retval << '\n';
 }
