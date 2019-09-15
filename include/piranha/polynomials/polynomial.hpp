@@ -677,7 +677,6 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 return static_cast<idx_t>(it.base() - vd2.cbegin());
             };
         } else {
-            static_assert(sizeof...(args) == 2u);
         }
     }();
 
@@ -840,6 +839,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     using cf2_t = series_cf_t<U>;
 
     // Preconditions.
+    static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
     assert(retval.get_symbol_set() == x.get_symbol_set());
@@ -967,7 +967,6 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 return static_cast<idx_t>(it.base() - vd2.cbegin());
             };
         } else {
-            static_assert(sizeof...(args) == 2u);
         }
     }();
 
