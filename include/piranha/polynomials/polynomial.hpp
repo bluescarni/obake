@@ -814,7 +814,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // as well.
                 using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
                 using s_t = typename decltype(t)::type;
-                using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(v.cbegin()));
+                using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
                 // Compute the vector of degrees.
                 ::std::vector<deg_t> vd(::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
