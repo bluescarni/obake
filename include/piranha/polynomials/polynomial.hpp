@@ -767,10 +767,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_ptr_extractor{}));
 
     // Do the monomial overflow checking, if possible.
-    [[maybe_unused]] const auto r1
+    const auto r1
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
-    [[maybe_unused]] const auto r2
+    const auto r2
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
@@ -795,7 +795,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     // are respected.
     auto compute_j_end = [&v1, &v2, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
-            ::piranha::detail::ignore(v1, ss, args...);
+            ::piranha::detail::ignore(v1, ss);
 
             return [v2_size = v2.size()](const auto &) { return v2_size; };
         } else if constexpr (sizeof...(args) == 1u) {
@@ -814,7 +814,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // as well.
                 using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
                 using s_t = typename decltype(t)::type;
-                using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+                using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(v.cbegin()));
 
                 // Compute the vector of degrees.
                 ::std::vector<deg_t> vd(::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
