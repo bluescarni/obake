@@ -1054,12 +1054,13 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
+                using deg_t = remove_cvref_t<decltype(d_i)>;
 
                 // Find the first term in the second series such
                 // that d_i + d_j > max_deg.
                 const auto it = ::std::upper_bound(
-                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder(&d_i)), max_deg,
+                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder<deg_t>(&d_i)),
+                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder<deg_t>(&d_i)), max_deg,
                     // Supply custom comparer in order to ensure the comparison
                     // happens via const lvalue refs.
                     [](const auto &a, const auto &b) { return a < b; });
