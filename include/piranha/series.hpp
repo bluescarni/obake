@@ -632,8 +632,11 @@ public:
                 tab.reserve(xt.size());
 
                 for (auto &t : xt) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
                     auto &k = t.first;
                     auto &c = t.second;
+
                     // NOTE: like above, disable key compat check (we assume the other
                     // series contains only compatible keys) and table size check (we know
                     // the original tables do not exceed the max size).
@@ -753,6 +756,8 @@ public:
 
             // Check all terms.
             for (const auto &t : *this) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
                 const auto &k = t.first;
                 const auto &c = t.second;
 
@@ -1374,8 +1379,11 @@ struct series_default_byte_size_impl {
         for (const auto &tab : x._get_s_table()) {
             // Accumulate the byte size for all terms in the table
             for (const auto &t : tab) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
                 const auto &k = t.first;
                 const auto &c = t.second;
+
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
                 retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
@@ -1646,6 +1654,8 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     if (from_log2_size) {
         for (auto &t : from._get_s_table()) {
             for (auto &term : t) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
                 auto &k = term.first;
                 auto &c = term.second;
 
@@ -1671,6 +1681,8 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
         auto &to_table = to._get_s_table()[0];
 
         for (auto &t : from._get_s_table()[0]) {
+            // NOTE: old clang does not like structured
+            // bindings in the for loop.
             auto &k = t.first;
             auto &c = t.second;
 
@@ -1893,6 +1905,8 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                 // is segmented or not.
                 if (retval._get_s_table().size() > 1u) {
                     for (auto &t : rhs) {
+                        // NOTE: old clang does not like structured
+                        // bindings in the for loop.
                         auto &k = t.first;
                         auto &c = t.second;
 
@@ -1915,6 +1929,8 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                     auto &t = retval._get_s_table()[0];
 
                     for (auto &term : rhs) {
+                        // NOTE: old clang does not like structured
+                        // bindings in the for loop.
                         auto &k = term.first;
                         auto &c = term.second;
 
@@ -2304,6 +2320,8 @@ constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U 
 
                 // Perform the multiplication for this table.
                 for (auto &term : t) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
                     auto &k = term.first;
                     auto &c = term.second;
 
@@ -2512,6 +2530,8 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             // n segments, etc. Keep it in mind for
             // future optimisations.
             for (const auto &t : lhs) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
                 const auto &k = t.first;
                 const auto &c = t.second;
 
