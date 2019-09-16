@@ -639,17 +639,17 @@ public:
                     // series are unique. We keep the zero check because the conversion
                     // of the coefficient type of T to C might result in zero
                     // (e.g., converting from double to int).
-                    if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-                        detail::series_add_term_table<true, detail::sat_check_zero::on,
-                                                      detail::sat_check_compat_key::off,
-                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                            *this, tab, k, ::std::move(c));
-                    } else {
-                        detail::series_add_term_table<true, detail::sat_check_zero::on,
-                                                      detail::sat_check_compat_key::off,
-                                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                            *this, tab, k, ::std::as_const(c));
-                    }
+                    // if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                    //     detail::series_add_term_table<true, detail::sat_check_zero::on,
+                    //                                   detail::sat_check_compat_key::off,
+                    //                                   detail::sat_check_table_size::off,
+                    //                                   detail::sat_assume_unique::on>(
+                    //         *this, tab, k, ::std::move(c));
+                    // } else {
+                    detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
+                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                        *this, tab, k, ::std::as_const(c));
+                    // }
                 }
             }
         } else {
