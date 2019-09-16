@@ -147,7 +147,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{make_poly(names)...};
+    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
 }
 
 // Overload without a symbol set.
@@ -173,7 +173,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... na
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{make_poly(names)...};
+    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
 }
 
 } // namespace detail
