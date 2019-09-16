@@ -1667,7 +1667,10 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     } else {
         auto &to_table = to._get_s_table()[0];
 
-        for (auto &[k, c] : from._get_s_table()[0]) {
+        for (auto &t : from._get_s_table()[0]) {
+            auto &k = t.first;
+            auto &c = t.second;
+
             // Compute the merged key.
             auto merged_key = ::piranha::key_merge_symbols(k, ins_map, orig_ss);
 
@@ -1886,7 +1889,10 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                 // Distinguish the two cases in which the internal table
                 // is segmented or not.
                 if (retval._get_s_table().size() > 1u) {
-                    for (auto &[k, c] : rhs) {
+                    for (auto &t : rhs) {
+                        auto &k = t.first;
+                        auto &c = t.second;
+
                         if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
                             // NOTE: turn on the zero check, as we might end up
                             // annihilating terms during insertion.
@@ -1905,7 +1911,10 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
 
                     auto &t = retval._get_s_table()[0];
 
-                    for (auto &[k, c] : rhs) {
+                    for (auto &term : rhs) {
+                        auto &k = term.first;
+                        auto &c = term.second;
+
                         if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
                             // NOTE: disable the table size check, as we are
                             // sure we have a single table.
@@ -2291,7 +2300,10 @@ constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U 
                 v_keys.clear();
 
                 // Perform the multiplication for this table.
-                for (auto &[k, c] : t) {
+                for (auto &term : t) {
+                    auto &k = term.first;
+                    auto &c = term.second;
+
                     c *= ::std::as_const(b);
                     // Check if the coefficient became zero
                     // after the multiplication.
@@ -2496,7 +2508,10 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             // codepaths for single table layout, same
             // n segments, etc. Keep it in mind for
             // future optimisations.
-            for (const auto &[k, c] : lhs) {
+            for (const auto &t : lhs) {
+                const auto &k = t.first;
+                const auto &c = t.second;
+
                 const auto it = rhs.find(k);
                 if (it == rhs_end || c != it->second) {
                     return false;
