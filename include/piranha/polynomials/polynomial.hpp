@@ -147,9 +147,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
         // Create and add a new term.
-        retval.add_term(
-            series_key_t<T>(static_cast<const int *>(tmp.data()), static_cast<const int *>(tmp.data() + tmp.size())),
-            1);
+        retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
 
         return retval;
     };
@@ -363,7 +361,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
 
         // Accumulate the size of the produced term: size of monomial,
         // coefficient, and, if present, padding.
-        acc += ::piranha::byte_size(static_cast<const ret_key_t &>(tmp_key)) + ::piranha::byte_size(tmp_cf) + pad_size;
+        acc += ::piranha::byte_size(::std::as_const(tmp_key)) + ::piranha::byte_size(tmp_cf) + pad_size;
     }
     // Compute the average term size.
     const auto avg_size = static_cast<double>(acc) / ntrials;
@@ -826,7 +824,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     // erase() does not cause rehash and thus will not invalidate
                     // any other iterator apart from the one being erased.
                     auto tmp_it = it++;
-                    if (piranha_unlikely(::piranha::is_zero(static_cast<const ret_cf_t &>(tmp_it->second)))) {
+                    if (piranha_unlikely(::piranha::is_zero(::std::as_const(tmp_it->second)))) {
                         table.erase(tmp_it);
                     }
                 }
@@ -1125,7 +1123,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // erase() does not cause rehash and thus will not invalidate
             // any other iterator apart from the one being erased.
             auto tmp_it = it++;
-            if (piranha_unlikely(::piranha::is_zero(static_cast<const ret_cf_t &>(tmp_it->second)))) {
+            if (piranha_unlikely(::piranha::is_zero(::std::as_const(tmp_it->second)))) {
                 tab.erase(tmp_it);
             }
         }
