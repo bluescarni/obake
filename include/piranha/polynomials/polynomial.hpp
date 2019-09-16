@@ -152,7 +152,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{make_poly(names)...};
+    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
 }
 
 // Overload without a symbol set.
@@ -178,7 +178,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... na
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{make_poly(names)...};
+    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
 }
 
 } // namespace detail
@@ -738,7 +738,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     try {
         // Parallel iteration over the number of buckets of the
         // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range(s_size_t(0), nsegs), [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs,
+        ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs,
                                                                        &retval, &ss, mts = retval._get_max_table_size(),
                                                                        &compute_end_idx2
 #if !defined(NDEBUG)

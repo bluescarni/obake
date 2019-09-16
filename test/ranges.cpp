@@ -17,7 +17,7 @@
 #include "catch.hpp"
 
 // Test constexpr capabilities.
-constexpr std::array<int, 3> aint{1, 2, 3};
+constexpr std::array<int, 3> aint{{1, 2, 3}};
 
 template <bool>
 struct foo {
