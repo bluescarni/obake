@@ -1370,7 +1370,9 @@ struct series_default_byte_size_impl {
 
         for (const auto &tab : x._get_s_table()) {
             // Accumulate the byte size for all terms in the table
-            for (const auto &[k, c] : tab) {
+            for (const auto &t : tab) {
+                const auto &k = t.first;
+                const auto &c = t.second;
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
                 retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
