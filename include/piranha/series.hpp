@@ -1642,7 +1642,10 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // Merge the terms, distinguishing the segmented vs non-segmented case.
     if (from_log2_size) {
         for (auto &t : from._get_s_table()) {
-            for (auto &[k, c] : t) {
+            for (auto &term : t) {
+                auto &k = term.first;
+                auto &c = term.second;
+
                 // Compute the merged key.
                 auto merged_key = ::piranha::key_merge_symbols(k, ins_map, orig_ss);
 
