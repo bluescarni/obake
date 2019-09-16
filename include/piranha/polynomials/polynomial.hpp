@@ -708,6 +708,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
+                using deg_t = remove_cvref_t<decltype(d_i)>;
 
                 // Find the first term in the range r2 such
                 // that d_i + d_j > max_deg.
@@ -716,9 +717,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
                 const auto it = ::std::upper_bound(
                     ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
-                                                     poly_mul_impl_degree_adder(&d_i)),
+                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
                     ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.second),
-                                                     poly_mul_impl_degree_adder(&d_i)),
+                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
                     max_deg,
                     // Supply custom comparer in order to ensure the comparison
                     // happens via const lvalue refs.
