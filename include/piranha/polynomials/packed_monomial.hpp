@@ -445,8 +445,8 @@ template <typename R1, typename R2,
         assert(polynomials::key_is_compatible(init1, ss));
         assert(polynomials::key_is_compatible(init2, ss));
 
-        k_unpacker<remove_cvref_t<decltype(init1.get_value())>> ku1(init1.get_value(), s_size);
-        k_unpacker<remove_cvref_t<decltype(init2.get_value())>> ku2(init2.get_value(), s_size);
+        k_unpacker<value_type> ku1(init1.get_value(), s_size);
+        k_unpacker<value_type> ku2(init2.get_value(), s_size);
         value_type tmp;
         for (auto i = 0u; i < s_size; ++i) {
             ku1 >> tmp;
@@ -470,7 +470,7 @@ template <typename R1, typename R2,
 
         assert(polynomials::key_is_compatible(cur, ss));
 
-        k_unpacker<remove_cvref_t<decltype(cur.get_value())>> ku(cur.get_value(), s_size);
+        k_unpacker<value_type> ku(cur.get_value(), s_size);
         value_type tmp;
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             ku >> tmp;
@@ -488,7 +488,7 @@ template <typename R1, typename R2,
 
         assert(polynomials::key_is_compatible(cur, ss));
 
-        k_unpacker<remove_cvref_t<decltype(cur.get_value())>> ku(cur.get_value(), s_size);
+        k_unpacker<value_type> ku(cur.get_value(), s_size);
         value_type tmp;
         for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
             ku >> tmp;

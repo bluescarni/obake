@@ -752,7 +752,10 @@ public:
             }
 
             // Check all terms.
-            for (const auto &[k, c] : *this) {
+            for (const auto &t : *this) {
+                const auto &k = t.first;
+                const auto &c = t.second;
+
                 // No zero terms.
                 assert(!::piranha::key_is_zero(k, m_symbol_set) && !::piranha::is_zero(c));
                 // No incompatible keys.
