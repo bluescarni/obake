@@ -645,10 +645,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
                 // type we are using const lrefs.
                 for (const auto &r : vseg) {
-                    const auto &idx_begin = r.first;
-                    const auto &idx_end = r.second;
-
-                    ::std::sort(vidx.data() + idx_begin, vidx.data() + idx_end,
+                    ::std::sort(vidx.data() + r.first, vidx.data() + r.second,
                                 [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
                                     return vdc[idx1] < vdc[idx2];
                                 });
