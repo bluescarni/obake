@@ -644,10 +644,14 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 vidx.resize(::piranha::safe_cast<decltype(vidx.size())>(vd.size()));
                 ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
 
-                // Sort indirectly each range from vseg according to the total degree.
+                // Sort indirectly each range from vseg according to the degree.
+                // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
+                // type we are using const lrefs.
                 for (const auto &[idx_begin, idx_end] : vseg) {
                     ::std::sort(vidx.data() + idx_begin, vidx.data() + idx_end,
-                                [&vd](const auto &idx1, const auto &idx2) { return vd[idx1] < vd[idx2]; });
+                                [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
+                                    return vdc[idx1] < vdc[idx2];
+                                });
                 }
 
                 // Apply the sorting to vd and v. Ensure we don't run
@@ -662,7 +666,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
                 for (const auto &[idx_begin, idx_end] : vseg) {
-                    assert(::std::is_sorted(vd.data() + idx_begin, vd.data() + idx_end));
+                    // NOTE: add constness to vd in order to ensure that
+                    // the degrees are compared via const refs.
+                    assert(
+                        ::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
 
                     if constexpr (sizeof...(args) == 1u) {
                         using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
@@ -670,7 +677,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         assert(::std::equal(
                             vd.data() + idx_begin, vd.data() + idx_end,
                             ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
-                            [](const auto &a, const auto &b) { return a == b; }));
+                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     } else {
                         using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
 
@@ -680,7 +687,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
                                             ::boost::make_transform_iterator(v.data() + idx_begin,
                                                                              d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                                            [](const auto &a, const auto &b) { return a == b; }));
+                                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     }
                 }
 #endif
@@ -690,6 +697,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
             using ::piranha::detail::type_c;
             return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+                    // NOTE: max_deg is captured via const lref this way,
+                    // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
                 using idx_t = remove_cvref_t<decltype(i)>;
 
@@ -707,7 +716,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                                                      poly_mul_impl_degree_adder(&d_i)),
                     ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.second),
                                                      poly_mul_impl_degree_adder(&d_i)),
-                    max_deg);
+                    max_deg,
+                    // Supply custom comparer in order to ensure the comparison
+                    // happens via const lvalue refs.
+                    [](const auto &a, const auto &b) { return a < b; });
 
                 // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
@@ -985,8 +997,11 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
 
                 // Sort indirectly.
-                ::std::sort(vidx.begin(), vidx.end(),
-                            [&vd](const auto &idx1, const auto &idx2) { return vd[idx1] < vd[idx2]; });
+                // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
+                // type we are using const lrefs.
+                ::std::sort(vidx.begin(), vidx.end(), [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
+                    return vdc[idx1] < vdc[idx2];
+                });
 
                 // Apply the sorting to vd and v. Check that permutated
                 // access does not result in overflow.
@@ -999,14 +1014,16 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
-                assert(::std::is_sorted(vd.begin(), vd.end()));
+                // NOTE: use cbegin/cend in order to ensure
+                // that the degrees are compared via const lvalue refs.
+                assert(::std::is_sorted(vd.cbegin(), vd.cend()));
 
                 if constexpr (sizeof...(args) == 1u) {
                     using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
 
                     assert(::std::equal(vd.begin(), vd.end(),
                                         ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                                        [](const auto &a, const auto &b) { return a == b; }));
+                                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 } else {
                     using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
 
@@ -1016,7 +1033,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                     assert(::std::equal(
                         vd.begin(), vd.end(),
                         ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                        [](const auto &a, const auto &b) { return a == b; }));
+                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 }
 #endif
 
@@ -1025,6 +1042,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
             using ::piranha::detail::type_c;
             return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
+                    // NOTE: max_deg is captured via const lref this way,
+                    // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
                 using idx_t = remove_cvref_t<decltype(i)>;
 
@@ -1036,7 +1055,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // that d_i + d_j > max_deg.
                 const auto it = ::std::upper_bound(
                     ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder(&d_i)), max_deg);
+                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder(&d_i)), max_deg,
+                    // Supply custom comparer in order to ensure the comparison
+                    // happens via const lvalue refs.
+                    [](const auto &a, const auto &b) { return a < b; });
 
                 // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
@@ -1236,13 +1258,75 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
     return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
-template <typename T, typename U, typename V, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+namespace detail
+{
+
+// Metaprogramming to establish if we can perform
+// truncated total/partial degree multiplication on the
+// polynomial operands T and U with degree limit of type V.
+template <typename T, typename U, typename V, bool Total>
+constexpr auto poly_mul_truncated_degree_algorithm_impl()
+{
+    // Check first if we can do the untruncated multiplication. If we cannot,
+    // truncated mult is not possible.
+    if constexpr (poly_mul_algo<T &&, U &&> == 0) {
+        return 0;
+    } else {
+        using d_impl = ::std::conditional_t<Total, ::piranha::customisation::internal::series_default_degree_impl,
+                                            ::piranha::customisation::internal::series_default_p_degree_impl>;
+
+        // Check if we can compute the degree of the terms via the default
+        // implementation for series.
+        constexpr auto algo1 = d_impl::template algo<T &&>;
+        constexpr auto algo2 = d_impl::template algo<U &&>;
+
+        if constexpr (algo1 != 0 && algo2 != 0) {
+            // Fetch the degree types.
+            using deg1_t = typename d_impl::template ret_t<T &&>;
+            using deg2_t = typename d_impl::template ret_t<U &&>;
+
+            // The degree types need to be:
+            // - copy/move ctible (need to handle vectors of them),
+            // - addable via const lref,
+            // - V must be lt-comparable to the type of their sum via const lrefs.
+            using deg_add_t = detected_t<::piranha::detail::add_t, const deg1_t &, const deg2_t &>;
+
+            if constexpr (::std::conjunction_v<
+                              ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
+                              ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
+                              is_less_than_comparable<::std::add_lvalue_reference_t<const V>,
+                                                      ::std::add_lvalue_reference_t<const deg_add_t>>>) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else {
+            return 0;
+        }
+    }
+}
+
+template <typename T, typename U, typename V>
+inline constexpr auto poly_mul_truncated_degree_algo
+    = detail::poly_mul_truncated_degree_algorithm_impl<T, U, V, true>();
+
+template <typename T, typename U, typename V>
+inline constexpr auto poly_mul_truncated_p_degree_algo
+    = detail::poly_mul_truncated_degree_algorithm_impl<T, U, V, false>();
+
+} // namespace detail
+
+// Truncated multiplication.
+// NOTE: do we need the type traits/concepts as well?
+template <typename T, typename U, typename V,
+          ::std::enable_if_t<detail::poly_mul_truncated_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
 {
     return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
 }
 
-template <typename T, typename U, typename V, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+template <typename T, typename U, typename V,
+          ::std::enable_if_t<detail::poly_mul_truncated_p_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
 {
     return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
