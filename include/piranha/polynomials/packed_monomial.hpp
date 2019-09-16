@@ -234,7 +234,7 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
     bool wrote_something = false;
-    k_unpacker ku(m.get_value(), s_size);
+    k_unpacker<T> ku(m.get_value(), s_size);
     T tmp;
 
     for (const auto &var : s) {
@@ -297,7 +297,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     // Init the unpacker and the packer.
     // NOTE: we know s.size() is small enough thanks to the
     // assertion at the beginning.
-    k_unpacker ku(m.get_value(), static_cast<unsigned>(s.size()));
+    k_unpacker<T> ku(m.get_value(), static_cast<unsigned>(s.size()));
     k_packer<T> kp(::piranha::safe_cast<unsigned>(merged_size));
 
     auto map_it = ins_map.begin();
@@ -445,8 +445,8 @@ template <typename R1, typename R2,
         assert(polynomials::key_is_compatible(init1, ss));
         assert(polynomials::key_is_compatible(init2, ss));
 
-        k_unpacker ku1(init1.get_value(), s_size);
-        k_unpacker ku2(init2.get_value(), s_size);
+        k_unpacker<remove_cvref_t<decltype(init1.get_value())>> ku1(init1.get_value(), s_size);
+        k_unpacker<remove_cvref_t<decltype(init2.get_value())>> ku2(init2.get_value(), s_size);
         value_type tmp;
         for (auto i = 0u; i < s_size; ++i) {
             ku1 >> tmp;
@@ -470,7 +470,7 @@ template <typename R1, typename R2,
 
         assert(polynomials::key_is_compatible(cur, ss));
 
-        k_unpacker ku(cur.get_value(), s_size);
+        k_unpacker<remove_cvref_t<decltype(cur.get_value())>> ku(cur.get_value(), s_size);
         value_type tmp;
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             ku >> tmp;
@@ -488,7 +488,7 @@ template <typename R1, typename R2,
 
         assert(polynomials::key_is_compatible(cur, ss));
 
-        k_unpacker ku(cur.get_value(), s_size);
+        k_unpacker<remove_cvref_t<decltype(cur.get_value())>> ku(cur.get_value(), s_size);
         value_type tmp;
         for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
             ku >> tmp;
@@ -554,7 +554,7 @@ inline T key_degree(const packed_monomial<T> &p, const symbol_set &ss)
     const auto s_size = static_cast<unsigned>(ss.size());
 
     T retval(0), tmp;
-    k_unpacker ku(p.get_value(), s_size);
+    k_unpacker<T> ku(p.get_value(), s_size);
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
         retval += tmp;
@@ -575,7 +575,7 @@ inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, con
     const auto s_size = static_cast<unsigned>(ss.size());
 
     T retval(0), tmp;
-    k_unpacker ku(p.get_value(), s_size);
+    k_unpacker<T> ku(p.get_value(), s_size);
     auto si_it = si.begin();
     const auto si_it_end = si.end();
     for (auto i = 0u; i < s_size && si_it != si_it_end; ++i) {

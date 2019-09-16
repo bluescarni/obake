@@ -546,7 +546,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     try {
         // Parallel iteration over the number of buckets of the
         // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range(s_size_t(0), nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
+        ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
                                                                        mts = retval._get_max_table_size()
 #if !defined(NDEBUG)
                                                                            ,
