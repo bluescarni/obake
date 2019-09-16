@@ -43,7 +43,6 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_merge_symbols.hpp>
-#include <piranha/math/degree.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/safe_cast.hpp>
@@ -645,7 +644,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Sort indirectly each range from vseg according to the degree.
                 // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
                 // type we are using const lrefs.
-                for (const auto &[idx_begin, idx_end] : vseg) {
+                for (const auto &r : vseg) {
+                    const auto &idx_begin = r.first;
+                    const auto &idx_end = r.second;
+
                     ::std::sort(vidx.data() + idx_begin, vidx.data() + idx_end,
                                 [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
                                     return vdc[idx1] < vdc[idx2];
@@ -663,7 +665,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
-                for (const auto &[idx_begin, idx_end] : vseg) {
+                for (const auto &r : vseg) {
+                    const auto &idx_begin = r.first;
+                    const auto &idx_end = r.second;
+
                     // NOTE: add constness to vd in order to ensure that
                     // the degrees are compared via const refs.
                     assert(
