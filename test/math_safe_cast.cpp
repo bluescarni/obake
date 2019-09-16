@@ -15,8 +15,12 @@
 
 using namespace piranha;
 
+#if __cpp_constexpr >= 201603
+
 // Make sure we can go constexpr, when the types and values allow.
 [[maybe_unused]] constexpr auto cint = piranha::safe_cast<int>(5u);
+
+#endif
 
 TEST_CASE("safe_cast_test")
 {
