@@ -268,13 +268,13 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
 
     if constexpr (CheckCompatKey == sat_check_compat_key::on) {
         // Check key for compatibility, if requested.
-        if (piranha_unlikely(!::piranha::key_is_compatible(static_cast<const key_type &>(key), ss))) {
+        if (piranha_unlikely(!::piranha::key_is_compatible(::std::as_const(key), ss))) {
             // The key is not compatible with the symbol set.
             if constexpr (is_stream_insertable_v<const key_type &>) {
                 // A slightly better error message if we can
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
-                static_cast<::std::ostream &>(oss) << static_cast<const key_type &>(key);
+                static_cast<::std::ostream &>(oss) << ::std::as_const(key);
                 piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '" + oss.str()
                                                            + "', is not compatible with the series' symbol set, "
                                                            + detail::to_string(ss));
@@ -288,7 +288,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
         // Otherwise, assert that the key is compatible.
         // There are no situations so far in which we may
         // want to allow adding an incompatible key.
-        assert(::piranha::key_is_compatible(static_cast<const key_type &>(key), ss));
+        assert(::piranha::key_is_compatible(::std::as_const(key), ss));
     }
 
     // Attempt the insertion.
@@ -345,7 +345,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             // If requested, check whether the term we inserted
             // or modified is zero. If it is, erase it.
             if (piranha_unlikely(::piranha::key_is_zero(res.first->first, ss)
-                                 || ::piranha::is_zero(static_cast<const cf_type &>(res.first->second)))) {
+                                 || ::piranha::is_zero(::std::as_const(res.first->second)))) {
                 t.erase(res.first);
             }
         }
@@ -378,7 +378,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
             s, s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     } else {
         // Compute the hash of the key via piranha::hash().
-        const auto k_hash = ::piranha::hash(static_cast<const key_type &>(key));
+        const auto k_hash = ::piranha::hash(::std::as_const(key));
 
         // Determine the destination table.
         const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s_table_size - 1u));
@@ -598,7 +598,7 @@ public:
             // will be unique by construction.
             detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
                                           detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                *this, m_s_table[0], K(static_cast<const symbol_set &>(m_symbol_set)), ::std::forward<T>(x));
+                *this, m_s_table[0], K(::std::as_const(m_symbol_set)), ::std::forward<T>(x));
         } else if constexpr (algo == 2) {
             // Case 2: the series rank of T is equal to the series
             // rank of this series type, and the key and tag types
@@ -631,7 +631,12 @@ public:
                 // Reserve space in the current table.
                 tab.reserve(xt.size());
 
-                for (auto &[k, c] : xt) {
+                for (auto &t : xt) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
+                    auto &k = t.first;
+                    auto &c = t.second;
+
                     // NOTE: like above, disable key compat check (we assume the other
                     // series contains only compatible keys) and table size check (we know
                     // the original tables do not exceed the max size).
@@ -648,7 +653,7 @@ public:
                         detail::series_add_term_table<true, detail::sat_check_zero::on,
                                                       detail::sat_check_compat_key::off,
                                                       detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                            *this, tab, k, static_cast<const series_cf_t<remove_cvref_t<T>> &>(c));
+                            *this, tab, k, ::std::as_const(c));
                     }
                 }
             }
@@ -672,7 +677,7 @@ public:
                 if constexpr (is_mutable_rvalue_reference_v<T &&>) {
                     *this = series(::std::move(x.begin()->second));
                 } else {
-                    *this = series(static_cast<const series_cf_t<remove_cvref_t<T>> &>(x.begin()->second));
+                    *this = series(::std::as_const(x.begin()->second));
                 }
             } else {
                 piranha_throw(::std::invalid_argument, "Cannot construct a series of type '"
@@ -750,7 +755,12 @@ public:
             }
 
             // Check all terms.
-            for (const auto &[k, c] : *this) {
+            for (const auto &t : *this) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                const auto &k = t.first;
+                const auto &c = t.second;
+
                 // No zero terms.
                 assert(!::piranha::key_is_zero(k, m_symbol_set) && !::piranha::is_zero(c));
                 // No incompatible keys.
@@ -1368,7 +1378,12 @@ struct series_default_byte_size_impl {
 
         for (const auto &tab : x._get_s_table()) {
             // Accumulate the byte size for all terms in the table
-            for (const auto &[k, c] : tab) {
+            for (const auto &t : tab) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                const auto &k = t.first;
+                const auto &c = t.second;
+
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
                 retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
@@ -1638,7 +1653,12 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // Merge the terms, distinguishing the segmented vs non-segmented case.
     if (from_log2_size) {
         for (auto &t : from._get_s_table()) {
-            for (auto &[k, c] : t) {
+            for (auto &term : t) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                auto &k = term.first;
+                auto &c = term.second;
+
                 // Compute the merged key.
                 auto merged_key = ::piranha::key_merge_symbols(k, ins_map, orig_ss);
 
@@ -1653,15 +1673,19 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
                                             sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
                 } else {
                     detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(
-                        to, ::std::move(merged_key), static_cast<const series_cf_t<remove_cvref_t<From>> &>(c));
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
                 }
             }
         }
     } else {
         auto &to_table = to._get_s_table()[0];
 
-        for (auto &[k, c] : from._get_s_table()[0]) {
+        for (auto &t : from._get_s_table()[0]) {
+            // NOTE: old clang does not like structured
+            // bindings in the for loop.
+            auto &k = t.first;
+            auto &c = t.second;
+
             // Compute the merged key.
             auto merged_key = ::piranha::key_merge_symbols(k, ins_map, orig_ss);
 
@@ -1674,8 +1698,8 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
                                                                      ::std::move(c));
             } else {
                 detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(
-                    to, to_table, ::std::move(merged_key), static_cast<const series_cf_t<remove_cvref_t<From>> &>(c));
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::as_const(c));
             }
         }
     }
@@ -1880,7 +1904,12 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                 // Distinguish the two cases in which the internal table
                 // is segmented or not.
                 if (retval._get_s_table().size() > 1u) {
-                    for (auto &[k, c] : rhs) {
+                    for (auto &t : rhs) {
+                        // NOTE: old clang does not like structured
+                        // bindings in the for loop.
+                        auto &k = t.first;
+                        auto &c = t.second;
+
                         if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
                             // NOTE: turn on the zero check, as we might end up
                             // annihilating terms during insertion.
@@ -1891,7 +1920,7 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                         } else {
                             detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off,
                                                     sat_check_table_size::on, sat_assume_unique::off>(
-                                retval, k, static_cast<const series_cf_t<remove_cvref_t<rhs_t>> &>(c));
+                                retval, k, ::std::as_const(c));
                         }
                     }
                 } else {
@@ -1899,7 +1928,12 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
 
                     auto &t = retval._get_s_table()[0];
 
-                    for (auto &[k, c] : rhs) {
+                    for (auto &term : rhs) {
+                        // NOTE: old clang does not like structured
+                        // bindings in the for loop.
+                        auto &k = term.first;
+                        auto &c = term.second;
+
                         if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
                             // NOTE: disable the table size check, as we are
                             // sure we have a single table.
@@ -1909,7 +1943,7 @@ constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_im
                         } else {
                             detail::series_add_term_table<Sign, sat_check_zero::on, sat_check_compat_key::off,
                                                           sat_check_table_size::off, sat_assume_unique::off>(
-                                retval, t, k, static_cast<const series_cf_t<remove_cvref_t<rhs_t>> &>(c));
+                                retval, t, k, ::std::as_const(c));
                         }
                     }
                 }
@@ -2265,7 +2299,7 @@ constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U 
 
         // If either a or b is zero, return an
         // empty series.
-        if (::piranha::is_zero(static_cast<const ra_t &>(a)) || ::piranha::is_zero(static_cast<const rb_t &>(b))) {
+        if (::piranha::is_zero(::std::as_const(a)) || ::piranha::is_zero(::std::as_const(b))) {
             return ret_t{};
         }
 
@@ -2285,11 +2319,16 @@ constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U 
                 v_keys.clear();
 
                 // Perform the multiplication for this table.
-                for (auto &[k, c] : t) {
-                    c *= static_cast<const rb_t &>(b);
+                for (auto &term : t) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
+                    auto &k = term.first;
+                    auto &c = term.second;
+
+                    c *= ::std::as_const(b);
                     // Check if the coefficient became zero
                     // after the multiplication.
-                    if (piranha_unlikely(::piranha::is_zero(static_cast<const series_cf_t<ret_t> &>(c)))) {
+                    if (piranha_unlikely(::piranha::is_zero(::std::as_const(c)))) {
                         v_keys.push_back(k);
                     }
                 }
@@ -2490,7 +2529,12 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             // codepaths for single table layout, same
             // n segments, etc. Keep it in mind for
             // future optimisations.
-            for (const auto &[k, c] : lhs) {
+            for (const auto &t : lhs) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                const auto &k = t.first;
+                const auto &c = t.second;
+
                 const auto it = rhs.find(k);
                 if (it == rhs_end || c != it->second) {
                     return false;
