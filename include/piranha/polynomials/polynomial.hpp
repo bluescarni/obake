@@ -635,7 +635,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // diff type of its iterators. We'll need to do some
                 // iterator arithmetics below.
                 // NOTE: cast to const as we will use cbegin/cend below.
-                ::piranha::detail::container_it_diff_check(static_cast<const decltype(vd) &>(vd));
+                ::piranha::detail::container_it_diff_check(::std::as_const(vd));
 
                 // Create a vector of indices into vd.
                 ::std::vector<decltype(vd.size())> vidx;
@@ -987,7 +987,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // diff type of its iterators. We'll need to do some
                 // iterator arithmetics below.
                 // NOTE: cast to const as we will use cbegin/cend below.
-                ::piranha::detail::container_it_diff_check(static_cast<const decltype(vd) &>(vd));
+                ::piranha::detail::container_it_diff_check(::std::as_const(vd));
 
                 // Create a vector of indices into vd.
                 ::std::vector<decltype(vd.size())> vidx;
