@@ -27,6 +27,8 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 
+#include <mp++/integer.hpp>
+
 #include <piranha/byte_size.hpp>
 #include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
@@ -54,6 +56,7 @@
 #include <piranha/math/negate.hpp>
 #include <piranha/math/p_degree.hpp>
 #include <piranha/math/pow.hpp>
+#include <piranha/math/safe_cast.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
@@ -1242,20 +1245,120 @@ inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
 namespace customisation::internal
 {
 
-// TODO: fix lambda usage on MSVC.
-#if 0
+// Metaprogramming to establish the algorithm/return
+// type of the default series pow computation.
+template <typename T, typename U>
+constexpr auto series_default_pow_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+    if constexpr (!is_cvr_series_v<T>) {
+        // The base is not a series type.
+        return failure;
+    } else {
+        // The coefficient type of T must be:
+        // - constructible from int,
+        // - exponentiable by U, with the return value a coefficient type
+        //   which is constructible from int.
+        // The exponent type must be zero-testable.
+        using rT = remove_cvref_t<T>;
+        using cf_t = series_cf_t<rT>;
+        // NOTE: check exponentiability via const
+        // lvalue ref.
+        using cf_pow_t = detected_t<detail::pow_t, const cf_t &, U>;
+
+        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>, is_cf<cf_pow_t>,
+                                           ::std::is_constructible<cf_pow_t, int>, is_zero_testable<U>>) {
+            return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Default implementation of series exponentiation.
+struct series_default_pow_impl {
+    // A couple of handy shortcuts.
+    template <typename T, typename U>
+    static constexpr auto algo_ret = internal::series_default_pow_algorithm_impl<T, U>();
+
+    template <typename T, typename U>
+    static constexpr auto algo = series_default_pow_impl::algo_ret<T, U>.first;
+
+    template <typename T, typename U>
+    using ret_t = typename decltype(series_default_pow_impl::algo_ret<T, U>.second)::type;
+
+    // Implementation.
+    template <typename T, typename U>
+    ret_t<T, U> operator()(T &&b, U &&e) const
+    {
+        using rT = remove_cvref_t<T>;
+
+        if (b.is_single_cf()) {
+            // Single coefficient series: either empty (i.e., b is zero),
+            // or a single term with unitary key.
+            if (b.empty()) {
+                // Return 0**e.
+                const series_cf_t<rT> zero(0);
+                return ret_t<T, U>(::piranha::pow(zero, ::std::forward<U>(e)));
+            } else {
+                // Return the only coefficient raised to the exponent.
+                return ret_t<T, U>(::piranha::pow(b.cbegin()->second, ::std::forward<U>(e)));
+            }
+        }
+
+        // Handle the case of zero exponent: anything to the power
+        // of zero is 1.
+        if (::piranha::is_zero(::std::forward<U>(e))) {
+            // NOTE: construct directly from 1: 1 is rank 0,
+            // construction then forwards 1 to the construction
+            // of an internal coefficient.
+            return ret_t<T, U>(1);
+        }
+
+        // Let's determine if we can run exponentiation
+        // by repeated multiplications:
+        // - e must be safely castable to mppp::integer,
+        // - the return type must be compound-multipliable
+        //   by T, and returnable.
+        if constexpr (::std::conjunction_v<is_safely_castable<U, ::mppp::integer<1>>,
+                                           is_compound_multipliable<ret_t<T, U> &, const rT &>,
+                                           is_returnable<ret_t<T, U>>>) {
+            // Transform the exponent into an integral.
+            const auto n = ::piranha::safe_cast<::mppp::integer<1>>(::std::forward<U>(e));
+
+            if (piranha_unlikely(n.sgn() < 0)) {
+                piranha_throw(std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
+                                                     "multiplications: the exponent is negative");
+            }
+
+            // NOTE: constructability from 1 is ensured by the
+            // constructability of the coefficient type from int.
+            ret_t<T, U> retval(1);
+            for (::mppp::integer<1> i{0}; i < n; ++i) {
+                retval *= ::std::as_const(b);
+            }
+
+            return retval;
+        } else {
+            piranha_throw(
+                ::std::invalid_argument,
+                "Cannot compute the power of a series of type '" + ::piranha::type_name<rT>()
+                    + "': the series does not consist of a single coefficient, "
+                      "and exponentiation via repeated multiplications is not possible (either because the "
+                      "exponent is not an integral value, or because the series type does not support the necessary "
+                      "arithmetic operations)");
+        }
+    }
+};
+
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires CvrSeries<T> &&Integral<::std::remove_reference_t<U>> inline constexpr auto pow<T, U>
+    requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
 #else
-inline constexpr auto
-    pow<T, U, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>, is_integral<::std::remove_reference_t<U>>>>>
+inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T> != 0>>
 #endif
-    = [](auto &&, auto &&) constexpr
-{
-    return 0;
-};
-#endif
+    = series_default_pow_impl{};
 
 } // namespace customisation::internal
 
@@ -2680,7 +2783,7 @@ namespace customisation::internal
 {
 
 // Metaprogramming to establish the algorithm/return
-// type of the series degree computation. This is shared
+// type of the default series degree computation. This is shared
 // between total and partial degree computation, since the
 // logic is identical and the only changing parts are the
 // typedef/type traits to establish if the key/cf support
