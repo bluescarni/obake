@@ -1153,13 +1153,21 @@ public:
         m_log2_size = l;
     }
 
-    // Clear the series.
-    // This will remove all the terms and symbols.
-    void clear() noexcept
+    // Remove all the terms in the series.
+    // The number of segments and the symbol set will be kept intact.
+    void clear_terms() noexcept
     {
         for (auto &t : m_s_table) {
             t.clear();
         }
+    }
+
+    // Clear the series.
+    // This will remove all the terms and symbols.
+    // The number of segments will be kept intact.
+    void clear() noexcept
+    {
+        clear_terms();
         m_symbol_set.clear();
     }
 

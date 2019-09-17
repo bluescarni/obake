@@ -574,3 +574,24 @@ TEST_CASE("series_typedefs")
     REQUIRE(!is_detected_v<series_cf_t, float>);
     REQUIRE(!is_detected_v<series_tag_t, char>);
 }
+
+TEST_CASE("series_clear_terms")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s;
+    s.set_n_segments(4);
+    s.set_symbol_set(symbol_set{"x", "y", "z"});
+    REQUIRE(s.get_symbol_set() == symbol_set{"x", "y", "z"});
+    s += 45;
+    REQUIRE(s.size() == 1u);
+    REQUIRE(s._get_s_table().size() == 16u);
+
+    // Clear terms and check that the series has no terms,
+    // but the symbol set and segmentation were not touched.
+    s.clear_terms();
+    REQUIRE(s.empty());
+    REQUIRE(s.get_symbol_set() == symbol_set{"x", "y", "z"});
+    REQUIRE(s._get_s_table().size() == 16u);
+}
