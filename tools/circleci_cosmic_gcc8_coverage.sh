@@ -22,7 +22,7 @@ bash ../tools/circleci_install_abseil.sh
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts --coverage" -DPIRANHA_WITH_LIBBACKTRACE=YES
 make -j2 VERBOSE=1
 # Run the tests.
-ctest -V
+ctest -j4 -V
 # Upload coverage data.
 bash <(curl -s https://codecov.io/bash) -x gcov-8 > /dev/null
 
