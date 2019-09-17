@@ -25,7 +25,6 @@
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/iterator/transform_iterator.hpp>
 
 #include <piranha/byte_size.hpp>
 #include <piranha/cf/cf_stream_insert.hpp>
@@ -2719,8 +2718,10 @@ constexpr auto series_default_degree_algorithm_impl()
                     // NOTE: lt-comparability is tested via const lvalue refs.
                     if constexpr (::std::conjunction_v<
                                       is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                      ::std::is_constructible<degree_t, int>>) {
-                        // degree_t supports operator< and it can be constructed from int.
+                                      ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                      ::std::is_move_assignable<degree_t>>) {
+                        // degree_t supports operator<, it can be constructed from int,
+                        // it is returnable and move-assignable.
                         return ::std::make_pair(1, detail::type_c<degree_t>{});
                     } else {
                         return failure;
@@ -2735,8 +2736,10 @@ constexpr auto series_default_degree_algorithm_impl()
 
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>>) {
-                    // degree_t supports operator< and it can be constructed from int.
+                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  ::std::is_move_assignable<degree_t>>) {
+                    // degree_t supports operator<, it can be constructed from int,
+                    // it is returnable and move-assignable.
                     return ::std::make_pair(2, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -2747,8 +2750,10 @@ constexpr auto series_default_degree_algorithm_impl()
 
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>>) {
-                    // degree_t supports operator< and it can be constructed from int.
+                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  ::std::is_move_assignable<degree_t>>) {
+                    // degree_t supports operator<, it can be constructed from int,
+                    // it is returnable and move-assignable.
                     return ::std::make_pair(3, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -2811,15 +2816,20 @@ struct series_default_degree_impl {
         // The functor to extract the term's degree.
         d_extractor<T> d_extract{&x.get_symbol_set()};
 
-        const auto it = ::std::max_element(::boost::make_transform_iterator(x.cbegin(), d_extract),
-                                           ::boost::make_transform_iterator(x.cend(), d_extract),
-                                           // NOTE: override the operator< call to ensure
-                                           // that the comparison happens via const lvalue refs.
-                                           [](const auto &a, const auto &b) { return a < b; });
+        // Find the maximum degree.
+        // NOTE: parallelisation opportunities here for
+        // segmented tables.
+        auto it = x.cbegin();
+        const auto end = x.cend();
+        ret_t<T> max_deg(d_extract(*it));
+        for (++it; it != end; ++it) {
+            ret_t<T> cur(d_extract(*it));
+            if (::std::as_const(max_deg) < ::std::as_const(cur)) {
+                max_deg = ::std::move(cur);
+            }
+        }
 
-        assert(it != ::boost::make_transform_iterator(x.cend(), d_extract));
-
-        return d_extract(*(it.base()));
+        return max_deg;
     }
 };
 
@@ -2902,15 +2912,20 @@ struct series_default_p_degree_impl {
         // The functor to extract the term's partial degree.
         d_extractor<T> d_extract{&s, &si, &ss};
 
-        const auto it = ::std::max_element(::boost::make_transform_iterator(x.cbegin(), d_extract),
-                                           ::boost::make_transform_iterator(x.cend(), d_extract),
-                                           // NOTE: override the operator< call to ensure
-                                           // that the comparison happens via const lvalue refs.
-                                           [](const auto &a, const auto &b) { return a < b; });
+        // Find the maximum degree.
+        // NOTE: parallelisation opportunities here for
+        // segmented tables.
+        auto it = x.cbegin();
+        const auto end = x.cend();
+        ret_t<T> max_deg(d_extract(*it));
+        for (++it; it != end; ++it) {
+            ret_t<T> cur(d_extract(*it));
+            if (::std::as_const(max_deg) < ::std::as_const(cur)) {
+                max_deg = ::std::move(cur);
+            }
+        }
 
-        assert(it != ::boost::make_transform_iterator(x.cend(), d_extract));
-
-        return d_extract(*(it.base()));
+        return max_deg;
     }
 };
 

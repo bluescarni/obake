@@ -654,8 +654,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Apply the sorting to vd and v. Ensure we don't run
                 // into overflows during the permutated access.
                 ::piranha::detail::container_it_diff_check(vd);
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                // NOTE: use cbegin/cend on vd to ensure the copy ctor of
+                // the degree type is being called.
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
                 ::piranha::detail::container_it_diff_check(v);
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
@@ -1007,8 +1009,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // Apply the sorting to vd and v. Check that permutated
                 // access does not result in overflow.
                 ::piranha::detail::container_it_diff_check(vd);
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                // NOTE: use cbegin/cend on vd to ensure the copy ctor of
+                // the degree type is being called.
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
                 ::piranha::detail::container_it_diff_check(v);
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
@@ -1288,7 +1292,9 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             using deg2_t = typename d_impl::template ret_t<U &&>;
 
             // The degree types need to be:
-            // - copy/move ctible (need to handle vectors of them),
+            // - copy/move ctible (need to handle vectors of them, note that
+            //   in the series default degree machinery we check for returnability,
+            //   but here we need explicitly both copy and move ctible),
             // - addable via const lref,
             // - V must be lt-comparable to the type of their sum via const lrefs.
             using deg_add_t = detected_t<::piranha::detail::add_t, const deg1_t &, const deg2_t &>;
