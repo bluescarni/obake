@@ -118,7 +118,7 @@ TEST_CASE("polynomial_mul_simple_test_truncated_large")
     retval.clear_terms();
 }
 
-TEST_CASE("polynomial_mul_hm_mt_test_truncated")
+TEST_CASE("polynomial_mul_mt_hm_test_truncated")
 {
     using pm_t = packed_monomial<long long>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
@@ -172,7 +172,7 @@ TEST_CASE("polynomial_mul_hm_mt_test_truncated")
     retval.clear_terms();
 }
 
-TEST_CASE("polynomial_mul_hm_mt_test_truncated_large")
+TEST_CASE("polynomial_mul_mt_hm_test_truncated_large")
 {
     using pm_t = packed_monomial<long long>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;

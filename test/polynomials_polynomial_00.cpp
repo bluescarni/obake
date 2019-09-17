@@ -187,7 +187,7 @@ TEST_CASE("polynomial_mul_simple_test")
     });
 }
 
-TEST_CASE("polynomial_mul_hm_mt_test")
+TEST_CASE("polynomial_mul_mt_hm_test")
 {
     using pm_t = packed_monomial<long long>;
 
@@ -392,7 +392,7 @@ TEST_CASE("polynomial_mul_general_test")
     }
 }
 
-TEST_CASE("polynomial_mul_larger_hm_mt_test")
+TEST_CASE("polynomial_mul_larger_mt_hm_test")
 {
     using pm_t = packed_monomial<long long>;
 
