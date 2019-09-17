@@ -306,8 +306,6 @@ TEST_CASE("series_comparison")
 // operators.
 TEST_CASE("series_compound_add_sub")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
 
@@ -418,11 +416,11 @@ TEST_CASE("series_compound_add_sub")
         s1.set_symbol_set(symbol_set{"x"});
         s1.add_term(pm_t{1}, 3);
 
-        REQUIRE_THROWS_WITH(n += s1, Contains("because the series does not consist of a single coefficient"));
-        REQUIRE_THROWS_AS(n += s1, std::invalid_argument);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(n += s1, std::invalid_argument,
+                                         "because the series does not consist of a single coefficient");
 
-        REQUIRE_THROWS_WITH(n -= s1, Contains("because the series does not consist of a single coefficient"));
-        REQUIRE_THROWS_AS(n -= s1, std::invalid_argument);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(n -= s1, std::invalid_argument,
+                                         "because the series does not consist of a single coefficient");
     }
 }
 

@@ -36,8 +36,6 @@ using namespace piranha;
 
 TEST_CASE("make_polynomials_test")
 {
-    using Catch::Matchers::Contains;
-
     using poly_t = polynomial<packed_monomial<long long>, double>;
 
     piranha_test::disable_slow_stack_traces();
@@ -83,14 +81,12 @@ TEST_CASE("make_polynomials_test")
     }
 #endif
 
-    REQUIRE_THROWS_WITH(make_polynomials<poly_t>(symbol_set{"b"}, "a"),
-                        Contains("Cannot create a polynomial with symbol set {'b'} from the generator 'a': the "
-                                 "generator is not in the symbol set"));
-    REQUIRE_THROWS_WITH(make_polynomials<poly_t>(symbol_set{}, "ada"),
-                        Contains("Cannot create a polynomial with symbol set {} from the generator 'ada': the "
-                                 "generator is not in the symbol set"));
-    REQUIRE_THROWS_AS(make_polynomials<poly_t>(symbol_set{"b"}, "a"), std::invalid_argument);
-    REQUIRE_THROWS_AS(make_polynomials<poly_t>(symbol_set{}, "ada"), std::invalid_argument);
+    PIRANHA_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{"b"}, "a"), std::invalid_argument,
+                                     "Cannot create a polynomial with symbol set {'b'} from the generator 'a': the "
+                                     "generator is not in the symbol set");
+    PIRANHA_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{}, "ada"), std::invalid_argument,
+                                     "Cannot create a polynomial with symbol set {} from the generator 'ada': the "
+                                     "generator is not in the symbol set");
 }
 
 TEST_CASE("is_polynomial_test")
@@ -140,8 +136,6 @@ TEST_CASE("polynomial_mul_detail_test")
 
 TEST_CASE("polynomial_mul_simple_test")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<long long>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
@@ -176,11 +170,9 @@ TEST_CASE("polynomial_mul_simple_test")
         a.add_term(pm_t{detail::limits_max<long long>}, 1);
         b.add_term(pm_t{detail::limits_max<long long>}, 1);
 
-        REQUIRE_THROWS_WITH(
-            polynomials::detail::poly_mul_impl_simple(retval, a, b),
-            Contains(
-                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
-        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
 
         a.clear();
         a.set_symbol_set(symbol_set{"a"});
@@ -189,18 +181,14 @@ TEST_CASE("polynomial_mul_simple_test")
         a.add_term(pm_t{detail::limits_min<long long>}, 1);
         b.add_term(pm_t{detail::limits_min<long long>}, 1);
 
-        REQUIRE_THROWS_WITH(
-            polynomials::detail::poly_mul_impl_simple(retval, a, b),
-            Contains(
-                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
-        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
     });
 }
 
 TEST_CASE("polynomial_mul_hm_mt_test")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<long long>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
@@ -235,11 +223,9 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         a.add_term(pm_t{detail::limits_max<long long>}, 1);
         b.add_term(pm_t{detail::limits_max<long long>}, 1);
 
-        REQUIRE_THROWS_WITH(
-            polynomials::detail::poly_mul_impl_mt_hm(retval, a, b),
-            Contains(
-                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
-        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
 
         a.clear();
         a.set_symbol_set(symbol_set{"a"});
@@ -248,11 +234,9 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         a.add_term(pm_t{detail::limits_min<long long>}, 1);
         b.add_term(pm_t{detail::limits_min<long long>}, 1);
 
-        REQUIRE_THROWS_WITH(
-            polynomials::detail::poly_mul_impl_mt_hm(retval, a, b),
-            Contains(
-                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials"));
-        REQUIRE_THROWS_AS(polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error,
+            "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
     });
 }
 
