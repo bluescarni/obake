@@ -150,7 +150,7 @@ TEST_CASE("polynomial_mul_simple_test")
         retval.clear();
 
         // Examples with cancellations.
-        auto [a, b, c] = make_polynomials<poly_t>(symbol_set{"a", "b", "c"}, "a", "b", "c");
+        auto [a, b] = make_polynomials<poly_t>(symbol_set{"a", "b", "c"}, "a", "b");
         retval.set_symbol_set(symbol_set{"a", "b", "c"});
         polynomials::detail::poly_mul_impl_simple(retval, a + b, a - b);
         REQUIRE(retval == a * a - b * b);
@@ -203,7 +203,7 @@ TEST_CASE("polynomial_mul_hm_mt_test")
         retval.clear();
 
         // Examples with cancellations.
-        auto [a, b, c] = make_polynomials<poly_t>(symbol_set{"a", "b", "c"}, "a", "b", "c");
+        auto [a, b] = make_polynomials<poly_t>(symbol_set{"a", "b", "c"}, "a", "b");
         retval.set_symbol_set(symbol_set{"a", "b", "c"});
         polynomials::detail::poly_mul_impl_mt_hm(retval, a + b, a - b);
         REQUIRE(retval == a * a - b * b);
