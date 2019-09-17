@@ -1,4 +1,4 @@
-add_library(piranha_test SHARED catch_main.cpp)
+add_library(piranha_test STATIC catch_main.cpp)
 target_compile_options(piranha_test PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${PIRANHA_CXX_FLAGS_RELEASE}>" 
                        "$<$<CONFIG:MinSizeRel>:${PIRANHA_CXX_FLAGS_RELEASE}>")
 set_property(TARGET piranha_test PROPERTY CXX_STANDARD 17)
