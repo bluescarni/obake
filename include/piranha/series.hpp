@@ -1356,7 +1356,7 @@ template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
     requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
 #else
-inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T> != 0>>
+inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
 #endif
     = series_default_pow_impl{};
 
