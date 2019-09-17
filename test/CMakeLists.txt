@@ -59,7 +59,7 @@ ADD_PIRANHA_TESTCASE(type_name)
 ADD_PIRANHA_TESTCASE(xoroshiro128_plus)
 
 add_executable(exceptions_debug exceptions_debug.cpp)
-target_link_libraries(exceptions_debug piranha)
+target_link_libraries(exceptions_debug piranha piranha_test)
 target_compile_options(exceptions_debug PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${PIRANHA_CXX_FLAGS_RELEASE}>" 
                                        "$<$<CONFIG:MinSizeRel>:${PIRANHA_CXX_FLAGS_RELEASE}>")
 set_property(TARGET exceptions_debug PROPERTY CXX_STANDARD 17)
