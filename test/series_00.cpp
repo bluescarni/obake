@@ -1303,7 +1303,7 @@ TEST_CASE("series_conversion_operator")
     s1.add_term(pm_t{-1, -2, -3}, -1);
     s1.add_term(pm_t{4, 5, 6}, 2);
     s1.add_term(pm_t{7, 8, 9}, -2);
-    PIRANHA_REQUIRES_THROWS_CONTAINS(static_cast<rat_t>(s1), std::invalid_argument,
+    PIRANHA_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
                                      "because the series does not consist of a single coefficient");
 }
 
