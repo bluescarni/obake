@@ -12,6 +12,7 @@
 #include <piranha/math/safe_cast.hpp>
 
 #include "catch.hpp"
+#include "test_utils.hpp"
 
 using namespace piranha;
 
@@ -26,8 +27,6 @@ using namespace piranha;
 
 TEST_CASE("safe_cast_test")
 {
-    using Catch::Matchers::Contains;
-
     REQUIRE(!is_safely_castable_v<void, void>);
     REQUIRE(!is_safely_castable_v<int, void>);
     REQUIRE(!is_safely_castable_v<void, int>);
@@ -64,6 +63,7 @@ TEST_CASE("safe_cast_test")
 #endif
 
     REQUIRE(piranha::safe_cast<int>(5u) == 5);
-    REQUIRE_THROWS_WITH(piranha::safe_cast<unsigned>(-5), Contains("A value of type '"));
-    REQUIRE_THROWS_WITH(piranha::safe_cast<unsigned>(-5), Contains("' could not be safely converted to the type '"));
+    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::safe_cast<unsigned>(-5), safe_cast_failure, "A value of type '");
+    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::safe_cast<unsigned>(-5), safe_cast_failure,
+                                     "' could not be safely converted to the type '");
 }

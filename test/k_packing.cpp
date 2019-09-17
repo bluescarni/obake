@@ -54,8 +54,6 @@ TEST_CASE("k_packer_unpacker")
         using kp_t = k_packer<int_t>;
         using ku_t = k_unpacker<int_t>;
 
-        using Catch::Matchers::Contains;
-
         const auto lim_min = detail::limits_min<int_t>;
         const auto lim_max = detail::limits_max<int_t>;
 
@@ -66,44 +64,40 @@ TEST_CASE("k_packer_unpacker")
         REQUIRE(kp0.get() == int_t(0));
 
         // Check that adding a value to the packer throws.
-        REQUIRE_THROWS_WITH(
-            kp0 << int_t{0},
-            Contains("Cannot push any more values to this Kronecker packer for the type '" + type_name<int_t>()
-                     + "': the number of "
-                       "values already pushed to the packer is equal to the size used for construction (0)"));
-        REQUIRE_THROWS_AS(kp0 << int_t{0}, std::out_of_range);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            kp0 << int_t{0}, std::out_of_range,
+            "Cannot push any more values to this Kronecker packer for the type '" + type_name<int_t>()
+                + "': the number of "
+                  "values already pushed to the packer is equal to the size used for construction (0)");
 
         // Empty unpacker.
         ku_t ku0(0, 0);
         int_t out;
-        REQUIRE_THROWS_WITH(ku0 >> out,
-                            Contains("Cannot unpack any more values from this Kronecker unpacker: the number of "
-                                     "values already unpacked is equal to the size used for construction (0)"));
-        REQUIRE_THROWS_AS(ku0 >> out, std::out_of_range);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(ku0 >> out, std::out_of_range,
+                                         "Cannot unpack any more values from this Kronecker unpacker: the number of "
+                                         "values already unpacked is equal to the size used for construction (0)");
 
         // Empty unpacker with nonzero value.
-        REQUIRE_THROWS_WITH(ku_t(42, 0),
-                            Contains("Only a value of zero can be used in a Kronecker unpacker with a size of zero, "
-                                     "but a value of 42 was provided instead"));
-        REQUIRE_THROWS_AS(ku_t(42, 0), std::invalid_argument);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            ku_t(42, 0), std::invalid_argument,
+            "Only a value of zero can be used in a Kronecker unpacker with a size of zero, "
+            "but a value of 42 was provided instead");
 
         // Test the error thrown if we try to init an unpacker whose size is too large.
-        REQUIRE_THROWS_WITH(
-            ku_t(0, nbits / 3u + 1u),
-            Contains("Invalid size specified in the constructor of a Kronecker unpacker for the type '"));
-        REQUIRE_THROWS_WITH(ku_t(0, nbits / 3u + 1u),
-                            Contains("': the maximum possible size is " + detail::to_string(nbits / 3u)
-                                     + ", but a size of " + detail::to_string(nbits / 3u + 1u)
-                                     + " was specified instead"));
-        REQUIRE_THROWS_AS(ku_t(0, nbits / 3u + 1u), std::overflow_error);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            ku_t(0, nbits / 3u + 1u), std::overflow_error,
+            "Invalid size specified in the constructor of a Kronecker unpacker for the type '");
+        PIRANHA_REQUIRES_THROWS_CONTAINS(ku_t(0, nbits / 3u + 1u), std::overflow_error,
+                                         "': the maximum possible size is " + detail::to_string(nbits / 3u)
+                                             + ", but a size of " + detail::to_string(nbits / 3u + 1u)
+                                             + " was specified instead");
 
         // Unitary packing/unpacking.
         kp_t kp1(1);
         // Also test get() without enough pushed values.
-        REQUIRE_THROWS_WITH(
-            kp1.get(),
-            Contains("the number of values pushed to the packer (0) is less than the size used for construction (1)"));
-        REQUIRE_THROWS_AS(kp1.get(), std::out_of_range);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            kp1.get(), std::out_of_range,
+            "the number of values pushed to the packer (0) is less than the size used for construction (1)");
 
         // Try the limits.
         kp1 << lim_min;
@@ -182,27 +176,24 @@ TEST_CASE("k_packer_unpacker")
                 // Check out of range packing.
                 kp1 = kp_t(size);
                 if constexpr (is_signed_v<int_t>) {
-                    REQUIRE_THROWS_WITH(kp1 << (lims[0][1] + int_t(1)),
-                                        Contains("Cannot push the value " + detail::to_string(lims[0][1] + int_t(1))
-                                                 + " to this Kronecker packer for the type '" + type_name<int_t>()
-                                                 + "': the value is outside the allowed range ["
-                                                 + detail::to_string(lims[0][0]) + ", " + detail::to_string(lims[0][1])
-                                                 + "]"));
-                    REQUIRE_THROWS_AS(kp1 << (lims[0][1] + int_t(1)), std::overflow_error);
-                    REQUIRE_THROWS_WITH(kp1 << (lims[0][0] - int_t(1)),
-                                        Contains("Cannot push the value " + detail::to_string(lims[0][0] - int_t(1))
-                                                 + " to this Kronecker packer for the type '" + type_name<int_t>()
-                                                 + "': the value is outside the allowed range ["
-                                                 + detail::to_string(lims[0][0]) + ", " + detail::to_string(lims[0][1])
-                                                 + "]"));
-                    REQUIRE_THROWS_AS(kp1 << (lims[0][0] - int_t(1)), std::overflow_error);
+                    PIRANHA_REQUIRES_THROWS_CONTAINS(
+                        kp1 << (lims[0][1] + int_t(1)), std::overflow_error,
+                        "Cannot push the value " + detail::to_string(lims[0][1] + int_t(1))
+                            + " to this Kronecker packer for the type '" + type_name<int_t>()
+                            + "': the value is outside the allowed range [" + detail::to_string(lims[0][0]) + ", "
+                            + detail::to_string(lims[0][1]) + "]");
+                    PIRANHA_REQUIRES_THROWS_CONTAINS(
+                        kp1 << (lims[0][0] - int_t(1)), std::overflow_error,
+                        "Cannot push the value " + detail::to_string(lims[0][0] - int_t(1))
+                            + " to this Kronecker packer for the type '" + type_name<int_t>()
+                            + "': the value is outside the allowed range [" + detail::to_string(lims[0][0]) + ", "
+                            + detail::to_string(lims[0][1]) + "]");
                 } else {
-                    REQUIRE_THROWS_WITH(kp1 << (lims[0] + int_t(1)),
-                                        Contains("Cannot push the value " + detail::to_string(lims[0] + int_t(1))
-                                                 + " to this Kronecker packer for the type '" + type_name<int_t>()
-                                                 + "': the value is outside the allowed range [0, "
-                                                 + detail::to_string(lims[0]) + "]"));
-                    REQUIRE_THROWS_AS(kp1 << (lims[0] + int_t(1)), std::overflow_error);
+                    PIRANHA_REQUIRES_THROWS_CONTAINS(
+                        kp1 << (lims[0] + int_t(1)), std::overflow_error,
+                        "Cannot push the value " + detail::to_string(lims[0] + int_t(1))
+                            + " to this Kronecker packer for the type '" + type_name<int_t>()
+                            + "': the value is outside the allowed range [0, " + detail::to_string(lims[0]) + "]");
                 }
 
                 // Check out of range unpacking.
@@ -210,31 +201,28 @@ TEST_CASE("k_packer_unpacker")
 
                 if constexpr (is_signed_v<int_t>) {
                     if (e_lim[0] > lim_min) {
-                        REQUIRE_THROWS_WITH(ku_t(e_lim[0] - int_t(1), size),
-                                            Contains("The value " + detail::to_string(e_lim[0] - int_t(1))
-                                                     + " passed to a Kronecker unpacker of size "
-                                                     + detail::to_string(size) + " is outside the allowed range ["
-                                                     + detail::to_string(e_lim[0]) + ", " + detail::to_string(e_lim[1])
-                                                     + "]"));
-                        REQUIRE_THROWS_AS(ku_t(e_lim[0] - int_t(1), size), std::overflow_error);
+                        PIRANHA_REQUIRES_THROWS_CONTAINS(
+                            ku_t(e_lim[0] - int_t(1), size), std::overflow_error,
+                            "The value " + detail::to_string(e_lim[0] - int_t(1))
+                                + " passed to a Kronecker unpacker of size " + detail::to_string(size)
+                                + " is outside the allowed range [" + detail::to_string(e_lim[0]) + ", "
+                                + detail::to_string(e_lim[1]) + "]");
                     }
                     if (e_lim[1] < lim_max) {
-                        REQUIRE_THROWS_WITH(ku_t(e_lim[1] + int_t(1), size),
-                                            Contains("The value " + detail::to_string(e_lim[1] + int_t(1))
-                                                     + " passed to a Kronecker unpacker of size "
-                                                     + detail::to_string(size) + " is outside the allowed range ["
-                                                     + detail::to_string(e_lim[0]) + ", " + detail::to_string(e_lim[1])
-                                                     + "]"));
-                        REQUIRE_THROWS_AS(ku_t(e_lim[1] + int_t(1), size), std::overflow_error);
+                        PIRANHA_REQUIRES_THROWS_CONTAINS(
+                            ku_t(e_lim[1] + int_t(1), size), std::overflow_error,
+                            "The value " + detail::to_string(e_lim[1] + int_t(1))
+                                + " passed to a Kronecker unpacker of size " + detail::to_string(size)
+                                + " is outside the allowed range [" + detail::to_string(e_lim[0]) + ", "
+                                + detail::to_string(e_lim[1]) + "]");
                     }
                 } else {
                     if (e_lim < lim_max) {
-                        REQUIRE_THROWS_WITH(ku_t(e_lim + int_t(1), size),
-                                            Contains("The value " + detail::to_string(e_lim + int_t(1))
-                                                     + " passed to a Kronecker unpacker of size "
-                                                     + detail::to_string(size) + " is outside the allowed range [0, "
-                                                     + detail::to_string(e_lim) + "]"));
-                        REQUIRE_THROWS_AS(ku_t(e_lim + int_t(1), size), std::overflow_error);
+                        PIRANHA_REQUIRES_THROWS_CONTAINS(
+                            ku_t(e_lim + int_t(1), size), std::overflow_error,
+                            "The value " + detail::to_string(e_lim + int_t(1))
+                                + " passed to a Kronecker unpacker of size " + detail::to_string(size)
+                                + " is outside the allowed range [0, " + detail::to_string(e_lim) + "]");
                     }
                 }
 
@@ -277,21 +265,19 @@ TEST_CASE("k_packer_unpacker")
         }
 
         // Some additional error checking.
-        REQUIRE_THROWS_WITH(kp_t(nbits / 3u + 1u),
-                            Contains("Invalid size specified in the constructor of a Kronecker packer for the type '"
-                                     + type_name<int_t>() + "': the maximum possible size is "
-                                     + detail::to_string(nbits / 3u) + ", but a size of "
-                                     + detail::to_string(nbits / 3u + 1u) + " was specified instead"));
-        REQUIRE_THROWS_AS(kp_t(nbits / 3u + 1u), std::overflow_error);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            kp_t(nbits / 3u + 1u), std::overflow_error,
+            "Invalid size specified in the constructor of a Kronecker packer for the type '" + type_name<int_t>()
+                + "': the maximum possible size is " + detail::to_string(nbits / 3u) + ", but a size of "
+                + detail::to_string(nbits / 3u + 1u) + " was specified instead");
 
         kp1 = kp_t(3);
         kp1 << int_t(0) << int_t(0) << int_t(0);
-        REQUIRE_THROWS_WITH(
-            kp1 << int_t(0),
-            Contains("Cannot push any more values to this Kronecker packer for the type '" + type_name<int_t>()
-                     + "': the number of "
-                       "values already pushed to the packer is equal to the size used for construction (3)"));
-        REQUIRE_THROWS_AS(kp1 << int_t(0), std::out_of_range);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            kp1 << int_t(0), std::out_of_range,
+            "Cannot push any more values to this Kronecker packer for the type '" + type_name<int_t>()
+                + "': the number of "
+                  "values already pushed to the packer is equal to the size used for construction (3)");
     });
 }
 

@@ -90,7 +90,7 @@ jobs:
                 -DPIRANHA_BUILD_TESTS=ON
           cmake --build . -- -v
           set PATH=%PATH%;%CD%
-          ctest -V .
+          ctest -j4 -V .
         displayName: "Configure, build and test"
   - job: 'vs2019_relwithdebinfo'
     pool:
@@ -182,5 +182,5 @@ jobs:
                 -DPIRANHA_BUILD_TESTS=ON
           cmake --build . --config RelWithDebInfo
           set PATH=%PATH%;%CD%\RelWithDebInfo
-          ctest -V -C RelWithDebInfo
+          ctest -j4 -V -C RelWithDebInfo
         displayName: "Configure, build and test"

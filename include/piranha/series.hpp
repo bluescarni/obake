@@ -1153,13 +1153,21 @@ public:
         m_log2_size = l;
     }
 
-    // Clear the series.
-    // This will remove all the terms and symbols.
-    void clear() noexcept
+    // Remove all the terms in the series.
+    // The number of segments and the symbol set will be kept intact.
+    void clear_terms() noexcept
     {
         for (auto &t : m_s_table) {
             t.clear();
         }
+    }
+
+    // Clear the series.
+    // This will remove all the terms and symbols.
+    // The number of segments will be kept intact.
+    void clear() noexcept
+    {
+        clear_terms();
         m_symbol_set.clear();
     }
 
@@ -2766,9 +2774,11 @@ struct series_default_degree_impl {
     // Helper to extract the degree of a term p.
     template <typename T>
     struct d_extractor {
-        auto operator()(const series_term_t<T> &p) const
+        template <typename U>
+        auto operator()(const U &p) const
         {
             static_assert(algo<T> != 0);
+            assert(ss != nullptr);
 
             if constexpr (algo<T> == 1) {
                 // Both coefficient and key with degree.
@@ -2781,7 +2791,12 @@ struct series_default_degree_impl {
                 return ::piranha::key_degree(p.first, *ss);
             }
         }
-        const symbol_set *ss;
+        template <typename U>
+        auto operator()(const U *p) const
+        {
+            return operator()(*p);
+        }
+        const symbol_set *ss = nullptr;
     };
 
     // Implementation.
@@ -2838,9 +2853,13 @@ struct series_default_p_degree_impl {
     // Helper to extract the partial degree of a term p.
     template <typename T>
     struct d_extractor {
-        auto operator()(const series_term_t<T> &p) const
+        template <typename U>
+        auto operator()(const U &p) const
         {
             static_assert(algo<T> != 0);
+            assert(s != nullptr);
+            assert(si != nullptr);
+            assert(ss != nullptr);
 
             if constexpr (algo<T> == 1) {
                 // Both coefficient and key with partial degree.
@@ -2853,9 +2872,14 @@ struct series_default_p_degree_impl {
                 return ::piranha::key_p_degree(p.first, *si, *ss);
             }
         }
-        const symbol_set *s;
-        const symbol_idx_set *si;
-        const symbol_set *ss;
+        template <typename U>
+        auto operator()(const U *p) const
+        {
+            return operator()(*p);
+        }
+        const symbol_set *s = nullptr;
+        const symbol_idx_set *si = nullptr;
+        const symbol_set *ss = nullptr;
     };
 
     // Implementation.

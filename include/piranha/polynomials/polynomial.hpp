@@ -15,12 +15,14 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <numeric>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include <boost/iterator/permutation_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 
@@ -31,7 +33,9 @@
 
 #include <piranha/byte_size.hpp>
 #include <piranha/config.hpp>
+#include <piranha/detail/container_it_diff_check.hpp>
 #include <piranha/detail/hc.hpp>
+#include <piranha/detail/ignore.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/detail/type_c.hpp>
@@ -208,10 +212,6 @@ namespace detail
 // Small helper to extract a const reference to
 // a term's key (that is, the first element of the
 // input pair p).
-// NOTE: we used to need this helper to be a public
-// class in earlier implementations, but now this
-// could be turned into a local lambda in the functions where it is
-// used.
 struct poly_term_key_ref_extractor {
     // Reference overload.
     template <typename P>
@@ -372,7 +372,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // number of segments than necessary. Luckily, this does not
     // seem to hurt performance much.
     // NOTE: this factor might become a user-tunable parameter.
-    // Nedd to test more.
+    // Need to test more.
     const auto est_total_size = 5. / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
 
     // Compute the number of segments by enforcing a fixed
@@ -396,9 +396,37 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
 
 #endif
 
+// Functor to return a copy of the input
+// term p, but with the const removed
+// from the key type.
+struct poly_mul_impl_pair_transform {
+    template <typename T>
+    auto operator()(const T &p) const
+    {
+        return ::std::make_pair(p.first, p.second);
+    }
+};
+
+// Add an input value y to another value x, a reference
+// to which is created on construction.
+template <typename T>
+struct poly_mul_impl_degree_adder {
+    // Ensure def-constructability.
+    poly_mul_impl_degree_adder() : x_ptr(nullptr) {}
+    explicit poly_mul_impl_degree_adder(const T *ptr) : x_ptr(ptr) {}
+    template <typename U>
+    auto operator()(const U &y) const
+    {
+        assert(x_ptr != nullptr);
+
+        return *x_ptr + y;
+    }
+    const T *x_ptr;
+};
+
 // The multi-threaded homomorphic implementation.
-template <typename Ret, typename T, typename U>
-inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
+template <typename Ret, typename T, typename U, typename... Args>
+inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &... args)
 {
     using cf1_t = series_cf_t<T>;
     using cf2_t = series_cf_t<U>;
@@ -407,6 +435,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     using s_size_t = typename Ret::s_size_type;
 
     // Preconditions.
+    static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
     assert(retval.get_symbol_set() == x.get_symbol_set());
@@ -426,17 +455,18 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     // to allow mutability.
     // NOTE: need to better assess the benefits of
     // copying the input series.
-    auto p_transform = [](const auto &p) { return ::std::make_pair(p.first, p.second); };
-    ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(::boost::make_transform_iterator(x.begin(), p_transform),
-                                                          ::boost::make_transform_iterator(x.end(), p_transform));
-    ::std::vector<::std::pair<series_key_t<U>, cf2_t>> v2(::boost::make_transform_iterator(y.begin(), p_transform),
-                                                          ::boost::make_transform_iterator(y.end(), p_transform));
+    ::std::vector<::std::pair<series_key_t<T>, cf1_t>> v1(
+        ::boost::make_transform_iterator(x.begin(), poly_mul_impl_pair_transform{}),
+        ::boost::make_transform_iterator(x.end(), poly_mul_impl_pair_transform{}));
+    ::std::vector<::std::pair<series_key_t<U>, cf2_t>> v2(
+        ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
+        ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
     // Do the monomial overflow checking, if possible.
-    [[maybe_unused]] const auto r1
+    const auto r1
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
-    [[maybe_unused]] const auto r2
+    const auto r2
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
@@ -450,6 +480,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
 
     // Determination of log2_nsegs.
     const auto log2_nsegs = detail::poly_mul_impl_mt_hm_compute_log2_nsegs<ret_cf_t>(v1, v2, ss);
+
+    // Setup the number of segments in retval.
+    retval.set_n_segments(log2_nsegs);
+
+    // Cache the number of segments.
+    const auto nsegs = s_size_t(1) << log2_nsegs;
 
     // Sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
@@ -466,31 +502,35 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     ::std::sort(v1.begin(), v1.end(), t_sorter);
     ::std::sort(v2.begin(), v2.end(), t_sorter);
 
-    // Cache the number of segments.
-    const auto nsegs = s_size_t(1) << log2_nsegs;
-
     // Compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
-    // as pairs of iterators into v1/v2)
+    // as pairs of indices into v1/v2)
     // of size nsegs. The index at which each range is stored
     // is the index of the bucket that the terms corresponding
     // to that range would occupy in a segmented table
     // with 2**log2_nsegs segments.
-    auto compute_vseg = [nsegs, log2_nsegs](auto &v) {
-        using it_t = decltype(v.begin());
+    auto compute_vseg = [nsegs, log2_nsegs](const auto &v) {
+        // Ensure that the size of v is representable by
+        // its iterator's diff type. We need to do some
+        // iterator arithmetics below.
+        ::piranha::detail::container_it_diff_check(v);
 
-        ::std::vector<::std::pair<it_t, it_t>> vseg;
+        using idx_t = decltype(v.size());
+        ::std::vector<::std::pair<idx_t, idx_t>> vseg;
         vseg.resize(::piranha::safe_cast<decltype(vseg.size())>(nsegs));
 
-        it_t it = v.begin();
-        const auto v_end = v.end();
+        idx_t idx = 0;
+        const auto v_begin = v.begin(), v_end = v.end();
+        auto it = v_begin;
         for (s_size_t i = 0; i < nsegs; ++i) {
-            vseg[i].first = it;
-            it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &idx, const auto &p) {
+            vseg[i].first = idx;
+            it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &b_idx, const auto &p) {
                 const auto h = ::piranha::hash(p.first);
-                return idx < h % (s_size_t(1) << log2_nsegs);
+                return b_idx < h % (s_size_t(1) << log2_nsegs);
             });
-            vseg[i].second = it;
+            // NOTE: the overflow check was done earlier.
+            idx = static_cast<idx_t>(it - v_begin);
+            vseg[i].second = idx;
         }
 
         return vseg;
@@ -507,10 +547,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
         decltype(v1.size()) counter1 = 0;
         decltype(v2.size()) counter2 = 0;
 
-        auto verify_seg = [log2_nsegs](s_size_t i, const auto &p, auto &counter) {
-            for (auto it = p.first; it != p.second; ++it) {
-                const auto h = ::piranha::hash(it->first);
-                assert(h % (s_size_t(1) << log2_nsegs) == i);
+        auto verify_seg = [log2_nsegs](const auto &v, s_size_t bucket_idx, const auto &range, auto &counter) {
+            for (auto idx = range.first; idx != range.second; ++idx) {
+                const auto h = ::piranha::hash(v[idx].first);
+                assert(h % (s_size_t(1) << log2_nsegs) == bucket_idx);
                 ++counter;
             }
         };
@@ -518,12 +558,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
         for (s_size_t i = 0; i < nsegs; ++i) {
             if (i) {
                 // Ensure the current range begins
-                // where the previous range ended.
+                // where the previous range ends.
                 assert(vseg1[i].first == vseg1[i - 1u].second);
                 assert(vseg2[i].first == vseg2[i - 1u].second);
             }
-            verify_seg(i, vseg1[i], counter1);
-            verify_seg(i, vseg2[i], counter2);
+            verify_seg(v1, i, vseg1[i], counter1);
+            verify_seg(v2, i, vseg2[i], counter2);
         }
 
         assert(counter1 == v1.size());
@@ -531,28 +571,190 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
     }
 #endif
 
-    // Setup the number of segments in retval.
-    retval.set_n_segments(log2_nsegs);
+    // Functor to compute the end index in the
+    // inner multiplication loops below, given
+    // an index into the first series and an index
+    // range into the second series. In non-truncated
+    // mode, this functor will always return the end
+    // of the range, otherwise the returned
+    // value will ensure that the truncation limits
+    // are respected.
+    auto compute_end_idx2 = [&ss, &v1, &v2, &vseg1, &vseg2, &args...]() {
+        if constexpr (sizeof...(args) == 0u) {
+            ::piranha::detail::ignore(ss, v1, v2, vseg1, vseg2);
+
+            return [](const auto &, const auto &r2) { return r2.second; };
+        } else {
+            // Helper that, given a list of ranges vseg into v, will:
+            //
+            // - create and return a vector vd
+            //   containing the total/partial degrees of all the
+            //   terms in v, with the degrees within each vseg range sorted
+            //   in ascending order,
+            // - sort v according to vd.
+            //
+            // v will be one of v1/v2, t is a type_c instance
+            // containing either T or U.
+            auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
+                // NOTE: we will be using the machinery from the default implementation
+                // of degree() for series, so that we can re-use the concept checking bits
+                // as well.
+                using s_t = typename decltype(t)::type;
+
+                // Compute the vector of degrees.
+                auto vd = [&v, &ss, &args...]() {
+                    if constexpr (sizeof...(args) == 1u) {
+                        // Total degree.
+                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+
+                        ::piranha::detail::ignore(args...);
+
+                        return ::std::vector<deg_t>(
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                    } else {
+                        // Partial degree.
+                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+
+                        // Fetch the list of symbols from the arguments and turn it into a
+                        // set of indices.
+                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
+
+                        return ::std::vector<deg_t>(
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                    }
+                }();
+
+                // Ensure that the size of vd is representable by the
+                // diff type of its iterators. We'll need to do some
+                // iterator arithmetics below.
+                // NOTE: cast to const as we will use cbegin/cend below.
+                ::piranha::detail::container_it_diff_check(::std::as_const(vd));
+
+                // Create a vector of indices into vd.
+                ::std::vector<decltype(vd.size())> vidx;
+                vidx.resize(::piranha::safe_cast<decltype(vidx.size())>(vd.size()));
+                ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
+
+                // Sort indirectly each range from vseg according to the degree.
+                // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
+                // type we are using const lrefs.
+                for (const auto &r : vseg) {
+                    ::std::sort(vidx.data() + r.first, vidx.data() + r.second,
+                                [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
+                                    return vdc[idx1] < vdc[idx2];
+                                });
+                }
+
+                // Apply the sorting to vd and v. Ensure we don't run
+                // into overflows during the permutated access.
+                ::piranha::detail::container_it_diff_check(vd);
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                ::piranha::detail::container_it_diff_check(v);
+                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
+                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
 
 #if !defined(NDEBUG)
-    // Debug variable that we use to
+                // Check the results in debug mode.
+                for (const auto &r : vseg) {
+                    const auto &idx_begin = r.first;
+                    const auto &idx_end = r.second;
+
+                    // NOTE: add constness to vd in order to ensure that
+                    // the degrees are compared via const refs.
+                    assert(
+                        ::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
+
+                    if constexpr (sizeof...(args) == 1u) {
+                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+
+                        assert(::std::equal(
+                            vd.data() + idx_begin, vd.data() + idx_end,
+                            ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
+                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                    } else {
+                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+
+                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+
+                        assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
+                                            ::boost::make_transform_iterator(v.data() + idx_begin,
+                                                                             d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                    }
+                }
+#endif
+
+                return vd;
+            };
+
+            using ::piranha::detail::type_c;
+            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+                    // NOTE: max_deg is captured via const lref this way,
+                    // as args is passed as a const lref pack.
+                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
+                using idx_t = remove_cvref_t<decltype(i)>;
+
+                // Get the total/partial degree of the current term
+                // in the first series.
+                const auto &d_i = vd1[i];
+                using deg_t = remove_cvref_t<decltype(d_i)>;
+
+                // Find the first term in the range r2 such
+                // that d_i + d_j > max_deg.
+                // NOTE: we checked above that the static cast
+                // to the it diff type is safe.
+                using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
+                const auto it = ::std::upper_bound(
+                    ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
+                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
+                    ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.second),
+                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
+                    max_deg,
+                    // Supply custom comparer in order to ensure the comparison
+                    // happens via const lvalue refs.
+                    [](const auto &a, const auto &b) { return a < b; });
+
+                // Turn the iterator into an index and return it.
+                // NOTE: we checked above that the iterator diff
+                // type can safely be used as an index (for both
+                // vd1 and vd2).
+                return static_cast<idx_t>(it.base() - vd2.cbegin());
+            };
+        }
+    }();
+
+#if !defined(NDEBUG)
+    // Variable that we use in debug mode to
     // check that all term-by-term multiplications
     // are performed.
     ::std::atomic<unsigned long long> n_mults(0);
 #endif
 
-    // Wrap in try/catch to avoid assertion failures in
-    // debug mode.
     try {
         // Parallel iteration over the number of buckets of the
         // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), [&vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
-                                                                       mts = retval._get_max_table_size()
+        ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs,
+                                                                       &retval, &ss, mts = retval._get_max_table_size(),
+                                                                       &compute_end_idx2
 #if !defined(NDEBUG)
-                                                                           ,
+                                                                       ,
                                                                        &n_mults
 #endif
         ](const auto &range) {
+            // Cache the pointers to the terms data.
+            // NOTE: doing it here rather than in the lambda
+            // capture seems to help performance on GCC.
+            auto vptr1 = v1.data();
+            auto vptr2 = v2.data();
+
             // Temporary variable used in monomial multiplication.
             ret_key_t tmp_key;
 
@@ -577,15 +779,16 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
                     const auto r2 = vseg2[j];
 
                     // The O(N**2) multiplication loop over the ranges.
-                    for (auto it1 = r1.first; it1 != r1.second; ++it1) {
-                        const auto &k1 = it1->first;
-                        const auto &c1 = it1->second;
+                    const auto idx_end1 = r1.second;
+                    for (auto idx1 = r1.first; idx1 != idx_end1; ++idx1) {
+                        const auto &[k1, c1] = *(vptr1 + idx1);
 
-                        for (auto it2 = r2.first; it2 != r2.second; ++it2) {
-                            const auto &c2 = it2->second;
+                        const auto end2 = vptr2 + compute_end_idx2(idx1, r2);
+                        for (auto ptr2 = vptr2 + r2.first; ptr2 != end2; ++ptr2) {
+                            const auto &[k2, c2] = *ptr2;
 
                             // Do the monomial multiplication.
-                            ::piranha::monomial_mul(tmp_key, k1, it2->first, ss);
+                            ::piranha::monomial_mul(tmp_key, k1, k2, ss);
 
                             // Check that the result ends up in the correct bucket.
                             assert(::piranha::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
@@ -629,6 +832,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
                     }
                 }
 
+                // LCOV_EXCL_START
                 // Check the table size against the max allowed size.
                 if (piranha_unlikely(table.size() > mts)) {
                     piranha_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
@@ -637,12 +841,17 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
                                                              + ") is larger than the maximum allowed value ("
                                                              + ::piranha::detail::to_string(mts) + ")");
                 }
+                // LCOV_EXCL_STOP
             }
         });
 
 #if !defined(NDEBUG)
-        // Verify the number of term multiplications we performed.
-        assert(n_mults.load() == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
+        // Verify the number of term multiplications we performed,
+        // but only if we are in non-truncated mode.
+        if constexpr (sizeof...(args) == 0u) {
+            assert(n_mults.load()
+                   == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
+        }
 #endif
     } catch (...) {
         // LCOV_EXCL_START
@@ -660,11 +869,20 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y)
 
 #endif
 
+// Extract a pointer from a const reference.
+struct poly_mul_impl_ptr_extractor {
+    template <typename T>
+    auto operator()(const T &x) const
+    {
+        return &x;
+    }
+};
+
 // Simple poly mult implementation: just multiply
 // term by term, no parallelisation, no segmentation,
 // no copying of the operands, etc.
-template <typename Ret, typename T, typename U>
-inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
+template <typename Ret, typename T, typename U, typename... Args>
+inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args &... args)
 {
     using ret_key_t = series_key_t<Ret>;
     using ret_cf_t = series_cf_t<Ret>;
@@ -672,6 +890,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
     using cf2_t = series_cf_t<U>;
 
     // Preconditions.
+    static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
     assert(retval.get_symbol_set() == x.get_symbol_set());
@@ -683,17 +902,18 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
     const auto &ss = retval.get_symbol_set();
 
     // Construct the vectors of pointer to the terms.
-    auto ptr_extractor = [](const auto &p) { return &p; };
-    ::std::vector<const series_term_t<T> *> v1(::boost::make_transform_iterator(x.begin(), ptr_extractor),
-                                               ::boost::make_transform_iterator(x.end(), ptr_extractor));
-    ::std::vector<const series_term_t<U> *> v2(::boost::make_transform_iterator(y.begin(), ptr_extractor),
-                                               ::boost::make_transform_iterator(y.end(), ptr_extractor));
+    ::std::vector<const series_term_t<T> *> v1(
+        ::boost::make_transform_iterator(x.begin(), poly_mul_impl_ptr_extractor{}),
+        ::boost::make_transform_iterator(x.end(), poly_mul_impl_ptr_extractor{}));
+    ::std::vector<const series_term_t<U> *> v2(
+        ::boost::make_transform_iterator(y.begin(), poly_mul_impl_ptr_extractor{}),
+        ::boost::make_transform_iterator(y.end(), poly_mul_impl_ptr_extractor{}));
 
     // Do the monomial overflow checking, if possible.
-    [[maybe_unused]] const auto r1
+    const auto r1
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
-    [[maybe_unused]] const auto r2
+    const auto r2
         = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
@@ -705,20 +925,177 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
         }
     }
 
+    // This functor will be used to compute the
+    // upper limit of the j index (in the usual half-open
+    // range fashion) for a given i index
+    // in the nested for-loop below that performs
+    // the term-by-term multiplications.
+    // In the non-truncated case, compute_j_end will
+    // always return the size of y (that is, every
+    // term of x will be multiplied by every term of
+    // of y). In the truncated cases, the returned
+    // j value will ensure that the truncation limits
+    // are respected.
+    auto compute_j_end = [&v1, &v2, &ss, &args...]() {
+        if constexpr (sizeof...(args) == 0u) {
+            ::piranha::detail::ignore(v1, ss);
+
+            return [v2_size = v2.size()](const auto &) { return v2_size; };
+        } else {
+            // Helper that will:
+            //
+            // - create and return a sorted vector vd
+            //   containing the total/partial degrees of all the
+            //   terms in v,
+            // - sort v according to the order defined in vd.
+            //
+            // v will be one of v1/v2, t is a type_c instance
+            // containing either T or U.
+            auto sorter = [&ss, &args...](auto &v, auto t) {
+                // NOTE: we will be using the machinery from the default implementation
+                // of degree() for series, so that we can re-use the concept checking bits
+                // as well.
+                using s_t = typename decltype(t)::type;
+
+                // Compute the vector of degrees.
+                auto vd = [&v, &ss, &args...]() {
+                    if constexpr (sizeof...(args) == 1u) {
+                        // Total degree.
+                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+
+                        ::piranha::detail::ignore(args...);
+
+                        return ::std::vector<deg_t>(
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                    } else {
+                        // Partial degree.
+                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+
+                        // Fetch the list of symbols from the arguments and turn it into a
+                        // set of indices.
+                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
+
+                        return ::std::vector<deg_t>(
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                    }
+                }();
+
+                // Ensure that the size of vd is representable by the
+                // diff type of its iterators. We'll need to do some
+                // iterator arithmetics below.
+                // NOTE: cast to const as we will use cbegin/cend below.
+                ::piranha::detail::container_it_diff_check(::std::as_const(vd));
+
+                // Create a vector of indices into vd.
+                ::std::vector<decltype(vd.size())> vidx;
+                vidx.resize(::piranha::safe_cast<decltype(vidx.size())>(vd.size()));
+                ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
+
+                // Sort indirectly.
+                // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
+                // type we are using const lrefs.
+                ::std::sort(vidx.begin(), vidx.end(), [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
+                    return vdc[idx1] < vdc[idx2];
+                });
+
+                // Apply the sorting to vd and v. Check that permutated
+                // access does not result in overflow.
+                ::piranha::detail::container_it_diff_check(vd);
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                ::piranha::detail::container_it_diff_check(v);
+                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
+                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
+
+#if !defined(NDEBUG)
+                // Check the results in debug mode.
+                // NOTE: use cbegin/cend in order to ensure
+                // that the degrees are compared via const lvalue refs.
+                assert(::std::is_sorted(vd.cbegin(), vd.cend()));
+
+                if constexpr (sizeof...(args) == 1u) {
+                    using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+
+                    assert(::std::equal(vd.begin(), vd.end(),
+                                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                } else {
+                    using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+
+                    const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                    const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+
+                    assert(::std::equal(
+                        vd.begin(), vd.end(),
+                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                }
+#endif
+
+                return vd;
+            };
+
+            using ::piranha::detail::type_c;
+            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
+                    // NOTE: max_deg is captured via const lref this way,
+                    // as args is passed as a const lref pack.
+                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
+                using idx_t = remove_cvref_t<decltype(i)>;
+
+                // Get the total/partial degree of the current term
+                // in the first series.
+                const auto &d_i = vd1[i];
+                using deg_t = remove_cvref_t<decltype(d_i)>;
+
+                // Find the first term in the second series such
+                // that d_i + d_j > max_deg.
+                const auto it = ::std::upper_bound(
+                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder<deg_t>(&d_i)),
+                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder<deg_t>(&d_i)), max_deg,
+                    // Supply custom comparer in order to ensure the comparison
+                    // happens via const lvalue refs.
+                    [](const auto &a, const auto &b) { return a < b; });
+
+                // Turn the iterator into an index and return it.
+                // NOTE: we checked above that the iterator diff
+                // type can safely be used as an index (for both
+                // vd1 and vd2).
+                return static_cast<idx_t>(it.base() - vd2.cbegin());
+            };
+        }
+    }();
+
     // Proceed with the multiplication.
     auto &tab = retval._get_s_table()[0];
 
-    // Wrap in try/catch to avoid assertion failures in
-    // debug mode.
     try {
         // Temporary variable used in monomial multiplication.
         ret_key_t tmp_key;
 
-        for (auto t1 : v1) {
+        const auto v1_size = v1.size();
+        for (decltype(v1.size()) i = 0; i < v1_size; ++i) {
+            const auto &t1 = v1[i];
             const auto &k1 = t1->first;
             const auto &c1 = t1->second;
 
-            for (auto t2 : v2) {
+            // Get the upper limit of the multiplication
+            // range in v2.
+            const auto j_end = compute_j_end(i);
+            if (j_end == 0u) {
+                // If j_end is zero, we don't need to perform
+                // any more term multiplications as the remaining
+                // ones will all end up above the truncation limit.
+                break;
+            }
+
+            for (decltype(v2.size()) j = 0; j < j_end; ++j) {
+                const auto &t2 = v2[j];
                 const auto &c2 = t2->second;
 
                 // Multiply the monomial.
@@ -768,8 +1145,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y)
 }
 
 // Implementation of poly multiplication with identical symbol sets.
-template <typename T, typename U>
-inline auto poly_mul_impl(T &&x, U &&y)
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
     using ret_key_t = series_key_t<ret_t>;
@@ -802,28 +1179,27 @@ inline auto poly_mul_impl(T &&x, U &&y)
             // term-by-term mults), or we just have 1 core
             // available, just run the simple
             // implementation.
-            detail::poly_mul_impl_simple(retval, x, y);
+            detail::poly_mul_impl_simple(retval, x, y, args...);
         } else {
             // "Large" operands and multiple cores available,
             // run the MT implementation.
-            detail::poly_mul_impl_mt_hm(retval, x, y);
+            detail::poly_mul_impl_mt_hm(retval, x, y, args...);
         }
     } else {
         // The monomial does not have homomorphic hashing,
         // just use the simple implementation.
-        detail::poly_mul_impl_simple(retval, x, y);
+        detail::poly_mul_impl_simple(retval, x, y, args...);
     }
 
     return retval;
 }
 
-} // namespace detail
-
-template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
+// Top level function for poly multiplication.
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
     if (x.get_symbol_set() == y.get_symbol_set()) {
-        return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+        return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y), args...);
     } else {
         using rT = remove_cvref_t<T>;
         using rU = remove_cvref_t<U>;
@@ -851,7 +1227,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
                 b.set_symbol_set(merged_ss);
                 ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                return detail::poly_mul_impl(::std::forward<T>(x), ::std::move(b));
+                return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::move(b), args...);
             }
             case 2u: {
                 // y already has the correct symbol
@@ -860,7 +1236,7 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
                 a.set_symbol_set(merged_ss);
                 ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                return detail::poly_mul_impl(::std::move(a), ::std::forward<U>(y));
+                return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::forward<U>(y), args...);
             }
         }
 
@@ -872,8 +1248,90 @@ inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
         ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
         ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-        return detail::poly_mul_impl(::std::move(a), ::std::move(b));
+        return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::move(b), args...);
     }
+}
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
+{
+    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+namespace detail
+{
+
+// Metaprogramming to establish if we can perform
+// truncated total/partial degree multiplication on the
+// polynomial operands T and U with degree limit of type V.
+template <typename T, typename U, typename V, bool Total>
+constexpr auto poly_mul_truncated_degree_algorithm_impl()
+{
+    // Check first if we can do the untruncated multiplication. If we cannot,
+    // truncated mult is not possible.
+    if constexpr (poly_mul_algo<T &&, U &&> == 0) {
+        return 0;
+    } else {
+        using d_impl = ::std::conditional_t<Total, ::piranha::customisation::internal::series_default_degree_impl,
+                                            ::piranha::customisation::internal::series_default_p_degree_impl>;
+
+        // Check if we can compute the degree of the terms via the default
+        // implementation for series.
+        constexpr auto algo1 = d_impl::template algo<T &&>;
+        constexpr auto algo2 = d_impl::template algo<U &&>;
+
+        if constexpr (algo1 != 0 && algo2 != 0) {
+            // Fetch the degree types.
+            using deg1_t = typename d_impl::template ret_t<T &&>;
+            using deg2_t = typename d_impl::template ret_t<U &&>;
+
+            // The degree types need to be:
+            // - copy/move ctible (need to handle vectors of them),
+            // - addable via const lref,
+            // - V must be lt-comparable to the type of their sum via const lrefs.
+            using deg_add_t = detected_t<::piranha::detail::add_t, const deg1_t &, const deg2_t &>;
+
+            if constexpr (::std::conjunction_v<
+                              ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
+                              ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
+                              is_less_than_comparable<::std::add_lvalue_reference_t<const V>,
+                                                      ::std::add_lvalue_reference_t<const deg_add_t>>>) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else {
+            return 0;
+        }
+    }
+}
+
+template <typename T, typename U, typename V>
+inline constexpr auto poly_mul_truncated_degree_algo
+    = detail::poly_mul_truncated_degree_algorithm_impl<T, U, V, true>();
+
+template <typename T, typename U, typename V>
+inline constexpr auto poly_mul_truncated_p_degree_algo
+    = detail::poly_mul_truncated_degree_algorithm_impl<T, U, V, false>();
+
+} // namespace detail
+
+// Truncated multiplication.
+// NOTE: do we need the type traits/concepts as well?
+template <typename T, typename U, typename V,
+          ::std::enable_if_t<detail::poly_mul_truncated_degree_algo<T &&, U &&, V> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
+{
+    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
+}
+
+template <typename T, typename U, typename V,
+          ::std::enable_if_t<detail::poly_mul_truncated_p_degree_algo<T &&, U &&, V> != 0, int> = 0>
+inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
+{
+    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
 }
 
 } // namespace polynomials

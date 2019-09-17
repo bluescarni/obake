@@ -13,6 +13,7 @@
 #include <piranha/exceptions.hpp>
 
 #include "catch.hpp"
+#include "test_utils.hpp"
 
 [[noreturn]] void foo()
 {
@@ -33,11 +34,10 @@
 
 TEST_CASE("exceptions_test")
 {
-    using Catch::Matchers::Contains;
-    REQUIRE_THROWS_WITH(foo(), Contains("dsadsada"));
-    REQUIRE_THROWS_WITH(foo(), Contains("Exception type"));
-    REQUIRE_THROWS_WITH(foo(), Contains("Exception message"));
-    REQUIRE_THROWS_AS(bar(), std::bad_alloc);
+    PIRANHA_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "dsadsada");
+    PIRANHA_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "Exception type");
+    PIRANHA_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "Exception message");
+    PIRANHA_REQUIRES_THROWS_CONTAINS(bar(), std::bad_alloc, "");
 
     // Print out an example of decorated exception.
     try {

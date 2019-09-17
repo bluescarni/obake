@@ -7,6 +7,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
+#include <exception>
 #include <initializer_list>
 #include <limits>
 #include <stdexcept>
@@ -26,10 +27,10 @@
 #include <mp++/real.hpp>
 #endif
 
-#include <piranha/series.hpp>
 #include <piranha/config.hpp>
 #include <piranha/detail/tuple_for_each.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
+#include <piranha/series.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
 
@@ -153,8 +154,6 @@ TEST_CASE("add_term_primitives")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
-
-    using Catch::Matchers::Contains;
 
     using detail::sat_assume_unique;
     using detail::sat_check_compat_key;
@@ -433,13 +432,13 @@ TEST_CASE("add_term_primitives")
                                 s1, s1._get_s_table()[0], pm_t{4, 5, 6}, -42);
                             REQUIRE(s1.size() == 2u);
 
-                            REQUIRE_THROWS_WITH(
+                            PIRANHA_REQUIRES_THROWS_CONTAINS(
                                 (detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
                                                                static_cast<sat_check_compat_key>(v_cck.value),
                                                                static_cast<sat_check_table_size>(v_cts.value),
                                                                static_cast<sat_assume_unique>(v_au.value)>(
                                     s1, s1._get_s_table()[0], pm_t{1, 2, 3}, r)),
-                                Contains("Cannot convert a non-finite real to a rational"));
+                                std::exception, "Cannot convert a non-finite real to a rational");
 
                             REQUIRE(s1.empty());
                         }
@@ -868,13 +867,13 @@ TEST_CASE("add_term_primitives")
                                                     static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6}, -42);
                             REQUIRE(s1.size() == 2u);
 
-                            REQUIRE_THROWS_WITH(
+                            PIRANHA_REQUIRES_THROWS_CONTAINS(
                                 (detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
                                                          static_cast<sat_check_compat_key>(v_cck.value),
                                                          static_cast<sat_check_table_size>(v_cts.value),
                                                          static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{1, 2, 3},
                                                                                                      r)),
-                                Contains("Cannot convert a non-finite real to a rational"));
+                                std::exception, "Cannot convert a non-finite real to a rational");
 
                             REQUIRE(s1.empty());
                         }
@@ -888,26 +887,19 @@ TEST_CASE("add_term_primitives")
     // Check throw in case of incompatible key.
     s1_t s1;
     s1.set_symbol_set(symbol_set{});
-    REQUIRE_THROWS_WITH(
+    PIRANHA_REQUIRES_THROWS_CONTAINS(
         (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
                                        sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
-        Contains("not compatible with the series' symbol set"));
-    REQUIRE_THROWS_AS(
-        (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
-                                       sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
-        std::invalid_argument);
+        std::invalid_argument, "not compatible with the series' symbol set");
 
     for (auto s_idx : {0u, 1u, 2u, 4u}) {
         s1 = s1_t{};
         s1.set_n_segments(s_idx);
         s1.set_symbol_set(symbol_set{});
-        REQUIRE_THROWS_WITH((detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::on,
-                                                     sat_check_table_size::on, sat_assume_unique::off>(s1, pm_t(1), 1)),
-                            Contains("not compatible with the series' symbol set"));
-        REQUIRE_THROWS_AS(
-            (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
-                                           sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
-            std::invalid_argument);
+        PIRANHA_REQUIRES_THROWS_CONTAINS(
+            (detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
+                                     sat_assume_unique::off>(s1, pm_t(1), 1)),
+            std::invalid_argument, "not compatible with the series' symbol set");
     }
 }
 
@@ -1085,8 +1077,6 @@ TEST_CASE("series_basic")
 
 TEST_CASE("series_generic_ctor")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1_int_t = series<pm_t, int_t, void>;
@@ -1248,8 +1238,7 @@ TEST_CASE("series_generic_ctor")
     s2.add_term(pm_t{1, 2, 3}, 1);
     s2.add_term(pm_t{4, 5, 6}, 1);
 
-    REQUIRE_THROWS_WITH(s1_t{s2}, Contains("which does not consist of a single coefficient"));
-    REQUIRE_THROWS_AS(s1_t{s2}, std::invalid_argument);
+    PIRANHA_REQUIRES_THROWS_CONTAINS(s1_t{s2}, std::invalid_argument, "which does not consist of a single coefficient");
 }
 
 TEST_CASE("series_generic_assignment")
@@ -1297,8 +1286,6 @@ TEST_CASE("series_generic_assignment")
 
 TEST_CASE("series_conversion_operator")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
 
@@ -1316,9 +1303,8 @@ TEST_CASE("series_conversion_operator")
     s1.add_term(pm_t{-1, -2, -3}, -1);
     s1.add_term(pm_t{4, 5, 6}, 2);
     s1.add_term(pm_t{7, 8, 9}, -2);
-    REQUIRE_THROWS_WITH(static_cast<rat_t>(s1),
-                        Contains("because the series does not consist of a single coefficient"));
-    REQUIRE_THROWS_AS(static_cast<rat_t>(s1), std::invalid_argument);
+    PIRANHA_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
+                                     "because the series does not consist of a single coefficient");
 }
 
 TEST_CASE("series_swap")

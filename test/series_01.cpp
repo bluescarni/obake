@@ -58,8 +58,6 @@ TEST_CASE("series_is_single_cf")
 
 TEST_CASE("series_set_symbol_set")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
 
@@ -68,9 +66,8 @@ TEST_CASE("series_set_symbol_set")
     REQUIRE(s1.get_symbol_set() == symbol_set{"x", "y", "z"});
 
     s1 = s1_t{"3/4"};
-    REQUIRE_THROWS_WITH(s1.set_symbol_set(symbol_set{}),
-                        Contains("A symbol set can be set only in an empty series, but this series has 1 terms"));
-    REQUIRE_THROWS_AS(s1.set_symbol_set(symbol_set{}), std::invalid_argument);
+    PIRANHA_REQUIRES_THROWS_CONTAINS(s1.set_symbol_set(symbol_set{}), std::invalid_argument,
+                                     "A symbol set can be set only in an empty series, but this series has 1 terms");
 }
 
 TEST_CASE("series_reserve")
@@ -104,8 +101,6 @@ TEST_CASE("series_reserve")
 
 TEST_CASE("series_set_n_segments")
 {
-    using Catch::Matchers::Contains;
-
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
 
@@ -118,9 +113,8 @@ TEST_CASE("series_set_n_segments")
     REQUIRE(s1._get_s_table().size() == 4u);
     s1.set_n_segments(4);
     REQUIRE(s1._get_s_table().size() == 16u);
-    REQUIRE_THROWS_WITH(s1.set_n_segments(s1.get_max_s_size() + 1u),
-                        Contains(" as this value exceeds the maximum allowed value"));
-    REQUIRE_THROWS_AS(s1.set_n_segments(s1.get_max_s_size() + 1u), std::invalid_argument);
+    PIRANHA_REQUIRES_THROWS_CONTAINS(s1.set_n_segments(s1.get_max_s_size() + 1u), std::invalid_argument,
+                                     " as this value exceeds the maximum allowed value");
 }
 
 TEST_CASE("series_clear")
