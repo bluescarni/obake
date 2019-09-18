@@ -591,6 +591,61 @@ inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, con
     return retval;
 }
 
+namespace detail
+{
+
+// Small helper to detect if a type is an
+// mppp::integer.
+template <typename>
+struct is_mppp_integer : ::std::false_type {
+};
+
+template <::std::size_t SSize>
+struct is_mppp_integer<::mppp::integer<SSize>> : ::std::true_type {
+};
+
+} // namespace detail
+
+// Monomial exponentiation.
+// NOTE: this assumes that p is compatible with ss.
+template <
+    typename T, typename U,
+    ::std::enable_if_t<
+        ::std::disjunction_v<detail::is_mppp_integer<U>, is_safely_castable<const U &, ::mppp::integer<1>>>, int> = 0>
+inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    // NOTE: exp will be a const ref if n is already
+    // an mppp integer, a new value otherwise.
+    decltype(auto) exp = [&n]() -> decltype(auto) {
+        if constexpr (detail::is_mppp_integer<U>::value) {
+            return n;
+        } else {
+            return ::piranha::safe_cast<::mppp::integer<1>>(n);
+        }
+    }();
+    // Fetch the actual type of exp.
+    using int_t = remove_cvref_t<decltype(exp)>;
+
+    // Unpack, multiply in arbitrary-precision arithmetic, re-pack.
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp;
+    int_t tmp_int;
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+        tmp_int = tmp;
+        tmp_int *= exp;
+        kp << static_cast<T>(tmp_int);
+    }
+
+    return packed_monomial<T>(kp.get());
+}
+
 } // namespace polynomials
 
 // Lift to the piranha namespace.
