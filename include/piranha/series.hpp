@@ -36,6 +36,7 @@
 #include <piranha/detail/fcast.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
+#include <piranha/detail/mppp_utils.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
@@ -1329,33 +1330,41 @@ struct series_default_pow_impl {
 
         // Let's determine if we can run exponentiation
         // by repeated multiplications:
-        // - e must be safely convertible to mppp::integer,
+        // - e must either be an mppp::integer or safely convertible to
+        //   mppp::integer<1>,
         // - the return type must be compound-multipliable
         //   by T, and returnable.
-        if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, ::mppp::integer<1> &>,
+        if constexpr (::std::conjunction_v<::std::disjunction<detail::is_mppp_integer<rU>,
+                                                              is_safely_convertible<const rU &, ::mppp::integer<1> &>>,
                                            is_compound_multipliable<ret_t<T, U> &, const rT &>,
                                            is_returnable<ret_t<T, U>>>) {
             // Transform the exponent into an integral.
-            const auto n = [&e]() {
-                ::mppp::integer<1> ret;
+            // NOTE: if e is an integer, just return a const reference
+            // to it. Otherwise, return a new object of type mppp::integer<1>.
+            decltype(auto) n = [&e]() -> decltype(auto) {
+                if constexpr (detail::is_mppp_integer_v<rU>) {
+                    return ::std::as_const(e);
+                } else {
+                    ::mppp::integer<1> ret;
 
-                if (piranha_unlikely(!::piranha::safe_convert(ret, ::std::as_const(e)))) {
-                    if constexpr (is_stream_insertable_v<const rU &>) {
-                        // Provide better error message if U is ostreamable.
-                        ::std::ostringstream oss;
-                        static_cast<::std::ostream &>(oss) << ::std::as_const(e);
-                        piranha_throw(::std::invalid_argument,
-                                      "Invalid exponent for series exponentiation via repeated "
-                                      "multiplications: the exponent ("
-                                          + oss.str() + ") cannot be converted into an integral value");
-                    } else {
-                        piranha_throw(::std::invalid_argument,
-                                      "Invalid exponent for series exponentiation via repeated "
-                                      "multiplications: the exponent cannot be converted into an integral value");
+                    if (piranha_unlikely(!::piranha::safe_convert(ret, ::std::as_const(e)))) {
+                        if constexpr (is_stream_insertable_v<const rU &>) {
+                            // Provide better error message if U is ostreamable.
+                            ::std::ostringstream oss;
+                            static_cast<::std::ostream &>(oss) << ::std::as_const(e);
+                            piranha_throw(::std::invalid_argument,
+                                          "Invalid exponent for series exponentiation via repeated "
+                                          "multiplications: the exponent ("
+                                              + oss.str() + ") cannot be converted into an integral value");
+                        } else {
+                            piranha_throw(::std::invalid_argument,
+                                          "Invalid exponent for series exponentiation via repeated "
+                                          "multiplications: the exponent cannot be converted into an integral value");
+                        }
                     }
-                }
 
-                return ret;
+                    return ret;
+                }
             }();
 
             if (piranha_unlikely(n.sgn() < 0)) {
@@ -1367,7 +1376,7 @@ struct series_default_pow_impl {
             // NOTE: constructability from 1 is ensured by the
             // constructability of the coefficient type from int.
             ret_t<T, U> retval(1);
-            for (::mppp::integer<1> i{0}; i < n; ++i) {
+            for (remove_cvref_t<decltype(n)> i{0}; i < n; ++i) {
                 retval *= ::std::as_const(b);
             }
 

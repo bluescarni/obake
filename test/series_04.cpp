@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <type_traits>
 
+#include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
 #include <piranha/math/pow.hpp>
@@ -67,6 +68,8 @@ TEST_CASE("series_pow_test")
     REQUIRE(impl(x - y, 2) == (x - y) * (x - y));
     REQUIRE(impl(x - y, rat_t{3}) == (x - y) * (x - y) * (x - y));
     REQUIRE(impl(x - y, rat_t{10}) == impl(x - y, rat_t{5}) * impl(x - y, rat_t{5}));
+    REQUIRE(impl(x - y, mppp::integer<1>{10}) == impl(x - y, mppp::integer<1>{5}) * impl(x - y, mppp::integer<1>{5}));
+    REQUIRE(impl(x - y, mppp::integer<2>{10}) == impl(x - y, mppp::integer<2>{5}) * impl(x - y, mppp::integer<2>{5}));
 
     // Error handling.
     PIRANHA_REQUIRES_THROWS_CONTAINS(impl(x - y, rat_t{1, 2}), std::invalid_argument,
