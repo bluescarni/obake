@@ -393,6 +393,9 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
 }
 
 // Machinery for series' generic constructor.
+// NOTE: this can be improved to work also with series
+// with same rank but differen tag (same goes for the
+// conversion operator).
 template <typename T, typename K, typename C, typename Tag>
 constexpr int series_generic_ctor_algorithm_impl()
 {
@@ -1357,7 +1360,8 @@ struct series_default_pow_impl {
 
             if (piranha_unlikely(n.sgn() < 0)) {
                 piranha_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                       "multiplications: the exponent is negative");
+                                                       "multiplications: the exponent ("
+                                                           + n.to_string() + ") is negative");
             }
 
             // NOTE: constructability from 1 is ensured by the
