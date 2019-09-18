@@ -56,7 +56,7 @@
 #include <piranha/math/negate.hpp>
 #include <piranha/math/p_degree.hpp>
 #include <piranha/math/pow.hpp>
-#include <piranha/math/safe_cast.hpp>
+#include <piranha/math/safe_convert.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
@@ -309,7 +309,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             // the sign of the newly-inserted term,
             // in case of negative insertion.
             if constexpr (!Sign) {
-                ::piranha::negate(static_cast<cf_type &>(res.first->second));
+                ::piranha::negate(res.first->second);
             }
         } else {
             // The insertion did not take place because a term with
@@ -580,6 +580,9 @@ public:
         other.m_s_table.clear();
 #endif
     }
+    // NOTE: the generic construction algorithm must be well-documented,
+    // as we rely on its behaviour in a variety of places (e.g., when constructing
+    // series from scalars).
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
@@ -1262,13 +1265,15 @@ constexpr auto series_default_pow_algorithm_impl()
         //   which is constructible from int.
         // The exponent type must be zero-testable.
         using rT = remove_cvref_t<T>;
+        using rU = remove_cvref_t<U>;
         using cf_t = series_cf_t<rT>;
         // NOTE: check exponentiability via const
         // lvalue ref.
         using cf_pow_t = detected_t<detail::pow_t, const cf_t &, U>;
 
         if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>, is_cf<cf_pow_t>,
-                                           ::std::is_constructible<cf_pow_t, int>, is_zero_testable<U>>) {
+                                           ::std::is_constructible<cf_pow_t, int>,
+                                           is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
             return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
         } else {
             return failure;
@@ -1293,6 +1298,7 @@ struct series_default_pow_impl {
     ret_t<T, U> operator()(T &&b, U &&e) const
     {
         using rT = remove_cvref_t<T>;
+        using rU = remove_cvref_t<U>;
 
         if (b.is_single_cf()) {
             // Single coefficient series: either empty (i.e., b is zero),
@@ -1309,7 +1315,9 @@ struct series_default_pow_impl {
 
         // Handle the case of zero exponent: anything to the power
         // of zero is 1.
-        if (::piranha::is_zero(::std::forward<U>(e))) {
+        // NOTE: forward as const in order to avoid potentially
+        // mutating e in the is_zero() call.
+        if (::piranha::is_zero(::std::as_const(e))) {
             // NOTE: construct directly from 1: 1 is rank 0,
             // construction then forwards 1 to the construction
             // of an internal coefficient.
@@ -1318,18 +1326,38 @@ struct series_default_pow_impl {
 
         // Let's determine if we can run exponentiation
         // by repeated multiplications:
-        // - e must be safely castable to mppp::integer,
+        // - e must be safely convertible to mppp::integer,
         // - the return type must be compound-multipliable
         //   by T, and returnable.
-        if constexpr (::std::conjunction_v<is_safely_castable<U, ::mppp::integer<1>>,
+        if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, ::mppp::integer<1> &>,
                                            is_compound_multipliable<ret_t<T, U> &, const rT &>,
                                            is_returnable<ret_t<T, U>>>) {
             // Transform the exponent into an integral.
-            const auto n = ::piranha::safe_cast<::mppp::integer<1>>(::std::forward<U>(e));
+            const auto n = [&e]() {
+                ::mppp::integer<1> ret;
+
+                if (piranha_unlikely(!::piranha::safe_convert(ret, ::std::as_const(e)))) {
+                    if constexpr (is_stream_insertable_v<const rU &>) {
+                        // Provide better error message if U is ostreamable.
+                        ::std::ostringstream oss;
+                        static_cast<::std::ostream &>(oss) << ::std::as_const(e);
+                        piranha_throw(::std::invalid_argument,
+                                      "Invalid exponent for series exponentiation via repeated "
+                                      "multiplications: the exponent ("
+                                          + oss.str() + ") cannot be converted into an integral value");
+                    } else {
+                        piranha_throw(::std::invalid_argument,
+                                      "Invalid exponent for series exponentiation via repeated "
+                                      "multiplications: the exponent cannot be converted into an integral value");
+                    }
+                }
+
+                return ret;
+            }();
 
             if (piranha_unlikely(n.sgn() < 0)) {
-                piranha_throw(std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                     "multiplications: the exponent is negative");
+                piranha_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
+                                                       "multiplications: the exponent is negative");
             }
 
             // NOTE: constructability from 1 is ensured by the
@@ -1341,13 +1369,12 @@ struct series_default_pow_impl {
 
             return retval;
         } else {
-            piranha_throw(
-                ::std::invalid_argument,
-                "Cannot compute the power of a series of type '" + ::piranha::type_name<rT>()
-                    + "': the series does not consist of a single coefficient, "
-                      "and exponentiation via repeated multiplications is not possible (either because the "
-                      "exponent is not an integral value, or because the series type does not support the necessary "
-                      "arithmetic operations)");
+            piranha_throw(::std::invalid_argument,
+                          "Cannot compute the power of a series of type '" + ::piranha::type_name<rT>()
+                              + "': the series does not consist of a single coefficient, "
+                                "and exponentiation via repeated multiplications is not possible (either because the "
+                                "exponent cannot be converted to an integral value, or because the series type does "
+                                "not support the necessary arithmetic operations)");
         }
     }
 };
