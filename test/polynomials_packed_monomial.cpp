@@ -15,10 +15,13 @@
 #include <list>
 #include <random>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <vector>
+
+#include <mp++/integer.hpp>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
@@ -34,6 +37,7 @@
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
+#include <piranha/polynomials/monomial_pow.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/symbols.hpp>
@@ -41,6 +45,7 @@
 #include <piranha/type_traits.hpp>
 
 #include "catch.hpp"
+#include "test_utils.hpp"
 
 using namespace piranha;
 
@@ -843,5 +848,71 @@ TEST_CASE("key_p_degree_test")
         REQUIRE(is_key_with_p_degree_v<pm_t &>);
         REQUIRE(is_key_with_p_degree_v<const pm_t &>);
         REQUIRE(is_key_with_p_degree_v<pm_t &&>);
+    });
+}
+
+TEST_CASE("monomial_pow_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(!is_exponentiable_monomial_v<pm_t, void>);
+        REQUIRE(!is_exponentiable_monomial_v<void, pm_t>);
+
+        REQUIRE(is_exponentiable_monomial_v<pm_t, int>);
+        REQUIRE(is_exponentiable_monomial_v<const pm_t, int &>);
+        REQUIRE(is_exponentiable_monomial_v<const pm_t &, const int &>);
+        REQUIRE(is_exponentiable_monomial_v<pm_t &, const int>);
+        REQUIRE(!is_exponentiable_monomial_v<pm_t &, std::string>);
+
+        REQUIRE(monomial_pow(pm_t{}, 0, symbol_set{}) == pm_t{});
+        REQUIRE(monomial_pow(pm_t{1}, 0, symbol_set{"x"}) == pm_t{0});
+        REQUIRE(monomial_pow(pm_t{2}, 0, symbol_set{"x"}) == pm_t{0});
+        REQUIRE(monomial_pow(pm_t{2}, mppp::integer<1>{1}, symbol_set{"x"}) == pm_t{2});
+        REQUIRE(monomial_pow(pm_t{1, 2, 3}, 0, symbol_set{"x", "y", "z"}) == pm_t{0, 0, 0});
+        REQUIRE(monomial_pow(pm_t{1, 2, 3}, 1, symbol_set{"x", "y", "z"}) == pm_t{1, 2, 3});
+        REQUIRE(monomial_pow(pm_t{1, 2, 3}, 2, symbol_set{"x", "y", "z"}) == pm_t{2, 4, 6});
+        REQUIRE(monomial_pow(pm_t{1, 2, 3}, mppp::integer<2>{4}, symbol_set{"x", "y", "z"}) == pm_t{4, 8, 12});
+
+        // Check overflows, both in the single exponent exponentiation and in the coding limits.
+        PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_max<int_t>}, 2, symbol_set{"x"}),
+                                         std::overflow_error, "");
+
+        // Get the delta bit width corresponding to a vector size of 2.
+        const auto nbits = detail::k_packing_size_to_bits<int_t>(2u);
+
+        if constexpr (is_signed_v<int_t>) {
+            REQUIRE(monomial_pow(pm_t{-1}, 0, symbol_set{"x"}) == pm_t{0});
+            REQUIRE(monomial_pow(pm_t{-2}, 0, symbol_set{"x"}) == pm_t{0});
+            REQUIRE(monomial_pow(pm_t{-2}, 1, symbol_set{"x"}) == pm_t{-2});
+            REQUIRE(monomial_pow(pm_t{-1, 2, -3}, 0, symbol_set{"x", "y", "z"}) == pm_t{0, 0, 0});
+            REQUIRE(monomial_pow(pm_t{-1, 2, -3}, mppp::integer<1>{1}, symbol_set{"x", "y", "z"}) == pm_t{-1, 2, -3});
+            REQUIRE(monomial_pow(pm_t{1, -2, 3}, 2, symbol_set{"x", "y", "z"}) == pm_t{2, -4, 6});
+            REQUIRE(monomial_pow(pm_t{1, -2, 3}, mppp::integer<2>{4}, symbol_set{"x", "y", "z"}) == pm_t{4, -8, 12});
+
+            REQUIRE(monomial_pow(pm_t{-2}, -1, symbol_set{"x"}) == pm_t{2});
+            REQUIRE(monomial_pow(pm_t{-1, 2, -3}, mppp::integer<1>{-1}, symbol_set{"x", "y", "z"}) == pm_t{1, -2, 3});
+            REQUIRE(monomial_pow(pm_t{1, -2, 3}, -2, symbol_set{"x", "y", "z"}) == pm_t{-2, 4, -6});
+            REQUIRE(monomial_pow(pm_t{1, -2, 3}, mppp::integer<2>{-4}, symbol_set{"x", "y", "z"}) == pm_t{-4, 8, -12});
+
+            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_min<int_t>}, 2, symbol_set{"x"}),
+                                             std::overflow_error, "");
+
+            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[0],
+                                                               detail::k_packing_get_climits<int_t>(nbits, 1)[0]},
+                                                          2, symbol_set{"x", "y"}),
+                                             std::overflow_error, "");
+
+            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[1],
+                                                               detail::k_packing_get_climits<int_t>(nbits, 1)[1]},
+                                                          2, symbol_set{"x", "y"}),
+                                             std::overflow_error, "");
+        } else {
+            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0),
+                                                               detail::k_packing_get_climits<int_t>(nbits, 1)},
+                                                          2, symbol_set{"x", "y"}),
+                                             std::overflow_error, "");
+        }
     });
 }
