@@ -594,7 +594,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             // - sort v according to vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T or U.
+            // containing either T && or U &&.
             auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -605,7 +605,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 auto vd = [&v, &ss, &args...]() {
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
                         ::piranha::detail::ignore(args...);
@@ -615,7 +615,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                             ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
                     } else {
                         // Partial degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                        using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         // Fetch the list of symbols from the arguments and turn it into a
                         // set of indices.
@@ -654,8 +654,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Apply the sorting to vd and v. Ensure we don't run
                 // into overflows during the permutated access.
                 ::piranha::detail::container_it_diff_check(vd);
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                // NOTE: use cbegin/cend on vd to ensure the copy ctor of
+                // the degree type is being called.
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
                 ::piranha::detail::container_it_diff_check(v);
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
@@ -672,14 +674,14 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         ::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
 
                     if constexpr (sizeof...(args) == 1u) {
-                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using d_impl = customisation::internal::series_default_degree_impl;
 
                         assert(::std::equal(
                             vd.data() + idx_begin, vd.data() + idx_end,
                             ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
                             [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     } else {
-                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                        using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
@@ -696,7 +698,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+            return [vd1 = sorter(v1, type_c<T &&>{}, vseg1), vd2 = sorter(v2, type_c<U &&>{}, vseg2),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
@@ -950,7 +952,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // - sort v according to the order defined in vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T or U.
+            // containing either T && or U &&.
             auto sorter = [&ss, &args...](auto &v, auto t) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -961,7 +963,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 auto vd = [&v, &ss, &args...]() {
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
                         ::piranha::detail::ignore(args...);
@@ -971,7 +973,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                             ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
                     } else {
                         // Partial degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                        using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         // Fetch the list of symbols from the arguments and turn it into a
                         // set of indices.
@@ -1007,8 +1009,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // Apply the sorting to vd and v. Check that permutated
                 // access does not result in overflow.
                 ::piranha::detail::container_it_diff_check(vd);
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.begin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.end(), vidx.end()));
+                // NOTE: use cbegin/cend on vd to ensure the copy ctor of
+                // the degree type is being called.
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
                 ::piranha::detail::container_it_diff_check(v);
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
@@ -1020,13 +1024,13 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 assert(::std::is_sorted(vd.cbegin(), vd.cend()));
 
                 if constexpr (sizeof...(args) == 1u) {
-                    using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                    using d_impl = customisation::internal::series_default_degree_impl;
 
                     assert(::std::equal(vd.begin(), vd.end(),
                                         ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
                                         [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 } else {
-                    using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                    using d_impl = customisation::internal::series_default_p_degree_impl;
 
                     const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                     const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
@@ -1042,7 +1046,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
+            return [vd1 = sorter(v1, type_c<T &&>{}), vd2 = sorter(v2, type_c<U &&>{}),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
@@ -1274,8 +1278,8 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
     if constexpr (poly_mul_algo<T &&, U &&> == 0) {
         return 0;
     } else {
-        using d_impl = ::std::conditional_t<Total, ::piranha::customisation::internal::series_default_degree_impl,
-                                            ::piranha::customisation::internal::series_default_p_degree_impl>;
+        using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
+                                            customisation::internal::series_default_p_degree_impl>;
 
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
@@ -1288,7 +1292,9 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             using deg2_t = typename d_impl::template ret_t<U &&>;
 
             // The degree types need to be:
-            // - copy/move ctible (need to handle vectors of them),
+            // - copy/move ctible (need to handle vectors of them, note that
+            //   in the series default degree machinery we check for returnability,
+            //   but here we need explicitly both copy and move ctible),
             // - addable via const lref,
             // - V must be lt-comparable to the type of their sum via const lrefs.
             using deg_add_t = detected_t<::piranha::detail::add_t, const deg1_t &, const deg2_t &>;
