@@ -605,28 +605,29 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 auto vd = [&v, &ss, &args...]() {
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+                        using d_impl = customisation::internal::series_default_degree_impl;
+                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&ss}(*v.cbegin()));
 
                         ::piranha::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&ss}));
                     } else {
                         // Partial degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                        using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         // Fetch the list of symbols from the arguments and turn it into a
                         // set of indices.
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
 
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
+                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&s, &si, &ss}(*v.cbegin()));
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                            ::boost::make_transform_iterator(v.cbegin(),
+                                                             d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&s, &si, &ss}));
                     }
                 }();
 
@@ -674,21 +675,21 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         ::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
 
                     if constexpr (sizeof...(args) == 1u) {
-                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                        using d_impl = customisation::internal::series_default_degree_impl;
 
-                        assert(::std::equal(
-                            vd.data() + idx_begin, vd.data() + idx_end,
-                            ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
-                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                        assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
+                                            ::boost::make_transform_iterator(v.data() + idx_begin,
+                                                                             d_impl::d_extractor<const s_t &>{&ss}),
+                                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     } else {
-                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                        using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
 
                         assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
-                                            ::boost::make_transform_iterator(v.data() + idx_begin,
-                                                                             d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                                            ::boost::make_transform_iterator(
+                                                v.data() + idx_begin, d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
                                             [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     }
                 }
@@ -963,28 +964,29 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 auto vd = [&v, &ss, &args...]() {
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+                        using d_impl = customisation::internal::series_default_degree_impl;
+                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&ss}(*v.cbegin()));
 
                         ::piranha::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&ss}));
                     } else {
                         // Partial degree.
-                        using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                        using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         // Fetch the list of symbols from the arguments and turn it into a
                         // set of indices.
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
 
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
+                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&s, &si, &ss}(*v.cbegin()));
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                            ::boost::make_transform_iterator(v.cbegin(),
+                                                             d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&s, &si, &ss}));
                     }
                 }();
 
@@ -1024,20 +1026,21 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 assert(::std::is_sorted(vd.cbegin(), vd.cend()));
 
                 if constexpr (sizeof...(args) == 1u) {
-                    using d_impl = ::piranha::customisation::internal::series_default_degree_impl;
+                    using d_impl = customisation::internal::series_default_degree_impl;
 
-                    assert(::std::equal(vd.begin(), vd.end(),
-                                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                    assert(::std::equal(
+                        vd.begin(), vd.end(),
+                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&ss}),
+                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 } else {
-                    using d_impl = ::piranha::customisation::internal::series_default_p_degree_impl;
+                    using d_impl = customisation::internal::series_default_p_degree_impl;
 
                     const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                     const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
 
                     assert(::std::equal(
                         vd.begin(), vd.end(),
-                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
                         [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 }
 #endif
@@ -1278,8 +1281,8 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
     if constexpr (poly_mul_algo<T &&, U &&> == 0) {
         return 0;
     } else {
-        using d_impl = ::std::conditional_t<Total, ::piranha::customisation::internal::series_default_degree_impl,
-                                            ::piranha::customisation::internal::series_default_p_degree_impl>;
+        using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
+                                            customisation::internal::series_default_p_degree_impl>;
 
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
