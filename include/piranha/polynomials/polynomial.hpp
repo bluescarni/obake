@@ -828,9 +828,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     // thus we need to increase 'it' before possibly erasing.
                     // erase() does not cause rehash and thus will not invalidate
                     // any other iterator apart from the one being erased.
-                    auto tmp_it = it++;
-                    if (piranha_unlikely(::piranha::is_zero(::std::as_const(tmp_it->second)))) {
-                        table.erase(tmp_it);
+                    if (piranha_unlikely(::piranha::is_zero(::std::as_const(it->second)))) {
+                        table.erase(it++);
+                    } else {
+                        ++it;
                     }
                 }
 
@@ -1130,9 +1131,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // thus we need to increase 'it' before possibly erasing.
             // erase() does not cause rehash and thus will not invalidate
             // any other iterator apart from the one being erased.
-            auto tmp_it = it++;
-            if (piranha_unlikely(::piranha::is_zero(::std::as_const(tmp_it->second)))) {
-                tab.erase(tmp_it);
+            if (piranha_unlikely(::piranha::is_zero(::std::as_const(it->second)))) {
+                tab.erase(it++);
+            } else {
+                ++it;
             }
         }
 

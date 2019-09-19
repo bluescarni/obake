@@ -2469,10 +2469,7 @@ constexpr auto series_default_div_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, type_c<void>{});
 
-    if constexpr (!(rank_T > rank_U)) {
-        // The rank of T is not greater than the rank of U. Return failure.
-        return failure;
-    } else {
+    if constexpr (rank_T > rank_U) {
         // The candidate coefficient type of the quotient.
         using ret_cf_t = detected_t<div_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>;
 
@@ -2496,6 +2493,9 @@ constexpr auto series_default_div_algorithm_impl()
             // Non-coefficient type resulting from the division.
             return failure;
         }
+    } else {
+        // The rank of T is not greater than the rank of U. Return failure.
+        return failure;
     }
 }
 
