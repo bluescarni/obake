@@ -2805,31 +2805,28 @@ struct series_default_degree_impl {
     };
 
     // Implementation.
-    // NOTE: here we use ret_t<const T &> rather
-    // than just ret_t<T> because the algorithm/ret type selection
-    // machinery is meant to work on the exact type that
-    // is passed to the degree() functor (cv and ref included).
-    // It ultimately does not matter as we strip away cvref
-    // anyway, but let's keep it like this for mental clarity.
     template <typename T>
-    ret_t<const T &> operator()(const T &x) const
+    ret_t<T &&> operator()(T &&x_) const
     {
+        // We just need const access to x.
+        const auto &x = ::std::as_const(x_);
+
         // Special case for an empty series.
         if (x.empty()) {
-            return ret_t<const T &>(0);
+            return ret_t<T &&>(0);
         }
 
         // The functor to extract the term's degree.
-        d_extractor<const T &> d_extract{&x.get_symbol_set()};
+        d_extractor<T &&> d_extract{&x.get_symbol_set()};
 
         // Find the maximum degree.
         // NOTE: parallelisation opportunities here for
         // segmented tables.
         auto it = x.cbegin();
         const auto end = x.cend();
-        ret_t<const T &> max_deg(d_extract(*it));
+        ret_t<T &&> max_deg(d_extract(*it));
         for (++it; it != end; ++it) {
-            ret_t<const T &> cur(d_extract(*it));
+            ret_t<T &&> cur(d_extract(*it));
             if (::std::as_const(max_deg) < ::std::as_const(cur)) {
                 max_deg = ::std::move(cur);
             }
@@ -2839,13 +2836,6 @@ struct series_default_degree_impl {
     }
 };
 
-// NOTE: here we use algo<T> for the enabling condition, but then use
-// ret_t above with a possibly different type (e.g., T is an rvalue ref for the
-// purpose of the partial specialisation of the degree<> functor, but then
-// ret_t is determined via a const lvalue reference). This is ok because in the
-// algorithm/return type selection we anyway strip away cvrefs and we work
-// with const lvalue refs internally, thus there will be no difference
-// in the return values of the selection meta-algorithm.
 template <typename T>
 #if defined(PIRANHA_HAVE_CONCEPTS)
     requires series_default_degree_impl::algo<T> != 0 inline constexpr auto degree<T>
@@ -2907,11 +2897,14 @@ struct series_default_p_degree_impl {
 
     // Implementation.
     template <typename T>
-    ret_t<const T &> operator()(const T &x, const symbol_set &s) const
+    ret_t<T &&> operator()(T &&x_, const symbol_set &s) const
     {
+        // We just need const access to x.
+        const auto &x = ::std::as_const(x_);
+
         // Special case for an empty series.
         if (x.empty()) {
-            return ret_t<const T &>(0);
+            return ret_t<T &&>(0);
         }
 
         // Cache x's symbol set.
@@ -2923,16 +2916,16 @@ struct series_default_p_degree_impl {
         const auto si = detail::ss_intersect_idx(s, ss);
 
         // The functor to extract the term's partial degree.
-        d_extractor<const T &> d_extract{&s, &si, &ss};
+        d_extractor<T &&> d_extract{&s, &si, &ss};
 
         // Find the maximum degree.
         // NOTE: parallelisation opportunities here for
         // segmented tables.
         auto it = x.cbegin();
         const auto end = x.cend();
-        ret_t<const T &> max_deg(d_extract(*it));
+        ret_t<T &&> max_deg(d_extract(*it));
         for (++it; it != end; ++it) {
-            ret_t<const T &> cur(d_extract(*it));
+            ret_t<T &&> cur(d_extract(*it));
             if (::std::as_const(max_deg) < ::std::as_const(cur)) {
                 max_deg = ::std::move(cur);
             }

@@ -594,7 +594,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             // - sort v according to vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T or U.
+            // containing either T && or U &&.
             auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -606,13 +606,13 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
                         using d_impl = customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&ss}(*v.cbegin()));
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
                         ::piranha::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&ss}));
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
                     } else {
                         // Partial degree.
                         using d_impl = customisation::internal::series_default_p_degree_impl;
@@ -622,12 +622,11 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
 
-                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&s, &si, &ss}(*v.cbegin()));
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(),
-                                                             d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&s, &si, &ss}));
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
                     }
                 }();
 
@@ -679,7 +678,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                         assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
                                             ::boost::make_transform_iterator(v.data() + idx_begin,
-                                                                             d_impl::d_extractor<const s_t &>{&ss}),
+                                                                             d_impl::d_extractor<s_t>{&ss}),
                                             [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     } else {
                         using d_impl = customisation::internal::series_default_p_degree_impl;
@@ -689,7 +688,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                         assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
                                             ::boost::make_transform_iterator(
-                                                v.data() + idx_begin, d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
+                                                v.data() + idx_begin, d_impl::d_extractor<s_t>{&s, &si, &ss}),
                                             [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     }
                 }
@@ -699,7 +698,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+            return [vd1 = sorter(v1, type_c<T &&>{}, vseg1), vd2 = sorter(v2, type_c<U &&>{}, vseg2),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
@@ -953,7 +952,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // - sort v according to the order defined in vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T or U.
+            // containing either T && or U &&.
             auto sorter = [&ss, &args...](auto &v, auto t) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -965,13 +964,13 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
                         using d_impl = customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&ss}(*v.cbegin()));
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
                         ::piranha::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&ss}));
+                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
                     } else {
                         // Partial degree.
                         using d_impl = customisation::internal::series_default_p_degree_impl;
@@ -981,12 +980,12 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
 
-                        using deg_t = decltype(d_impl::d_extractor<const s_t &>{&s, &si, &ss}(*v.cbegin()));
+                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
 
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(),
-                                                             d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<const s_t &>{&s, &si, &ss}));
+                                                             d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
                     }
                 }();
 
@@ -1030,7 +1029,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
                     assert(::std::equal(
                         vd.begin(), vd.end(),
-                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&ss}),
+                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
                         [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 } else {
                     using d_impl = customisation::internal::series_default_p_degree_impl;
@@ -1040,7 +1039,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
                     assert(::std::equal(
                         vd.begin(), vd.end(),
-                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<const s_t &>{&s, &si, &ss}),
+                        ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
                         [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                 }
 #endif
@@ -1049,7 +1048,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
+            return [vd1 = sorter(v1, type_c<T &&>{}), vd2 = sorter(v2, type_c<U &&>{}),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
