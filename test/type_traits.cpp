@@ -1621,3 +1621,114 @@ TEST_CASE("compound_multipliable")
     REQUIRE(!CompoundMultipliable<int, int &&>);
 #endif
 }
+
+struct nondivisible_0 {
+};
+
+struct divisible_0 {
+    friend divisible_0 operator/(divisible_0, divisible_0);
+};
+
+struct divisible_1 {
+    friend divisible_1 operator/(divisible_1, divisible_0);
+    friend divisible_1 operator/(divisible_0, divisible_1);
+};
+
+struct nondivisible_1 {
+    friend nondivisible_1 operator/(nondivisible_1, divisible_0);
+};
+
+struct nondivisible_2 {
+    friend nondivisible_2 operator/(nondivisible_2, divisible_0);
+    friend nondivisible_1 operator/(divisible_0, nondivisible_2);
+};
+
+TEST_CASE("is_divisible")
+{
+    REQUIRE(!is_divisible_v<void>);
+    REQUIRE(!is_divisible_v<void, void>);
+    REQUIRE(!is_divisible_v<void, int>);
+    REQUIRE(!is_divisible_v<int, void>);
+    REQUIRE(is_divisible_v<int>);
+    REQUIRE(is_divisible_v<int, int>);
+    REQUIRE(is_divisible_v<const int, int &>);
+    REQUIRE(is_divisible_v<int &&, volatile int &>);
+    REQUIRE(!is_divisible_v<std::string, char *>);
+    REQUIRE(!is_divisible_v<std::string, int>);
+    REQUIRE(!is_divisible_v<nondivisible_0>);
+    REQUIRE(is_divisible_v<divisible_0>);
+    REQUIRE(is_divisible_v<divisible_1, divisible_0>);
+    REQUIRE(!is_divisible_v<nondivisible_1, divisible_0>);
+    REQUIRE(!is_divisible_v<nondivisible_2, divisible_0>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!Divisible<void>);
+    REQUIRE(!Divisible<void, void>);
+    REQUIRE(!Divisible<void, int>);
+    REQUIRE(!Divisible<int, void>);
+    REQUIRE(Divisible<int>);
+    REQUIRE(Divisible<int, int>);
+    REQUIRE(Divisible<const int, int &>);
+    REQUIRE(Divisible<int &&, volatile int &>);
+    REQUIRE(!Divisible<std::string, char *>);
+    REQUIRE(!Divisible<std::string, int>);
+    REQUIRE(!Divisible<nondivisible_0>);
+    REQUIRE(Divisible<divisible_0>);
+    REQUIRE(Divisible<divisible_1, divisible_0>);
+    REQUIRE(!Divisible<nondivisible_1, divisible_0>);
+    REQUIRE(!Divisible<nondivisible_2, divisible_0>);
+#endif
+}
+
+TEST_CASE("compound_divisible")
+{
+    REQUIRE(!is_compound_divisible_v<void, void>);
+    REQUIRE(!is_compound_divisible_v<void, int>);
+    REQUIRE(!is_compound_divisible_v<int, void>);
+
+    REQUIRE(is_compound_divisible_v<int &, int>);
+    REQUIRE(is_compound_divisible_v<int &, int &>);
+    REQUIRE(is_compound_divisible_v<int &, const int &>);
+    REQUIRE(is_compound_divisible_v<int &, int &&>);
+
+    REQUIRE(!is_compound_divisible_v<int &&, int>);
+    REQUIRE(!is_compound_divisible_v<int &&, int &>);
+    REQUIRE(!is_compound_divisible_v<int &&, const int &>);
+    REQUIRE(!is_compound_divisible_v<int &&, int &&>);
+
+    REQUIRE(!is_compound_divisible_v<const int &, int>);
+    REQUIRE(!is_compound_divisible_v<const int &, int &>);
+    REQUIRE(!is_compound_divisible_v<const int &, const int &>);
+    REQUIRE(!is_compound_divisible_v<const int &, int &&>);
+
+    REQUIRE(!is_compound_divisible_v<int, int>);
+    REQUIRE(!is_compound_divisible_v<int, int &>);
+    REQUIRE(!is_compound_divisible_v<int, const int &>);
+    REQUIRE(!is_compound_divisible_v<int, int &&>);
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    REQUIRE(!CompoundDivisible<void, void>);
+    REQUIRE(!CompoundDivisible<void, int>);
+    REQUIRE(!CompoundDivisible<int, void>);
+
+    REQUIRE(CompoundDivisible<int &, int>);
+    REQUIRE(CompoundDivisible<int &, int &>);
+    REQUIRE(CompoundDivisible<int &, const int &>);
+    REQUIRE(CompoundDivisible<int &, int &&>);
+
+    REQUIRE(!CompoundDivisible<int &&, int>);
+    REQUIRE(!CompoundDivisible<int &&, int &>);
+    REQUIRE(!CompoundDivisible<int &&, const int &>);
+    REQUIRE(!CompoundDivisible<int &&, int &&>);
+
+    REQUIRE(!CompoundDivisible<const int &, int>);
+    REQUIRE(!CompoundDivisible<const int &, int &>);
+    REQUIRE(!CompoundDivisible<const int &, const int &>);
+    REQUIRE(!CompoundDivisible<const int &, int &&>);
+
+    REQUIRE(!CompoundDivisible<int, int>);
+    REQUIRE(!CompoundDivisible<int, int &>);
+    REQUIRE(!CompoundDivisible<int, const int &>);
+    REQUIRE(!CompoundDivisible<int, int &&>);
+#endif
+}

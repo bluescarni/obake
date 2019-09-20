@@ -133,6 +133,9 @@ template <typename T, ::std::size_t SSize,
 }
 
 // Implementations for mppp::integer - mppp::rational.
+// NOTE: here potentially we could take advantage
+// of move operations, if the second argument is an rvalue
+// reference.
 template <::std::size_t SSize>
 inline bool safe_convert(::mppp::integer<SSize> &n, const ::mppp::rational<SSize> &q)
 {
