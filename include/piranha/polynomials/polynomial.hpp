@@ -594,7 +594,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             // - sort v according to vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T && or U &&.
+            // containing either T or U.
             auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -698,7 +698,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T &&>{}, vseg1), vd2 = sorter(v2, type_c<U &&>{}, vseg2),
+            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
@@ -953,7 +953,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // - sort v according to the order defined in vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T && or U &&.
+            // containing either T or U.
             auto sorter = [&ss, &args...](auto &v, auto t) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -1047,7 +1047,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T &&>{}), vd2 = sorter(v2, type_c<U &&>{}),
+            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
@@ -1277,7 +1277,7 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
     // Check first if we can do the untruncated multiplication. If we cannot,
     // truncated mult is not possible.
-    if constexpr (poly_mul_algo<T &&, U &&> == 0) {
+    if constexpr (poly_mul_algo<T, U> == 0) {
         return 0;
     } else {
         using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
@@ -1285,13 +1285,13 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
 
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
-        constexpr auto algo1 = d_impl::template algo<T &&>;
-        constexpr auto algo2 = d_impl::template algo<U &&>;
+        constexpr auto algo1 = d_impl::template algo<T>;
+        constexpr auto algo2 = d_impl::template algo<U>;
 
         if constexpr (algo1 != 0 && algo2 != 0) {
             // Fetch the degree types.
-            using deg1_t = typename d_impl::template ret_t<T &&>;
-            using deg2_t = typename d_impl::template ret_t<U &&>;
+            using deg1_t = typename d_impl::template ret_t<T>;
+            using deg2_t = typename d_impl::template ret_t<U>;
 
             // The degree types need to be:
             // - copy/move ctible (need to handle vectors of them, note that

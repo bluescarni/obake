@@ -3114,18 +3114,23 @@ struct series_default_degree_impl {
     using ret_t = typename decltype(series_default_degree_impl::algo_ret<T>.second)::type;
 
     // Helper to extract the degree of a term p.
+    // NOTE: here T is used only in the selection of the
+    // algorithm, which does not depend on cvref qualifiers
+    // for T. Thus, this functor will produce the same results
+    // regardless of the cvref qualifications on T.
     template <typename T>
     struct d_extractor {
         template <typename U>
         auto operator()(const U &p) const
         {
-            static_assert(algo<T> != 0);
+            constexpr auto al = algo<remove_cvref_t<T>>;
+            static_assert(al > 0 || al <= 2);
             assert(ss != nullptr);
 
-            if constexpr (algo<T> == 1) {
+            if constexpr (al == 1) {
                 // Both coefficient and key with degree.
                 return ::piranha::key_degree(p.first, *ss) + ::piranha::degree(p.second);
-            } else if constexpr (algo<T> == 2) {
+            } else if constexpr (al == 2) {
                 // Only coefficient with degree.
                 return ::piranha::degree(p.second);
             } else {
@@ -3201,20 +3206,25 @@ struct series_default_p_degree_impl {
     using ret_t = typename decltype(series_default_p_degree_impl::algo_ret<T>.second)::type;
 
     // Helper to extract the partial degree of a term p.
+    // NOTE: here T is used only in the selection of the
+    // algorithm, which does not depend on cvref qualifiers
+    // for T. Thus, this functor will produce the same results
+    // regardless of the cvref qualifications on T.
     template <typename T>
     struct d_extractor {
         template <typename U>
         auto operator()(const U &p) const
         {
-            static_assert(algo<T> != 0);
+            constexpr auto al = algo<remove_cvref_t<T>>;
+            static_assert(al > 0 || al <= 2);
             assert(s != nullptr);
             assert(si != nullptr);
             assert(ss != nullptr);
 
-            if constexpr (algo<T> == 1) {
+            if constexpr (al == 1) {
                 // Both coefficient and key with partial degree.
                 return ::piranha::key_p_degree(p.first, *si, *ss) + ::piranha::p_degree(p.second, *s);
-            } else if constexpr (algo<T> == 2) {
+            } else if constexpr (al == 2) {
                 // Only coefficient with partial degree.
                 return ::piranha::p_degree(p.second, *s);
             } else {
