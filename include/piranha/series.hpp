@@ -1271,8 +1271,8 @@ constexpr auto series_default_pow_algorithm_impl()
         using rU = remove_cvref_t<U>;
         using cf_t = series_cf_t<rT>;
         // NOTE: check exponentiability via const
-        // lvalue ref.
-        using cf_pow_t = detected_t<detail::pow_t, const cf_t &, U>;
+        // lvalue refs.
+        using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
 
         if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>, is_cf<cf_pow_t>,
                                            ::std::is_constructible<cf_pow_t, int>,
@@ -1298,10 +1298,13 @@ struct series_default_pow_impl {
 
     // Implementation.
     template <typename T, typename U>
-    ret_t<T, U> operator()(T &&b, U &&e) const
+    ret_t<T &&, U &&> operator()(T &&b, U &&e_) const
     {
         using rT = remove_cvref_t<T>;
         using rU = remove_cvref_t<U>;
+
+        // Need only const access to the exponent.
+        const auto &e = ::std::as_const(e_);
 
         if (b.is_single_cf()) {
             // Single coefficient series: either empty (i.e., b is zero),
@@ -1309,48 +1312,44 @@ struct series_default_pow_impl {
             if (b.empty()) {
                 // Return 0**e.
                 const series_cf_t<rT> zero(0);
-                return ret_t<T, U>(::piranha::pow(zero, ::std::forward<U>(e)));
+                return ret_t<T &&, U &&>(::piranha::pow(zero, e));
             } else {
                 // Return the only coefficient raised to the exponent.
-                return ret_t<T, U>(::piranha::pow(b.cbegin()->second, ::std::forward<U>(e)));
+                return ret_t<T &&, U &&>(::piranha::pow(b.cbegin()->second, e));
             }
         }
 
         // Handle the case of zero exponent: anything to the power
         // of zero is 1.
-        // NOTE: forward as const in order to avoid potentially
-        // mutating e in the is_zero() call.
-        if (::piranha::is_zero(::std::as_const(e))) {
+        if (::piranha::is_zero(e)) {
             // NOTE: construct directly from 1: 1 is rank 0,
             // construction then forwards 1 to the construction
             // of an internal coefficient.
-            return ret_t<T, U>(1);
+            return ret_t<T &&, U &&>(1);
         }
 
         // Let's determine if we can run exponentiation
         // by repeated multiplications:
         // - e must either be an mppp::integer or safely convertible to
         //   mppp::integer<1>,
-        // - the return type must be compound-multipliable
-        //   by T, and returnable.
+        // - the return type must be compound-multipliable by T.
         if constexpr (::std::conjunction_v<::std::disjunction<detail::is_mppp_integer<rU>,
                                                               is_safely_convertible<const rU &, ::mppp::integer<1> &>>,
-                                           is_compound_multipliable<ret_t<T, U> &, const rT &>,
-                                           is_returnable<ret_t<T, U>>>) {
+                                           is_compound_multipliable<ret_t<T &&, U &&> &, const rT &>>) {
             // Transform the exponent into an integral.
             // NOTE: if e is an integer, just return a const reference
             // to it. Otherwise, return a new object of type mppp::integer<1>.
             decltype(auto) n = [&e]() -> decltype(auto) {
                 if constexpr (detail::is_mppp_integer_v<rU>) {
-                    return ::std::as_const(e);
+                    return e;
                 } else {
                     ::mppp::integer<1> ret;
 
-                    if (piranha_unlikely(!::piranha::safe_convert(ret, ::std::as_const(e)))) {
+                    if (piranha_unlikely(!::piranha::safe_convert(ret, e))) {
                         if constexpr (is_stream_insertable_v<const rU &>) {
                             // Provide better error message if U is ostreamable.
                             ::std::ostringstream oss;
-                            static_cast<::std::ostream &>(oss) << ::std::as_const(e);
+                            static_cast<::std::ostream &>(oss) << e;
                             piranha_throw(::std::invalid_argument,
                                           "Invalid exponent for series exponentiation via repeated "
                                           "multiplications: the exponent ("
@@ -1374,11 +1373,13 @@ struct series_default_pow_impl {
 
             // NOTE: constructability from 1 is ensured by the
             // constructability of the coefficient type from int.
-            ret_t<T, U> retval(1);
-            for (remove_cvref_t<decltype(n)> i{0}; i < n; ++i) {
+            ret_t<T &&, U &&> retval(1);
+            for (remove_cvref_t<decltype(n)> i(0); i < n; ++i) {
                 retval *= ::std::as_const(b);
             }
 
+            // NOTE: returnability is guaranteed because
+            // the return type is a series.
             return retval;
         } else {
             piranha_throw(::std::invalid_argument,
