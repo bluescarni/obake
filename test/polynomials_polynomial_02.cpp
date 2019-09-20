@@ -328,6 +328,8 @@ TEST_CASE("polynomial_pow_test")
     REQUIRE(piranha::pow(-2 * x, -3) == -x_inv * x_inv * x_inv / 8);
     REQUIRE(x_inv * x == 1);
     REQUIRE(piranha::pow(x + y, 2) == x * x + y * y + 2 * x * y);
+    // Try exotic exponents too.
+    REQUIRE(piranha::pow(x + y, mppp::rational<1>{2}) == x * x + y * y + 2 * x * y);
 
     // Test large integral exponentiations and overflow.
     REQUIRE(piranha::pow(3 * x / 4, 100)
@@ -346,4 +348,8 @@ TEST_CASE("polynomial_pow_test")
                                      std::overflow_error, "");
     PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[1]),
                                      std::overflow_error, "");
+
+    PIRANHA_REQUIRES_THROWS_CONTAINS(
+        piranha::pow(a * a * b * b, mppp::rational<1>{2, 3}), std::invalid_argument,
+        "Invalid exponent for monomial exponentiation: the exponent (2/3) cannot be converted into an integral value");
 }
