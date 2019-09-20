@@ -72,6 +72,8 @@ struct foo {
 
 TEST_CASE("ctor_test")
 {
+    piranha_test::disable_slow_stack_traces();
+
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
         using kp_t = k_packer<int_t>;

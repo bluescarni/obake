@@ -29,6 +29,8 @@ using namespace piranha;
 
 TEST_CASE("series_pow_test")
 {
+    piranha_test::disable_slow_stack_traces();
+
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
     using p1_t = polynomial<pm_t, rat_t>;

@@ -26,6 +26,8 @@ using namespace piranha;
 
 TEST_CASE("polynomial_mul_simple_test_p_truncated")
 {
+    piranha_test::disable_slow_stack_traces();
+
     using pm_t = packed_monomial<long long>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
