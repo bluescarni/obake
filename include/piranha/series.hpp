@@ -394,7 +394,7 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
 
 // Machinery for series' generic constructor.
 // NOTE: this can be improved to work also with series
-// with same rank but differen tag (same goes for the
+// with same rank but different tag (same goes for the
 // conversion operator).
 template <typename T, typename K, typename C, typename Tag>
 constexpr int series_generic_ctor_algorithm_impl()
@@ -589,11 +589,11 @@ public:
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
 #endif
     explicit series(T &&x) : series()
     {
-        constexpr int algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
+        constexpr int algo = detail::series_generic_ctor_algorithm<T &&, K, C, Tag>;
         static_assert(algo > 0 && algo <= 3);
 
         if constexpr (algo == 1) {
@@ -717,7 +717,7 @@ public:
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
 #endif
     series &operator=(T &&x)
     {
@@ -1300,6 +1300,9 @@ struct series_default_pow_impl {
     template <typename T, typename U>
     ret_t<T &&, U &&> operator()(T &&b, U &&e_) const
     {
+        // Sanity check.
+        static_assert(algo<T &&, U &&> != 0);
+
         using rT = remove_cvref_t<T>;
         using rU = remove_cvref_t<U>;
 
@@ -2657,7 +2660,7 @@ using series_default_div_ret_t = typename decltype(series_default_div_algorithm<
 template <typename T, typename U>
 inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y)
 {
-    // Double check the algo.
+    // Sanity check the algo.
     static_assert(series_default_div_algo<T &&, U &&> == 1);
 
     // Shortcut to the return type.
