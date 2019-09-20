@@ -1831,7 +1831,7 @@ using series_default_addsub_ret_t = typename decltype(series_default_addsub_algo
 
 // Default implementation of the add/sub primitive for series.
 template <bool Sign, typename T, typename U>
-constexpr series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(T &&x, U &&y)
+inline series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(T &&x, U &&y)
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -2287,7 +2287,7 @@ using series_default_mul_ret_t = typename decltype(series_default_mul_algorithm<
 
 // Default implementation of the mul primitive for series.
 template <typename T, typename U>
-constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y)
+inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y)
 {
     // Determine the algorithm.
     constexpr int algo = series_default_mul_algo<T &&, U &&>;
@@ -2325,7 +2325,7 @@ constexpr series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U 
                 // Reset the vector of keys to be removed.
                 v_keys.clear();
 
-                // Perform the multiplication for this table.
+                // Perform the multiplications for this table.
                 for (auto &term : t) {
                     // NOTE: old clang does not like structured
                     // bindings in the for loop.
@@ -2422,6 +2422,196 @@ template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
     constexpr auto operator*=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
+
+namespace customisation
+{
+
+// External customisation point for piranha::series_div().
+template <typename T, typename U
+#if !defined(PIRANHA_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_div = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U>
+constexpr auto series_div_impl(T &&x, U &&y, priority_tag<2>)
+    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_div<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Unqualified function call implementation.
+template <typename T, typename U>
+constexpr auto series_div_impl(T &&x, U &&y, priority_tag<1>)
+    PIRANHA_SS_FORWARD_FUNCTION(series_div(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Meta-programming to establish the algorithm and return type
+// of the default implementation of series div. It will return
+// a pair containing an integral value signalling the algorithm
+// to be used in the implementation, and a type_c wrapper representing
+// the return type of the operation. If the div implementation is not
+// well-defined for the input types, it will return (0, void).
+template <typename T, typename U>
+constexpr auto series_default_div_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+
+    constexpr auto rank_T = series_rank<rT>;
+    constexpr auto rank_U = series_rank<rU>;
+
+    // Shortcut for signalling that the div implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, type_c<void>{});
+
+    if constexpr (rank_T > rank_U) {
+        // The candidate coefficient type of the quotient.
+        using ret_cf_t = detected_t<div_t, const series_cf_t<rT> &, ::std::add_lvalue_reference_t<const rU>>;
+
+        if constexpr (is_cf_v<ret_cf_t>) {
+            // The candidate coefficient type is valid. Establish
+            // the series return type.
+            using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
+
+            // We will need to:
+            // - construct the return value from T,
+            // - divide in-place the coefficient type of ret_t
+            //   by a const reference to U.
+            if constexpr (::std::conjunction_v<
+                              is_constructible<ret_t, T>,
+                              is_compound_divisible<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
+                return ::std::make_pair(1, type_c<ret_t>{});
+            } else {
+                return failure;
+            }
+        } else {
+            // Non-coefficient type resulting from the division.
+            return failure;
+        }
+    } else {
+        // The rank of T is not greater than the rank of U. Return failure.
+        return failure;
+    }
+}
+
+// Shortcuts.
+template <typename T, typename U>
+inline constexpr auto series_default_div_algorithm = detail::series_default_div_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int series_default_div_algo = series_default_div_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using series_default_div_ret_t = typename decltype(series_default_div_algorithm<T, U>.second)::type;
+
+// Default implementation of the div primitive for series.
+template <typename T, typename U>
+inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y)
+{
+    // Double check the algo.
+    static_assert(series_default_div_algo<T &&, U &&> == 1);
+
+    // Shortcut to the return type.
+    using ret_t = series_default_div_ret_t<T &&, U &&>;
+
+    // Init the return value from the higher-rank series.
+    ret_t retval(::std::forward<T>(x));
+
+    // Divide in-place all coefficients of retval by y.
+    // NOTE: this can be parallelised for a segmented table.
+    auto &s_table = retval._get_s_table();
+    try {
+        for (auto &t : s_table) {
+            // Perform the divisions for this table.
+            const auto end = t.end();
+            for (auto it = t.begin(); it != end;) {
+                auto &c = it->second;
+
+                c /= ::std::as_const(y);
+
+                if (piranha_unlikely(::piranha::is_zero(::std::as_const(c)))) {
+                    // NOTE: abseil's flat_hash_map returns void on erase(),
+                    // thus we need to increase 'it' before possibly erasing.
+                    // erase() does not cause rehash and thus will not invalidate
+                    // any other iterator apart from the one being erased.
+                    t.erase(it++);
+                } else {
+                    ++it;
+                }
+            }
+        }
+
+        return retval;
+    } catch (...) {
+        // If something goes wrong, make sure to clear
+        // out retval before rethrowing, in order to avoid
+        // a possibly inconsistent state and thus assertion
+        // failures in debug mode.
+        retval.clear();
+        throw;
+    }
+}
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U, ::std::enable_if_t<series_default_div_algo<T &&, U &&> != 0, int> = 0>
+constexpr auto series_div_impl(T &&x, U &&y, priority_tag<0>)
+    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_div_impl(::std::forward<T>(x), ::std::forward<U>(y)));
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct series_div_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const
+        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_div_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                   detail::priority_tag<2>{}))
+};
+
+inline constexpr auto series_div = series_div_msvc{};
+
+#else
+
+inline constexpr auto series_div = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+    detail::series_div_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+
+#endif
+
+// Like with operator+(), constrain so that the operator
+// is enabled only if at least 1 operator is a series.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T> || CvrSeries<U>
+#else
+template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
+#endif
+constexpr auto operator/(T &&x, U &&y)
+    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_div(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// NOTE: for now, implement operator/=() in terms of operator/().
+// This can be optimised later performance-wise.
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires CvrSeries<T>
+#else
+template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
+#endif
+    constexpr auto operator/=(T &&x, U &&y)
+        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) / ::std::forward<U>(y));
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+template <typename T, typename U>
+requires !CvrSeries<T> && CvrSeries<U>
+#else
+template <typename T, typename U,
+          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
+#endif
+    constexpr auto operator/=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {

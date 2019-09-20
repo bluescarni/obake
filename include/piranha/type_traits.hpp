@@ -284,6 +284,9 @@ PIRANHA_CONCEPT_DECL StringLike = is_string_like_v<T>;
 
 #endif
 
+// NOTE: the binary operators require symmetry, but
+// the compound operators do not. We should probably
+// resolve this inconsistency.
 namespace detail
 {
 
@@ -488,6 +491,59 @@ template <typename T, typename U>
 PIRANHA_CONCEPT_DECL CompoundMultipliable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) *= ::std::forward<U>(y);
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using div_t = decltype(::std::declval<T>() / ::std::declval<U>());
+
+}
+
+template <typename T, typename U = T>
+using is_divisible
+    = ::std::conjunction<is_detected<detail::div_t, T, U>, is_detected<detail::div_t, U, T>,
+                         ::std::is_same<detected_t<detail::div_t, T, U>, detected_t<detail::div_t, U, T>>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_divisible_v = is_divisible<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+PIRANHA_CONCEPT_DECL Divisible = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) / ::std::forward<U>(y);
+    ::std::forward<U>(y) / ::std::forward<T>(x);
+    requires ::std::is_same_v<decltype(::std::forward<T>(x) / ::std::forward<U>(y)),
+                              decltype(::std::forward<U>(y) / ::std::forward<T>(x))>;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using compound_div_t = decltype(::std::declval<T>() /= ::std::declval<U>());
+
+}
+
+template <typename T, typename U>
+using is_compound_divisible = is_detected<detail::compound_div_t, T, U>;
+
+template <typename T, typename U>
+inline constexpr bool is_compound_divisible_v = is_compound_divisible<T, U>::value;
+
+#if defined(PIRANHA_HAVE_CONCEPTS)
+
+template <typename T, typename U>
+PIRANHA_CONCEPT_DECL CompoundDivisible = requires(T &&x, U &&y)
+{
+    ::std::forward<T>(x) /= ::std::forward<U>(y);
 };
 
 #endif
