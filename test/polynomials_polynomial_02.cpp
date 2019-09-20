@@ -6,14 +6,21 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <mp++/integer.hpp>
+#include <stdexcept>
 
+#include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
+
+#include <piranha/detail/limits.hpp>
+#include <piranha/k_packing.hpp>
 #include <piranha/math/p_degree.hpp>
+#include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/polynomials/polynomial.hpp>
 #include <piranha/symbols.hpp>
 
 #include "catch.hpp"
+#include "test_utils.hpp"
 
 using namespace piranha;
 
@@ -304,4 +311,39 @@ TEST_CASE("polynomial_mul_mt_hm_test_p_truncated_large")
     REQUIRE(retval.empty());
     retval.clear_terms();
     retval.set_n_segments(0);
+}
+
+TEST_CASE("polynomial_pow_test")
+{
+    using pm_t = packed_monomial<long long>;
+    using poly_t = polynomial<pm_t, mppp::rational<1>>;
+    using poly2_t = polynomial<pm_t, double>;
+
+    auto [x, y] = make_polynomials<poly_t>("x", "y");
+
+    REQUIRE(piranha::pow(poly_t{}, 4).empty());
+    REQUIRE(piranha::pow(poly_t{3}, 3) == 27);
+    REQUIRE(piranha::pow(x, 3) == x * x * x);
+    const auto x_inv = piranha::pow(x, -1);
+    REQUIRE(piranha::pow(-2 * x, -3) == -x_inv * x_inv * x_inv / 8);
+    REQUIRE(x_inv * x == 1);
+    REQUIRE(piranha::pow(x + y, 2) == x * x + y * y + 2 * x * y);
+
+    // Test large integral exponentiations and overflow.
+    REQUIRE(piranha::pow(3 * x / 4, 100)
+            == mppp::rational<1>{"515377520732011331036461129765621272702107522001/"
+                                 "1606938044258990275541962092341162602522202993782792835301376"}
+                   * piranha::pow(x, 50) * piranha::pow(x, 50));
+
+    auto [a, b] = make_polynomials<poly2_t>("a", "b");
+
+    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a, detail::limits_max<long long>), std::overflow_error, "");
+
+    // Get the delta bit width corresponding to a vector size of 2.
+    const auto nbits = detail::k_packing_size_to_bits<long long>(2u);
+
+    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[0]),
+                                     std::overflow_error, "");
+    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[1]),
+                                     std::overflow_error, "");
 }

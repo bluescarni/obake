@@ -45,9 +45,11 @@
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
+#include <piranha/math/pow.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
+#include <piranha/polynomials/monomial_pow.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/series.hpp>
@@ -1340,6 +1342,67 @@ template <typename T, typename U, typename V,
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
 {
     return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
+}
+
+namespace detail
+{
+
+// Machinery to enable the pow() specialisation for polynomials.
+template <typename T, typename U>
+constexpr auto poly_pow_algorithm_impl()
+{
+    if constexpr (is_polynomial_v<remove_cvref_t<T>>) {
+        return customisation::internal::series_default_pow_impl::algo<T, U>;
+    } else {
+        return 0;
+    }
+}
+
+template <typename T, typename U>
+inline constexpr auto poly_pow_algo = detail::poly_pow_algorithm_impl<T, U>();
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_pow_algo<T &&, U &&> != 0, int> = 0>
+inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T &&x, U &&y)
+{
+    using impl = customisation::internal::series_default_pow_impl;
+
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+    using key_t = series_key_t<rT>;
+
+    if constexpr (is_exponentiable_monomial_v<const key_t &, const rU &>) {
+        if (x.size() == 1u) {
+            // The polynomial has a single term, we can proceed
+            // with the monomial exponentiation.
+
+            // Cache the symbol set.
+            const auto &ss = x.get_symbol_set();
+
+            // Build the return value.
+            impl::ret_t<T &&, U &&> retval;
+            retval.set_symbol_set(ss);
+            // NOTE: we do coefficient and monomial exponentiation using
+            // const refs everywhere (thus, we ensure that y is not mutated
+            // after one exponentiation). Regarding coefficient exponentiation,
+            // we checked in the default implementation that it is supported
+            // via const lvalue refs.
+            const auto it = x.cbegin();
+            retval.add_term(::piranha::monomial_pow(it->first, ::std::as_const(y), ss),
+                            ::piranha::pow(it->second, ::std::as_const(y)));
+
+            return retval;
+        } else {
+            // The polynomial is empty or it has more than 1 term, perfect forward to
+            // the series implementation.
+            return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+        }
+    } else {
+        // Cannot do monomial exponentiation, perfect forward to
+        // the series implementation.
+        return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+    }
 }
 
 } // namespace polynomials
