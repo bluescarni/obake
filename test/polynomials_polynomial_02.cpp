@@ -8,6 +8,7 @@
 
 #include <stdexcept>
 
+#include <mp++/exceptions.hpp>
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
@@ -332,6 +333,8 @@ TEST_CASE("polynomial_pow_test")
     REQUIRE(piranha::pow(x + y, 2) == x * x + y * y + 2 * x * y);
     // Try exotic exponents too.
     REQUIRE(piranha::pow(x + y, mppp::rational<1>{2}) == x * x + y * y + 2 * x * y);
+    // Zero division error.
+    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(poly_t{}, -1), mppp::zero_division_error, "");
 
     // Test large integral exponentiations and overflow.
     REQUIRE(piranha::pow(3 * x / 4, 100)
