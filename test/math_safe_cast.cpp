@@ -27,6 +27,8 @@ using namespace piranha;
 
 TEST_CASE("safe_cast_test")
 {
+    piranha_test::disable_slow_stack_traces();
+
     REQUIRE(!is_safely_castable_v<void, void>);
     REQUIRE(!is_safely_castable_v<int, void>);
     REQUIRE(!is_safely_castable_v<void, int>);

@@ -26,6 +26,8 @@
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
+#include <mp++/integer.hpp>
+
 #include <piranha/byte_size.hpp>
 #include <piranha/cf/cf_stream_insert.hpp>
 #include <piranha/config.hpp>
@@ -33,6 +35,7 @@
 #include <piranha/detail/fcast.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
+#include <piranha/detail/mppp_utils.hpp>
 #include <piranha/detail/not_implemented.hpp>
 #include <piranha/detail/priority_tag.hpp>
 #include <piranha/detail/ss_func_forward.hpp>
@@ -53,6 +56,7 @@
 #include <piranha/math/negate.hpp>
 #include <piranha/math/p_degree.hpp>
 #include <piranha/math/pow.hpp>
+#include <piranha/math/safe_convert.hpp>
 #include <piranha/symbols.hpp>
 #include <piranha/type_name.hpp>
 #include <piranha/type_traits.hpp>
@@ -305,7 +309,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             // the sign of the newly-inserted term,
             // in case of negative insertion.
             if constexpr (!Sign) {
-                ::piranha::negate(static_cast<cf_type &>(res.first->second));
+                ::piranha::negate(res.first->second);
             }
         } else {
             // The insertion did not take place because a term with
@@ -389,6 +393,9 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
 }
 
 // Machinery for series' generic constructor.
+// NOTE: this can be improved to work also with series
+// with same rank but different tag (same goes for the
+// conversion operator).
 template <typename T, typename K, typename C, typename Tag>
 constexpr int series_generic_ctor_algorithm_impl()
 {
@@ -576,14 +583,17 @@ public:
         other.m_s_table.clear();
 #endif
     }
+    // NOTE: the generic construction algorithm must be well-documented,
+    // as we rely on its behaviour in a variety of places (e.g., when constructing
+    // series from scalars).
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
 #endif
     explicit series(T &&x) : series()
     {
-        constexpr int algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
+        constexpr int algo = detail::series_generic_ctor_algorithm<T &&, K, C, Tag>;
         static_assert(algo > 0 && algo <= 3);
 
         if constexpr (algo == 1) {
@@ -707,7 +717,7 @@ public:
 #if defined(PIRANHA_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
 #endif
     series &operator=(T &&x)
     {
@@ -1241,20 +1251,157 @@ inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
 namespace customisation::internal
 {
 
-// TODO: fix lambda usage on MSVC.
-#if 0
+// Metaprogramming to establish the algorithm/return
+// type of the default series pow computation.
+template <typename T, typename U>
+constexpr auto series_default_pow_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+    if constexpr (!is_cvr_series_v<T>) {
+        // The base is not a series type.
+        return failure;
+    } else {
+        // The coefficient type of T must be:
+        // - constructible from int,
+        // - exponentiable by U, with the return value a coefficient type
+        //   which is constructible from int.
+        // The exponent type must be zero-testable.
+        using rT = remove_cvref_t<T>;
+        using rU = remove_cvref_t<U>;
+        using cf_t = series_cf_t<rT>;
+        // NOTE: check exponentiability via const
+        // lvalue refs.
+        using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
+
+        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>, is_cf<cf_pow_t>,
+                                           ::std::is_constructible<cf_pow_t, int>,
+                                           is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
+            return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Default implementation of series exponentiation.
+struct series_default_pow_impl {
+    // A couple of handy shortcuts.
+    template <typename T, typename U>
+    static constexpr auto algo_ret = internal::series_default_pow_algorithm_impl<T, U>();
+
+    template <typename T, typename U>
+    static constexpr auto algo = series_default_pow_impl::algo_ret<T, U>.first;
+
+    template <typename T, typename U>
+    using ret_t = typename decltype(series_default_pow_impl::algo_ret<T, U>.second)::type;
+
+    // Implementation.
+    template <typename T, typename U>
+    ret_t<T &&, U &&> operator()(T &&b, U &&e_) const
+    {
+        // Sanity check.
+        static_assert(algo<T &&, U &&> != 0);
+
+        using rT = remove_cvref_t<T>;
+        using rU = remove_cvref_t<U>;
+
+        // Need only const access to the exponent.
+        const auto &e = ::std::as_const(e_);
+
+        if (b.is_single_cf()) {
+            // Single coefficient series: either empty (i.e., b is zero),
+            // or a single term with unitary key.
+            if (b.empty()) {
+                // Return 0**e.
+                const series_cf_t<rT> zero(0);
+                return ret_t<T &&, U &&>(::piranha::pow(zero, e));
+            } else {
+                // Return the only coefficient raised to the exponent.
+                return ret_t<T &&, U &&>(::piranha::pow(b.cbegin()->second, e));
+            }
+        }
+
+        // Handle the case of zero exponent: anything to the power
+        // of zero is 1.
+        if (::piranha::is_zero(e)) {
+            // NOTE: construct directly from 1: 1 is rank 0,
+            // construction then forwards 1 to the construction
+            // of an internal coefficient.
+            return ret_t<T &&, U &&>(1);
+        }
+
+        // Let's determine if we can run exponentiation
+        // by repeated multiplications:
+        // - e must either be an mppp::integer or safely convertible to
+        //   mppp::integer<1>,
+        // - the return type must be compound-multipliable by T.
+        if constexpr (::std::conjunction_v<::std::disjunction<detail::is_mppp_integer<rU>,
+                                                              is_safely_convertible<const rU &, ::mppp::integer<1> &>>,
+                                           is_compound_multipliable<ret_t<T &&, U &&> &, const rT &>>) {
+            // Transform the exponent into an integral.
+            // NOTE: if e is an integer, just return a const reference
+            // to it. Otherwise, return a new object of type mppp::integer<1>.
+            decltype(auto) n = [&e]() -> decltype(auto) {
+                if constexpr (detail::is_mppp_integer_v<rU>) {
+                    return e;
+                } else {
+                    ::mppp::integer<1> ret;
+
+                    if (piranha_unlikely(!::piranha::safe_convert(ret, e))) {
+                        if constexpr (is_stream_insertable_v<const rU &>) {
+                            // Provide better error message if U is ostreamable.
+                            ::std::ostringstream oss;
+                            static_cast<::std::ostream &>(oss) << e;
+                            piranha_throw(::std::invalid_argument,
+                                          "Invalid exponent for series exponentiation via repeated "
+                                          "multiplications: the exponent ("
+                                              + oss.str() + ") cannot be converted into an integral value");
+                        } else {
+                            piranha_throw(::std::invalid_argument,
+                                          "Invalid exponent for series exponentiation via repeated "
+                                          "multiplications: the exponent cannot be converted into an integral value");
+                        }
+                    }
+
+                    return ret;
+                }
+            }();
+
+            if (piranha_unlikely(n.sgn() < 0)) {
+                piranha_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
+                                                       "multiplications: the exponent ("
+                                                           + n.to_string() + ") is negative");
+            }
+
+            // NOTE: constructability from 1 is ensured by the
+            // constructability of the coefficient type from int.
+            ret_t<T &&, U &&> retval(1);
+            for (remove_cvref_t<decltype(n)> i(0); i < n; ++i) {
+                retval *= ::std::as_const(b);
+            }
+
+            // NOTE: returnability is guaranteed because
+            // the return type is a series.
+            return retval;
+        } else {
+            piranha_throw(::std::invalid_argument,
+                          "Cannot compute the power of a series of type '" + ::piranha::type_name<rT>()
+                              + "': the series does not consist of a single coefficient, "
+                                "and exponentiation via repeated multiplications is not possible (either because the "
+                                "exponent cannot be converted to an integral value, or because the series type does "
+                                "not support the necessary arithmetic operations)");
+        }
+    }
+};
+
 template <typename T, typename U>
 #if defined(PIRANHA_HAVE_CONCEPTS)
-requires CvrSeries<T> &&Integral<::std::remove_reference_t<U>> inline constexpr auto pow<T, U>
+    requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
 #else
-inline constexpr auto
-    pow<T, U, ::std::enable_if_t<::std::conjunction_v<is_cvr_series<T>, is_integral<::std::remove_reference_t<U>>>>>
+inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
 #endif
-    = [](auto &&, auto &&) constexpr
-{
-    return 0;
-};
-#endif
+    = series_default_pow_impl{};
 
 } // namespace customisation::internal
 
@@ -2513,7 +2660,7 @@ using series_default_div_ret_t = typename decltype(series_default_div_algorithm<
 template <typename T, typename U>
 inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y)
 {
-    // Double check the algo.
+    // Sanity check the algo.
     static_assert(series_default_div_algo<T &&, U &&> == 1);
 
     // Shortcut to the return type.
@@ -2869,7 +3016,7 @@ namespace customisation::internal
 {
 
 // Metaprogramming to establish the algorithm/return
-// type of the series degree computation. This is shared
+// type of the default series degree computation. This is shared
 // between total and partial degree computation, since the
 // logic is identical and the only changing parts are the
 // typedef/type traits to establish if the key/cf support
@@ -2967,18 +3114,23 @@ struct series_default_degree_impl {
     using ret_t = typename decltype(series_default_degree_impl::algo_ret<T>.second)::type;
 
     // Helper to extract the degree of a term p.
+    // NOTE: here T is used only in the selection of the
+    // algorithm, which does not depend on cvref qualifiers
+    // for T. Thus, this functor will produce the same results
+    // regardless of the cvref qualifications on T.
     template <typename T>
     struct d_extractor {
         template <typename U>
         auto operator()(const U &p) const
         {
-            static_assert(algo<T> != 0);
+            constexpr auto al = algo<remove_cvref_t<T>>;
+            static_assert(al > 0 || al <= 2);
             assert(ss != nullptr);
 
-            if constexpr (algo<T> == 1) {
+            if constexpr (al == 1) {
                 // Both coefficient and key with degree.
                 return ::piranha::key_degree(p.first, *ss) + ::piranha::degree(p.second);
-            } else if constexpr (algo<T> == 2) {
+            } else if constexpr (al == 2) {
                 // Only coefficient with degree.
                 return ::piranha::degree(p.second);
             } else {
@@ -3054,20 +3206,25 @@ struct series_default_p_degree_impl {
     using ret_t = typename decltype(series_default_p_degree_impl::algo_ret<T>.second)::type;
 
     // Helper to extract the partial degree of a term p.
+    // NOTE: here T is used only in the selection of the
+    // algorithm, which does not depend on cvref qualifiers
+    // for T. Thus, this functor will produce the same results
+    // regardless of the cvref qualifications on T.
     template <typename T>
     struct d_extractor {
         template <typename U>
         auto operator()(const U &p) const
         {
-            static_assert(algo<T> != 0);
+            constexpr auto al = algo<remove_cvref_t<T>>;
+            static_assert(al > 0 || al <= 2);
             assert(s != nullptr);
             assert(si != nullptr);
             assert(ss != nullptr);
 
-            if constexpr (algo<T> == 1) {
+            if constexpr (al == 1) {
                 // Both coefficient and key with partial degree.
                 return ::piranha::key_p_degree(p.first, *si, *ss) + ::piranha::p_degree(p.second, *s);
-            } else if constexpr (algo<T> == 2) {
+            } else if constexpr (al == 2) {
                 // Only coefficient with partial degree.
                 return ::piranha::p_degree(p.second, *s);
             } else {

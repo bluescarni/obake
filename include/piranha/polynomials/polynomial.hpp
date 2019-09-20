@@ -45,9 +45,11 @@
 #include <piranha/key/key_merge_symbols.hpp>
 #include <piranha/math/fma3.hpp>
 #include <piranha/math/is_zero.hpp>
+#include <piranha/math/pow.hpp>
 #include <piranha/math/safe_cast.hpp>
 #include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/polynomials/monomial_mul.hpp>
+#include <piranha/polynomials/monomial_pow.hpp>
 #include <piranha/polynomials/monomial_range_overflow_check.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/series.hpp>
@@ -594,7 +596,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             // - sort v according to vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T && or U &&.
+            // containing either T or U.
             auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -698,7 +700,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T &&>{}, vseg1), vd2 = sorter(v2, type_c<U &&>{}, vseg2),
+            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
@@ -953,7 +955,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // - sort v according to the order defined in vd.
             //
             // v will be one of v1/v2, t is a type_c instance
-            // containing either T && or U &&.
+            // containing either T or U.
             auto sorter = [&ss, &args...](auto &v, auto t) {
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
@@ -1047,7 +1049,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             };
 
             using ::piranha::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T &&>{}), vd2 = sorter(v2, type_c<U &&>{}),
+            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
@@ -1277,7 +1279,7 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
     // Check first if we can do the untruncated multiplication. If we cannot,
     // truncated mult is not possible.
-    if constexpr (poly_mul_algo<T &&, U &&> == 0) {
+    if constexpr (poly_mul_algo<T, U> == 0) {
         return 0;
     } else {
         using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
@@ -1285,13 +1287,13 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
 
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
-        constexpr auto algo1 = d_impl::template algo<T &&>;
-        constexpr auto algo2 = d_impl::template algo<U &&>;
+        constexpr auto algo1 = d_impl::template algo<T>;
+        constexpr auto algo2 = d_impl::template algo<U>;
 
         if constexpr (algo1 != 0 && algo2 != 0) {
             // Fetch the degree types.
-            using deg1_t = typename d_impl::template ret_t<T &&>;
-            using deg2_t = typename d_impl::template ret_t<U &&>;
+            using deg1_t = typename d_impl::template ret_t<T>;
+            using deg2_t = typename d_impl::template ret_t<U>;
 
             // The degree types need to be:
             // - copy/move ctible (need to handle vectors of them, note that
@@ -1340,6 +1342,67 @@ template <typename T, typename U, typename V,
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
 {
     return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
+}
+
+namespace detail
+{
+
+// Machinery to enable the pow() specialisation for polynomials.
+template <typename T, typename U>
+constexpr auto poly_pow_algorithm_impl()
+{
+    if constexpr (is_polynomial_v<remove_cvref_t<T>>) {
+        return customisation::internal::series_default_pow_impl::algo<T, U>;
+    } else {
+        return 0;
+    }
+}
+
+template <typename T, typename U>
+inline constexpr auto poly_pow_algo = detail::poly_pow_algorithm_impl<T, U>();
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_pow_algo<T &&, U &&> != 0, int> = 0>
+inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T &&x, U &&y)
+{
+    using impl = customisation::internal::series_default_pow_impl;
+
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+    using key_t = series_key_t<rT>;
+
+    if constexpr (is_exponentiable_monomial_v<const key_t &, const rU &>) {
+        if (x.size() == 1u) {
+            // The polynomial has a single term, we can proceed
+            // with the monomial exponentiation.
+
+            // Cache the symbol set.
+            const auto &ss = x.get_symbol_set();
+
+            // Build the return value.
+            impl::ret_t<T &&, U &&> retval;
+            retval.set_symbol_set(ss);
+            // NOTE: we do coefficient and monomial exponentiation using
+            // const refs everywhere (thus, we ensure that y is not mutated
+            // after one exponentiation). Regarding coefficient exponentiation,
+            // we checked in the default implementation that it is supported
+            // via const lvalue refs.
+            const auto it = x.cbegin();
+            retval.add_term(::piranha::monomial_pow(it->first, ::std::as_const(y), ss),
+                            ::piranha::pow(it->second, ::std::as_const(y)));
+
+            return retval;
+        } else {
+            // The polynomial is empty or it has more than 1 term, perfect forward to
+            // the series implementation.
+            return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+        }
+    } else {
+        // Cannot do monomial exponentiation, perfect forward to
+        // the series implementation.
+        return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+    }
 }
 
 } // namespace polynomials

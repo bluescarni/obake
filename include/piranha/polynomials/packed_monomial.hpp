@@ -15,6 +15,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -24,10 +25,12 @@
 #include <piranha/config.hpp>
 #include <piranha/detail/ignore.hpp>
 #include <piranha/detail/limits.hpp>
+#include <piranha/detail/mppp_utils.hpp>
 #include <piranha/detail/to_string.hpp>
 #include <piranha/exceptions.hpp>
 #include <piranha/k_packing.hpp>
 #include <piranha/math/safe_cast.hpp>
+#include <piranha/math/safe_convert.hpp>
 #include <piranha/polynomials/monomial_homomorphic_hash.hpp>
 #include <piranha/ranges.hpp>
 #include <piranha/symbols.hpp>
@@ -589,6 +592,60 @@ inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, con
     assert(si_it == si_it_end);
 
     return retval;
+}
+
+// Monomial exponentiation.
+// NOTE: this assumes that p is compatible with ss.
+template <typename T, typename U,
+          ::std::enable_if_t<::std::disjunction_v<::piranha::detail::is_mppp_integer<U>,
+                                                  is_safely_convertible<const U &, ::mppp::integer<1> &>>,
+                             int> = 0>
+inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    // NOTE: exp will be a const ref if n is already
+    // an mppp integer, a new value otherwise.
+    decltype(auto) exp = [&n]() -> decltype(auto) {
+        if constexpr (::piranha::detail::is_mppp_integer_v<U>) {
+            return n;
+        } else {
+            ::mppp::integer<1> ret;
+
+            if (piranha_unlikely(!::piranha::safe_convert(ret, n))) {
+                if constexpr (is_stream_insertable_v<const U &>) {
+                    // Provide better error message if U is ostreamable.
+                    ::std::ostringstream oss;
+                    static_cast<::std::ostream &>(oss) << n;
+                    piranha_throw(::std::invalid_argument,
+                                  "Invalid exponent for monomial exponentiation: the exponent (" + oss.str()
+                                      + ") cannot be converted into an integral value");
+                } else {
+                    piranha_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
+                                                           "cannot be converted into an integral value");
+                }
+            }
+
+            return ret;
+        }
+    }();
+
+    // Unpack, multiply in arbitrary-precision arithmetic, re-pack.
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp;
+    remove_cvref_t<decltype(exp)> tmp_int;
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+        tmp_int = tmp;
+        tmp_int *= exp;
+        kp << static_cast<T>(tmp_int);
+    }
+
+    return packed_monomial<T>(kp.get());
 }
 
 } // namespace polynomials
