@@ -2513,9 +2513,8 @@ using series_default_div_ret_t = typename decltype(series_default_div_algorithm<
 template <typename T, typename U>
 inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y)
 {
-    // Determine the algorithm.
-    constexpr int algo = series_default_div_algo<T &&, U &&>;
-    static_assert(algo == 0 || algo == 1);
+    // Double check the algo.
+    static_assert(series_default_div_algo<T &&, U &&> == 1);
 
     // Shortcut to the return type.
     using ret_t = series_default_div_ret_t<T &&, U &&>;
