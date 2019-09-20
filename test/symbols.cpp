@@ -133,3 +133,42 @@ TEST_CASE("ss_intersect_idx_test")
     REQUIRE(
         (detail::ss_intersect_idx(symbol_set{"c", "e", "g"}, symbol_set{"c", "e", "g"}) == symbol_idx_set{0, 1, 2}));
 }
+
+TEST_CASE("sm_intersect_idx_test")
+{
+    using map_t = symbol_map<int>;
+    REQUIRE(detail::sm_intersect_idx(map_t{}, symbol_set{}).size() == 0u);
+    REQUIRE(detail::sm_intersect_idx(map_t{{"a", 1}}, symbol_set{}).size() == 0u);
+    REQUIRE(detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"c", 2}}, symbol_set{}).size() == 0u);
+    REQUIRE(detail::sm_intersect_idx(map_t{{"b", 2}, {"c", 2}}, symbol_set{"d"}).size() == 0u);
+    REQUIRE(detail::sm_intersect_idx(map_t{{"b", 2}, {"c", 2}}, symbol_set{"a"}).size() == 0u);
+    REQUIRE((detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"c", 2}}, symbol_set{"a"})
+             == symbol_idx_map<int>{{0, 1}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"c", 2}}, symbol_set{"b"})
+             == symbol_idx_map<int>{{0, 2}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"c", 2}}, symbol_set{"c"})
+             == symbol_idx_map<int>{{0, 2}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"a", 1}}, symbol_set{"a", "b", "c"}) == symbol_idx_map<int>{{0, 1}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"b", 2}}, symbol_set{"a", "b", "c"}) == symbol_idx_map<int>{{1, 2}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"c", 3}}, symbol_set{"a", "b", "c"}) == symbol_idx_map<int>{{2, 3}}));
+    REQUIRE(
+        (detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"c", 3}, {"d", 4}, {"g", 5}}, symbol_set{"b", "d", "e"})
+         == symbol_idx_map<int>{{0, 2}, {1, 4}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"b", 1}, {"d", 2}, {"e", 3}}, symbol_set{"a", "b", "c", "d", "g"})
+             == symbol_idx_map<int>{{1, 1}, {3, 2}}));
+    REQUIRE(
+        (detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"c", 3}, {"d", 4}, {"g", 5}}, symbol_set{"x", "y", "z"})
+         == symbol_idx_map<int>{}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"x", 1}, {"y", 2}, {"z", 3}}, symbol_set{"a", "b", "c", "d", "g"})
+             == symbol_idx_map<int>{}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"c", 1}, {"d", 2}, {"g", 3}}, symbol_set{"a", "b", "e"})
+             == symbol_idx_map<int>{}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"e", 3}}, symbol_set{"c", "d", "g"})
+             == symbol_idx_map<int>{}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"c", 1}, {"e", 2}, {"g", 3}}, symbol_set{"a", "b", "e"})
+             == symbol_idx_map<int>{{2, 2}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"a", 1}, {"b", 2}, {"e", 3}}, symbol_set{"c", "e", "g"})
+             == symbol_idx_map<int>{{1, 3}}));
+    REQUIRE((detail::sm_intersect_idx(map_t{{"c", 1}, {"e", 2}, {"g", 3}}, symbol_set{"c", "e", "g"})
+             == symbol_idx_map<int>{{0, 1}, {1, 2}, {2, 3}}));
+}
