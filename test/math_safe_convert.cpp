@@ -16,6 +16,7 @@
 #include <piranha/type_traits.hpp>
 
 #include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
 
 #include "catch.hpp"
 
@@ -229,6 +230,36 @@ TEST_CASE("safe_convert_mppp_integer")
     REQUIRE(!piranha::is_safely_convertible_v<__int128_t &&, const int_t &>);
     REQUIRE(!piranha::is_safely_convertible_v<__uint128_t &, int_t &&>);
 #endif
+}
+
+// integer/rational.
+TEST_CASE("safe_convert_mppp_integer_rational")
+{
+    using int_t = mppp::integer<1>;
+    using rat_t = mppp::rational<1>;
+
+    int_t n;
+    int_t q;
+
+    REQUIRE(piranha::safe_convert(n, rat_t{2, 2}));
+    REQUIRE(!piranha::safe_convert(n, rat_t{2, -3}));
+
+    REQUIRE(piranha::safe_convert(q, int_t{3}));
+    REQUIRE(piranha::safe_convert(n, int_t{-6}));
+
+    REQUIRE(piranha::is_safely_convertible_v<rat_t, int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<rat_t &&, int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<const rat_t &, int_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<const rat_t, int_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<rat_t, const int_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<rat_t, int_t>);
+
+    REQUIRE(piranha::is_safely_convertible_v<int_t, rat_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<int_t &&, rat_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<const int_t &, rat_t &>);
+    REQUIRE(piranha::is_safely_convertible_v<const int_t, rat_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t, const rat_t &>);
+    REQUIRE(!piranha::is_safely_convertible_v<int_t, rat_t>);
 }
 
 // Test the customisation machinery.

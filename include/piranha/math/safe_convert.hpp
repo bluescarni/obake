@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
 
 #include <piranha/config.hpp>
 #include <piranha/detail/limits.hpp>
@@ -129,6 +130,28 @@ template <typename T, ::std::size_t SSize,
     inline bool safe_convert(T &n, const ::mppp::integer<SSize> &m)
 {
     return ::mppp::get(n, m);
+}
+
+// Implementations for mppp::integer - mppp::rational.
+// NOTE: here potentially we could take advantage
+// of move operations, if the second argument is an rvalue
+// reference.
+template <::std::size_t SSize>
+inline bool safe_convert(::mppp::integer<SSize> &n, const ::mppp::rational<SSize> &q)
+{
+    if (q.get_den().is_one()) {
+        n = q.get_num();
+        return true;
+    } else {
+        return false;
+    }
+}
+
+template <::std::size_t SSize>
+inline bool safe_convert(::mppp::rational<SSize> &q, const ::mppp::integer<SSize> &n)
+{
+    q = n;
+    return true;
 }
 
 // Highest priority: explicit user override in the external customisation namespace.
