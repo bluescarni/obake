@@ -24,6 +24,10 @@ export deps_dir=$HOME/local
 export PATH="$HOME/miniconda/bin:$PATH"
 export PATH="$deps_dir/bin:$PATH"
 
+# Create the build dir and cd into it.
+mkdir build
+cd build
+
 cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Release -DPIRANHA_BUILD_TESTS=yes
 make -j2 VERBOSE=1
 ctest -j4 -V
