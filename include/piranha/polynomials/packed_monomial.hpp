@@ -710,9 +710,9 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
     k_unpacker<T> ku(p.get_value(), s_size);
     T tmp;
     // Accumulate the result.
-    for (const auto &p : sm) {
+    for (const auto &pr : sm) {
         ku >> tmp;
-        retval *= ::piranha::pow(p.second, ::std::as_const(tmp));
+        retval *= ::piranha::pow(pr.second, ::std::as_const(tmp));
     }
 
     return retval;
