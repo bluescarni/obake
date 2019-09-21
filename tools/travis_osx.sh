@@ -14,6 +14,10 @@ conda config --add channels conda-forge --force
 
 conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel clang<5 clangdev<5"
 
+if [[ "${PIRANHA_BUILD_TYPE}" == "Release" ]]; then
+    conda_pkgs="$conda_pkgs abseil-cpp"
+fi
+
 conda create -q -p $deps_dir -y $conda_pkgs
 source activate $deps_dir
 
@@ -24,16 +28,18 @@ export PATH="$deps_dir/bin:$PATH"
 export CXX=clang++
 export CC=clang
 
-git clone https://github.com/abseil/abseil-cpp.git
-cd abseil-cpp
-git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
-mkdir build
-cd build
-cmake ../ -DCMAKE_BUILD_TYPE=${PIRANHA_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
-make install -j2 VERBOSE=1
-cd ..
-cd ..
-rm -fr abseil-cpp
+if [[ "${PIRANHA_BUILD_TYPE}" == "Debug" ]]; then
+    git clone https://github.com/abseil/abseil-cpp.git
+    cd abseil-cpp
+    git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
+    mkdir build
+    cd build
+    cmake ../ -DCMAKE_BUILD_TYPE=${PIRANHA_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
+    make install -j2 VERBOSE=1
+    cd ..
+    cd ..
+    rm -fr abseil-cpp
+fi
 
 cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=${PIRANHA_BUILD_TYPE} -DPIRANHA_BUILD_TESTS=yes
 make -j2 VERBOSE=1
