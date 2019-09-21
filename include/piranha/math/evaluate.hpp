@@ -9,6 +9,7 @@
 #ifndef PIRANHA_MATH_EVALUATE_HPP
 #define PIRANHA_MATH_EVALUATE_HPP
 
+#include <type_traits>
 #include <utility>
 
 #include <piranha/config.hpp>
