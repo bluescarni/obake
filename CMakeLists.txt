@@ -142,7 +142,7 @@ find_package(mp++ 0.17 REQUIRED)
 find_package(absl REQUIRED)
 
 # Boost setup.
-include(PiranhaFindBoost)
+include(ObakeFindBoost)
 
 # libbacktrace.
 if(OBAKE_WITH_LIBBACKTRACE)

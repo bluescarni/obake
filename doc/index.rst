@@ -3,10 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Piranha
-=======
+obake
+=====
 
-Piranha is a C++ computer algebra library for the symbolic
+obake is a C++ computer algebra library for the symbolic
 manipulation of sparse multivariate polynomials and other
 closely-related symbolic objects (such as truncated power
 series, Poisson series, etc.).
