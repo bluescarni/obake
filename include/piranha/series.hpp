@@ -22,9 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 
 #include <mp++/integer.hpp>
 
@@ -45,6 +47,7 @@
 #include <piranha/exceptions.hpp>
 #include <piranha/hash.hpp>
 #include <piranha/key/key_degree.hpp>
+#include <piranha/key/key_evaluate.hpp>
 #include <piranha/key/key_is_compatible.hpp>
 #include <piranha/key/key_is_one.hpp>
 #include <piranha/key/key_is_zero.hpp>
@@ -52,6 +55,7 @@
 #include <piranha/key/key_p_degree.hpp>
 #include <piranha/key/key_stream_insert.hpp>
 #include <piranha/math/degree.hpp>
+#include <piranha/math/evaluate.hpp>
 #include <piranha/math/is_zero.hpp>
 #include <piranha/math/negate.hpp>
 #include <piranha/math/p_degree.hpp>
@@ -3289,6 +3293,126 @@ template <typename T>
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
 #endif
     = series_default_p_degree_impl{};
+
+} // namespace customisation::internal
+
+namespace customisation::internal
+{
+
+// Metaprogramming to establish the algorithm/return
+// type of the default series evaluate computation.
+template <typename T, typename U>
+constexpr auto series_default_evaluate_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+    if constexpr (!is_cvr_series_v<T>) {
+        // Not a series type.
+        return failure;
+    } else {
+        using rT = remove_cvref_t<T>;
+        using key_t = series_key_t<rT>;
+        using cf_t = series_cf_t<rT>;
+
+        // The candidate return type is the type of the product
+        // of the evaluations of key and coefficient. The evaluations
+        // are done via const lvalue refs, the product via rvalues.
+        if constexpr (::std::conjunction_v<is_evaluable_key<const key_t &, U>, is_evaluable<const cf_t &, U>>) {
+            using key_eval_t = detail::key_evaluate_t<const key_t &, U>;
+            using key_cf_t = detail::evaluate_t<const cf_t &, U>;
+
+            // The candidate return type. It needs to be in-place addable (lvalue += rvalue),
+            // constructible from int and returnable.
+            using ret_t = detected_t<detail::mul_t, key_eval_t, key_cf_t>;
+
+            if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>>) {
+                return ::std::make_pair(1, detail::type_c<ret_t>{});
+            } else {
+                return failure;
+            }
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Default implementation of series evaluation.
+struct series_default_evaluate_impl {
+    // A couple of handy shortcuts.
+    template <typename T, typename U>
+    static constexpr auto algo_ret = internal::series_default_evaluate_algorithm_impl<T, U>();
+
+    template <typename T, typename U>
+    static constexpr auto algo = series_default_evaluate_impl::algo_ret<T, U>.first;
+
+    template <typename T, typename U>
+    using ret_t = typename decltype(series_default_evaluate_impl::algo_ret<T, U>.second)::type;
+
+    // Implementation.
+    template <typename T, typename U>
+    ret_t<T &&, U> operator()(T &&s_, const symbol_map<U> &sm) const
+    {
+        // Need only const access to s.
+        const auto &s = ::std::as_const(s_);
+
+        // Cache the symbol set.
+        const auto &ss = s.get_symbol_set();
+
+        // Compute the intersection between sm and ss.
+        const auto si = detail::sm_intersect_idx(sm, ss);
+
+        if (piranha_unlikely(si.size() != ss.size())) {
+            // If the intersection does not contain the same
+            // number of elements as ss, then it means that
+            // elements in ss are missing from sm.
+
+            // Helper to extract a string reference from an item in sm.
+            struct str_extractor {
+                const ::std::string &operator()(const typename symbol_map<U>::value_type &p) const
+                {
+                    return p.first;
+                }
+            };
+
+            piranha_throw(
+                ::std::invalid_argument,
+                "Cannot evaluate a series: the evaluation map, which contains the symbols "
+                    + detail::to_string(symbol_set(::boost::container::ordered_unique_range_t{},
+                                                   ::boost::make_transform_iterator(sm.cbegin(), str_extractor{}),
+                                                   ::boost::make_transform_iterator(sm.cend(), str_extractor{})))
+                    + ", does not contain all the symbols in the series' symbol set, " + detail::to_string(ss));
+        }
+
+        // si represents an intersection between sm and ss,
+        // and we know that here si.size() == ss.size(),
+        // Thus, si must contain the [0, ss.size()) sequence.
+        assert(si.empty() || (si.cend() - 1)->first == (ss.size() - 1u));
+
+        // NOTE: parallelisation opportunities here.
+        ret_t<T &&, U> retval(0);
+        for (const auto &tab : s._get_s_table()) {
+            for (const auto &t : tab) {
+                const auto &k = t.first;
+                const auto &c = t.second;
+
+                // NOTE: there's an opportunity for fma3 here,
+                // but I am not sure it's worth the hassle.
+                retval += ::piranha::key_evaluate(k, si, ss) * ::piranha::evaluate(c, sm);
+            }
+        }
+
+        return retval;
+    }
+};
+
+template <typename T, typename U>
+#if defined(PIRANHA_HAVE_CONCEPTS)
+    requires series_default_evaluate_impl::algo<T, U> != 0 inline constexpr auto evaluate<T, U>
+#else
+inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
+#endif
+    = series_default_evaluate_impl{};
 
 } // namespace customisation::internal
 

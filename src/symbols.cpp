@@ -142,6 +142,10 @@ namespace piranha::detail
 
 // This function first computes the intersection ix of the two sets s and s_ref, and then returns
 // a set with the positional indices of ix in s_ref.
+// NOTE: the implementation of this (and sm_intersect_idx()) can be probably improved
+// performance wise (not sure about the use of lower_bound vs just a linear search,
+// or perhaps using lower_bound vs plain loop when iterating over s might
+// be worth it in certain situations, etc.). Need profiling data.
 symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
 {
     // Use the underlying sequence type
