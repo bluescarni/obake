@@ -22,9 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 
 #include <mp++/integer.hpp>
 
@@ -3355,10 +3357,28 @@ struct series_default_evaluate_impl {
 
         const auto si = detail::sm_intersect_idx(sm, ss);
 
-        if (piranha_unlikely(si.size() != ss.size() || (!si.empty() && (si.cend() - 1)->first != (ss.size() - 1u)))) {
-            // TODO error message.
-            throw;
+        if (piranha_unlikely(si.size() != ss.size())) {
+            // Helper to extract a string reference from an item in sm.
+            struct str_extractor {
+                const ::std::string &operator()(const typename symbol_map<U>::value_type &p) const
+                {
+                    return p.first;
+                }
+            };
+
+            piranha_throw(
+                ::std::invalid_argument,
+                "Cannot evaluate a series: the evaluation map, which contains the symbols "
+                    + detail::to_string(symbol_set(::boost::container::ordered_unique_range_t{},
+                                                   ::boost::make_transform_iterator(sm.cbegin(), str_extractor{}),
+                                                   ::boost::make_transform_iterator(sm.cend(), str_extractor{})))
+                    + ", does not contain all the symbols in the series' symbol set, " + detail::to_string(ss));
         }
+
+        // si represents an intersection between sm and ss,
+        // and we know that here si.size() == ss.size(),
+        // Thus, si must contain the [0, ss.size()) sequence.
+        assert(si.empty() || (si.cend() - 1)->first == (ss.size() - 1u));
 
         // NOTE: parallelisation opportunities here.
         ret_t<T &&, U> retval(0);
