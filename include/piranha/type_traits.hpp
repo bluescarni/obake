@@ -207,18 +207,22 @@ PIRANHA_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
 
 #endif
 
-// Detect if type can be returned from a function.
+// Detect if a local variable of a given type can be returned from a function.
 // NOTE: constructability currently implies destructability:
 // https://cplusplus.github.io/LWG/issue2116
 // But it also seems like in the future the two concepts might
 // be separated:
 // https://en.cppreference.com/w/cpp/concepts/Constructible
 // So require destructability explicitly as well.
+// NOTE: for returnability, we check for constructability from
+// an lvalue or rvalue. See:
+// https://en.cppreference.com/w/cpp/language/return
 template <typename T>
 using is_returnable = ::std::disjunction<
     ::std::is_same<::std::remove_cv_t<T>, void>,
     ::std::conjunction<::std::is_destructible<T>,
-                       ::std::disjunction<::std::is_copy_constructible<T>, ::std::is_move_constructible<T>>>>;
+                       ::std::disjunction<::std::is_constructible<T, std::add_lvalue_reference_t<T>>,
+                                          ::std::is_constructible<T, std::add_rvalue_reference_t<T>>>>>;
 
 template <typename T>
 inline constexpr bool is_returnable_v = is_returnable<T>::value;
