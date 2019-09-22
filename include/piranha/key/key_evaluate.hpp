@@ -19,6 +19,11 @@
 #include <piranha/symbols.hpp>
 #include <piranha/type_traits.hpp>
 
+// NOTE: the old version used a vector<U> instead of symbol_idx_map<U>.
+// I don't think there's much performance gain to be had, and in any
+// case standard series evaluation is not going to be high-performance
+// anyway. Using symbol_idx_map<U> also has overlap with the
+// substitution API. However, keep it in mind for the future.
 namespace piranha
 {
 

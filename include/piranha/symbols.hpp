@@ -13,7 +13,9 @@
 #include <cassert>
 #include <string>
 #include <tuple>
+#include <utility>
 
+#include <boost/container/container_fwd.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 

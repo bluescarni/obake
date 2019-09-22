@@ -3324,6 +3324,7 @@ constexpr auto series_default_evaluate_algorithm_impl()
             // The candidate return type. It needs to be in-place addable (lvalue += rvalue),
             // constructible from int and returnable.
             using ret_t = detected_t<detail::mul_t, key_eval_t, key_cf_t>;
+
             if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
                                                ::std::is_constructible<ret_t, int>, is_returnable<ret_t>>) {
                 return ::std::make_pair(1, detail::type_c<ret_t>{});
@@ -3348,16 +3349,24 @@ struct series_default_evaluate_impl {
     template <typename T, typename U>
     using ret_t = typename decltype(series_default_evaluate_impl::algo_ret<T, U>.second)::type;
 
+    // Implementation.
     template <typename T, typename U>
     ret_t<T &&, U> operator()(T &&s_, const symbol_map<U> &sm) const
     {
+        // Need only const access to s.
         const auto &s = ::std::as_const(s_);
 
+        // Cache the symbol set.
         const auto &ss = s.get_symbol_set();
 
+        // Compute the intersection between sm and ss.
         const auto si = detail::sm_intersect_idx(sm, ss);
 
         if (piranha_unlikely(si.size() != ss.size())) {
+            // If the intersection does not contain the same
+            // number of elements as ss, then it means that
+            // elements in ss are missing from sm.
+
             // Helper to extract a string reference from an item in sm.
             struct str_extractor {
                 const ::std::string &operator()(const typename symbol_map<U>::value_type &p) const
