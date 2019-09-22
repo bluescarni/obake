@@ -103,7 +103,7 @@ html_theme_options = {
     # https://material.io/icons/
     'header_links': [
         ('Home', 'index', False, 'home'),
-        ("GitHub", "https://github.com/bluescarni/obake-tng", True, 'link')
+        ("GitHub", "https://github.com/bluescarni/obake", True, 'link')
     ],
 
     # Customize css colors.
