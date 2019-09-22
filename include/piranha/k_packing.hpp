@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_K_PACKING_HPP
-#define PIRANHA_K_PACKING_HPP
+#ifndef OBAKE_K_PACKING_HPP
+#define OBAKE_K_PACKING_HPP
 
 #include <cassert>
 #include <cstddef>
@@ -15,13 +15,13 @@
 #include <tuple>
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/carray.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/detail/xoroshiro128_plus.hpp>
-#include <piranha/exceptions.hpp>
-#include <piranha/type_name.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/carray.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/detail/xoroshiro128_plus.hpp>
+#include <obake/exceptions.hpp>
+#include <obake/type_name.hpp>
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
@@ -30,7 +30,7 @@
 
 #endif
 
-namespace piranha
+namespace obake
 {
 
 namespace detail
@@ -376,7 +376,7 @@ template <typename T>
 using is_k_packable = ::std::disjunction<::std::is_same<T, int>, ::std::is_same<T, unsigned>, ::std::is_same<T, long>,
                                          ::std::is_same<T, unsigned long>, ::std::is_same<T, long long>,
                                          ::std::is_same<T, unsigned long long>
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
                                          ,
                                          ::std::is_same<T, __int128_t>, ::std::is_same<T, __uint128_t>
 #endif
@@ -385,15 +385,15 @@ using is_k_packable = ::std::disjunction<::std::is_same<T, int>, ::std::is_same<
 template <typename T>
 inline constexpr bool is_k_packable_v = is_k_packable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL KPackable = is_k_packable_v<T>;
+OBAKE_CONCEPT_DECL KPackable = is_k_packable_v<T>;
 
 #endif
 
 // Kronecker packer.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <KPackable T>
 #else
 template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
@@ -406,12 +406,12 @@ public:
     {
         if (size) {
             // Get the delta bit width corresponding to the input size.
-            if (piranha_unlikely(size > detail::k_packing_get_max_size<T>())) {
-                piranha_throw(::std::overflow_error,
-                              "Invalid size specified in the constructor of a Kronecker packer for the type '"
-                                  + ::piranha::type_name<T>() + "': the maximum possible size is "
-                                  + detail::to_string(detail::k_packing_get_max_size<T>()) + ", but a size of "
-                                  + detail::to_string(size) + " was specified instead");
+            if (obake_unlikely(size > detail::k_packing_get_max_size<T>())) {
+                obake_throw(::std::overflow_error,
+                            "Invalid size specified in the constructor of a Kronecker packer for the type '"
+                                + ::obake::type_name<T>() + "': the maximum possible size is "
+                                + detail::to_string(detail::k_packing_get_max_size<T>()) + ", but a size of "
+                                + detail::to_string(size) + " was specified instead");
             }
             m_nbits = detail::k_packing_size_to_bits<T>(size);
         }
@@ -420,13 +420,12 @@ public:
     // Insert the next value into the packer.
     constexpr k_packer &operator<<(const T &n)
     {
-        if (piranha_unlikely(m_index == m_size)) {
-            piranha_throw(::std::out_of_range,
-                          "Cannot push any more values to this Kronecker packer for the type '"
-                              + ::piranha::type_name<T>()
-                              + "': the number of "
-                                "values already pushed to the packer is equal to the size used for construction ("
-                              + detail::to_string(m_size) + ")");
+        if (obake_unlikely(m_index == m_size)) {
+            obake_throw(::std::out_of_range,
+                        "Cannot push any more values to this Kronecker packer for the type '" + ::obake::type_name<T>()
+                            + "': the number of "
+                              "values already pushed to the packer is equal to the size used for construction ("
+                            + detail::to_string(m_size) + ")");
         }
 
         // Special case for size 1: in that case, we don't
@@ -443,19 +442,18 @@ public:
 
         // Check that n is within the allowed limits for the current component.
         if constexpr (is_signed_v<T>) {
-            if (piranha_unlikely(n < lims[0] || n > lims[1])) {
-                piranha_throw(::std::overflow_error,
-                              "Cannot push the value " + detail::to_string(n)
-                                  + " to this Kronecker packer for the type '" + ::piranha::type_name<T>()
-                                  + "': the value is outside the allowed range [" + detail::to_string(lims[0]) + ", "
-                                  + detail::to_string(lims[1]) + "]");
+            if (obake_unlikely(n < lims[0] || n > lims[1])) {
+                obake_throw(::std::overflow_error,
+                            "Cannot push the value " + detail::to_string(n) + " to this Kronecker packer for the type '"
+                                + ::obake::type_name<T>() + "': the value is outside the allowed range ["
+                                + detail::to_string(lims[0]) + ", " + detail::to_string(lims[1]) + "]");
             }
         } else {
-            if (piranha_unlikely(n > lims)) {
-                piranha_throw(::std::overflow_error,
-                              "Cannot push the value " + detail::to_string(n)
-                                  + " to this Kronecker packer for the type '" + ::piranha::type_name<T>()
-                                  + "': the value is outside the allowed range [0, " + detail::to_string(lims) + "]");
+            if (obake_unlikely(n > lims)) {
+                obake_throw(::std::overflow_error,
+                            "Cannot push the value " + detail::to_string(n) + " to this Kronecker packer for the type '"
+                                + ::obake::type_name<T>() + "': the value is outside the allowed range [0, "
+                                + detail::to_string(lims) + "]");
             }
         }
 
@@ -472,12 +470,12 @@ public:
     // Fetch the encoded value.
     constexpr const T &get() const
     {
-        if (piranha_unlikely(m_index < m_size)) {
-            piranha_throw(::std::out_of_range,
-                          "Cannot fetch the packed value from this Kronecker packer: the number of "
-                          "values pushed to the packer ("
-                              + detail::to_string(m_index) + ") is less than the size used for construction ("
-                              + detail::to_string(m_size) + ")");
+        if (obake_unlikely(m_index < m_size)) {
+            obake_throw(::std::out_of_range, "Cannot fetch the packed value from this Kronecker packer: the number of "
+                                             "values pushed to the packer ("
+                                                 + detail::to_string(m_index)
+                                                 + ") is less than the size used for construction ("
+                                                 + detail::to_string(m_size) + ")");
         }
         return m_value;
     }
@@ -490,7 +488,7 @@ private:
 };
 
 // Kronecker unpacker.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <KPackable T>
 #else
 template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
@@ -502,12 +500,12 @@ public:
     {
         if (size) {
             // Get the delta bit width corresponding to the input size.
-            if (piranha_unlikely(size > detail::k_packing_get_max_size<T>())) {
-                piranha_throw(::std::overflow_error,
-                              "Invalid size specified in the constructor of a Kronecker unpacker for the type '"
-                                  + ::piranha::type_name<T>() + "': the maximum possible size is "
-                                  + detail::to_string(detail::k_packing_get_max_size<T>()) + ", but a size of "
-                                  + detail::to_string(size) + " was specified instead");
+            if (obake_unlikely(size > detail::k_packing_get_max_size<T>())) {
+                obake_throw(::std::overflow_error,
+                            "Invalid size specified in the constructor of a Kronecker unpacker for the type '"
+                                + ::obake::type_name<T>() + "': the maximum possible size is "
+                                + detail::to_string(detail::k_packing_get_max_size<T>()) + ", but a size of "
+                                + detail::to_string(size) + " was specified instead");
             }
             m_nbits = detail::k_packing_size_to_bits<T>(size);
 
@@ -516,37 +514,37 @@ public:
                 // allowed range.
                 const auto &e_lim = detail::k_packing_get_elimits<T>(size);
                 if constexpr (is_signed_v<T>) {
-                    if (piranha_unlikely(n < e_lim[0] || n > e_lim[1])) {
-                        piranha_throw(::std::overflow_error,
-                                      "The value " + detail::to_string(n) + " passed to a Kronecker unpacker of size "
-                                          + detail::to_string(size) + " is outside the allowed range ["
-                                          + detail::to_string(e_lim[0]) + ", " + detail::to_string(e_lim[1]) + "]");
+                    if (obake_unlikely(n < e_lim[0] || n > e_lim[1])) {
+                        obake_throw(::std::overflow_error,
+                                    "The value " + detail::to_string(n) + " passed to a Kronecker unpacker of size "
+                                        + detail::to_string(size) + " is outside the allowed range ["
+                                        + detail::to_string(e_lim[0]) + ", " + detail::to_string(e_lim[1]) + "]");
                     }
                 } else {
-                    if (piranha_unlikely(n > e_lim)) {
-                        piranha_throw(::std::overflow_error,
-                                      "The value " + detail::to_string(n) + " passed to a Kronecker unpacker of size "
-                                          + detail::to_string(size) + " is outside the allowed range [0, "
-                                          + detail::to_string(e_lim) + "]");
+                    if (obake_unlikely(n > e_lim)) {
+                        obake_throw(::std::overflow_error,
+                                    "The value " + detail::to_string(n) + " passed to a Kronecker unpacker of size "
+                                        + detail::to_string(size) + " is outside the allowed range [0, "
+                                        + detail::to_string(e_lim) + "]");
                     }
                 }
             }
         } else {
-            if (piranha_unlikely(n)) {
-                piranha_throw(::std::invalid_argument, "Only a value of zero can be used in a Kronecker unpacker "
-                                                       "with a size of zero, but a value of "
-                                                           + detail::to_string(n) + " was provided instead");
+            if (obake_unlikely(n)) {
+                obake_throw(::std::invalid_argument, "Only a value of zero can be used in a Kronecker unpacker "
+                                                     "with a size of zero, but a value of "
+                                                         + detail::to_string(n) + " was provided instead");
             }
         }
     }
 
     k_unpacker &operator>>(T &n)
     {
-        if (piranha_unlikely(m_index == m_size)) {
-            piranha_throw(::std::out_of_range,
-                          "Cannot unpack any more values from this Kronecker unpacker: the number of "
-                          "values already unpacked is equal to the size used for construction ("
-                              + detail::to_string(m_size) + ")");
+        if (obake_unlikely(m_index == m_size)) {
+            obake_throw(::std::out_of_range,
+                        "Cannot unpack any more values from this Kronecker unpacker: the number of "
+                        "values already unpacked is equal to the size used for construction ("
+                            + detail::to_string(m_size) + ")");
         }
 
         // Special case for size 1: in that case, we don't
@@ -586,7 +584,7 @@ private:
     unsigned m_nbits;
 };
 
-} // namespace piranha
+} // namespace obake
 
 #if defined(_MSC_VER) && !defined(__clang__)
 

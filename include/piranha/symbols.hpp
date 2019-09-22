@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_SYMBOLS_HPP
-#define PIRANHA_SYMBOLS_HPP
+#ifndef OBAKE_SYMBOLS_HPP
+#define OBAKE_SYMBOLS_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -19,10 +19,10 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 
-#include <piranha/detail/visibility.hpp>
-#include <piranha/math/safe_cast.hpp>
+#include <obake/detail/visibility.hpp>
+#include <obake/math/safe_cast.hpp>
 
-namespace piranha
+namespace obake
 {
 
 // Set of symbols.
@@ -47,12 +47,12 @@ using symbol_idx_map = ::boost::container::flat_map<symbol_idx, T>;
 namespace detail
 {
 
-PIRANHA_DLL_PUBLIC ::std::string to_string(const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::string to_string(const symbol_set &);
 
-PIRANHA_DLL_PUBLIC ::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>>
+OBAKE_DLL_PUBLIC ::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>>
 merge_symbol_sets(const symbol_set &, const symbol_set &);
 
-PIRANHA_DLL_PUBLIC symbol_idx_set ss_intersect_idx(const symbol_set &, const symbol_set &);
+OBAKE_DLL_PUBLIC symbol_idx_set ss_intersect_idx(const symbol_set &, const symbol_set &);
 
 // This function first computes the intersection ix of the two sets of symbols in m and s_ref, and then returns
 // a map in which the keys are the positional indices of ix in s_ref and the values are the values
@@ -65,7 +65,7 @@ inline symbol_idx_map<T> sm_intersect_idx(const symbol_map<T> &m, const symbol_s
     typename symbol_idx_map<T>::sequence_type seq;
     // Reserve storage. We won't ever need more than
     // the minimum between m.size() and s_ref.size().
-    seq.reserve(::piranha::safe_cast<decltype(seq.size())>(::std::min(m.size(), s_ref.size())));
+    seq.reserve(::obake::safe_cast<decltype(seq.size())>(::std::min(m.size(), s_ref.size())));
 
     auto it = s_ref.begin();
     const auto e = s_ref.end();
@@ -138,6 +138,6 @@ inline symbol_idx_map<T> sm_intersect_idx(const symbol_map<T> &m, const symbol_s
 
 } // namespace detail
 
-} // namespace piranha
+} // namespace obake
 
 #endif

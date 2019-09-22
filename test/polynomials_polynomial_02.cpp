@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -12,22 +12,22 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/detail/limits.hpp>
-#include <piranha/k_packing.hpp>
-#include <piranha/math/p_degree.hpp>
-#include <piranha/math/pow.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/polynomials/polynomial.hpp>
-#include <piranha/symbols.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/k_packing.hpp>
+#include <obake/math/p_degree.hpp>
+#include <obake/math/pow.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
+#include <obake/symbols.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("polynomial_mul_simple_test_p_truncated")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<long long>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
@@ -324,37 +324,37 @@ TEST_CASE("polynomial_pow_test")
 
     auto [x, y] = make_polynomials<poly_t>("x", "y");
 
-    REQUIRE(piranha::pow(poly_t{}, 4).empty());
-    REQUIRE(piranha::pow(poly_t{3}, 3) == 27);
-    REQUIRE(piranha::pow(x, 3) == x * x * x);
-    const auto x_inv = piranha::pow(x, -1);
-    REQUIRE(piranha::pow(-2 * x, -3) == -x_inv * x_inv * x_inv / 8);
+    REQUIRE(obake::pow(poly_t{}, 4).empty());
+    REQUIRE(obake::pow(poly_t{3}, 3) == 27);
+    REQUIRE(obake::pow(x, 3) == x * x * x);
+    const auto x_inv = obake::pow(x, -1);
+    REQUIRE(obake::pow(-2 * x, -3) == -x_inv * x_inv * x_inv / 8);
     REQUIRE(x_inv * x == 1);
-    REQUIRE(piranha::pow(x + y, 2) == x * x + y * y + 2 * x * y);
+    REQUIRE(obake::pow(x + y, 2) == x * x + y * y + 2 * x * y);
     // Try exotic exponents too.
-    REQUIRE(piranha::pow(x + y, mppp::rational<1>{2}) == x * x + y * y + 2 * x * y);
+    REQUIRE(obake::pow(x + y, mppp::rational<1>{2}) == x * x + y * y + 2 * x * y);
     // Zero division error.
-    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(poly_t{}, -1), mppp::zero_division_error, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(poly_t{}, -1), mppp::zero_division_error, "");
 
     // Test large integral exponentiations and overflow.
-    REQUIRE(piranha::pow(3 * x / 4, 100)
+    REQUIRE(obake::pow(3 * x / 4, 100)
             == mppp::rational<1>{"515377520732011331036461129765621272702107522001/"
                                  "1606938044258990275541962092341162602522202993782792835301376"}
-                   * piranha::pow(x, 50) * piranha::pow(x, 50));
+                   * obake::pow(x, 50) * obake::pow(x, 50));
 
     auto [a, b] = make_polynomials<poly2_t>("a", "b");
 
-    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a, detail::limits_max<long long>), std::overflow_error, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a, detail::limits_max<long long>), std::overflow_error, "");
 
     // Get the delta bit width corresponding to a vector size of 2.
     const auto nbits = detail::k_packing_size_to_bits<long long>(2u);
 
-    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[0]),
-                                     std::overflow_error, "");
-    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[1]),
-                                     std::overflow_error, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[0]),
+                                   std::overflow_error, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[1]),
+                                   std::overflow_error, "");
 
-    PIRANHA_REQUIRES_THROWS_CONTAINS(
-        piranha::pow(a * a * b * b, mppp::rational<1>{2, 3}), std::invalid_argument,
+    OBAKE_REQUIRES_THROWS_CONTAINS(
+        obake::pow(a * a * b * b, mppp::rational<1>{2, 3}), std::invalid_argument,
         "Invalid exponent for monomial exponentiation: the exponent (2/3) cannot be converted into an integral value");
 }

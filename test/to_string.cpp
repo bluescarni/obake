@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -11,15 +11,15 @@
 #include <tuple>
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/detail/tuple_for_each.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/detail/tuple_for_each.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 static std::mt19937 rng;
 
@@ -71,7 +71,7 @@ TEST_CASE("to_string_test")
         }
     });
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     // Zeroes.
     REQUIRE(detail::to_string(__uint128_t(0)) == "0");
     REQUIRE(detail::to_string(__int128_t(0)) == "0");

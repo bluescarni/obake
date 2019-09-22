@@ -1,15 +1,15 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_TYPE_TRAITS_HPP
-#define PIRANHA_TYPE_TRAITS_HPP
+#ifndef OBAKE_TYPE_TRAITS_HPP
+#define OBAKE_TYPE_TRAITS_HPP
 
-#include <piranha/config.hpp>
+#include <obake/config.hpp>
 
 #include <cstddef>
 #include <iterator>
@@ -19,13 +19,13 @@
 #include <type_traits>
 #include <utility>
 
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
 
 #include <string_view>
 
 #endif
 
-namespace piranha
+namespace obake
 {
 
 namespace detail
@@ -74,10 +74,10 @@ using is_same_cvr = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
 template <typename T, typename U>
 inline constexpr bool is_same_cvr_v = is_same_cvr<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL SameCvr = is_same_cvr_v<T, U>;
+OBAKE_CONCEPT_DECL SameCvr = is_same_cvr_v<T, U>;
 
 #endif
 
@@ -89,17 +89,17 @@ using is_mutable_rvalue_reference
 template <typename T>
 inline constexpr bool is_mutable_rvalue_reference_v = is_mutable_rvalue_reference<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL MutableRvalueReference = is_mutable_rvalue_reference_v<T>;
+OBAKE_CONCEPT_DECL MutableRvalueReference = is_mutable_rvalue_reference_v<T>;
 
 #endif
 
 // Detect C++ integral types, including GCC-style 128bit integers.
 template <typename T>
 using is_integral = ::std::disjunction<::std::is_integral<T>
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
                                        ,
                                        ::std::is_same<::std::remove_cv_t<T>, __int128_t>,
                                        ::std::is_same<::std::remove_cv_t<T>, __uint128_t>
@@ -109,18 +109,18 @@ using is_integral = ::std::disjunction<::std::is_integral<T>
 template <typename T>
 inline constexpr bool is_integral_v = is_integral<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Integral = is_integral_v<T>;
+OBAKE_CONCEPT_DECL Integral = is_integral_v<T>;
 
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 // Concept for detecting C++ FP types.
 template <typename T>
-PIRANHA_CONCEPT_DECL FloatingPoint = ::std::is_floating_point_v<T>;
+OBAKE_CONCEPT_DECL FloatingPoint = ::std::is_floating_point_v<T>;
 
 #endif
 
@@ -131,10 +131,10 @@ using is_arithmetic = ::std::disjunction<is_integral<T>, ::std::is_floating_poin
 template <typename T>
 inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
+OBAKE_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
 
 #endif
 
@@ -142,7 +142,7 @@ PIRANHA_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
 // Supports also 128bit integers.
 template <typename T>
 using is_signed = ::std::disjunction<::std::is_signed<T>
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
                                      ,
                                      ::std::is_same<::std::remove_cv_t<T>, __int128_t>
 #endif
@@ -151,10 +151,10 @@ using is_signed = ::std::disjunction<::std::is_signed<T>
 template <typename T>
 inline constexpr bool is_signed_v = is_signed<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Signed = is_signed_v<T>;
+OBAKE_CONCEPT_DECL Signed = is_signed_v<T>;
 
 #endif
 
@@ -171,7 +171,7 @@ struct make_unsigned_impl : ::std::make_unsigned<T> {
                   "make_unsigned_t works only on integrals or enumeration types.");
 };
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
 
 // NOTE: make_unsigned is supposed to preserve cv qualifiers, hence the non-trivial implementation.
 template <typename T>
@@ -200,10 +200,10 @@ using is_semi_regular
 template <typename T>
 inline constexpr bool is_semi_regular_v = is_semi_regular<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
+OBAKE_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
 
 #endif
 
@@ -227,10 +227,10 @@ using is_returnable = ::std::disjunction<
 template <typename T>
 inline constexpr bool is_returnable_v = is_returnable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Returnable = is_returnable_v<T>;
+OBAKE_CONCEPT_DECL Returnable = is_returnable_v<T>;
 
 #endif
 
@@ -240,10 +240,10 @@ using is_constructible = ::std::conjunction<::std::is_constructible<T, Args...>,
 template <typename T, typename... Args>
 inline constexpr bool is_constructible_v = is_constructible<T, Args...>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename... Args>
-PIRANHA_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
+OBAKE_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
 
 #endif
 
@@ -271,7 +271,7 @@ using is_string_like = ::std::disjunction<
     // NOTE: std::remove_cv_t does remove cv qualifiers from arrays.
     ::std::conjunction<::std::is_array<::std::remove_cv_t<T>>,
                        ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
     ,
     // Is it a string view?
     ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>
@@ -281,10 +281,10 @@ using is_string_like = ::std::disjunction<
 template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL StringLike = is_string_like_v<T>;
+OBAKE_CONCEPT_DECL StringLike = is_string_like_v<T>;
 
 #endif
 
@@ -306,10 +306,10 @@ using is_addable = ::std::conjunction<is_detected<detail::add_t, T, U>, is_detec
 template <typename T, typename U = T>
 inline constexpr bool is_addable_v = is_addable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-PIRANHA_CONCEPT_DECL Addable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) + ::std::forward<U>(y);
     ::std::forward<U>(y) + ::std::forward<T>(x);
@@ -333,10 +333,10 @@ using is_compound_addable = is_detected<detail::compound_add_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_compound_addable_v = is_compound_addable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL CompoundAddable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL CompoundAddable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) += ::std::forward<U>(y);
 };
@@ -358,10 +358,10 @@ using is_pre_incrementable = is_detected<detail::preinc_t, T>;
 template <typename T>
 inline constexpr bool is_pre_incrementable_v = is_pre_incrementable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL PreIncrementable = requires(T &&x)
+OBAKE_CONCEPT_DECL PreIncrementable = requires(T &&x)
 {
     ++::std::forward<T>(x);
 };
@@ -383,10 +383,10 @@ using is_post_incrementable = is_detected<detail::postinc_t, T>;
 template <typename T>
 inline constexpr bool is_post_incrementable_v = is_post_incrementable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL PostIncrementable = requires(T &&x)
+OBAKE_CONCEPT_DECL PostIncrementable = requires(T &&x)
 {
     ::std::forward<T>(x)++;
 };
@@ -409,10 +409,10 @@ using is_subtractable
 template <typename T, typename U = T>
 inline constexpr bool is_subtractable_v = is_subtractable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-PIRANHA_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) - ::std::forward<U>(y);
     ::std::forward<U>(y) - ::std::forward<T>(x);
@@ -436,10 +436,10 @@ using is_compound_subtractable = is_detected<detail::compound_sub_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_compound_subtractable_v = is_compound_subtractable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) -= ::std::forward<U>(y);
 };
@@ -462,10 +462,10 @@ using is_multipliable
 template <typename T, typename U = T>
 inline constexpr bool is_multipliable_v = is_multipliable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-PIRANHA_CONCEPT_DECL Multipliable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL Multipliable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) * ::std::forward<U>(y);
     ::std::forward<U>(y) * ::std::forward<T>(x);
@@ -489,10 +489,10 @@ using is_compound_multipliable = is_detected<detail::compound_mul_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_compound_multipliable_v = is_compound_multipliable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL CompoundMultipliable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL CompoundMultipliable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) *= ::std::forward<U>(y);
 };
@@ -515,10 +515,10 @@ using is_divisible
 template <typename T, typename U = T>
 inline constexpr bool is_divisible_v = is_divisible<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-PIRANHA_CONCEPT_DECL Divisible = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL Divisible = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) / ::std::forward<U>(y);
     ::std::forward<U>(y) / ::std::forward<T>(x);
@@ -542,10 +542,10 @@ using is_compound_divisible = is_detected<detail::compound_div_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_compound_divisible_v = is_compound_divisible<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL CompoundDivisible = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL CompoundDivisible = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) /= ::std::forward<U>(y);
 };
@@ -575,10 +575,10 @@ using is_equality_comparable = ::std::conjunction<::std::is_convertible<detected
 template <typename T, typename U = T>
 inline constexpr bool is_equality_comparable_v = is_equality_comparable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-PIRANHA_CONCEPT_DECL EqualityComparable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL EqualityComparable = requires(T &&x, U &&y)
 {
     {
         ::std::forward<T>(x) == ::std::forward<U>(y)
@@ -616,10 +616,10 @@ using is_less_than_comparable = ::std::conjunction<::std::is_convertible<detecte
 template <typename T, typename U = T>
 inline constexpr bool is_less_than_comparable_v = is_less_than_comparable<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-PIRANHA_CONCEPT_DECL LessThanComparable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL LessThanComparable = requires(T &&x, U &&y)
 {
     {
         ::std::forward<T>(x) < ::std::forward<U>(y)
@@ -638,17 +638,17 @@ namespace detail
 
 // Helpers for the detection of the typedefs in std::iterator_traits.
 // Use a macro (yuck) to reduce typing.
-#define PIRANHA_DECLARE_IT_TRAITS_TYPE(type)                                                                           \
+#define OBAKE_DECLARE_IT_TRAITS_TYPE(type)                                                                           \
     template <typename T>                                                                                              \
     using it_traits_##type = typename ::std::iterator_traits<T>::type;
 
-PIRANHA_DECLARE_IT_TRAITS_TYPE(difference_type)
-PIRANHA_DECLARE_IT_TRAITS_TYPE(value_type)
-PIRANHA_DECLARE_IT_TRAITS_TYPE(pointer)
-PIRANHA_DECLARE_IT_TRAITS_TYPE(reference)
-PIRANHA_DECLARE_IT_TRAITS_TYPE(iterator_category)
+OBAKE_DECLARE_IT_TRAITS_TYPE(difference_type)
+OBAKE_DECLARE_IT_TRAITS_TYPE(value_type)
+OBAKE_DECLARE_IT_TRAITS_TYPE(pointer)
+OBAKE_DECLARE_IT_TRAITS_TYPE(reference)
+OBAKE_DECLARE_IT_TRAITS_TYPE(iterator_category)
 
-#undef PIRANHA_DECLARE_IT_TRAITS_TYPE
+#undef OBAKE_DECLARE_IT_TRAITS_TYPE
 
 // Detect the availability of std::iterator_traits on type It.
 template <typename It>
@@ -726,10 +726,10 @@ using is_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_iterator_v = is_iterator<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Iterator = is_iterator_v<T>;
+OBAKE_CONCEPT_DECL Iterator = is_iterator_v<T>;
 
 #endif
 
@@ -863,10 +863,10 @@ using is_input_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_input_iterator_v = is_input_iterator<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL InputIterator = is_input_iterator_v<T>;
+OBAKE_CONCEPT_DECL InputIterator = is_input_iterator_v<T>;
 
 #endif
 
@@ -908,10 +908,10 @@ using is_output_iterator = ::std::conjunction<
 template <typename T, typename U>
 inline constexpr bool is_output_iterator_v = is_output_iterator<T, U>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-PIRANHA_CONCEPT_DECL OutputIterator = is_output_iterator_v<T, U>;
+OBAKE_CONCEPT_DECL OutputIterator = is_output_iterator_v<T, U>;
 
 #endif
 
@@ -946,10 +946,10 @@ using is_forward_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_forward_iterator_v = is_forward_iterator<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL ForwardIterator = is_forward_iterator_v<T>;
+OBAKE_CONCEPT_DECL ForwardIterator = is_forward_iterator_v<T>;
 
 #endif
 
@@ -962,10 +962,10 @@ using is_mutable_forward_iterator
 template <typename T>
 inline constexpr bool is_mutable_forward_iterator_v = is_mutable_forward_iterator<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
+OBAKE_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
 
 #endif
 
@@ -985,13 +985,13 @@ using is_stream_insertable = ::std::is_same<detected_t<detail::stream_insertion_
 template <typename T>
 inline constexpr bool is_stream_insertable_v = is_stream_insertable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
+OBAKE_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

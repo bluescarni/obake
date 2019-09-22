@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -13,12 +13,12 @@
 #include <type_traits>
 #include <vector>
 
-#include <piranha/detail/atomic_flag_array.hpp>
-#include <piranha/detail/atomic_lock_guard.hpp>
+#include <obake/detail/atomic_flag_array.hpp>
+#include <obake/detail/atomic_lock_guard.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 using a_array = detail::atomic_flag_array;
 using alg = detail::atomic_lock_guard;

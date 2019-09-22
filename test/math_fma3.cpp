@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -17,18 +17,18 @@
 
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/math/fma3.hpp>
+#include <obake/config.hpp>
+#include <obake/math/fma3.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("fma3_fp")
 {
 #if defined(FP_FAST_FMAF)
     auto xf = 1.f;
-    piranha::fma3(xf, 3.f, 4.f);
+    obake::fma3(xf, 3.f, 4.f);
     REQUIRE(xf == 13.f);
 #else
     REQUIRE(!is_mult_addable_v<float &, const float &, const float &>);
@@ -36,18 +36,18 @@ TEST_CASE("fma3_fp")
 
 #if defined(FP_FAST_FMA)
     auto xd = 1.;
-    piranha::fma3(xd, 3., 4.);
+    obake::fma3(xd, 3., 4.);
     REQUIRE(xd == 13.);
-    REQUIRE(std::is_same_v<void, decltype(piranha::fma3(xd, 3., 4.))>);
+    REQUIRE(std::is_same_v<void, decltype(obake::fma3(xd, 3., 4.))>);
 #else
     REQUIRE(!is_mult_addable_v<double &, const double &, const double &>);
 #endif
 
 #if defined(FP_FAST_FMAL)
     auto xld = 1.l;
-    piranha::fma3(xld, 3.l, 4.l);
+    obake::fma3(xld, 3.l, 4.l);
     REQUIRE(xld == 13.l);
-    REQUIRE(std::is_same_v<void, decltype(piranha::fma3(xld, 3.l, 4.l))>);
+    REQUIRE(std::is_same_v<void, decltype(obake::fma3(xld, 3.l, 4.l))>);
 #else
     REQUIRE(!is_mult_addable_v<long double &, const long double &, const long double &>);
 #endif
@@ -61,7 +61,7 @@ TEST_CASE("fma3_fp")
     REQUIRE(!is_mult_addable_v<void, const float &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const float &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const float &, const float &, const float &>);
     REQUIRE(!MultAddable<const double &, const double &, const double &>);
     REQUIRE(!MultAddable<const long double &, const long double &, const long double &>);
@@ -83,7 +83,7 @@ TEST_CASE("fma3_integral")
     REQUIRE(!is_mult_addable_v<void, const int &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const int &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const int &, const int &, const int &>);
 
     REQUIRE(!MultAddable<void, void, void>);
@@ -98,7 +98,7 @@ TEST_CASE("fma3_mp++_integer")
     using int_t = mppp::integer<1>;
 
     int_t n{5};
-    piranha::fma3(n, int_t{6}, int_t{7});
+    obake::fma3(n, int_t{6}, int_t{7});
     REQUIRE(n == 47);
 
     REQUIRE(!is_mult_addable_v<const int_t &, const int_t &, const int_t &>);
@@ -108,7 +108,7 @@ TEST_CASE("fma3_mp++_integer")
     REQUIRE(!is_mult_addable_v<void, const int_t &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const int_t &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const int_t &, const int_t &, const int_t &>);
 
     REQUIRE(!MultAddable<void, void, void>);
@@ -123,7 +123,7 @@ TEST_CASE("fma3_mp++_integer")
 TEST_CASE("fma3_mp++_real")
 {
     mppp::real x{5};
-    piranha::fma3(x, mppp::real{6}, mppp::real{7});
+    obake::fma3(x, mppp::real{6}, mppp::real{7});
     REQUIRE(x == 47);
 
     REQUIRE(!is_mult_addable_v<const mppp::real &, const mppp::real &, const mppp::real &>);
@@ -133,7 +133,7 @@ TEST_CASE("fma3_mp++_real")
     REQUIRE(!is_mult_addable_v<void, const mppp::real &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const mppp::real &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const mppp::real &, const mppp::real &, const mppp::real &>);
 
     REQUIRE(!MultAddable<void, void, void>);
@@ -150,7 +150,7 @@ TEST_CASE("fma3_mp++_real")
 TEST_CASE("fma3_mp++_real128")
 {
     mppp::real128 x{5};
-    piranha::fma3(x, mppp::real128{6}, mppp::real128{7});
+    obake::fma3(x, mppp::real128{6}, mppp::real128{7});
     REQUIRE(x == 47);
 
     REQUIRE(!is_mult_addable_v<const mppp::real128 &, const mppp::real128 &, const mppp::real128 &>);
@@ -160,7 +160,7 @@ TEST_CASE("fma3_mp++_real128")
     REQUIRE(!is_mult_addable_v<void, const mppp::real128 &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const mppp::real128 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const mppp::real128 &, const mppp::real128 &, const mppp::real128 &>);
 
     REQUIRE(!MultAddable<void, void, void>);
@@ -190,11 +190,11 @@ struct bar {
 struct nobar {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, bar> &&SameCvr<U, bar> inline constexpr auto fma3<bar &, T, U>
 #else
 inline constexpr auto fma3<bar &, T, U, std::enable_if_t<std::conjunction_v<is_same_cvr<T, bar>, is_same_cvr<U, bar>>>>
@@ -204,7 +204,7 @@ inline constexpr auto fma3<bar &, T, U, std::enable_if_t<std::conjunction_v<is_s
     return true;
 };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("fma3_custom")
 {
@@ -220,7 +220,7 @@ TEST_CASE("fma3_custom")
     REQUIRE(!is_mult_addable_v<const nobar &, const nobar &, const nobar &>);
     REQUIRE(!is_mult_addable_v<nobar &&, const nobar &, const nobar &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(MultAddable<ns::foo &, const ns::foo &, const ns::foo &>);
     REQUIRE(!MultAddable<const ns::foo &, const ns::foo &, const ns::foo &>);
     REQUIRE(!MultAddable<ns::foo &&, const ns::foo &, const ns::foo &>);

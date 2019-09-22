@@ -1,23 +1,23 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_EXCEPTIONS_HPP
-#define PIRANHA_EXCEPTIONS_HPP
+#ifndef OBAKE_EXCEPTIONS_HPP
+#define OBAKE_EXCEPTIONS_HPP
 
 #include <string>
 #include <type_traits>
 #include <utility>
 
-#include <piranha/stack_trace.hpp>
-#include <piranha/type_name.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/stack_trace.hpp>
+#include <obake/type_name.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 template <typename Exception>
@@ -39,10 +39,10 @@ struct ex_thrower {
                                  int> = 0>
     [[noreturn]] void operator()(Str &&desc, Args &&... args) const
     {
-        ::std::string str = ::piranha::stack_trace(1) + '\n';
+        ::std::string str = ::obake::stack_trace(1) + '\n';
 
         str += "\nException type   : ";
-        str += ::piranha::type_name<Exception>();
+        str += ::obake::type_name<Exception>();
         str += "\nException message: ";
         str += ::std::forward<Str>(desc);
         str += '\n';
@@ -54,10 +54,10 @@ struct ex_thrower {
     const char *m_func;
 };
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
 // Exception throwing macro.
-#define piranha_throw(exception_type, ...)                                                                             \
-    (::piranha::detail::ex_thrower<exception_type>{__FILE__, __LINE__, __func__}(__VA_ARGS__))
+#define obake_throw(exception_type, ...)                                                                               \
+    (::obake::detail::ex_thrower<exception_type>{__FILE__, __LINE__, __func__}(__VA_ARGS__))
 
 #endif

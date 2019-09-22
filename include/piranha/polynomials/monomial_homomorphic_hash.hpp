@@ -1,21 +1,21 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_POLYNOMIALS_MONOMIAL_HOMOMORPHIC_HASH_HPP
-#define PIRANHA_POLYNOMIALS_MONOMIAL_HOMOMORPHIC_HASH_HPP
+#ifndef OBAKE_POLYNOMIALS_MONOMIAL_HOMOMORPHIC_HASH_HPP
+#define OBAKE_POLYNOMIALS_MONOMIAL_HOMOMORPHIC_HASH_HPP
 
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace customisation
@@ -23,7 +23,7 @@ namespace customisation
 
 // External customisation point for monomial_hash_is_homomorphic.
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -35,7 +35,7 @@ inline constexpr auto monomial_hash_is_homomorphic = not_implemented;
 // Main monomial_hash_is_homomorphic implementation.
 // Defaults to false.
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -98,13 +98,13 @@ using is_homomorphically_hashable_monomial = ::std::integral_constant<bool, deta
 template <typename T>
 inline constexpr bool is_homomorphically_hashable_monomial_v = is_homomorphically_hashable_monomial<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL HomomorphicallyHashableMonomial = is_homomorphically_hashable_monomial_v<T>;
+OBAKE_CONCEPT_DECL HomomorphicallyHashableMonomial = is_homomorphically_hashable_monomial_v<T>;
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

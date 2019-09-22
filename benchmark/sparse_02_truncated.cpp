@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -10,18 +10,18 @@
 
 #include <mp++/integer.hpp>
 
-#include <piranha/byte_size.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/polynomials/polynomial.hpp>
+#include <obake/byte_size.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
 
 #include "simple_timer.hpp"
 
-using namespace piranha;
-using namespace piranha_benchmark;
+using namespace obake;
+using namespace obake_benchmark;
 
 int main()
 {
-    using namespace piranha;
+    using namespace obake;
     const auto n = 16;
 
     auto [x, y, z, t, u]

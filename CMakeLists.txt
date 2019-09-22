@@ -9,22 +9,22 @@ if(NOT CMAKE_BUILD_TYPE)
 	FORCE)
 endif()
 
-# NOTE: piranha is C++, however we are linking to C
+# NOTE: obake is C++, however we are linking to C
 # libraries (e.g., libbacktrace). Moreover, if we don't
 # enable C here, on some configurations (e.g., Ubuntu
 # + clang) the threading detection/setup seems to break
 # down.
-project(piranha VERSION 0.19 LANGUAGES CXX C)
+project(obake VERSION 0.1 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
 
 message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
-message(STATUS "piranha version: ${piranha_VERSION}")
+message(STATUS "obake version: ${obake_VERSION}")
 
 # The build options.
-option(PIRANHA_BUILD_TESTS "Build unit tests." OFF)
-option(PIRANHA_BUILD_BENCHMARKS "Build benchmarks." OFF)
-option(PIRANHA_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
+option(OBAKE_BUILD_TESTS "Build unit tests." OFF)
+option(OBAKE_BUILD_BENCHMARKS "Build benchmarks." OFF)
+option(OBAKE_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -42,44 +42,44 @@ include(YACMAThreadingSetup)
 # https://cmake.org/pipermail/cmake/2013-July/055375.html
 if(UNIX AND NOT APPLE)
     include(GNUInstallDirs)
-    set(_PIRANHA_INSTALL_LIBDIR_DEFAULT "${CMAKE_INSTALL_LIBDIR}")
+    set(_OBAKE_INSTALL_LIBDIR_DEFAULT "${CMAKE_INSTALL_LIBDIR}")
 else()
-    set(_PIRANHA_INSTALL_LIBDIR_DEFAULT "lib")
+    set(_OBAKE_INSTALL_LIBDIR_DEFAULT "lib")
 endif()
-if(NOT PIRANHA_INSTALL_LIBDIR)
-    set(PIRANHA_INSTALL_LIBDIR "${_PIRANHA_INSTALL_LIBDIR_DEFAULT}" CACHE STRING
+if(NOT OBAKE_INSTALL_LIBDIR)
+    set(OBAKE_INSTALL_LIBDIR "${_OBAKE_INSTALL_LIBDIR_DEFAULT}" CACHE STRING
         "Library installation directory." FORCE)
 endif()
-mark_as_advanced(PIRANHA_INSTALL_LIBDIR)
-message(STATUS "Library installation directory: ${PIRANHA_INSTALL_LIBDIR}")
+mark_as_advanced(OBAKE_INSTALL_LIBDIR)
+message(STATUS "Library installation directory: ${OBAKE_INSTALL_LIBDIR}")
 
 # Assemble the flags.
-set(PIRANHA_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
-set(PIRANHA_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
+set(OBAKE_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
+set(OBAKE_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 
 if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
     # Also, enable the bigobj flag and the WIN32_LEAN_AND_MEAN definitions:
     # https://stackoverflow.com/questions/11040133/what-does-defining-win32-lean-and-mean-exclude-exactly
-    list(APPEND PIRANHA_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
-    list(APPEND PIRANHA_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
+    list(APPEND OBAKE_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
+    list(APPEND OBAKE_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
     # Enable strict conformance mode, if supported.
     set(CMAKE_REQUIRED_QUIET TRUE)
-    check_cxx_compiler_flag("/permissive-" _PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+    check_cxx_compiler_flag("/permissive-" _OBAKE_MSVC_SUPPORTS_STRICT_CONFORMANCE)
     unset(CMAKE_REQUIRED_QUIET)
-    if(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+    if(_OBAKE_MSVC_SUPPORTS_STRICT_CONFORMANCE)
         message(STATUS "The '/permissive-' flag is supported, enabling it.")
-        list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/permissive-")
-        list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/permissive-")
+        list(APPEND OBAKE_CXX_FLAGS_DEBUG "/permissive-")
+        list(APPEND OBAKE_CXX_FLAGS_RELEASE "/permissive-")
     endif()
-    unset(_PIRANHA_MSVC_SUPPORTS_STRICT_CONFORMANCE)
+    unset(_OBAKE_MSVC_SUPPORTS_STRICT_CONFORMANCE)
     if(YACMA_COMPILER_IS_CLANGXX)
         # clang-cl emits various warnings from GMP/MPFR, let's just silence them.
         # NOTE: at one point in the recent past, MSVC added an options similar to GCC's isystem:
         # https://blogs.msdn.microsoft.com/vcblog/2017/12/13/broken-warnings-theory/
         # We probably just need to wait for this to be picked up by CMake/clang-cl. Let's
         # revisit the issue in the future.
-        list(APPEND _PIRANHA_CLANG_CL_DISABLED_WARNINGS
+        list(APPEND _OBAKE_CLANG_CL_DISABLED_WARNINGS
             "-Wno-unused-variable"
             "-Wno-inconsistent-dllimport"
             "-Wno-unknown-pragmas"
@@ -123,13 +123,13 @@ if(YACMA_COMPILER_IS_MSVC)
             "-Wno-unused-macros"
             "-Wno-extra-semi-stmt"
             "-Wno-c++98-compat")
-        list(APPEND PIRANHA_CXX_FLAGS_DEBUG ${_PIRANHA_CLANG_CL_DISABLED_WARNINGS})
-        list(APPEND PIRANHA_CXX_FLAGS_RELEASE ${_PIRANHA_CLANG_CL_DISABLED_WARNINGS})
-        unset(_PIRANHA_CLANG_CL_DISABLED_WARNINGS)
+        list(APPEND OBAKE_CXX_FLAGS_DEBUG ${_OBAKE_CLANG_CL_DISABLED_WARNINGS})
+        list(APPEND OBAKE_CXX_FLAGS_RELEASE ${_OBAKE_CLANG_CL_DISABLED_WARNINGS})
+        unset(_OBAKE_CLANG_CL_DISABLED_WARNINGS)
     else()
         # Problematic MSVC cl warnings.
-        list(APPEND PIRANHA_CXX_FLAGS_DEBUG "/wd4459")
-        list(APPEND PIRANHA_CXX_FLAGS_RELEASE "/wd4459")
+        list(APPEND OBAKE_CXX_FLAGS_DEBUG "/wd4459")
+        list(APPEND OBAKE_CXX_FLAGS_RELEASE "/wd4459")
     endif()
 endif()
 
@@ -145,8 +145,8 @@ find_package(absl REQUIRED)
 include(PiranhaFindBoost)
 
 # libbacktrace.
-if(PIRANHA_WITH_LIBBACKTRACE)
-    set(PIRANHA_ENABLE_LIBBACKTRACE "#define PIRANHA_WITH_LIBBACKTRACE")
+if(OBAKE_WITH_LIBBACKTRACE)
+    set(OBAKE_ENABLE_LIBBACKTRACE "#define OBAKE_WITH_LIBBACKTRACE")
     find_package(libbacktrace REQUIRED)
 endif()
 
@@ -158,8 +158,8 @@ if(YACMA_COMPILER_IS_MSVC)
     find_package(DbgEng REQUIRED)
 endif()
 
-# Initial setup of the piranha target.
-set(PIRANHA_SRC_FILES
+# Initial setup of the obake target.
+set(OBAKE_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cf/cf_stream_insert.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/atomic_flag_array.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/detail/hc.cpp"
@@ -169,74 +169,74 @@ set(PIRANHA_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
 )
 
-if(PIRANHA_WITH_LIBBACKTRACE)
-    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/libbacktrace_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
+if(OBAKE_WITH_LIBBACKTRACE)
+    set(OBAKE_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/libbacktrace_stack_trace.cpp" "${OBAKE_SRC_FILES}")
 else()
-    set(PIRANHA_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/boost_stack_trace.cpp" "${PIRANHA_SRC_FILES}")
+    set(OBAKE_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/boost_stack_trace.cpp" "${OBAKE_SRC_FILES}")
 endif()
 
-add_library(piranha SHARED "${PIRANHA_SRC_FILES}")
-set_property(TARGET piranha PROPERTY VERSION "1.0")
-set_property(TARGET piranha PROPERTY SOVERSION 1 )
-target_compile_options(piranha PRIVATE "$<$<CONFIG:DEBUG>:${PIRANHA_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${PIRANHA_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${PIRANHA_CXX_FLAGS_RELEASE}>" 
-                                        "$<$<CONFIG:MinSizeRel>:${PIRANHA_CXX_FLAGS_RELEASE}>")
-set_target_properties(piranha PROPERTIES CXX_VISIBILITY_PRESET hidden)
-set_target_properties(piranha PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
-set_property(TARGET piranha PROPERTY CXX_STANDARD 17)
-set_property(TARGET piranha PROPERTY CXX_STANDARD_REQUIRED YES)
-set_property(TARGET piranha PROPERTY CXX_EXTENSIONS NO)
+add_library(obake SHARED "${OBAKE_SRC_FILES}")
+set_property(TARGET obake PROPERTY VERSION "1.0")
+set_property(TARGET obake PROPERTY SOVERSION 1 )
+target_compile_options(obake PRIVATE "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>" 
+                                        "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>")
+set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
+set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
+set_property(TARGET obake PROPERTY CXX_STANDARD 17)
+set_property(TARGET obake PROPERTY CXX_STANDARD_REQUIRED YES)
+set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
 
-# Add the include dirs to the piranha target's interface.
-target_include_directories(piranha PUBLIC
+# Add the include dirs to the obake target's interface.
+target_include_directories(obake PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(piranha PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost)
-if(PIRANHA_WITH_LIBBACKTRACE)
-    target_link_libraries(piranha PUBLIC libbacktrace::libbacktrace)
+target_link_libraries(obake PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost)
+if(OBAKE_WITH_LIBBACKTRACE)
+    target_link_libraries(obake PUBLIC libbacktrace::libbacktrace)
 else()
     # NOTE: Boost stacktrace sometimes requires linking to the system
     # DL libs. There's a CMake variable for that, which I hope
     # behaves gracefully on non-unix platforms.
-    # NOTE: when we enable piranha's installation machinery,
+    # NOTE: when we enable obake's installation machinery,
     # we may have to sort this out (CMAKE_DL_LIBS does not
     # look like an imported target).
-    target_link_libraries(piranha PUBLIC ${CMAKE_DL_LIBS})
+    target_link_libraries(obake PUBLIC ${CMAKE_DL_LIBS})
 endif()
 
 # TBB.
-target_link_libraries(piranha PUBLIC TBB::tbb)
+target_link_libraries(obake PUBLIC TBB::tbb)
 
 # Link to DbgEng on MSVC.
 if(YACMA_COMPILER_IS_MSVC)
-    target_link_libraries(piranha PUBLIC DbgEng::DbgEng)
+    target_link_libraries(obake PUBLIC DbgEng::DbgEng)
 endif()
 
 # Configure config.hpp.
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.hpp.in" "${CMAKE_CURRENT_BINARY_DIR}/include/obake/config.hpp" @ONLY)
 
 # Configure the sphinx config file.
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py.in" "${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py" @ONLY)
 
 # Installation of the header files.
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/piranha" DESTINATION include)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/piranha/config.hpp" DESTINATION include/piranha)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/obake" DESTINATION include)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/obake/config.hpp" DESTINATION include/obake)
 
 # Installation of the library.
-install(TARGETS piranha
-    EXPORT piranha_export
-    LIBRARY DESTINATION "${PIRANHA_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${PIRANHA_INSTALL_LIBDIR}"
+install(TARGETS obake
+    EXPORT obake_export
+    LIBRARY DESTINATION "${OBAKE_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${OBAKE_INSTALL_LIBDIR}"
     RUNTIME DESTINATION bin
 )
 
-if(PIRANHA_BUILD_TESTS)
+if(OBAKE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
 
-if(PIRANHA_BUILD_BENCHMARKS)
+if(OBAKE_BUILD_BENCHMARKS)
     add_subdirectory(benchmark)
 endif()

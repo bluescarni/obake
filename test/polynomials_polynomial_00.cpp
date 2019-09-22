@@ -1,12 +1,12 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/config.hpp>
+#include <obake/config.hpp>
 
 #include <initializer_list>
 #include <stdexcept>
@@ -14,7 +14,7 @@
 #include <tuple>
 #include <type_traits>
 
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
 
 #include <string_view>
 
@@ -22,23 +22,23 @@
 
 #include <mp++/integer.hpp>
 
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/tuple_for_each.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/polynomials/polynomial.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/tuple_for_each.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("make_polynomials_test")
 {
     using poly_t = polynomial<packed_monomial<long long>, double>;
 
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     REQUIRE(make_polynomials<poly_t>().size() == 0u);
     REQUIRE(make_polynomials<poly_t>(symbol_set{}).size() == 0u);
@@ -51,7 +51,7 @@ TEST_CASE("make_polynomials_test")
         REQUIRE(b.get_symbol_set() == symbol_set{"b"});
     }
 
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
     {
         auto [a] = make_polynomials<poly_t>(std::string_view{"a"});
         REQUIRE(a.get_symbol_set() == symbol_set{"a"});
@@ -70,7 +70,7 @@ TEST_CASE("make_polynomials_test")
         REQUIRE(c.get_symbol_set() == symbol_set{"a", "b", "c"});
     }
 
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
     {
         auto [a1] = make_polynomials<poly_t>(symbol_set{"a"}, std::string_view{"a"});
         REQUIRE(a1.get_symbol_set() == symbol_set{"a"});
@@ -81,12 +81,12 @@ TEST_CASE("make_polynomials_test")
     }
 #endif
 
-    PIRANHA_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{"b"}, "a"), std::invalid_argument,
-                                     "Cannot create a polynomial with symbol set {'b'} from the generator 'a': the "
-                                     "generator is not in the symbol set");
-    PIRANHA_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{}, "ada"), std::invalid_argument,
-                                     "Cannot create a polynomial with symbol set {} from the generator 'ada': the "
-                                     "generator is not in the symbol set");
+    OBAKE_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{"b"}, "a"), std::invalid_argument,
+                                   "Cannot create a polynomial with symbol set {'b'} from the generator 'a': the "
+                                   "generator is not in the symbol set");
+    OBAKE_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{}, "ada"), std::invalid_argument,
+                                   "Cannot create a polynomial with symbol set {} from the generator 'ada': the "
+                                   "generator is not in the symbol set");
 }
 
 TEST_CASE("is_polynomial_test")
@@ -102,7 +102,7 @@ TEST_CASE("is_polynomial_test")
     REQUIRE(!is_polynomial_v<poly_t &&>);
     REQUIRE(!is_polynomial_v<const poly_t>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Polynomial<poly_t>);
     REQUIRE(!Polynomial<void>);
     REQUIRE(!Polynomial<int>);
@@ -170,7 +170,7 @@ TEST_CASE("polynomial_mul_simple_test")
         a.add_term(pm_t{detail::limits_max<long long>}, 1);
         b.add_term(pm_t{detail::limits_max<long long>}, 1);
 
-        PIRANHA_REQUIRES_THROWS_CONTAINS(
+        OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error,
             "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
 
@@ -181,7 +181,7 @@ TEST_CASE("polynomial_mul_simple_test")
         a.add_term(pm_t{detail::limits_min<long long>}, 1);
         b.add_term(pm_t{detail::limits_min<long long>}, 1);
 
-        PIRANHA_REQUIRES_THROWS_CONTAINS(
+        OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error,
             "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
     });
@@ -223,7 +223,7 @@ TEST_CASE("polynomial_mul_mt_hm_test")
         a.add_term(pm_t{detail::limits_max<long long>}, 1);
         b.add_term(pm_t{detail::limits_max<long long>}, 1);
 
-        PIRANHA_REQUIRES_THROWS_CONTAINS(
+        OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error,
             "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
 
@@ -234,7 +234,7 @@ TEST_CASE("polynomial_mul_mt_hm_test")
         a.add_term(pm_t{detail::limits_min<long long>}, 1);
         b.add_term(pm_t{detail::limits_min<long long>}, 1);
 
-        PIRANHA_REQUIRES_THROWS_CONTAINS(
+        OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error,
             "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
     });

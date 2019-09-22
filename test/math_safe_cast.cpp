@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -8,26 +8,26 @@
 
 #include <string>
 
-#include <piranha/config.hpp>
-#include <piranha/math/safe_cast.hpp>
+#include <obake/config.hpp>
+#include <obake/math/safe_cast.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 // NOTE: don't run the test if constexpr
 // support is not recent enough.
 #if __cpp_constexpr >= 201603
 
 // Make sure we can go constexpr, when the types and values allow.
-[[maybe_unused]] constexpr auto cint = piranha::safe_cast<int>(5u);
+[[maybe_unused]] constexpr auto cint = obake::safe_cast<int>(5u);
 
 #endif
 
 TEST_CASE("safe_cast_test")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     REQUIRE(!is_safely_castable_v<void, void>);
     REQUIRE(!is_safely_castable_v<int, void>);
@@ -46,7 +46,7 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!is_safely_castable_v<long, const int &>);
     REQUIRE(!is_safely_castable_v<long, int &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SafelyCastable<int, void>);
     REQUIRE(!SafelyCastable<void, int>);
     REQUIRE(SafelyCastable<int, int>);
@@ -64,8 +64,8 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!SafelyCastable<long, int &&>);
 #endif
 
-    REQUIRE(piranha::safe_cast<int>(5u) == 5);
-    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::safe_cast<unsigned>(-5), safe_cast_failure, "A value of type '");
-    PIRANHA_REQUIRES_THROWS_CONTAINS(piranha::safe_cast<unsigned>(-5), safe_cast_failure,
-                                     "' could not be safely converted to the type '");
+    REQUIRE(obake::safe_cast<int>(5u) == 5);
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::safe_cast<unsigned>(-5), safe_cast_failure, "A value of type '");
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::safe_cast<unsigned>(-5), safe_cast_failure,
+                                   "' could not be safely converted to the type '");
 }

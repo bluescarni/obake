@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_SERIES_HPP
-#define PIRANHA_SERIES_HPP
+#ifndef OBAKE_SERIES_HPP
+#define OBAKE_SERIES_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -30,42 +30,42 @@
 
 #include <mp++/integer.hpp>
 
-#include <piranha/byte_size.hpp>
-#include <piranha/cf/cf_stream_insert.hpp>
-#include <piranha/config.hpp>
-#include <piranha/detail/abseil.hpp>
-#include <piranha/detail/fcast.hpp>
-#include <piranha/detail/ignore.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/mppp_utils.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/detail/priority_tag.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/detail/type_c.hpp>
-#include <piranha/detail/visibility.hpp>
-#include <piranha/exceptions.hpp>
-#include <piranha/hash.hpp>
-#include <piranha/key/key_degree.hpp>
-#include <piranha/key/key_evaluate.hpp>
-#include <piranha/key/key_is_compatible.hpp>
-#include <piranha/key/key_is_one.hpp>
-#include <piranha/key/key_is_zero.hpp>
-#include <piranha/key/key_merge_symbols.hpp>
-#include <piranha/key/key_p_degree.hpp>
-#include <piranha/key/key_stream_insert.hpp>
-#include <piranha/math/degree.hpp>
-#include <piranha/math/evaluate.hpp>
-#include <piranha/math/is_zero.hpp>
-#include <piranha/math/negate.hpp>
-#include <piranha/math/p_degree.hpp>
-#include <piranha/math/pow.hpp>
-#include <piranha/math/safe_convert.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_name.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/byte_size.hpp>
+#include <obake/cf/cf_stream_insert.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/abseil.hpp>
+#include <obake/detail/fcast.hpp>
+#include <obake/detail/ignore.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/mppp_utils.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/detail/priority_tag.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/detail/type_c.hpp>
+#include <obake/detail/visibility.hpp>
+#include <obake/exceptions.hpp>
+#include <obake/hash.hpp>
+#include <obake/key/key_degree.hpp>
+#include <obake/key/key_evaluate.hpp>
+#include <obake/key/key_is_compatible.hpp>
+#include <obake/key/key_is_one.hpp>
+#include <obake/key/key_is_zero.hpp>
+#include <obake/key/key_merge_symbols.hpp>
+#include <obake/key/key_p_degree.hpp>
+#include <obake/key/key_stream_insert.hpp>
+#include <obake/math/degree.hpp>
+#include <obake/math/evaluate.hpp>
+#include <obake/math/is_zero.hpp>
+#include <obake/math/negate.hpp>
+#include <obake/math/p_degree.hpp>
+#include <obake/math/pow.hpp>
+#include <obake/math/safe_convert.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_name.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 // NOTE: runtime requirements:
@@ -83,10 +83,10 @@ using is_key = ::std::conjunction<is_semi_regular<T>, is_constructible<T, const 
 template <typename T>
 inline constexpr bool is_key_v = is_key<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Key = is_key_v<T>;
+OBAKE_CONCEPT_DECL Key = is_key_v<T>;
 
 #endif
 
@@ -103,15 +103,15 @@ using is_cf = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_cf_v = is_cf<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Cf = is_cf_v<T>;
+OBAKE_CONCEPT_DECL Cf = is_cf_v<T>;
 
 #endif
 
 // Forward declaration.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key, Cf, typename>
 #else
 template <typename K, typename C, typename, typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
@@ -228,10 +228,10 @@ using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
 template <typename T>
 inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
+OBAKE_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
 
 #endif
 
@@ -263,39 +263,39 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     if constexpr (CheckTableSize == sat_check_table_size::on) {
         // LCOV_EXCL_START
         // Check the table size, if requested.
-        if (piranha_unlikely(t.size() == s._get_max_table_size())) {
+        if (obake_unlikely(t.size() == s._get_max_table_size())) {
             // The table size is already the maximum allowed, don't
             // attempt the insertion.
-            piranha_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
-                                                 "destination table already contains the maximum number of terms ("
-                                                     + detail::to_string(s._get_max_table_size()) + ")");
+            obake_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
+                                               "destination table already contains the maximum number of terms ("
+                                                   + detail::to_string(s._get_max_table_size()) + ")");
         }
         // LCOV_EXCL_STOP
     }
 
     if constexpr (CheckCompatKey == sat_check_compat_key::on) {
         // Check key for compatibility, if requested.
-        if (piranha_unlikely(!::piranha::key_is_compatible(::std::as_const(key), ss))) {
+        if (obake_unlikely(!::obake::key_is_compatible(::std::as_const(key), ss))) {
             // The key is not compatible with the symbol set.
             if constexpr (is_stream_insertable_v<const key_type &>) {
                 // A slightly better error message if we can
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
                 static_cast<::std::ostream &>(oss) << ::std::as_const(key);
-                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '" + oss.str()
-                                                           + "', is not compatible with the series' symbol set, "
-                                                           + detail::to_string(ss));
+                obake_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '" + oss.str()
+                                                         + "', is not compatible with the series' symbol set, "
+                                                         + detail::to_string(ss));
             } else {
-                piranha_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key is not "
-                                                       "compatible with the series' symbol set, "
-                                                           + detail::to_string(ss));
+                obake_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key is not "
+                                                     "compatible with the series' symbol set, "
+                                                         + detail::to_string(ss));
             }
         }
     } else {
         // Otherwise, assert that the key is compatible.
         // There are no situations so far in which we may
         // want to allow adding an incompatible key.
-        assert(::piranha::key_is_compatible(::std::as_const(key), ss));
+        assert(::obake::key_is_compatible(::std::as_const(key), ss));
     }
 
     // Attempt the insertion.
@@ -313,7 +313,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
             // the sign of the newly-inserted term,
             // in case of negative insertion.
             if constexpr (!Sign) {
-                ::piranha::negate(res.first->second);
+                ::obake::negate(res.first->second);
             }
         } else {
             // The insertion did not take place because a term with
@@ -351,8 +351,8 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
         if constexpr (CheckZero == sat_check_zero::on) {
             // If requested, check whether the term we inserted
             // or modified is zero. If it is, erase it.
-            if (piranha_unlikely(::piranha::key_is_zero(res.first->first, ss)
-                                 || ::piranha::is_zero(::std::as_const(res.first->second)))) {
+            if (obake_unlikely(::obake::key_is_zero(res.first->first, ss)
+                               || ::obake::is_zero(::std::as_const(res.first->second)))) {
                 t.erase(res.first);
             }
         }
@@ -384,8 +384,8 @@ inline void series_add_term(S &s, T &&key, Args &&... args)
         detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off, AssumeUnique>(
             s, s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
     } else {
-        // Compute the hash of the key via piranha::hash().
-        const auto k_hash = ::piranha::hash(::std::as_const(key));
+        // Compute the hash of the key via obake::hash().
+        const auto k_hash = ::obake::hash(::std::as_const(key));
 
         // Determine the destination table.
         const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s_table_size - 1u));
@@ -456,10 +456,10 @@ using is_series_constructible
 template <typename T, typename K, typename C, typename Tag>
 inline constexpr bool is_series_constructible_v = is_series_constructible<T, K, C, Tag>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename K, typename C, typename Tag>
-PIRANHA_CONCEPT_DECL SeriesConstructible = is_series_constructible_v<T, K, C, Tag>;
+OBAKE_CONCEPT_DECL SeriesConstructible = is_series_constructible_v<T, K, C, Tag>;
 
 #endif
 
@@ -471,10 +471,10 @@ using is_series_convertible
 template <typename T, typename C>
 inline constexpr bool is_series_convertible_v = is_series_convertible<T, C>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename C>
-PIRANHA_CONCEPT_DECL SeriesConvertible = is_series_convertible_v<T, C>;
+OBAKE_CONCEPT_DECL SeriesConvertible = is_series_convertible_v<T, C>;
 
 #endif
 
@@ -492,9 +492,9 @@ struct series_key_hasher {
         return ::absl::Hash<::std::size_t>{}(h);
     }
     template <typename K>
-    ::std::size_t operator()(const K &k) const noexcept(noexcept(::piranha::hash(k)))
+    ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
     {
-        return series_key_hasher::hash_mixer(::piranha::hash(k));
+        return series_key_hasher::hash_mixer(::obake::hash(k));
     }
 };
 
@@ -538,7 +538,7 @@ struct series_rref_clearer {
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
 template <typename K, typename C, typename Tag, typename>
@@ -547,7 +547,7 @@ class series
 {
     // Make friends with all series types.
     template <typename, typename, typename
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
               ,
               typename
 #endif
@@ -590,7 +590,7 @@ public:
     // NOTE: the generic construction algorithm must be well-documented,
     // as we rely on its behaviour in a variety of places (e.g., when constructing
     // series from scalars).
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
     template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
@@ -693,11 +693,10 @@ public:
                     *this = series(::std::as_const(x.begin()->second));
                 }
             } else {
-                piranha_throw(::std::invalid_argument, "Cannot construct a series of type '"
-                                                           + ::piranha::type_name<series>()
-                                                           + "' from a series of higher rank of type '"
-                                                           + ::piranha::type_name<remove_cvref_t<T>>()
-                                                           + "' which does not consist of a single coefficient");
+                obake_throw(::std::invalid_argument,
+                            "Cannot construct a series of type '" + ::obake::type_name<series>()
+                                + "' from a series of higher rank of type '" + ::obake::type_name<remove_cvref_t<T>>()
+                                + "' which does not consist of a single coefficient");
             }
         }
     }
@@ -718,7 +717,7 @@ public:
 
         return *this;
     }
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
     template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
@@ -728,7 +727,7 @@ public:
         return *this = series(::std::forward<T>(x));
     }
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConvertible<C> T>
 #else
     template <typename T, ::std::enable_if_t<is_series_convertible_v<T, C>, int> = 0>
@@ -741,10 +740,10 @@ public:
             case 1u:
                 return T(cbegin()->second);
             default:
-                piranha_throw(::std::invalid_argument,
-                              "Cannot convert a series of type '" + ::piranha::type_name<series>()
-                                  + "' to on object of type '" + ::piranha::type_name<T>()
-                                  + "', because the series does not consist of a single coefficient");
+                obake_throw(::std::invalid_argument,
+                            "Cannot convert a series of type '" + ::obake::type_name<series>()
+                                + "' to on object of type '" + ::obake::type_name<T>()
+                                + "', because the series does not consist of a single coefficient");
         }
     }
 
@@ -775,9 +774,9 @@ public:
                 const auto &c = t.second;
 
                 // No zero terms.
-                assert(!::piranha::key_is_zero(k, m_symbol_set) && !::piranha::is_zero(c));
+                assert(!::obake::key_is_zero(k, m_symbol_set) && !::obake::is_zero(c));
                 // No incompatible keys.
-                assert(::piranha::key_is_compatible(k, m_symbol_set));
+                assert(::obake::key_is_compatible(k, m_symbol_set));
             }
 
             // Check that, in a segmented table, all terms are in the table they
@@ -786,7 +785,7 @@ public:
                 const auto s_table_size = m_s_table.size();
                 for (s_size_type i = 0; i < s_table_size; ++i) {
                     for (const auto &p : m_s_table[i]) {
-                        assert((::piranha::hash(p.first) & (s_table_size - 1u)) == i);
+                        assert((::obake::hash(p.first) & (s_table_size - 1u)) == i);
                     }
                 }
             }
@@ -849,7 +848,7 @@ public:
             case 0u:
                 return true;
             case 1u:
-                return ::piranha::key_is_one(cbegin()->first, m_symbol_set);
+                return ::obake::key_is_one(cbegin()->first, m_symbol_set);
             default:
                 return false;
         }
@@ -970,7 +969,7 @@ private:
             // table than the total number of tables, hence
             // moving to the next table should be a relatively
             // rare occurrence.
-            if (piranha_unlikely(m_local_it == st[m_idx].end())) {
+            if (obake_unlikely(m_local_it == st[m_idx].end())) {
                 // We reached the end of the current table.
                 // Keep bumping m_idx until we either
                 // arrive in a non-empty table, or we reach
@@ -1106,10 +1105,9 @@ public:
     }
     void set_symbol_set(const symbol_set &s)
     {
-        if (piranha_unlikely(!empty())) {
-            piranha_throw(::std::invalid_argument,
-                          "A symbol set can be set only in an empty series, but this series has "
-                              + detail::to_string(size()) + " terms");
+        if (obake_unlikely(!empty())) {
+            obake_throw(::std::invalid_argument, "A symbol set can be set only in an empty series, but this series has "
+                                                     + detail::to_string(size()) + " terms");
         }
 
         m_symbol_set = s;
@@ -1137,7 +1135,7 @@ public:
     }
 
     template <bool Sign = true,
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
               SameCvr<K> T, typename... Args>
     requires Constructible<C, Args...>
 #else
@@ -1155,10 +1153,10 @@ public:
     // Set the number of segments (in log2 units).
     void set_n_segments(unsigned l)
     {
-        if (piranha_unlikely(l > max_log2_size)) {
-            piranha_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)
-                                                       + ", as this value exceeds the maximum allowed value (2**"
-                                                       + detail::to_string(max_log2_size) + ")");
+        if (obake_unlikely(l > max_log2_size)) {
+            obake_throw(::std::invalid_argument, "Cannot set the number of segments to 2**" + detail::to_string(l)
+                                                     + ", as this value exceeds the maximum allowed value (2**"
+                                                     + detail::to_string(max_log2_size) + ")");
         }
 
         // NOTE: construct + move assign for exception safety.
@@ -1222,7 +1220,7 @@ private:
             return find_single_table(s.m_s_table, 0);
         } else {
             // Segmented table case.
-            const auto k_hash = ::piranha::hash(k);
+            const auto k_hash = ::obake::hash(k);
             const auto idx = static_cast<s_size_type>(k_hash & (s_table_size - 1u));
             return find_single_table(s.m_s_table, idx);
         }
@@ -1319,16 +1317,16 @@ struct series_default_pow_impl {
             if (b.empty()) {
                 // Return 0**e.
                 const series_cf_t<rT> zero(0);
-                return ret_t<T &&, U &&>(::piranha::pow(zero, e));
+                return ret_t<T &&, U &&>(::obake::pow(zero, e));
             } else {
                 // Return the only coefficient raised to the exponent.
-                return ret_t<T &&, U &&>(::piranha::pow(b.cbegin()->second, e));
+                return ret_t<T &&, U &&>(::obake::pow(b.cbegin()->second, e));
             }
         }
 
         // Handle the case of zero exponent: anything to the power
         // of zero is 1.
-        if (::piranha::is_zero(e)) {
+        if (::obake::is_zero(e)) {
             // NOTE: construct directly from 1: 1 is rank 0,
             // construction then forwards 1 to the construction
             // of an internal coefficient.
@@ -1352,19 +1350,19 @@ struct series_default_pow_impl {
                 } else {
                     ::mppp::integer<1> ret;
 
-                    if (piranha_unlikely(!::piranha::safe_convert(ret, e))) {
+                    if (obake_unlikely(!::obake::safe_convert(ret, e))) {
                         if constexpr (is_stream_insertable_v<const rU &>) {
                             // Provide better error message if U is ostreamable.
                             ::std::ostringstream oss;
                             static_cast<::std::ostream &>(oss) << e;
-                            piranha_throw(::std::invalid_argument,
-                                          "Invalid exponent for series exponentiation via repeated "
-                                          "multiplications: the exponent ("
-                                              + oss.str() + ") cannot be converted into an integral value");
+                            obake_throw(::std::invalid_argument,
+                                        "Invalid exponent for series exponentiation via repeated "
+                                        "multiplications: the exponent ("
+                                            + oss.str() + ") cannot be converted into an integral value");
                         } else {
-                            piranha_throw(::std::invalid_argument,
-                                          "Invalid exponent for series exponentiation via repeated "
-                                          "multiplications: the exponent cannot be converted into an integral value");
+                            obake_throw(::std::invalid_argument,
+                                        "Invalid exponent for series exponentiation via repeated "
+                                        "multiplications: the exponent cannot be converted into an integral value");
                         }
                     }
 
@@ -1372,10 +1370,10 @@ struct series_default_pow_impl {
                 }
             }();
 
-            if (piranha_unlikely(n.sgn() < 0)) {
-                piranha_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                       "multiplications: the exponent ("
-                                                           + n.to_string() + ") is negative");
+            if (obake_unlikely(n.sgn() < 0)) {
+                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
+                                                     "multiplications: the exponent ("
+                                                         + n.to_string() + ") is negative");
             }
 
             // NOTE: constructability from 1 is ensured by the
@@ -1389,18 +1387,18 @@ struct series_default_pow_impl {
             // the return type is a series.
             return retval;
         } else {
-            piranha_throw(::std::invalid_argument,
-                          "Cannot compute the power of a series of type '" + ::piranha::type_name<rT>()
-                              + "': the series does not consist of a single coefficient, "
-                                "and exponentiation via repeated multiplications is not possible (either because the "
-                                "exponent cannot be converted to an integral value, or because the series type does "
-                                "not support the necessary arithmetic operations)");
+            obake_throw(::std::invalid_argument,
+                        "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
+                            + "': the series does not consist of a single coefficient, "
+                              "and exponentiation via repeated multiplications is not possible (either because the "
+                              "exponent cannot be converted to an integral value, or because the series type does "
+                              "not support the necessary arithmetic operations)");
         }
     }
 };
 
 template <typename T, typename U>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
 #else
 inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
@@ -1410,7 +1408,7 @@ inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo
 } // namespace customisation::internal
 
 // Identity operator for series.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <CvrSeries T>
 #else
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
@@ -1423,7 +1421,7 @@ inline remove_cvref_t<T> operator+(T &&x)
 namespace detail
 {
 
-// Default implementation of piranha::negate() for series.
+// Default implementation of obake::negate() for series.
 template <typename T>
 inline void series_default_negate_impl(T &&x)
 {
@@ -1437,14 +1435,14 @@ inline void series_default_negate_impl(T &&x)
         // of the single-table layout, if possible.
         // NOTE: this could be parallelised,
         // in case of multiple tables.
-        ::piranha::negate(p.second);
+        ::obake::negate(p.second);
     }
 }
 
 } // namespace detail
 
 // Negated copy operator.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <CvrSeries T>
 #else
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
@@ -1465,7 +1463,7 @@ inline remove_cvref_t<T> operator-(T &&x)
     }
 }
 
-// Customise piranha::negate() for series types.
+// Customise obake::negate() for series types.
 namespace customisation::internal
 {
 
@@ -1478,7 +1476,7 @@ struct series_default_negate_impl {
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     requires CvrSeries<T> && !::std::is_const_v<::std::remove_reference_t<T>> inline constexpr auto negate<T>
 #else
 inline constexpr auto negate<T, ::std::enable_if_t<::std::conjunction_v<
@@ -1488,7 +1486,7 @@ inline constexpr auto negate<T, ::std::enable_if_t<::std::conjunction_v<
 
 } // namespace customisation::internal
 
-// Customise piranha::is_zero() for series types.
+// Customise obake::is_zero() for series types.
 namespace customisation::internal
 {
 
@@ -1501,7 +1499,7 @@ struct series_default_is_zero_impl {
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires CvrSeries<T> inline constexpr auto is_zero<T>
 #else
 inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
@@ -1510,7 +1508,7 @@ inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
 
 } // namespace customisation::internal
 
-// Customise piranha::byte_size() for series types.
+// Customise obake::byte_size() for series types.
 namespace customisation::internal
 {
 
@@ -1544,7 +1542,7 @@ struct series_default_byte_size_impl {
 
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
-                retval += ::piranha::byte_size(k) + ::piranha::byte_size(c)
+                retval += ::obake::byte_size(k) + ::obake::byte_size(c)
                           + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
             }
 
@@ -1558,7 +1556,7 @@ struct series_default_byte_size_impl {
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires CvrSeries<T> &&SizeMeasurable<const series_key_t<remove_cvref_t<T>> &>
     &&SizeMeasurable<const series_cf_t<remove_cvref_t<T>> &> inline constexpr auto byte_size<T>
 #else
@@ -1575,7 +1573,7 @@ namespace detail
 {
 
 // Implementation of the default streaming for a single term.
-PIRANHA_DLL_PUBLIC void series_stream_single_term(::std::string &, ::std::string &, const ::std::string &);
+OBAKE_DLL_PUBLIC void series_stream_single_term(::std::string &, ::std::string &, const ::std::string &);
 
 // Implementation of the default streaming to os of a series' terms.
 template <typename T>
@@ -1606,11 +1604,11 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
 
         // Get the string representations of coefficient and key.
         oss.str("");
-        ::piranha::cf_stream_insert(static_cast<::std::ostream &>(oss), it->second);
+        ::obake::cf_stream_insert(static_cast<::std::ostream &>(oss), it->second);
         auto str_cf = oss.str();
 
         oss.str("");
-        ::piranha::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
+        ::obake::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
         const auto str_key = oss.str();
 
         // Print the term.
@@ -1645,7 +1643,7 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
 
 } // namespace detail
 
-// Customise piranha::cf_stream_insert() for series types.
+// Customise obake::cf_stream_insert() for series types.
 namespace customisation::internal
 {
 
@@ -1665,7 +1663,7 @@ struct series_default_cf_stream_insert_impl {
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires CvrSeries<T> inline constexpr auto cf_stream_insert<T>
 #else
 inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>>
@@ -1677,9 +1675,9 @@ inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>
 namespace customisation
 {
 
-// External customisation point for piranha::series_stream_insert().
+// External customisation point for obake::series_stream_insert().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -1694,12 +1692,12 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_stream_insert<T &&>)(os, ::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_stream_insert<T &&>)(os, ::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
 constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_stream_insert(os, ::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(series_stream_insert(os, ::std::forward<T>(x)));
 
 // Lowest priority: the default implementation for series.
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
@@ -1708,9 +1706,9 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
     using series_t = remove_cvref_t<T>;
 
     // Print the header.
-    os << "Key type        : " << ::piranha::type_name<series_key_t<series_t>>() << '\n';
-    os << "Coefficient type: " << ::piranha::type_name<series_cf_t<series_t>>() << '\n';
-    os << "Tag             : " << ::piranha::type_name<series_tag_t<series_t>>() << '\n';
+    os << "Key type        : " << ::obake::type_name<series_key_t<series_t>>() << '\n';
+    os << "Coefficient type: " << ::obake::type_name<series_cf_t<series_t>>() << '\n';
+    os << "Tag             : " << ::obake::type_name<series_tag_t<series_t>>() << '\n';
     os << "Rank            : " << series_rank<series_t> << '\n';
     os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
     os << "Number of terms : " << s.size() << '\n';
@@ -1725,15 +1723,15 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
 struct series_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&s) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(void(detail::series_stream_insert_impl(os, ::std::forward<T>(s),
-                                                                                  detail::priority_tag<2>{})))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::series_stream_insert_impl(os, ::std::forward<T>(s),
+                                                                                detail::priority_tag<2>{})))
 };
 
 inline constexpr auto series_stream_insert = series_stream_insert_msvc{};
 
 #else
 
-inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) PIRANHA_SS_FORWARD_LAMBDA(
+inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) OBAKE_SS_FORWARD_LAMBDA(
     void(detail::series_stream_insert_impl(os, ::std::forward<decltype(s)>(s), detail::priority_tag<2>{})));
 
 #endif
@@ -1741,20 +1739,20 @@ inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) P
 // NOTE: constrain the operator so that it is enabled
 // only if s is a series. This way, we avoid it to be too
 // greedy.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <CvrSeries S>
 #else
 template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
 #endif
 constexpr auto operator<<(::std::ostream &os, S &&s)
-    PIRANHA_SS_FORWARD_FUNCTION((void(::piranha::series_stream_insert(os, ::std::forward<S>(s))), os));
+    OBAKE_SS_FORWARD_FUNCTION((void(::obake::series_stream_insert(os, ::std::forward<S>(s))), os));
 
 namespace customisation
 {
 
-// External customisation point for piranha::series_add().
+// External customisation point for obake::series_add().
 template <typename T, typename U
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -1769,12 +1767,12 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_add<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_add<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Helper to extend the keys of "from" with the symbol insertion map ins_map.
 // The new series will be written to "to". The coefficient type of "to"
@@ -1818,7 +1816,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
                 auto &c = term.second;
 
                 // Compute the merged key.
-                auto merged_key = ::piranha::key_merge_symbols(k, ins_map, orig_ss);
+                auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
 
                 // Insert the term. We need the following checks:
                 // - zero check, in case the coefficient type changes,
@@ -1845,7 +1843,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
             auto &c = t.second;
 
             // Compute the merged key.
-            auto merged_key = ::piranha::key_merge_symbols(k, ins_map, orig_ss);
+            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
 
             // Insert the term: the only check we may need is check_zero, in case
             // the coefficient type changes. We know that the table size cannot be
@@ -2187,7 +2185,7 @@ inline constexpr int series_default_add_algo = series_default_addsub_algorithm<t
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_default_add_algo<T &&, U &&> != 0, int> = 0>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
@@ -2196,56 +2194,56 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 struct series_add_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_add_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                   detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::series_add_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                 detail::priority_tag<2>{}))
 };
 
 inline constexpr auto series_add = series_add_msvc{};
 
 #else
 
-inline constexpr auto series_add = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+inline constexpr auto series_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     detail::series_add_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
 
 #endif
 
 // Like with operator<<(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
 constexpr auto operator+(T &&x, U &&y)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: for now, implement operator+=() in terms of operator+().
 // This can be optimised later performance-wise.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator+=(T &&x, U &&y)
-        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) + ::std::forward<U>(y));
+        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) + ::std::forward<U>(y));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires !CvrSeries<T> && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator+=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
+    constexpr auto operator+=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
 
-// External customisation point for piranha::series_sub().
+// External customisation point for obake::series_sub().
 template <typename T, typename U
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -2260,12 +2258,12 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_sub<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_sub<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
 inline constexpr int series_default_sub_algo = series_default_addsub_algorithm<false, T, U>.first;
@@ -2273,7 +2271,7 @@ inline constexpr int series_default_sub_algo = series_default_addsub_algorithm<f
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_default_sub_algo<T &&, U &&> != 0, int> = 0>
 constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
@@ -2282,56 +2280,56 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
 struct series_sub_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_sub_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                   detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::series_sub_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                 detail::priority_tag<2>{}))
 };
 
 inline constexpr auto series_sub = series_sub_msvc{};
 
 #else
 
-inline constexpr auto series_sub = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+inline constexpr auto series_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     detail::series_sub_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
 
 #endif
 
 // Like with operator+(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
 constexpr auto operator-(T &&x, U &&y)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: for now, implement operator-=() in terms of operator-().
 // This can be optimised later performance-wise.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator-=(T &&x, U &&y)
-        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) - ::std::forward<U>(y));
+        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) - ::std::forward<U>(y));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires !CvrSeries<T> && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator-=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
+    constexpr auto operator-=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
 
 namespace customisation
 {
 
-// External customisation point for piranha::series_mul().
+// External customisation point for obake::series_mul().
 template <typename T, typename U
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -2346,12 +2344,12 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_mul<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_mul<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_mul(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(series_mul(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Meta-programming to establish the algorithm and return type
 // of the default implementation of series mul. It will return
@@ -2457,7 +2455,7 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
 
         // If either a or b is zero, return an
         // empty series.
-        if (::piranha::is_zero(::std::as_const(a)) || ::piranha::is_zero(::std::as_const(b))) {
+        if (::obake::is_zero(::std::as_const(a)) || ::obake::is_zero(::std::as_const(b))) {
             return ret_t{};
         }
 
@@ -2486,7 +2484,7 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
                     c *= ::std::as_const(b);
                     // Check if the coefficient became zero
                     // after the multiplication.
-                    if (piranha_unlikely(::piranha::is_zero(::std::as_const(c)))) {
+                    if (obake_unlikely(::obake::is_zero(::std::as_const(c)))) {
                         v_keys.push_back(k);
                     }
                 }
@@ -2521,7 +2519,7 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_default_mul_algo<T &&, U &&> != 0, int> = 0>
 constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_mul_impl(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_mul_impl(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
@@ -2530,56 +2528,56 @@ constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<0>)
 struct series_mul_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_mul_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                   detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::series_mul_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                 detail::priority_tag<2>{}))
 };
 
 inline constexpr auto series_mul = series_mul_msvc{};
 
 #else
 
-inline constexpr auto series_mul = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+inline constexpr auto series_mul = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     detail::series_mul_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
 
 #endif
 
 // Like with operator+(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
 constexpr auto operator*(T &&x, U &&y)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_mul(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::series_mul(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: for now, implement operator*=() in terms of operator*().
 // This can be optimised later performance-wise.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator*=(T &&x, U &&y)
-        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) * ::std::forward<U>(y));
+        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) * ::std::forward<U>(y));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires !CvrSeries<T> && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator*=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
+    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
 
 namespace customisation
 {
 
-// External customisation point for piranha::series_div().
+// External customisation point for obake::series_div().
 template <typename T, typename U
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -2594,12 +2592,12 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto series_div_impl(T &&x, U &&y, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_div<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_div<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto series_div_impl(T &&x, U &&y, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_div(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(series_div(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Meta-programming to establish the algorithm and return type
 // of the default implementation of series div. It will return
@@ -2685,7 +2683,7 @@ inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y
 
                 c /= ::std::as_const(y);
 
-                if (piranha_unlikely(::piranha::is_zero(::std::as_const(c)))) {
+                if (obake_unlikely(::obake::is_zero(::std::as_const(c)))) {
                     // NOTE: abseil's flat_hash_map returns void on erase(),
                     // thus we need to increase 'it' before possibly erasing.
                     // erase() does not cause rehash and thus will not invalidate
@@ -2711,7 +2709,7 @@ inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y
 // Lowest priority: the default implementation for series.
 template <typename T, typename U, ::std::enable_if_t<series_default_div_algo<T &&, U &&> != 0, int> = 0>
 constexpr auto series_div_impl(T &&x, U &&y, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::series_default_div_impl(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_div_impl(::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
@@ -2720,56 +2718,56 @@ constexpr auto series_div_impl(T &&x, U &&y, priority_tag<0>)
 struct series_div_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::series_div_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                   detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::series_div_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                 detail::priority_tag<2>{}))
 };
 
 inline constexpr auto series_div = series_div_msvc{};
 
 #else
 
-inline constexpr auto series_div = [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(
+inline constexpr auto series_div = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     detail::series_div_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
 
 #endif
 
 // Like with operator+(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
 constexpr auto operator/(T &&x, U &&y)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_div(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::series_div(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: for now, implement operator/=() in terms of operator/().
 // This can be optimised later performance-wise.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator/=(T &&x, U &&y)
-        PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) / ::std::forward<U>(y));
+        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) / ::std::forward<U>(y));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires !CvrSeries<T> && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator/=(T &&x, U &&y) PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
+    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {
 
-// External customisation point for piranha::series_equal_to().
+// External customisation point for obake::series_equal_to().
 template <typename T, typename U
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -2784,13 +2782,12 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::series_equal_to<T &&, U &&>)(::std::forward<T>(x),
-                                                                             ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_equal_to<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
 constexpr int series_equal_to_algorithm_impl()
@@ -2951,13 +2948,13 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             switch (lhs.size()) {
                 case 0u:
                     // An empty series is considered equal to zero.
-                    return ::piranha::is_zero(rhs);
+                    return ::obake::is_zero(rhs);
                 case 1u: {
                     // lhs has a single term: if its key is unitary
                     // and its coefficient equal to rhs, return true,
                     // otherwise return false.
                     const auto it = lhs.begin();
-                    return ::piranha::key_is_one(it->first, lhs.get_symbol_set()) && it->second == rhs;
+                    return ::obake::key_is_one(it->first, lhs.get_symbol_set()) && it->second == rhs;
                 }
                 default:
                     // lhs has more than 1 term, return false.
@@ -2981,7 +2978,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 
 struct series_equal_to_msvc {
     template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
+    constexpr auto operator()(T &&x, U &&y) const OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
         detail::series_equal_to_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
 };
 
@@ -2992,30 +2989,30 @@ inline constexpr auto series_equal_to = series_equal_to_msvc{};
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
 inline constexpr auto series_equal_to =
-    [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::series_equal_to_impl(
+    [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(static_cast<bool>(detail::series_equal_to_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
 constexpr auto operator==(T &&x, U &&y)
-    PIRANHA_SS_FORWARD_FUNCTION(::piranha::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
 #endif
 constexpr auto operator!=(T &&x, U &&y)
-    PIRANHA_SS_FORWARD_FUNCTION(!::piranha::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(!::obake::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
-// Customise piranha::degree() for series types.
+// Customise obake::degree() for series types.
 namespace customisation::internal
 {
 
@@ -3133,13 +3130,13 @@ struct series_default_degree_impl {
 
             if constexpr (al == 1) {
                 // Both coefficient and key with degree.
-                return ::piranha::key_degree(p.first, *ss) + ::piranha::degree(p.second);
+                return ::obake::key_degree(p.first, *ss) + ::obake::degree(p.second);
             } else if constexpr (al == 2) {
                 // Only coefficient with degree.
-                return ::piranha::degree(p.second);
+                return ::obake::degree(p.second);
             } else {
                 // Only key with degree.
-                return ::piranha::key_degree(p.first, *ss);
+                return ::obake::key_degree(p.first, *ss);
             }
         }
         template <typename U>
@@ -3183,7 +3180,7 @@ struct series_default_degree_impl {
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     requires series_default_degree_impl::algo<T> != 0 inline constexpr auto degree<T>
 #else
 inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
@@ -3192,7 +3189,7 @@ inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::a
 
 } // namespace customisation::internal
 
-// Customise piranha::p_degree() for series types.
+// Customise obake::p_degree() for series types.
 namespace customisation::internal
 {
 
@@ -3227,13 +3224,13 @@ struct series_default_p_degree_impl {
 
             if constexpr (al == 1) {
                 // Both coefficient and key with partial degree.
-                return ::piranha::key_p_degree(p.first, *si, *ss) + ::piranha::p_degree(p.second, *s);
+                return ::obake::key_p_degree(p.first, *si, *ss) + ::obake::p_degree(p.second, *s);
             } else if constexpr (al == 2) {
                 // Only coefficient with partial degree.
-                return ::piranha::p_degree(p.second, *s);
+                return ::obake::p_degree(p.second, *s);
             } else {
                 // Only key with degree.
-                return ::piranha::key_p_degree(p.first, *si, *ss);
+                return ::obake::key_p_degree(p.first, *si, *ss);
             }
         }
         template <typename U>
@@ -3287,7 +3284,7 @@ struct series_default_p_degree_impl {
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     requires series_default_p_degree_impl::algo<T> != 0 inline constexpr auto p_degree<T>
 #else
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
@@ -3362,7 +3359,7 @@ struct series_default_evaluate_impl {
         // Compute the intersection between sm and ss.
         const auto si = detail::sm_intersect_idx(sm, ss);
 
-        if (piranha_unlikely(si.size() != ss.size())) {
+        if (obake_unlikely(si.size() != ss.size())) {
             // If the intersection does not contain the same
             // number of elements as ss, then it means that
             // elements in ss are missing from sm.
@@ -3375,7 +3372,7 @@ struct series_default_evaluate_impl {
                 }
             };
 
-            piranha_throw(
+            obake_throw(
                 ::std::invalid_argument,
                 "Cannot evaluate a series: the evaluation map, which contains the symbols "
                     + detail::to_string(symbol_set(::boost::container::ordered_unique_range_t{},
@@ -3398,7 +3395,7 @@ struct series_default_evaluate_impl {
 
                 // NOTE: there's an opportunity for fma3 here,
                 // but I am not sure it's worth the hassle.
-                retval += ::piranha::key_evaluate(k, si, ss) * ::piranha::evaluate(c, sm);
+                retval += ::obake::key_evaluate(k, si, ss) * ::obake::evaluate(c, sm);
             }
         }
 
@@ -3407,7 +3404,7 @@ struct series_default_evaluate_impl {
 };
 
 template <typename T, typename U>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     requires series_default_evaluate_impl::algo<T, U> != 0 inline constexpr auto evaluate<T, U>
 #else
 inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
@@ -3416,6 +3413,6 @@ inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_
 
 } // namespace customisation::internal
 
-} // namespace piranha
+} // namespace obake
 
 #endif

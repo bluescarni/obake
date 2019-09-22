@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)::polynomials
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
-#define PIRANHA_POLYNOMIALS_PACKED_MONOMIAL_HPP
+#ifndef OBAKE_POLYNOMIALS_PACKED_MONOMIAL_HPP
+#define OBAKE_POLYNOMIALS_PACKED_MONOMIAL_HPP
 
 #include <algorithm>
 #include <cassert>
@@ -22,29 +22,29 @@
 
 #include <mp++/integer.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/ignore.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/mppp_utils.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/detail/type_c.hpp>
-#include <piranha/exceptions.hpp>
-#include <piranha/k_packing.hpp>
-#include <piranha/math/pow.hpp>
-#include <piranha/math/safe_cast.hpp>
-#include <piranha/math/safe_convert.hpp>
-#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
-#include <piranha/ranges.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/ignore.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/mppp_utils.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/detail/type_c.hpp>
+#include <obake/exceptions.hpp>
+#include <obake/k_packing.hpp>
+#include <obake/math/pow.hpp>
+#include <obake/math/safe_cast.hpp>
+#include <obake/math/safe_convert.hpp>
+#include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/ranges.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace polynomials
 {
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <KPackable T>
 #else
 template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
@@ -62,7 +62,7 @@ public:
     // Constructor from value.
     constexpr explicit packed_monomial(const T &n) : m_value(n) {}
     // Constructor from input iterator and size.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
     requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
 #else
@@ -76,7 +76,7 @@ public:
     {
         k_packer<T> kp(n);
         for (auto i = 0u; i < n; ++i, ++it) {
-            kp << ::piranha::safe_cast<T>(*it);
+            kp << ::obake::safe_cast<T>(*it);
         }
         m_value = kp.get();
     }
@@ -87,16 +87,16 @@ private:
     template <typename It>
     constexpr explicit packed_monomial(fwd_it_ctor_tag, It b, It e)
     {
-        k_packer<T> kp(::piranha::safe_cast<unsigned>(::std::distance(b, e)));
+        k_packer<T> kp(::obake::safe_cast<unsigned>(::std::distance(b, e)));
         for (; b != e; ++b) {
-            kp << ::piranha::safe_cast<T>(*b);
+            kp << ::obake::safe_cast<T>(*b);
         }
         m_value = kp.get();
     }
 
 public:
     // Ctor from a pair of forward iterators.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
     requires ForwardIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::difference_type, unsigned> &&
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
@@ -112,7 +112,7 @@ public:
     {
     }
     // Ctor from forward range.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename Range>
     requires ForwardRange<Range> &&
         SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::difference_type, unsigned> &&
@@ -128,12 +128,12 @@ public:
             int> = 0>
 #endif
         constexpr explicit packed_monomial(Range &&r)
-        : packed_monomial(fwd_it_ctor_tag{}, ::piranha::begin(::std::forward<Range>(r)),
-                          ::piranha::end(::std::forward<Range>(r)))
+        : packed_monomial(fwd_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
+                          ::obake::end(::std::forward<Range>(r)))
     {
     }
     // Ctor from init list.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename U>
     requires SafelyCastable<const U &, T>
 #else
@@ -214,14 +214,14 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
     // For non-unitary packing, we have to check that:
     // - the size of the symbol set is not too large,
     // - the current encoded value is within the limits.
-    if (s_size > ::piranha::detail::k_packing_get_max_size<T>()) {
+    if (s_size > ::obake::detail::k_packing_get_max_size<T>()) {
         return false;
     }
 
     // The size of the symbol set is at least 2 and within the
     // limits. Check the encoded value.
     // NOTE: static cast is fine, s_size is within the limits.
-    const auto &e_lim = ::piranha::detail::k_packing_get_elimits<T>(static_cast<unsigned>(s_size));
+    const auto &e_lim = ::obake::detail::k_packing_get_elimits<T>(static_cast<unsigned>(s_size));
     if constexpr (is_signed_v<T>) {
         return m.get_value() >= e_lim[0] && m.get_value() <= e_lim[1];
     } else {
@@ -261,7 +261,7 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
             if (tmp != T(1)) {
                 // The exponent is not unitary,
                 // print it.
-                os << "**" << ::piranha::detail::to_string(tmp);
+                os << "**" << ::obake::detail::to_string(tmp);
             }
         }
     }
@@ -291,9 +291,9 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     for (const auto &p : ins_map) {
         const auto tmp_size = p.second.size();
         // LCOV_EXCL_START
-        if (piranha_unlikely(tmp_size > ::piranha::detail::limits_max<decltype(s.size())> - merged_size)) {
-            piranha_throw(::std::overflow_error, "Overflow while trying to merge new symbols in a packed monomial: the "
-                                                 "size of the merged monomial is too large");
+        if (obake_unlikely(tmp_size > ::obake::detail::limits_max<decltype(s.size())> - merged_size)) {
+            obake_throw(::std::overflow_error, "Overflow while trying to merge new symbols in a packed monomial: the "
+                                               "size of the merged monomial is too large");
         }
         // LCOV_EXCL_STOP
         merged_size += tmp_size;
@@ -303,7 +303,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     // NOTE: we know s.size() is small enough thanks to the
     // assertion at the beginning.
     k_unpacker<T> ku(m.get_value(), static_cast<unsigned>(s.size()));
-    k_packer<T> kp(::piranha::safe_cast<unsigned>(merged_size));
+    k_packer<T> kp(::obake::safe_cast<unsigned>(merged_size));
 
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
@@ -313,7 +313,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
             // insert new elements. Insert as many
             // zeroes as necessary in the packer.
             for (const auto &_ : map_it->second) {
-                ::piranha::detail::ignore(_);
+                ::obake::detail::ignore(_);
                 kp << T(0);
             }
             // Move to the next element in the map.
@@ -328,7 +328,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     // We could still have symbols which need to be appended at the end.
     if (map_it != map_end) {
         for (const auto &_ : map_it->second) {
-            ::piranha::detail::ignore(_);
+            ::obake::detail::ignore(_);
             kp << T(0);
         }
         assert(map_it + 1 == map_end);
@@ -377,7 +377,7 @@ inline constexpr bool same_packed_monomial_v = same_packed_monomial<T, U>::value
 // - a good heuristic (should not be too difficult given
 //   the constraints on packed_monomial),
 // - the random-access iterator concept.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
 requires InputRange<R1> &&InputRange<R2> &&
     detail::same_packed_monomial_v<remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
@@ -407,10 +407,10 @@ template <typename R1, typename R2,
     }
 
     // Get out the begin/end iterators.
-    auto b1 = ::piranha::begin(::std::forward<R1>(r1));
-    const auto e1 = ::piranha::end(::std::forward<R1>(r1));
-    auto b2 = ::piranha::begin(::std::forward<R2>(r2));
-    const auto e2 = ::piranha::end(::std::forward<R2>(r2));
+    auto b1 = ::obake::begin(::std::forward<R1>(r1));
+    const auto e1 = ::obake::end(::std::forward<R1>(r1));
+    auto b2 = ::obake::begin(::std::forward<R2>(r2));
+    const auto e2 = ::obake::end(::std::forward<R2>(r2));
 
     if (b1 == e1 || b2 == e2) {
         // If either range is empty, there will be no
@@ -419,7 +419,7 @@ template <typename R1, typename R2,
     }
 
     // Fetch the delta bit width from the size.
-    const auto nbits = ::piranha::detail::k_packing_size_to_bits<value_type>(s_size);
+    const auto nbits = ::obake::detail::k_packing_size_to_bits<value_type>(s_size);
 
     // Prepare the limits vectors.
     auto [limits1, limits2] = [s_size]() {
@@ -516,17 +516,15 @@ template <typename R1, typename R2,
             // NOTE: need to special-case s_size == 1, in which case
             // the component limits are the full numerical range of the type.
             const auto lim_min
-                = s_size == 1u
-                      ? ::piranha::detail::limits_min<value_type>
-                      : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[0];
+                = s_size == 1u ? ::obake::detail::limits_min<value_type>
+                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[0];
             const auto lim_max
-                = s_size == 1u
-                      ? ::piranha::detail::limits_max<value_type>
-                      : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[1];
+                = s_size == 1u ? ::obake::detail::limits_max<value_type>
+                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[1];
 
             // NOTE: an overflow condition will likely result in an exception
             // or some other error handling. Optimise for the non-overflow case.
-            if (piranha_unlikely(add_min < lim_min || add_max > lim_max)) {
+            if (obake_unlikely(add_min < lim_min || add_max > lim_max)) {
                 return false;
             }
         }
@@ -536,10 +534,10 @@ template <typename R1, typename R2,
 
             // NOTE: like above, special-case s_size == 1.
             const auto lim_max
-                = s_size == 1u ? ::piranha::detail::limits_max<value_type>
-                               : ::piranha::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+                = s_size == 1u ? ::obake::detail::limits_max<value_type>
+                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
-            if (piranha_unlikely(add_max > lim_max)) {
+            if (obake_unlikely(add_max > lim_max)) {
                 return false;
             }
         }
@@ -599,7 +597,7 @@ inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, con
 // Monomial exponentiation.
 // NOTE: this assumes that p is compatible with ss.
 template <typename T, typename U,
-          ::std::enable_if_t<::std::disjunction_v<::piranha::detail::is_mppp_integer<U>,
+          ::std::enable_if_t<::std::disjunction_v<::obake::detail::is_mppp_integer<U>,
                                                   is_safely_convertible<const U &, ::mppp::integer<1> &>>,
                              int> = 0>
 inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, const symbol_set &ss)
@@ -612,22 +610,22 @@ inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, 
     // NOTE: exp will be a const ref if n is already
     // an mppp integer, a new value otherwise.
     decltype(auto) exp = [&n]() -> decltype(auto) {
-        if constexpr (::piranha::detail::is_mppp_integer_v<U>) {
+        if constexpr (::obake::detail::is_mppp_integer_v<U>) {
             return n;
         } else {
             ::mppp::integer<1> ret;
 
-            if (piranha_unlikely(!::piranha::safe_convert(ret, n))) {
+            if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
                     // Provide better error message if U is ostreamable.
                     ::std::ostringstream oss;
                     static_cast<::std::ostream &>(oss) << n;
-                    piranha_throw(::std::invalid_argument,
-                                  "Invalid exponent for monomial exponentiation: the exponent (" + oss.str()
-                                      + ") cannot be converted into an integral value");
+                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent ("
+                                                             + oss.str()
+                                                             + ") cannot be converted into an integral value");
                 } else {
-                    piranha_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
-                                                           "cannot be converted into an integral value");
+                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
+                                                         "cannot be converted into an integral value");
                 }
             }
 
@@ -657,11 +655,11 @@ namespace detail
 template <typename T, typename U>
 constexpr auto pm_key_evaluate_algorithm_impl()
 {
-    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::piranha::detail::type_c<void>{});
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
     // Test exponentiability via const lvalue refs.
     if constexpr (is_exponentiable_v<::std::add_lvalue_reference_t<const U>, ::std::add_lvalue_reference_t<const T>>) {
-        using ret_t = ::piranha::detail::pow_t<const U &, const T &>;
+        using ret_t = ::obake::detail::pow_t<const U &, const T &>;
 
         // We will need to construct the return value from 1,
         // multiply it in-place and then return it.
@@ -670,7 +668,7 @@ constexpr auto pm_key_evaluate_algorithm_impl()
                                            // lvalue by an rvalue.
                                            is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
                                            is_returnable<ret_t>>) {
-            return ::std::make_pair(1, ::piranha::detail::type_c<ret_t>{});
+            return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
         } else {
             return failure;
         }
@@ -713,7 +711,7 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
     // Accumulate the result.
     for (const auto &pr : sm) {
         ku >> tmp;
-        retval *= ::piranha::pow(pr.second, ::std::as_const(tmp));
+        retval *= ::obake::pow(pr.second, ::std::as_const(tmp));
     }
 
     return retval;
@@ -721,7 +719,7 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
 
 } // namespace polynomials
 
-// Lift to the piranha namespace.
+// Lift to the obake namespace.
 template <typename T>
 using packed_monomial = polynomials::packed_monomial<T>;
 
@@ -729,6 +727,6 @@ using packed_monomial = polynomials::packed_monomial<T>;
 template <typename T>
 inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
 
-} // namespace piranha
+} // namespace obake
 
 #endif

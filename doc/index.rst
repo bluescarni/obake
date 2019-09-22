@@ -1,4 +1,4 @@
-.. piranha documentation master file, created by
+.. obake documentation master file, created by
    sphinx-quickstart on Tue Jan  8 08:53:28 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.

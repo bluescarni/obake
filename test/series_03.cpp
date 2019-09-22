@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -13,26 +13,26 @@
 #include <mp++/exceptions.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/byte_size.hpp>
-#include <piranha/config.hpp>
-#include <piranha/math/degree.hpp>
-#include <piranha/math/p_degree.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/polynomials/polynomial.hpp>
-#include <piranha/series.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/byte_size.hpp>
+#include <obake/config.hpp>
+#include <obake/math/degree.hpp>
+#include <obake/math/p_degree.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
+#include <obake/series.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
 using rat_t = mppp::rational<1>;
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("series_byte_size")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
@@ -303,18 +303,18 @@ using s1_t = series<pm_t, rat_t, tag01>;
 
 } // namespace ns
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ns::s1_t> inline constexpr auto series_div<T, T>
 #else
 inline constexpr auto series_div<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
 #endif
     = [](const auto &, const auto &) { return false; };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 // Customisation points.
 TEST_CASE("series_div_customisation")
@@ -349,7 +349,7 @@ TEST_CASE("series_div")
     REQUIRE(((x * x + y * y) * z + 1) / 4 == ((x * x + y * y) * z + 1) * rat_t{1, 4});
     REQUIRE(std::is_same_v<polynomial<pm_t, s2_t>, decltype(((x * x + y * y) * z + 1) / 4.)>);
 
-    PIRANHA_REQUIRES_THROWS_CONTAINS(x / 0, mppp::zero_division_error, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(x / 0, mppp::zero_division_error, "");
 
     REQUIRE(std::is_same_v<s2_t, decltype(s1_t{} / 3.)>);
     REQUIRE((s2_t{} / 3.).empty());

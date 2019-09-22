@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -10,12 +10,12 @@
 #include <future>
 #include <iostream>
 
-#include <piranha/stack_trace.hpp>
+#include <obake/stack_trace.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 auto foo()
 {
@@ -64,7 +64,7 @@ TEST_CASE("stack_trace")
     REQUIRE(foo() != "<Stack trace generation has been disabled at runtime>");
 
     // Disable slow stack trace generation from now on.
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     std::cout << bar<100>() << '\n';
     REQUIRE(!bar<100>().empty());

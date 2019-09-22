@@ -1,21 +1,21 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_TUPLE_FOR_EACH_HPP
-#define PIRANHA_DETAIL_TUPLE_FOR_EACH_HPP
+#ifndef OBAKE_DETAIL_TUPLE_FOR_EACH_HPP
+#define OBAKE_DETAIL_TUPLE_FOR_EACH_HPP
 
 #include <cstddef>
 #include <tuple>
 #include <utility>
 
-#include <piranha/type_traits.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 // NOTE: MSVC2015 and earlier don't have std::apply().
@@ -62,6 +62,6 @@ inline void tuple_for_each(Tuple &&tup, F &&f)
 
 #endif
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
 #endif

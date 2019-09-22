@@ -8,7 +8,7 @@ Installation
 Requirements
 ------------
 
-Currently, piranha has the following mandatory dependencies:
+Currently, obake has the following mandatory dependencies:
 
 * the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.17),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least verion 1.65),
@@ -50,14 +50,14 @@ on a Unix-like system:
 
 .. code-block:: console
 
-   $ cd /path/to/piranha
+   $ cd /path/to/obake
    $ mkdir build
    $ cd build
 
 Next, we will invoke ``cmake`` to configure the build. The following options
 are currently recognised by Piranha's build system:
 
-* ``PIRANHA_WITH_LIBBACKTRACE``: use the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
+* ``OBAKE_WITH_LIBBACKTRACE``: use the `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   library to improve the quality of the stack traces in Unix-like
   environments. On some Linux
   distributions, such as Ubuntu, libbacktrace is built into the GCC
@@ -65,7 +65,7 @@ are currently recognised by Piranha's build system:
   installed as a standalone library. Note that libbacktrace currently does not
   work on Windows (unless MinGW is being used as a compiler) and OSX.
   Defaults to ``OFF``.
-* ``PIRANHA_BUILD_TESTS``: build the test suite. Defaults to ``OFF``.
+* ``OBAKE_BUILD_TESTS``: build the test suite. Defaults to ``OFF``.
 
 Additionally, there are various useful CMake variables you can set, such as:
 
@@ -83,7 +83,7 @@ A typical CMake invocation for Piranha may look something like this:
 
 .. code-block:: console
 
-   $ cmake ../ -DPIRANHA_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=~/.local
+   $ cmake ../ -DOBAKE_BUILD_TESTS=ON -DCMAKE_INSTALL_PREFIX=~/.local
 
 That is, we build the test suite and we
 will be installing Piranha into our home directory into the ``.local``

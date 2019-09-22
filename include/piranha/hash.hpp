@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_HASH_HPP
-#define PIRANHA_HASH_HPP
+#ifndef OBAKE_HASH_HPP
+#define OBAKE_HASH_HPP
 
 #include <cstddef>
 #include <functional>
@@ -15,21 +15,21 @@
 #include <type_traits>
 #include <utility>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/detail/priority_tag.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/detail/priority_tag.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace customisation
 {
 
-// External customisation point for piranha::hash().
+// External customisation point for obake::hash().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -44,11 +44,11 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::hash<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::hash<T &&>)(::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto hash_impl(T &&x, priority_tag<1>) PIRANHA_SS_FORWARD_FUNCTION(hash(::std::forward<T>(x)));
+constexpr auto hash_impl(T &&x, priority_tag<1>) OBAKE_SS_FORWARD_FUNCTION(hash(::std::forward<T>(x)));
 
 // Lowest priority: try to use std::hash.
 // NOTE: MSVC 2015 and earlier don't have a poisoned std::hash:
@@ -69,7 +69,7 @@ constexpr ::std::size_t hash_impl(T &&x, priority_tag<0>)
 
 template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x)));
 
 #endif
 
@@ -80,7 +80,7 @@ using hash_impl_ret_t = decltype(detail::hash_impl(::std::declval<T>(), priority
 
 template <typename T, ::std::enable_if_t<::std::is_same_v<detected_t<hash_impl_ret_t, T>, ::std::size_t>, int> = 0>
 constexpr auto hash_impl_with_ret_check(T &&x)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::hash_impl(::std::forward<T>(x), priority_tag<2>{}));
+    OBAKE_SS_FORWARD_FUNCTION(detail::hash_impl(::std::forward<T>(x), priority_tag<2>{}));
 
 } // namespace detail
 
@@ -89,7 +89,7 @@ constexpr auto hash_impl_with_ret_check(T &&x)
 struct hash_msvc {
     template <typename T>
     constexpr auto operator()(T &&x) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::hash_impl_with_ret_check(::std::forward<T>(x)))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::hash_impl_with_ret_check(::std::forward<T>(x)))
 };
 
 inline constexpr auto hash = hash_msvc{};
@@ -97,7 +97,7 @@ inline constexpr auto hash = hash_msvc{};
 #else
 
 inline constexpr auto hash =
-    [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::hash_impl_with_ret_check(::std::forward<decltype(x)>(x)));
+    [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::hash_impl_with_ret_check(::std::forward<decltype(x)>(x)));
 
 #endif
 
@@ -105,7 +105,7 @@ namespace detail
 {
 
 template <typename T>
-using hash_t = decltype(::piranha::hash(::std::declval<T>()));
+using hash_t = decltype(::obake::hash(::std::declval<T>()));
 
 }
 
@@ -115,16 +115,16 @@ using is_hashable = is_detected<detail::hash_t, T>;
 template <typename T>
 inline constexpr bool is_hashable_v = is_hashable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Hashable = requires(T &&x)
+OBAKE_CONCEPT_DECL Hashable = requires(T &&x)
 {
-    ::piranha::hash(::std::forward<T>(x));
+    ::obake::hash(::std::forward<T>(x));
 };
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

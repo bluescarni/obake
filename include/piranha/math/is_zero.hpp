@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_MATH_IS_ZERO_HPP
-#define PIRANHA_MATH_IS_ZERO_HPP
+#ifndef OBAKE_MATH_IS_ZERO_HPP
+#define OBAKE_MATH_IS_ZERO_HPP
 
 #include <utility>
 
@@ -21,21 +21,21 @@
 
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/detail/priority_tag.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/detail/priority_tag.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace customisation
 {
 
-// External customisation point for piranha::is_zero().
+// External customisation point for obake::is_zero().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -45,9 +45,9 @@ inline constexpr auto is_zero = not_implemented;
 namespace internal
 {
 
-// Internal customisation point for piranha::is_zero().
+// Internal customisation point for obake::is_zero().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -75,16 +75,16 @@ inline bool is_zero(const ::mppp::real &r)
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, priority_tag<3>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::is_zero<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::is_zero<T &&>)(::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto is_zero_impl(T &&x, priority_tag<2>) PIRANHA_SS_FORWARD_FUNCTION(is_zero(::std::forward<T>(x)));
+constexpr auto is_zero_impl(T &&x, priority_tag<2>) OBAKE_SS_FORWARD_FUNCTION(is_zero(::std::forward<T>(x)));
 
 // Explicit override in the internal customisation namespace.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::is_zero<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::is_zero<T &&>)(::std::forward<T>(x)));
 
 // Lowest-priority: implementation based on the comparison operator and construction from the zero
 // integral constant.
@@ -92,7 +92,7 @@ constexpr auto is_zero_impl(T &&x, priority_tag<1>)
 // the precedence.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, priority_tag<0>)
-    PIRANHA_SS_FORWARD_FUNCTION(::std::forward<T>(x) == remove_cvref_t<T>(0));
+    OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) == remove_cvref_t<T>(0));
 
 } // namespace detail
 
@@ -101,8 +101,8 @@ constexpr auto is_zero_impl(T &&x, priority_tag<0>)
 struct is_zero_msvc {
     template <typename T>
     constexpr auto operator()(T &&x) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::is_zero_impl(::std::forward<T>(x),
-                                                                                  detail::priority_tag<3>{})))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::is_zero_impl(::std::forward<T>(x),
+                                                                                detail::priority_tag<3>{})))
 };
 
 inline constexpr auto is_zero = is_zero_msvc{};
@@ -111,7 +111,7 @@ inline constexpr auto is_zero = is_zero_msvc{};
 
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
-inline constexpr auto is_zero = [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(
+inline constexpr auto is_zero = [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<bool>(detail::is_zero_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})));
 
 #endif
@@ -120,7 +120,7 @@ namespace detail
 {
 
 template <typename T>
-using is_zero_t = decltype(::piranha::is_zero(::std::declval<T>()));
+using is_zero_t = decltype(::obake::is_zero(::std::declval<T>()));
 
 }
 
@@ -130,16 +130,16 @@ using is_zero_testable = is_detected<detail::is_zero_t, T>;
 template <typename T>
 inline constexpr bool is_zero_testable_v = is_zero_testable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL ZeroTestable = requires(T &&x)
+OBAKE_CONCEPT_DECL ZeroTestable = requires(T &&x)
 {
-    ::piranha::is_zero(::std::forward<T>(x));
+    ::obake::is_zero(::std::forward<T>(x));
 };
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

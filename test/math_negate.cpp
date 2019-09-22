@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -17,13 +17,13 @@
 #include <mp++/real.hpp>
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/math/negate.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/math/negate.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("negate_arith")
 {
@@ -36,7 +36,7 @@ TEST_CASE("negate_arith")
     REQUIRE(!is_negatable_v<const int &>);
     REQUIRE(!is_negatable_v<const char &>);
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE(is_negatable_v<__int128_t>);
     REQUIRE(is_negatable_v<__uint128_t>);
     REQUIRE(is_negatable_v<__int128_t &&>);
@@ -45,7 +45,7 @@ TEST_CASE("negate_arith")
     REQUIRE(is_negatable_v<__int128_t &>);
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Negatable<void>);
     REQUIRE(Negatable<float>);
     REQUIRE(Negatable<int>);
@@ -55,7 +55,7 @@ TEST_CASE("negate_arith")
     REQUIRE(!Negatable<const int &>);
     REQUIRE(!Negatable<const char &>);
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE(Negatable<__int128_t>);
     REQUIRE(Negatable<__uint128_t>);
     REQUIRE(Negatable<__int128_t &&>);
@@ -87,7 +87,7 @@ TEST_CASE("negate_arith")
     REQUIRE(&negate(x) == &x);
     REQUIRE(x == -6.);
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
 
     auto nn = __int128_t(5);
     REQUIRE(&negate(nn) == &nn);
@@ -171,11 +171,11 @@ struct ext00 {
 struct int00 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext00> inline constexpr auto negate<T>
 #else
 inline constexpr auto negate<T, std::enable_if_t<is_same_cvr_v<T, ext00>>>
@@ -186,7 +186,7 @@ namespace internal
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, int00> inline constexpr auto negate<T>
 #else
 inline constexpr auto negate<T, std::enable_if_t<is_same_cvr_v<T, int00>>>
@@ -195,7 +195,7 @@ inline constexpr auto negate<T, std::enable_if_t<is_same_cvr_v<T, int00>>>
 
 } // namespace internal
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("negate_customisation")
 {
@@ -232,7 +232,7 @@ TEST_CASE("negate_customisation")
     REQUIRE(is_negatable_v<const int00 &&>);
     REQUIRE(is_negatable_v<const int00 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
     REQUIRE(!Negatable<noadl00>);
     REQUIRE(!Negatable<noadl00 &>);

@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_MATH_SAFE_CONVERT_HPP
-#define PIRANHA_MATH_SAFE_CONVERT_HPP
+#ifndef OBAKE_MATH_SAFE_CONVERT_HPP
+#define OBAKE_MATH_SAFE_CONVERT_HPP
 
 #include <cstddef>
 #include <type_traits>
@@ -16,22 +16,22 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/detail/priority_tag.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/detail/priority_tag.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace customisation
 {
 
-// External customisation point for piranha::safe_convert().
+// External customisation point for obake::safe_convert().
 template <typename T, typename U
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -44,7 +44,7 @@ namespace detail
 {
 
 // Implementation for C++ integrals.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
     requires Integral<T> && !::std::is_const_v<T> && Integral<U>
 #else
@@ -109,7 +109,7 @@ template <typename T, typename U,
 }
 
 // Implementations for mppp::integer - C++ integrals.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <::std::size_t SSize, Integral T>
 #else
 template <::std::size_t SSize, typename T, ::std::enable_if_t<is_integral_v<T>, int> = 0>
@@ -120,7 +120,7 @@ inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
     return true;
 }
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
 requires Integral<T> && !::std::is_const_v<T>
 #else
@@ -157,23 +157,23 @@ inline bool safe_convert(::mppp::rational<SSize> &q, const ::mppp::integer<SSize
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<2>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::safe_convert<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::safe_convert<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
 constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION(safe_convert(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(safe_convert(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Lowest priority: it will assign y to x, but only if T and U are the same type,
 // after the removal of reference and cv qualifiers.
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires ::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>, int> = 0>
 #endif
     constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
-        PIRANHA_SS_FORWARD_FUNCTION((void(::std::forward<T>(x) = ::std::forward<U>(y)), true));
+        OBAKE_SS_FORWARD_FUNCTION((void(::std::forward<T>(x) = ::std::forward<U>(y)), true));
 
 } // namespace detail
 
@@ -181,7 +181,7 @@ template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvr
 
 struct safe_convert_msvc {
     template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const PIRANHA_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
+    constexpr auto operator()(T &&x, U &&y) const OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
         detail::safe_convert_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
 };
 
@@ -190,7 +190,7 @@ inline constexpr auto safe_convert = safe_convert_msvc{};
 #else
 
 inline constexpr auto safe_convert =
-    [](auto &&x, auto &&y) PIRANHA_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
+    [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 #endif
@@ -199,7 +199,7 @@ namespace detail
 {
 
 template <typename T, typename U>
-using safe_convert_t = decltype(::piranha::safe_convert(::std::declval<T>(), ::std::declval<U>()));
+using safe_convert_t = decltype(::obake::safe_convert(::std::declval<T>(), ::std::declval<U>()));
 
 }
 
@@ -209,16 +209,16 @@ using is_safely_convertible = is_detected<detail::safe_convert_t, To, From>;
 template <typename From, typename To>
 inline constexpr bool is_safely_convertible_v = is_safely_convertible<From, To>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename From, typename To>
-PIRANHA_CONCEPT_DECL SafelyConvertible = requires(From &&x, To &&y)
+OBAKE_CONCEPT_DECL SafelyConvertible = requires(From &&x, To &&y)
 {
-    ::piranha::safe_convert(::std::forward<To>(y), ::std::forward<From>(x));
+    ::obake::safe_convert(::std::forward<To>(y), ::std::forward<From>(x));
 };
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

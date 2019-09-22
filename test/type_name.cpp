@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -14,12 +14,12 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/type_name.hpp>
+#include <obake/config.hpp>
+#include <obake/type_name.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("type_name")
 {
@@ -43,7 +43,7 @@ TEST_CASE("type_name")
     std::cout << type_name<void const>() << '\n';
     std::cout << type_name<void volatile>() << '\n';
     std::cout << type_name<void volatile const>() << '\n';
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     std::cout << type_name<__int128_t>() << '\n';
     std::cout << type_name<__int128_t *>() << '\n';
     std::cout << type_name<__int128_t const *>() << '\n';

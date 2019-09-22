@@ -1,21 +1,21 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_ATOMIC_FLAG_ARRAY_HPP
-#define PIRANHA_DETAIL_ATOMIC_FLAG_ARRAY_HPP
+#ifndef OBAKE_DETAIL_ATOMIC_FLAG_ARRAY_HPP
+#define OBAKE_DETAIL_ATOMIC_FLAG_ARRAY_HPP
 
 #include <atomic>
 #include <cstddef>
 #include <memory>
 
-#include <piranha/detail/visibility.hpp>
+#include <obake/detail/visibility.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 #if defined(_MSC_VER)
@@ -35,7 +35,7 @@ namespace piranha::detail
 // Helper to manage an array of atomic flags.
 // The flags will all be cleared upon construction
 // from a size.
-class PIRANHA_DLL_PUBLIC atomic_flag_array
+class OBAKE_DLL_PUBLIC atomic_flag_array
 {
 public:
     using value_type = ::std::atomic_flag;
@@ -74,6 +74,6 @@ private:
 
 #endif
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
 #endif

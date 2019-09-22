@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_MATH_NEGATE_HPP
-#define PIRANHA_MATH_NEGATE_HPP
+#ifndef OBAKE_MATH_NEGATE_HPP
+#define OBAKE_MATH_NEGATE_HPP
 
 #include <cstddef>
 #include <type_traits>
@@ -21,21 +21,21 @@
 #include <mp++/real.hpp>
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/detail/priority_tag.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/detail/priority_tag.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace customisation
 {
 
-// External customisation point for piranha::negate().
+// External customisation point for obake::negate().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -45,9 +45,9 @@ inline constexpr auto negate = not_implemented;
 namespace internal
 {
 
-// Internal customisation point for piranha::negate().
+// Internal customisation point for obake::negate().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -110,22 +110,22 @@ inline void negate(::mppp::real &&r)
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto negate_impl(T &&x, priority_tag<3>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::negate<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::negate<T &&>)(::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto negate_impl(T &&x, priority_tag<2>) PIRANHA_SS_FORWARD_FUNCTION(negate(::std::forward<T>(x)));
+constexpr auto negate_impl(T &&x, priority_tag<2>) OBAKE_SS_FORWARD_FUNCTION(negate(::std::forward<T>(x)));
 
 // Explicit override in the internal customisation namespace.
 template <typename T>
 constexpr auto negate_impl(T &&x, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::negate<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::negate<T &&>)(::std::forward<T>(x)));
 
 // Lowest-priority: implementation based on unary minus + assignment.
 // NOTE: this must go into lowest priority, we want the ADL-based implementation to have
 // the precedence.
 template <typename T>
-constexpr auto negate_impl(T &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(x = -::std::forward<T>(x));
+constexpr auto negate_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(x = -::std::forward<T>(x));
 
 } // namespace detail
 
@@ -156,8 +156,8 @@ inline constexpr auto negate = negate_msvc{};
 // NOTE: we return a perfectly forwarded reference to x, that is, the
 // return type is decltype(x) &&.
 inline constexpr auto negate = [](auto &&x)
-    PIRANHA_SS_FORWARD_LAMBDA((void(detail::negate_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})),
-                               ::std::forward<decltype(x)>(x)));
+    OBAKE_SS_FORWARD_LAMBDA((void(detail::negate_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})),
+                             ::std::forward<decltype(x)>(x)));
 
 #endif
 
@@ -165,7 +165,7 @@ namespace detail
 {
 
 template <typename T>
-using negate_t = decltype(::piranha::negate(::std::declval<T>()));
+using negate_t = decltype(::obake::negate(::std::declval<T>()));
 
 }
 
@@ -177,16 +177,16 @@ using is_negatable = is_detected<detail::negate_t, T>;
 template <typename T>
 inline constexpr bool is_negatable_v = is_negatable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Negatable = requires(T &&x)
+OBAKE_CONCEPT_DECL Negatable = requires(T &&x)
 {
-    ::piranha::negate(::std::forward<T>(x));
+    ::obake::negate(::std::forward<T>(x));
 };
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -8,9 +8,9 @@
 
 #include <string>
 
-#include <piranha/series.hpp>
+#include <obake/series.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 // Implementation of the default streaming for a single term.
@@ -49,4 +49,4 @@ void series_stream_single_term(::std::string &ret, ::std::string &str_cf, const 
     }
 }
 
-} // namespace piranha::detail
+} // namespace obake::detail

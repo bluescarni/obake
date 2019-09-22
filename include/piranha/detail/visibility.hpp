@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_VISIBILITY_HPP
-#define PIRANHA_DETAIL_VISIBILITY_HPP
+#ifndef OBAKE_DETAIL_VISIBILITY_HPP
+#define OBAKE_DETAIL_VISIBILITY_HPP
 
 // Convenience macros for setting the visibility of entities
 // when building/using the shared library. Mostly inspired by:
@@ -18,27 +18,27 @@
 // empty.
 #if defined(_WIN32) || defined(__CYGWIN__)
 
-#if defined(piranha_EXPORTS)
+#if defined(obake_EXPORTS)
 
-#define PIRANHA_DLL_PUBLIC __declspec(dllexport)
+#define OBAKE_DLL_PUBLIC __declspec(dllexport)
 
 #else
 
-#define PIRANHA_DLL_PUBLIC __declspec(dllimport)
+#define OBAKE_DLL_PUBLIC __declspec(dllimport)
 
 #endif
 
-#define PIRANHA_DLL_LOCAL
+#define OBAKE_DLL_LOCAL
 
 #elif defined(__clang__) || defined(__GNUC__) || defined(__INTEL_COMPILER)
 
-#define PIRANHA_DLL_PUBLIC __attribute__((visibility("default")))
-#define PIRANHA_DLL_LOCAL __attribute__((visibility("hidden")))
+#define OBAKE_DLL_PUBLIC __attribute__((visibility("default")))
+#define OBAKE_DLL_LOCAL __attribute__((visibility("hidden")))
 
 #else
 
-#define PIRANHA_DLL_PUBLIC
-#define PIRANHA_DLL_LOCAL
+#define OBAKE_DLL_PUBLIC
+#define OBAKE_DLL_LOCAL
 
 #endif
 
@@ -51,11 +51,11 @@
 // Thus, we use a specialised definition for marking "public"ly visible inline classes.
 #if defined(_WIN32) || defined(__CYGWIN__)
 
-#define PIRANHA_DLL_PUBLIC_INLINE_CLASS
+#define OBAKE_DLL_PUBLIC_INLINE_CLASS
 
 #else
 
-#define PIRANHA_DLL_PUBLIC_INLINE_CLASS PIRANHA_DLL_PUBLIC
+#define OBAKE_DLL_PUBLIC_INLINE_CLASS OBAKE_DLL_PUBLIC
 
 #endif
 

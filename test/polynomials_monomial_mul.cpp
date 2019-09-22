@@ -1,18 +1,18 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/config.hpp>
-#include <piranha/polynomials/monomial_mul.hpp>
-#include <piranha/symbols.hpp>
+#include <obake/config.hpp>
+#include <obake/polynomials/monomial_mul.hpp>
+#include <obake/symbols.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 namespace ns
 {
@@ -38,7 +38,7 @@ struct nomm01 {
 };
 
 // External customisation.
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <>
@@ -49,7 +49,7 @@ template <>
 inline constexpr auto monomial_mul<nomm01 &, const nomm01 &, const nomm01 &> = [](auto &, const auto &,
                                                                                   const auto &) constexpr noexcept {};
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("monomial_mul_test")
 {
@@ -75,7 +75,7 @@ TEST_CASE("monomial_mul_test")
     REQUIRE(!is_multipliable_monomial_v<const nomm01 &, const nomm01 &, const nomm01 &>);
     REQUIRE(!is_multipliable_monomial_v<nomm01 &&, const nomm01 &, const nomm01 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultipliableMonomial<void, void, void>);
 
     REQUIRE(!MultipliableMonomial<ns::mm00 &, void, void>);

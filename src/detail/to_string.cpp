@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -12,12 +12,12 @@
 #include <string>
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 namespace
@@ -139,50 +139,50 @@ template <typename T>
 ::std::string to_string_integral_impl(const T &n)
 {
     if constexpr (is_signed_v<T>) {
-        return ::piranha::detail::to_string_signed_integral_impl(n);
+        return ::obake::detail::to_string_signed_integral_impl(n);
     } else {
-        return ::piranha::detail::to_string_unsigned_integral_impl(n);
+        return ::obake::detail::to_string_unsigned_integral_impl(n);
     }
 }
 
 } // namespace
 
-#define PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(type)                                                                     \
+#define OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(type)                                                                       \
     template <>                                                                                                        \
     ::std::string to_string(const type &n)                                                                             \
     {                                                                                                                  \
-        return ::piranha::detail::to_string_integral_impl(n);                                                          \
+        return ::obake::detail::to_string_integral_impl(n);                                                            \
     }
 
 // Char types.
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(char)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(signed char)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(unsigned char)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(char)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(signed char)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(unsigned char)
 
 // Shorts.
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(short)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(unsigned short)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(short)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(unsigned short)
 
 // Ints.
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(int)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(unsigned)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(int)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(unsigned)
 
 // Longs.
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(long)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(unsigned long)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(long)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(unsigned long)
 
 // Longlongs.
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(long long)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(unsigned long long)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(long long)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(unsigned long long)
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
 
 // 128bit ints.
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(__int128_t)
-PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL(__uint128_t)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(__int128_t)
+OBAKE_IMPLEMENT_TO_STRING_INTEGRAL(__uint128_t)
 
 #endif
 
-#undef PIRANHA_IMPLEMENT_TO_STRING_INTEGRAL
+#undef OBAKE_IMPLEMENT_TO_STRING_INTEGRAL
 
-} // namespace piranha::detail
+} // namespace obake::detail

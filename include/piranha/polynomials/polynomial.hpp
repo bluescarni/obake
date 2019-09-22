@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
-#define PIRANHA_POLYNOMIALS_POLYNOMIAL_HPP
+#ifndef OBAKE_POLYNOMIALS_POLYNOMIAL_HPP
+#define OBAKE_POLYNOMIALS_POLYNOMIAL_HPP
 
 #include <algorithm>
 #include <array>
@@ -31,32 +31,32 @@
 
 #include <mp++/integer.hpp>
 
-#include <piranha/byte_size.hpp>
-#include <piranha/config.hpp>
-#include <piranha/detail/container_it_diff_check.hpp>
-#include <piranha/detail/hc.hpp>
-#include <piranha/detail/ignore.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/detail/type_c.hpp>
-#include <piranha/detail/xoroshiro128_plus.hpp>
-#include <piranha/exceptions.hpp>
-#include <piranha/hash.hpp>
-#include <piranha/key/key_merge_symbols.hpp>
-#include <piranha/math/fma3.hpp>
-#include <piranha/math/is_zero.hpp>
-#include <piranha/math/pow.hpp>
-#include <piranha/math/safe_cast.hpp>
-#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
-#include <piranha/polynomials/monomial_mul.hpp>
-#include <piranha/polynomials/monomial_pow.hpp>
-#include <piranha/polynomials/monomial_range_overflow_check.hpp>
-#include <piranha/ranges.hpp>
-#include <piranha/series.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/byte_size.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/container_it_diff_check.hpp>
+#include <obake/detail/hc.hpp>
+#include <obake/detail/ignore.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/detail/type_c.hpp>
+#include <obake/detail/xoroshiro128_plus.hpp>
+#include <obake/exceptions.hpp>
+#include <obake/hash.hpp>
+#include <obake/key/key_merge_symbols.hpp>
+#include <obake/math/fma3.hpp>
+#include <obake/math/is_zero.hpp>
+#include <obake/math/pow.hpp>
+#include <obake/math/safe_cast.hpp>
+#include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/polynomials/monomial_mul.hpp>
+#include <obake/polynomials/monomial_pow.hpp>
+#include <obake/polynomials/monomial_range_overflow_check.hpp>
+#include <obake/ranges.hpp>
+#include <obake/series.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace polynomials
@@ -91,10 +91,10 @@ using is_polynomial = detail::is_polynomial_impl<T>;
 template <typename T>
 inline constexpr bool is_polynomial_v = is_polynomial<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL Polynomial = is_polynomial_v<T>;
+OBAKE_CONCEPT_DECL Polynomial = is_polynomial_v<T>;
 
 #endif
 
@@ -136,10 +136,10 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         retval.set_symbol_set(ss);
 
         // Try to locate s within the symbol set.
-        ::std::vector<int> tmp(::piranha::safe_cast<::std::vector<int>::size_type>(ss.size()));
+        ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
         const auto it = ::std::lower_bound(ss.begin(), ss.end(), s);
-        if (piranha_unlikely(it == ss.end() || *it != s)) {
-            piranha_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
+        if (obake_unlikely(it == ss.end() || *it != s)) {
+            obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
                                                        + " from the generator '" + s
                                                        + "': the generator is not in the symbol set");
         }
@@ -190,7 +190,7 @@ template <typename T>
 struct make_polynomials_msvc {
     template <typename... Args>
     constexpr auto operator()(const Args &... args) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::make_polynomials_impl<T>(args...))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_polynomials_impl<T>(args...))
 };
 
 template <typename T>
@@ -201,7 +201,7 @@ inline constexpr auto make_polynomials = make_polynomials_msvc<T>{};
 // Polynomial creation functor.
 template <typename T>
 inline constexpr auto make_polynomials
-    = [](const auto &... args) PIRANHA_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
+    = [](const auto &... args) OBAKE_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
 
 #endif
 
@@ -236,7 +236,7 @@ constexpr auto poly_mul_algorithm_impl()
 {
     // Shortcut for signalling that the mul implementation
     // is not well-defined.
-    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::piranha::detail::type_c<void>{});
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -260,7 +260,7 @@ constexpr auto poly_mul_algorithm_impl()
             // bits.
             using cf1_t = series_cf_t<rT>;
             using cf2_t = series_cf_t<rU>;
-            using ret_cf_t = detected_t<::piranha::detail::mul_t, const cf1_t &, const cf2_t &>;
+            using ret_cf_t = detected_t<::obake::detail::mul_t, const cf1_t &, const cf2_t &>;
 
             if constexpr (::std::conjunction_v<
                               // If ret_cf_t a coefficient type?
@@ -277,7 +277,7 @@ constexpr auto poly_mul_algorithm_impl()
                               // so checking only T's key type is enough.
                               is_multipliable_monomial<series_key_t<rT> &, const series_key_t<rT> &,
                                                        const series_key_t<rT> &>>) {
-                return ::std::make_pair(1, ::piranha::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
+                return ::std::make_pair(1, ::obake::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
             } else {
                 return failure;
             }
@@ -332,7 +332,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // randomness mixed in with the sizes of v1/v2.
     constexpr ::std::uint64_t s1 = 18379758338774109289ull;
     constexpr ::std::uint64_t s2 = 15967298767098049689ull;
-    ::piranha::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
+    ::obake::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
                                              s2 + static_cast<::std::uint64_t>(v2.size())};
 
     // The idea now is to compute a small amount of term-by-term
@@ -357,12 +357,12 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
         const auto idx2 = rng.template random<decltype(v2.size())>() % v2_size;
 
         // Multiply monomial and coefficient.
-        ::piranha::monomial_mul(tmp_key, v1[idx1].first, v2[idx2].first, ss);
+        ::obake::monomial_mul(tmp_key, v1[idx1].first, v2[idx2].first, ss);
         const auto tmp_cf = v1[idx1].second * v2[idx2].second;
 
         // Accumulate the size of the produced term: size of monomial,
         // coefficient, and, if present, padding.
-        acc += ::piranha::byte_size(::std::as_const(tmp_key)) + ::piranha::byte_size(tmp_cf) + pad_size;
+        acc += ::obake::byte_size(::std::as_const(tmp_key)) + ::obake::byte_size(tmp_cf) + pad_size;
     }
     // Compute the average term size.
     const auto avg_size = static_cast<double>(acc) / ntrials;
@@ -387,7 +387,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // allowed in a series.
     // NOTE: even if nsegs is zero, this will still yield some
     // useful value, as nbits() on zero will return zero.
-    return ::std::min(::piranha::safe_cast<unsigned>(::mppp::integer<1>{nsegs}.nbits()),
+    return ::std::min(::obake::safe_cast<unsigned>(::mppp::integer<1>{nsegs}.nbits()),
                       polynomial<ret_key_t, RetCf>::get_max_s_size());
 }
 
@@ -466,15 +466,15 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Do the monomial overflow checking, if possible.
     const auto r1
-        = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+        = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
     const auto r2
-        = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+        = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
         // Do the monomial overflow checking.
-        if (piranha_unlikely(!::piranha::monomial_range_overflow_check(r1, r2, ss))) {
-            piranha_throw(
+        if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
+            obake_throw(
                 ::std::overflow_error,
                 "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
         }
@@ -496,8 +496,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // NOTE: there are parallelisation opportunities here: parallel sort,
     // computation of the segmentation in parallel, etc. Need to profile first.
     auto t_sorter = [log2_nsegs](const auto &p1, const auto &p2) {
-        const auto h1 = ::piranha::hash(p1.first);
-        const auto h2 = ::piranha::hash(p2.first);
+        const auto h1 = ::obake::hash(p1.first);
+        const auto h2 = ::obake::hash(p2.first);
 
         return h1 % (s_size_t(1) << log2_nsegs) < h2 % (s_size_t(1) << log2_nsegs);
     };
@@ -515,11 +515,11 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         // Ensure that the size of v is representable by
         // its iterator's diff type. We need to do some
         // iterator arithmetics below.
-        ::piranha::detail::container_it_diff_check(v);
+        ::obake::detail::container_it_diff_check(v);
 
         using idx_t = decltype(v.size());
         ::std::vector<::std::pair<idx_t, idx_t>> vseg;
-        vseg.resize(::piranha::safe_cast<decltype(vseg.size())>(nsegs));
+        vseg.resize(::obake::safe_cast<decltype(vseg.size())>(nsegs));
 
         idx_t idx = 0;
         const auto v_begin = v.begin(), v_end = v.end();
@@ -527,7 +527,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         for (s_size_t i = 0; i < nsegs; ++i) {
             vseg[i].first = idx;
             it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &b_idx, const auto &p) {
-                const auto h = ::piranha::hash(p.first);
+                const auto h = ::obake::hash(p.first);
                 return b_idx < h % (s_size_t(1) << log2_nsegs);
             });
             // NOTE: the overflow check was done earlier.
@@ -551,7 +551,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
         auto verify_seg = [log2_nsegs](const auto &v, s_size_t bucket_idx, const auto &range, auto &counter) {
             for (auto idx = range.first; idx != range.second; ++idx) {
-                const auto h = ::piranha::hash(v[idx].first);
+                const auto h = ::obake::hash(v[idx].first);
                 assert(h % (s_size_t(1) << log2_nsegs) == bucket_idx);
                 ++counter;
             }
@@ -583,7 +583,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // are respected.
     auto compute_end_idx2 = [&ss, &v1, &v2, &vseg1, &vseg2, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
-            ::piranha::detail::ignore(ss, v1, v2, vseg1, vseg2);
+            ::obake::detail::ignore(ss, v1, v2, vseg1, vseg2);
 
             return [](const auto &, const auto &r2) { return r2.second; };
         } else {
@@ -610,7 +610,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
-                        ::piranha::detail::ignore(args...);
+                        ::obake::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
@@ -622,7 +622,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         // Fetch the list of symbols from the arguments and turn it into a
                         // set of indices.
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
 
@@ -636,11 +636,11 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // diff type of its iterators. We'll need to do some
                 // iterator arithmetics below.
                 // NOTE: cast to const as we will use cbegin/cend below.
-                ::piranha::detail::container_it_diff_check(::std::as_const(vd));
+                ::obake::detail::container_it_diff_check(::std::as_const(vd));
 
                 // Create a vector of indices into vd.
                 ::std::vector<decltype(vd.size())> vidx;
-                vidx.resize(::piranha::safe_cast<decltype(vidx.size())>(vd.size()));
+                vidx.resize(::obake::safe_cast<decltype(vidx.size())>(vd.size()));
                 ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
 
                 // Sort indirectly each range from vseg according to the degree.
@@ -655,12 +655,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                 // Apply the sorting to vd and v. Ensure we don't run
                 // into overflows during the permutated access.
-                ::piranha::detail::container_it_diff_check(vd);
+                ::obake::detail::container_it_diff_check(vd);
                 // NOTE: use cbegin/cend on vd to ensure the copy ctor of
                 // the degree type is being called.
                 vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
                                   ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
-                ::piranha::detail::container_it_diff_check(v);
+                ::obake::detail::container_it_diff_check(v);
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
 
@@ -686,7 +686,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         using d_impl = customisation::internal::series_default_p_degree_impl;
 
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
                         assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
                                             ::boost::make_transform_iterator(v.data() + idx_begin,
@@ -699,7 +699,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 return vd;
             };
 
-            using ::piranha::detail::type_c;
+            using ::obake::detail::type_c;
             return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
@@ -792,10 +792,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                             const auto &[k2, c2] = *ptr2;
 
                             // Do the monomial multiplication.
-                            ::piranha::monomial_mul(tmp_key, k1, k2, ss);
+                            ::obake::monomial_mul(tmp_key, k1, k2, ss);
 
                             // Check that the result ends up in the correct bucket.
-                            assert(::piranha::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
+                            assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
 
                             // Attempt the insertion. The coefficients are lazily multiplied
                             // only if the insertion actually takes place.
@@ -809,7 +809,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                                 // existing coefficient.
                                 // NOTE: do it with fma3(), if possible.
                                 if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
-                                    ::piranha::fma3(res.first->second, c1, c2);
+                                    ::obake::fma3(res.first->second, c1, c2);
                                 } else {
                                     res.first->second += c1 * c2;
                                 }
@@ -830,7 +830,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     // thus we need to increase 'it' before possibly erasing.
                     // erase() does not cause rehash and thus will not invalidate
                     // any other iterator apart from the one being erased.
-                    if (piranha_unlikely(::piranha::is_zero(::std::as_const(it->second)))) {
+                    if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
                         table.erase(it++);
                     } else {
                         ++it;
@@ -839,12 +839,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                 // LCOV_EXCL_START
                 // Check the table size against the max allowed size.
-                if (piranha_unlikely(table.size() > mts)) {
-                    piranha_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
+                if (obake_unlikely(table.size() > mts)) {
+                    obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
                                                          "polynomials resulted in a table whose size ("
-                                                             + ::piranha::detail::to_string(table.size())
+                                                             + ::obake::detail::to_string(table.size())
                                                              + ") is larger than the maximum allowed value ("
-                                                             + ::piranha::detail::to_string(mts) + ")");
+                                                             + ::obake::detail::to_string(mts) + ")");
                 }
                 // LCOV_EXCL_STOP
             }
@@ -916,15 +916,15 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
     // Do the monomial overflow checking, if possible.
     const auto r1
-        = ::piranha::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+        = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
     const auto r2
-        = ::piranha::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+        = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                         ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
         // Do the monomial overflow checking.
-        if (piranha_unlikely(!::piranha::monomial_range_overflow_check(r1, r2, ss))) {
-            piranha_throw(
+        if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
+            obake_throw(
                 ::std::overflow_error,
                 "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
         }
@@ -943,7 +943,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     // are respected.
     auto compute_j_end = [&v1, &v2, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
-            ::piranha::detail::ignore(v1, ss);
+            ::obake::detail::ignore(v1, ss);
 
             return [v2_size = v2.size()](const auto &) { return v2_size; };
         } else {
@@ -969,7 +969,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                         using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
-                        ::piranha::detail::ignore(args...);
+                        ::obake::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
@@ -981,7 +981,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                         // Fetch the list of symbols from the arguments and turn it into a
                         // set of indices.
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
 
@@ -995,11 +995,11 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // diff type of its iterators. We'll need to do some
                 // iterator arithmetics below.
                 // NOTE: cast to const as we will use cbegin/cend below.
-                ::piranha::detail::container_it_diff_check(::std::as_const(vd));
+                ::obake::detail::container_it_diff_check(::std::as_const(vd));
 
                 // Create a vector of indices into vd.
                 ::std::vector<decltype(vd.size())> vidx;
-                vidx.resize(::piranha::safe_cast<decltype(vidx.size())>(vd.size()));
+                vidx.resize(::obake::safe_cast<decltype(vidx.size())>(vd.size()));
                 ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
 
                 // Sort indirectly.
@@ -1011,12 +1011,12 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
                 // Apply the sorting to vd and v. Check that permutated
                 // access does not result in overflow.
-                ::piranha::detail::container_it_diff_check(vd);
+                ::obake::detail::container_it_diff_check(vd);
                 // NOTE: use cbegin/cend on vd to ensure the copy ctor of
                 // the degree type is being called.
                 vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
                                   ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
-                ::piranha::detail::container_it_diff_check(v);
+                ::obake::detail::container_it_diff_check(v);
                 v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
                                                            ::boost::make_permutation_iterator(v.end(), vidx.end()));
 
@@ -1036,7 +1036,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                     using d_impl = customisation::internal::series_default_p_degree_impl;
 
                     const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                    const auto si = ::piranha::detail::ss_intersect_idx(s, ss);
+                    const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
                     assert(::std::equal(
                         vd.begin(), vd.end(),
@@ -1048,7 +1048,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 return vd;
             };
 
-            using ::piranha::detail::type_c;
+            using ::obake::detail::type_c;
             return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
@@ -1106,7 +1106,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 const auto &c2 = t2->second;
 
                 // Multiply the monomial.
-                ::piranha::monomial_mul(tmp_key, k1, t2->first, ss);
+                ::obake::monomial_mul(tmp_key, k1, t2->first, ss);
 
                 // Try to insert the new term.
                 const auto res = tab.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
@@ -1117,7 +1117,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                     // existing coefficient.
                     // NOTE: do it with fma3(), if possible.
                     if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
-                        ::piranha::fma3(res.first->second, c1, c2);
+                        ::obake::fma3(res.first->second, c1, c2);
                     } else {
                         res.first->second += c1 * c2;
                     }
@@ -1133,7 +1133,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // thus we need to increase 'it' before possibly erasing.
             // erase() does not cause rehash and thus will not invalidate
             // any other iterator apart from the one being erased.
-            if (piranha_unlikely(::piranha::is_zero(::std::as_const(it->second)))) {
+            if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
                 tab.erase(it++);
             } else {
                 ++it;
@@ -1182,7 +1182,7 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
         // the multi-threaded implementation.
         // NOTE: perhaps the heuristic here can be improved
         // by taking into account the byte sizes of x/y?
-        if (x.size() < 1000u / y.size() || ::piranha::detail::hc() == 1u) {
+        if (x.size() < 1000u / y.size() || ::obake::detail::hc() == 1u) {
             // If the operands are "small" (less than N
             // term-by-term mults), or we just have 1 core
             // available, just run the simple
@@ -1214,7 +1214,7 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 
         // Merge the symbol sets.
         const auto &[merged_ss, ins_map_x, ins_map_y]
-            = ::piranha::detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+            = ::obake::detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
 
         // The insertion maps cannot be both empty, as we already handled
         // the identical symbol sets case above.
@@ -1233,7 +1233,7 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
                 // set, extend only y.
                 rU b;
                 b.set_symbol_set(merged_ss);
-                ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+                ::obake::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
                 return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::move(b), args...);
             }
@@ -1242,7 +1242,7 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
                 // set, extend only x.
                 rT a;
                 a.set_symbol_set(merged_ss);
-                ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+                ::obake::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
                 return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::forward<U>(y), args...);
             }
@@ -1253,8 +1253,8 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
         rU b;
         a.set_symbol_set(merged_ss);
         b.set_symbol_set(merged_ss);
-        ::piranha::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
-        ::piranha::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+        ::obake::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+        ::obake::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
         return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::move(b), args...);
     }
@@ -1301,7 +1301,7 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             //   but here we need explicitly both copy and move ctible),
             // - addable via const lref,
             // - V must be lt-comparable to the type of their sum via const lrefs.
-            using deg_add_t = detected_t<::piranha::detail::add_t, const deg1_t &, const deg2_t &>;
+            using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
             if constexpr (::std::conjunction_v<
                               ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
@@ -1389,8 +1389,8 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
             // we checked in the default implementation that it is supported
             // via const lvalue refs.
             const auto it = x.cbegin();
-            retval.add_term(::piranha::monomial_pow(it->first, ::std::as_const(y), ss),
-                            ::piranha::pow(it->second, ::std::as_const(y)));
+            retval.add_term(::obake::monomial_pow(it->first, ::std::as_const(y), ss),
+                            ::obake::pow(it->second, ::std::as_const(y)));
 
             return retval;
         } else {
@@ -1407,6 +1407,6 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
 
 } // namespace polynomials
 
-} // namespace piranha
+} // namespace obake
 
 #endif

@@ -1,19 +1,19 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_CARRAY_HPP
-#define PIRANHA_DETAIL_CARRAY_HPP
+#ifndef OBAKE_DETAIL_CARRAY_HPP
+#define OBAKE_DETAIL_CARRAY_HPP
 
 #include <array>
 #include <cassert>
 #include <cstddef>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 #if defined(_MSC_VER) && _MSC_VER < 1910
@@ -77,7 +77,7 @@ using carray = ::std::array<T, N>;
 
 #endif
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
 #if defined(_MSC_VER) && _MSC_VER < 1910
 
@@ -90,11 +90,11 @@ namespace std
 {
 
 template <typename T, size_t N>
-struct tuple_size<::piranha::detail::carray<T, N>> : integral_constant<size_t, N> {
+struct tuple_size<::obake::detail::carray<T, N>> : integral_constant<size_t, N> {
 };
 
 template <size_t I, typename T, size_t N>
-struct tuple_element<I, ::piranha::detail::carray<T, N>> {
+struct tuple_element<I, ::obake::detail::carray<T, N>> {
     using type = T;
 };
 

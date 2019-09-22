@@ -1,28 +1,28 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_STACK_TRACE_HPP
-#define PIRANHA_STACK_TRACE_HPP
+#ifndef OBAKE_STACK_TRACE_HPP
+#define OBAKE_STACK_TRACE_HPP
 
 #include <atomic>
 #include <string>
 
-#include <piranha/detail/visibility.hpp>
+#include <obake/detail/visibility.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace detail
 {
 
-PIRANHA_DLL_PUBLIC extern ::std::atomic_bool stack_trace_enabled;
+OBAKE_DLL_PUBLIC extern ::std::atomic_bool stack_trace_enabled;
 
-PIRANHA_DLL_PUBLIC ::std::string stack_trace_impl(unsigned);
+OBAKE_DLL_PUBLIC ::std::string stack_trace_impl(unsigned);
 
 } // namespace detail
 
@@ -48,7 +48,7 @@ inline constexpr auto set_stack_trace_enabled = set_stack_trace_enabled_msvc{};
 struct stack_trace_msvc {
     auto operator()(unsigned skip = 0) const
     {
-        if (::piranha::stack_trace_enabled()) {
+        if (::obake::stack_trace_enabled()) {
             return detail::stack_trace_impl(skip);
         }
         return ::std::string{"<Stack trace generation has been disabled at runtime>"};
@@ -69,7 +69,7 @@ inline constexpr auto set_stack_trace_enabled
 // The 'skip' parameter indicates how many stack levels should be skipped
 // (from bottom to top).
 inline constexpr auto stack_trace = [](unsigned skip = 0) {
-    if (::piranha::stack_trace_enabled()) {
+    if (::obake::stack_trace_enabled()) {
         return detail::stack_trace_impl(skip);
     }
     return ::std::string{"<Stack trace generation has been disabled at runtime>"};
@@ -77,6 +77,6 @@ inline constexpr auto stack_trace = [](unsigned skip = 0) {
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

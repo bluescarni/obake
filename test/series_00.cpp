@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -27,17 +27,17 @@
 #include <mp++/real.hpp>
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/detail/tuple_for_each.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/series.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/tuple_for_each.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/series.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 using int_t = mppp::integer<1>;
 using rat_t = mppp::rational<1>;
@@ -50,7 +50,7 @@ using real = mppp::real;
 
 TEST_CASE("cf_key_concepts")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<int>;
 
@@ -70,7 +70,7 @@ TEST_CASE("cf_key_concepts")
     REQUIRE(!is_key_v<const pm_t &>);
     REQUIRE(!is_key_v<pm_t &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Cf<void>);
     REQUIRE(!Key<void>);
 
@@ -138,7 +138,7 @@ TEST_CASE("is_cvr_series")
     REQUIRE(is_cvr_series_v<const series_t &>);
     REQUIRE(is_cvr_series_v<series_t &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CvrSeries<void>);
     REQUIRE(!CvrSeries<int>);
     REQUIRE(!CvrSeries<double>);
@@ -432,7 +432,7 @@ TEST_CASE("add_term_primitives")
                                 s1, s1._get_s_table()[0], pm_t{4, 5, 6}, -42);
                             REQUIRE(s1.size() == 2u);
 
-                            PIRANHA_REQUIRES_THROWS_CONTAINS(
+                            OBAKE_REQUIRES_THROWS_CONTAINS(
                                 (detail::series_add_term_table<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
                                                                static_cast<sat_check_compat_key>(v_cck.value),
                                                                static_cast<sat_check_table_size>(v_cts.value),
@@ -867,7 +867,7 @@ TEST_CASE("add_term_primitives")
                                                     static_cast<sat_assume_unique>(v_au.value)>(s1, pm_t{4, 5, 6}, -42);
                             REQUIRE(s1.size() == 2u);
 
-                            PIRANHA_REQUIRES_THROWS_CONTAINS(
+                            OBAKE_REQUIRES_THROWS_CONTAINS(
                                 (detail::series_add_term<v_sign.value, static_cast<sat_check_zero>(v_cz.value),
                                                          static_cast<sat_check_compat_key>(v_cck.value),
                                                          static_cast<sat_check_table_size>(v_cts.value),
@@ -887,7 +887,7 @@ TEST_CASE("add_term_primitives")
     // Check throw in case of incompatible key.
     s1_t s1;
     s1.set_symbol_set(symbol_set{});
-    PIRANHA_REQUIRES_THROWS_CONTAINS(
+    OBAKE_REQUIRES_THROWS_CONTAINS(
         (detail::series_add_term_table<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
                                        sat_assume_unique::off>(s1, s1._get_s_table()[0], pm_t(1), 1)),
         std::invalid_argument, "not compatible with the series' symbol set");
@@ -896,7 +896,7 @@ TEST_CASE("add_term_primitives")
         s1 = s1_t{};
         s1.set_n_segments(s_idx);
         s1.set_symbol_set(symbol_set{});
-        PIRANHA_REQUIRES_THROWS_CONTAINS(
+        OBAKE_REQUIRES_THROWS_CONTAINS(
             (detail::series_add_term<true, sat_check_zero::on, sat_check_compat_key::on, sat_check_table_size::on,
                                      sat_assume_unique::off>(s1, pm_t(1), 1)),
             std::invalid_argument, "not compatible with the series' symbol set");
@@ -1238,7 +1238,7 @@ TEST_CASE("series_generic_ctor")
     s2.add_term(pm_t{1, 2, 3}, 1);
     s2.add_term(pm_t{4, 5, 6}, 1);
 
-    PIRANHA_REQUIRES_THROWS_CONTAINS(s1_t{s2}, std::invalid_argument, "which does not consist of a single coefficient");
+    OBAKE_REQUIRES_THROWS_CONTAINS(s1_t{s2}, std::invalid_argument, "which does not consist of a single coefficient");
 }
 
 TEST_CASE("series_generic_assignment")
@@ -1303,7 +1303,7 @@ TEST_CASE("series_conversion_operator")
     s1.add_term(pm_t{-1, -2, -3}, -1);
     s1.add_term(pm_t{4, 5, 6}, 2);
     s1.add_term(pm_t{7, 8, 9}, -2);
-    PIRANHA_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
+    OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
                                      "because the series does not consist of a single coefficient");
 }
 

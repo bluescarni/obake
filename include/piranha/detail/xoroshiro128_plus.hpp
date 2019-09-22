@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -20,15 +20,15 @@ worldwide. This software is distributed without any warranty.
 
 See <http://creativecommons.org/publicdomain/zero/1.0/>. */
 
-#ifndef PIRANHA_DETAIL_XOROSHIRO128_PLUS_HPP
-#define PIRANHA_DETAIL_XOROSHIRO128_PLUS_HPP
+#ifndef OBAKE_DETAIL_XOROSHIRO128_PLUS_HPP
+#define OBAKE_DETAIL_XOROSHIRO128_PLUS_HPP
 
 #include <cstdint>
 
-#include <piranha/detail/limits.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 // NOTE: constexpr implementation, thus usable at compile-time.
@@ -93,6 +93,6 @@ struct xoroshiro128_plus {
     ::std::uint64_t m_state[2];
 };
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
 #endif

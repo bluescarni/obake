@@ -1,13 +1,13 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_BYTE_SIZE_HPP
-#define PIRANHA_BYTE_SIZE_HPP
+#ifndef OBAKE_BYTE_SIZE_HPP
+#define OBAKE_BYTE_SIZE_HPP
 
 #include <cstddef>
 #include <type_traits>
@@ -21,21 +21,21 @@
 #include <mp++/real.hpp>
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/detail/not_implemented.hpp>
-#include <piranha/detail/priority_tag.hpp>
-#include <piranha/detail/ss_func_forward.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/not_implemented.hpp>
+#include <obake/detail/priority_tag.hpp>
+#include <obake/detail/ss_func_forward.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha
+namespace obake
 {
 
 namespace customisation
 {
 
-// External customisation point for piranha::byte_size().
+// External customisation point for obake::byte_size().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -45,9 +45,9 @@ inline constexpr auto byte_size = not_implemented;
 namespace internal
 {
 
-// Internal customisation point for piranha::byte_size().
+// Internal customisation point for obake::byte_size().
 template <typename T
-#if !defined(PIRANHA_HAVE_CONCEPTS)
+#if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
@@ -108,20 +108,20 @@ inline ::std::size_t byte_size(const ::mppp::real &r)
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto byte_size_impl(T &&x, priority_tag<3>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::byte_size<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::byte_size<T &&>)(::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto byte_size_impl(T &&x, priority_tag<2>) PIRANHA_SS_FORWARD_FUNCTION(byte_size(::std::forward<T>(x)));
+constexpr auto byte_size_impl(T &&x, priority_tag<2>) OBAKE_SS_FORWARD_FUNCTION(byte_size(::std::forward<T>(x)));
 
 // Explicit override in the internal customisation namespace.
 template <typename T>
 constexpr auto byte_size_impl(T &&x, priority_tag<1>)
-    PIRANHA_SS_FORWARD_FUNCTION((customisation::internal::byte_size<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::byte_size<T &&>)(::std::forward<T>(x)));
 
 // Lowest priority: default implementation, using sizeof().
 template <typename T>
-constexpr auto byte_size_impl(T &&x, priority_tag<0>) PIRANHA_SS_FORWARD_FUNCTION(sizeof(x));
+constexpr auto byte_size_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(sizeof(x));
 
 // Machinery to enable the byte_size() implementation only if the return
 // type is std::size_t.
@@ -130,7 +130,7 @@ using byte_size_impl_ret_t = decltype(detail::byte_size_impl(::std::declval<T>()
 
 template <typename T, ::std::enable_if_t<::std::is_same_v<detected_t<byte_size_impl_ret_t, T>, ::std::size_t>, int> = 0>
 constexpr auto byte_size_impl_with_ret_check(T &&x)
-    PIRANHA_SS_FORWARD_FUNCTION(detail::byte_size_impl(::std::forward<T>(x), priority_tag<3>{}));
+    OBAKE_SS_FORWARD_FUNCTION(detail::byte_size_impl(::std::forward<T>(x), priority_tag<3>{}));
 
 } // namespace detail
 
@@ -139,7 +139,7 @@ constexpr auto byte_size_impl_with_ret_check(T &&x)
 struct byte_size_msvc {
     template <typename T>
     constexpr auto operator()(T &&x) const
-        PIRANHA_SS_FORWARD_MEMBER_FUNCTION(detail::byte_size_impl_with_ret_check(::std::forward<T>(x)))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::byte_size_impl_with_ret_check(::std::forward<T>(x)))
 };
 
 inline constexpr auto byte_size = byte_size_msvc{};
@@ -147,7 +147,7 @@ inline constexpr auto byte_size = byte_size_msvc{};
 #else
 
 inline constexpr auto byte_size =
-    [](auto &&x) PIRANHA_SS_FORWARD_LAMBDA(detail::byte_size_impl_with_ret_check(::std::forward<decltype(x)>(x)));
+    [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::byte_size_impl_with_ret_check(::std::forward<decltype(x)>(x)));
 
 #endif
 
@@ -155,7 +155,7 @@ namespace detail
 {
 
 template <typename T>
-using byte_size_t = decltype(::piranha::byte_size(::std::declval<T>()));
+using byte_size_t = decltype(::obake::byte_size(::std::declval<T>()));
 
 }
 
@@ -165,16 +165,16 @@ using is_size_measurable = is_detected<detail::byte_size_t, T>;
 template <typename T>
 inline constexpr bool is_size_measurable_v = is_size_measurable<T>::value;
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-PIRANHA_CONCEPT_DECL SizeMeasurable = requires(T &&x)
+OBAKE_CONCEPT_DECL SizeMeasurable = requires(T &&x)
 {
-    ::piranha::byte_size(::std::forward<T>(x));
+    ::obake::byte_size(::std::forward<T>(x));
 };
 
 #endif
 
-} // namespace piranha
+} // namespace obake
 
 #endif

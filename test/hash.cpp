@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -14,13 +14,13 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/hash.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/hash.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 struct nohash_00 {
 };
@@ -61,11 +61,11 @@ struct nohash_ext_00 {
 struct nohash_ext_01 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, hash_ext> inline constexpr auto hash<T>
 #else
 inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, hash_ext>>>
@@ -76,7 +76,7 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, hash_ext>>>
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, nohash_ext_00> inline constexpr auto hash<T>
 #else
 inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_00>>>
@@ -87,7 +87,7 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_00>>>
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, nohash_ext_01> inline constexpr auto hash<T>
 #else
 inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_01>>>
@@ -97,7 +97,7 @@ inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_01>>>
     return std::size_t(0);
 };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("hash_test")
 {
@@ -161,7 +161,7 @@ TEST_CASE("hash_test")
     REQUIRE(!is_hashable_v<const nohash_ext_01 &>);
     REQUIRE(!is_hashable_v<nohash_ext_01 &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Hashable<void>);
 
     REQUIRE(Hashable<int>);

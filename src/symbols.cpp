@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -16,13 +16,13 @@
 
 #include <boost/container/container_fwd.hpp>
 
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/exceptions.hpp>
-#include <piranha/math/safe_cast.hpp>
-#include <piranha/symbols.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/exceptions.hpp>
+#include <obake/math/safe_cast.hpp>
+#include <obake/symbols.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 // Get a string representation of a symbol_set.
@@ -55,10 +55,10 @@ namespace piranha::detail
     // we can compute that safely.
     // NOTE: the size type of seq is the same size type of symbol_set.
     // LCOV_EXCL_START
-    if (piranha_unlikely(s1.size() > limits_max<symbol_set::size_type> - s2.size())) {
-        piranha_throw(::std::overflow_error,
-                      "Overflow in the computation of the size of the union of two symbol sets of sizes "
-                          + detail::to_string(s1.size()) + " and " + detail::to_string(s2.size()));
+    if (obake_unlikely(s1.size() > limits_max<symbol_set::size_type> - s2.size())) {
+        obake_throw(::std::overflow_error,
+                    "Overflow in the computation of the size of the union of two symbol sets of sizes "
+                        + detail::to_string(s1.size()) + " and " + detail::to_string(s2.size()));
     }
     // LCOV_EXCL_STOP
     // Prepare the storage.
@@ -153,7 +153,7 @@ symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
     symbol_idx_set::sequence_type seq;
     // Reserve storage. We won't ever need more than
     // the minimum between s.size() and s_ref.size().
-    seq.reserve(::piranha::safe_cast<decltype(seq.size())>(::std::min(s.size(), s_ref.size())));
+    seq.reserve(::obake::safe_cast<decltype(seq.size())>(::std::min(s.size(), s_ref.size())));
 
     auto it = s_ref.begin();
     const auto e = s_ref.end();
@@ -215,4 +215,4 @@ symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
     return retval;
 }
 
-} // namespace piranha::detail
+} // namespace obake::detail

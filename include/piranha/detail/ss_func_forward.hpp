@@ -1,15 +1,15 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_SS_FUNC_FORWARD_HPP
-#define PIRANHA_DETAIL_SS_FUNC_FORWARD_HPP
+#ifndef OBAKE_DETAIL_SS_FUNC_FORWARD_HPP
+#define OBAKE_DETAIL_SS_FUNC_FORWARD_HPP
 
-#include <piranha/config.hpp>
+#include <obake/config.hpp>
 
 // Small macros to reduce typing when implementing single-statement
 // function templates that perfectly forward their arguments.
@@ -31,14 +31,14 @@
 // (which place the constexpr specifier differently).
 //
 // NOTE: on GCC before version 8, noexcept forwarding often triggers ICEs. Disable it.
-#if defined(PIRANHA_COMPILER_IS_GCC) && __GNUC__ < 8
-#define PIRANHA_SS_FORWARD_LAMBDA(body)                                                                                \
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 8
+#define OBAKE_SS_FORWARD_LAMBDA(body)                                                                                  \
     constexpr->decltype(body)                                                                                          \
     {                                                                                                                  \
         return body;                                                                                                   \
     }
 #else
-#define PIRANHA_SS_FORWARD_LAMBDA(body)                                                                                \
+#define OBAKE_SS_FORWARD_LAMBDA(body)                                                                                  \
     constexpr noexcept(noexcept(body))->decltype(body)                                                                 \
     {                                                                                                                  \
         return body;                                                                                                   \
@@ -47,34 +47,34 @@
 
 // NOTE: the bit with the useless namespace is to allow to use this macro with a closing semicolon
 // (otherwise clang-format goes berserk).
-#if defined(PIRANHA_COMPILER_IS_GCC) && __GNUC__ < 8
-#define PIRANHA_SS_FORWARD_FUNCTION(body)                                                                              \
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 8
+#define OBAKE_SS_FORWARD_FUNCTION(body)                                                                                \
     ->decltype(body)                                                                                                   \
     {                                                                                                                  \
         return body;                                                                                                   \
     }                                                                                                                  \
-    namespace _piranha_unused = ::piranha::_unused
+    namespace _obake_unused = ::obake::_unused
 #else
-#define PIRANHA_SS_FORWARD_FUNCTION(body)                                                                              \
+#define OBAKE_SS_FORWARD_FUNCTION(body)                                                                                \
     noexcept(noexcept(body))->decltype(body)                                                                           \
     {                                                                                                                  \
         return body;                                                                                                   \
     }                                                                                                                  \
-    namespace _piranha_unused = ::piranha::_unused
+    namespace _obake_unused = ::obake::_unused
 #endif
 
-namespace piranha::_unused
+namespace obake::_unused
 {
 }
 
-#if defined(PIRANHA_COMPILER_IS_GCC) && __GNUC__ < 8
-#define PIRANHA_SS_FORWARD_MEMBER_FUNCTION(body)                                                                       \
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 8
+#define OBAKE_SS_FORWARD_MEMBER_FUNCTION(body)                                                                         \
     ->decltype(body)                                                                                                   \
     {                                                                                                                  \
         return body;                                                                                                   \
     }
 #else
-#define PIRANHA_SS_FORWARD_MEMBER_FUNCTION(body)                                                                       \
+#define OBAKE_SS_FORWARD_MEMBER_FUNCTION(body)                                                                         \
     noexcept(noexcept(body))->decltype(body)                                                                           \
     {                                                                                                                  \
         return body;                                                                                                   \

@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -36,11 +36,11 @@
 
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/stack_trace.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/stack_trace.hpp>
 
-#if defined(PIRANHA_COMPILER_IS_CLANG)
+#if defined(OBAKE_COMPILER_IS_CLANG)
 
 // Silence clang warning when doing overflow checking below.
 #pragma clang diagnostic push
@@ -48,7 +48,7 @@
 
 #endif
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 ::std::string stack_trace_impl(unsigned skip)
@@ -68,7 +68,7 @@ namespace piranha::detail
 
     // Check the skip parameter.
     // LCOV_EXCL_START
-    if (piranha_unlikely(skip > ::std::numeric_limits<::std::size_t>::max() - fixed_skip)) {
+    if (obake_unlikely(skip > ::std::numeric_limits<::std::size_t>::max() - fixed_skip)) {
         return "The stack trace could not be generated due to an overflow condition.";
     }
     // LCOV_EXCL_STOP
@@ -121,9 +121,9 @@ namespace piranha::detail
     return retval;
 }
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
-#if defined(PIRANHA_COMPILER_IS_CLANG)
+#if defined(OBAKE_COMPILER_IS_CLANG)
 
 #pragma clang diagnostic pop
 

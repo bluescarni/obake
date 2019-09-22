@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -8,14 +8,14 @@
 
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/key/key_merge_symbols.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/key/key_merge_symbols.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 struct no_kms00 {
 };
@@ -59,11 +59,11 @@ struct ext01 {
 struct noext00 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext00> inline constexpr auto key_merge_symbols<T>
 #else
 inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ext00>>>
@@ -74,7 +74,7 @@ inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ext
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext01> inline constexpr auto key_merge_symbols<T>
 #else
 inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ext01>>>
@@ -85,7 +85,7 @@ inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ext
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, noext00> inline constexpr auto key_merge_symbols<T>
 #else
 inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, noext00>>>
@@ -96,9 +96,9 @@ inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, noe
 };
 
 // This will override a correct ADL implementation, thus disabling
-// piranha::key_merge_symbols().
+// obake::key_merge_symbols().
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ns::kms02> inline constexpr auto key_merge_symbols<T>
 #else
 inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ns::kms02>>>
@@ -108,7 +108,7 @@ inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ns:
     return 42;
 };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("key_merge_symbols_test")
 {
@@ -145,7 +145,7 @@ TEST_CASE("key_merge_symbols_test")
     REQUIRE(!is_symbols_mergeable_key_v<ns::kms02 &>);
     REQUIRE(!is_symbols_mergeable_key_v<const ns::kms02 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SymbolsMergeableKey<void>);
     REQUIRE(!SymbolsMergeableKey<int>);
     REQUIRE(!SymbolsMergeableKey<double>);

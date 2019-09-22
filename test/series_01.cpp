@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -21,21 +21,21 @@
 
 #include <mp++/rational.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/ignore.hpp>
-#include <piranha/math/is_zero.hpp>
-#include <piranha/math/negate.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/series.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/ignore.hpp>
+#include <obake/math/is_zero.hpp>
+#include <obake/math/negate.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/series.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
 using rat_t = mppp::rational<1>;
 
-using namespace piranha;
+using namespace obake;
 
 std::mt19937 rng;
 
@@ -43,7 +43,7 @@ const auto ntrials = 200;
 
 TEST_CASE("series_is_single_cf")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
@@ -66,8 +66,8 @@ TEST_CASE("series_set_symbol_set")
     REQUIRE(s1.get_symbol_set() == symbol_set{"x", "y", "z"});
 
     s1 = s1_t{"3/4"};
-    PIRANHA_REQUIRES_THROWS_CONTAINS(s1.set_symbol_set(symbol_set{}), std::invalid_argument,
-                                     "A symbol set can be set only in an empty series, but this series has 1 terms");
+    OBAKE_REQUIRES_THROWS_CONTAINS(s1.set_symbol_set(symbol_set{}), std::invalid_argument,
+                                   "A symbol set can be set only in an empty series, but this series has 1 terms");
 }
 
 TEST_CASE("series_reserve")
@@ -113,8 +113,8 @@ TEST_CASE("series_set_n_segments")
     REQUIRE(s1._get_s_table().size() == 4u);
     s1.set_n_segments(4);
     REQUIRE(s1._get_s_table().size() == 16u);
-    PIRANHA_REQUIRES_THROWS_CONTAINS(s1.set_n_segments(s1.get_max_s_size() + 1u), std::invalid_argument,
-                                     " as this value exceeds the maximum allowed value");
+    OBAKE_REQUIRES_THROWS_CONTAINS(s1.set_n_segments(s1.get_max_s_size() + 1u), std::invalid_argument,
+                                   " as this value exceeds the maximum allowed value");
 }
 
 TEST_CASE("series_clear")
@@ -309,18 +309,18 @@ using s1_t = series<pm_t, rat_t, tag01>;
 
 } // namespace ns
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ns::s1_t> inline constexpr auto series_stream_insert<T>
 #else
 inline constexpr auto series_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
 #endif
     = [](std::ostream &os, auto &&) { os << "Hello world, again!"; };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("series_stream_insert_customization")
 {
@@ -1355,11 +1355,11 @@ struct custom_add {
 };
 
 // External customisation.
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
     &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_add<T, U>
 #else
@@ -1370,7 +1370,7 @@ inline constexpr auto
 #endif
     = custom_add{};
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("series_add_custom")
 {
@@ -1406,11 +1406,11 @@ struct custom_sub {
 };
 
 // External customisation.
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
     &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_sub<T, U>
 #else
@@ -1421,7 +1421,7 @@ inline constexpr auto
 #endif
     = custom_sub{};
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("series_sub_custom")
 {

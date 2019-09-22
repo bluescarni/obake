@@ -1,19 +1,19 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_DETAIL_FCAST_HPP
-#define PIRANHA_DETAIL_FCAST_HPP
+#ifndef OBAKE_DETAIL_FCAST_HPP
+#define OBAKE_DETAIL_FCAST_HPP
 
 #include <type_traits>
 
-#include <piranha/type_traits.hpp>
+#include <obake/type_traits.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 // A filtering cast: if the input is a nonconst
@@ -57,6 +57,6 @@ constexpr decltype(auto) fcast(T &&x) noexcept
 
 #endif
 
-} // namespace piranha::detail
+} // namespace obake::detail
 
 #endif
