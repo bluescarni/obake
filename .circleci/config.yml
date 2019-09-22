@@ -1,6 +1,14 @@
 version: 2
 
 jobs:
+  bionic_gcc7_conda:
+    docker:
+    - image: circleci/buildpack-deps:bionic
+    steps:
+    - checkout
+    - run:
+        name: Build and test
+        command: bash ./tools/circleci_bionic_gcc7_conda.sh
   cosmic_gcc8_coverage:
     docker:
     - image: circleci/buildpack-deps:cosmic
@@ -30,6 +38,7 @@ workflows:
   version: 2
   all_builds:
     jobs:
+    - bionic_gcc7_conda
     - cosmic_gcc8_coverage
     - cosmic_clang7_ubsan
     - bionic_gcc7_asan

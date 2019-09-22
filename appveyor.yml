@@ -17,7 +17,7 @@ install:
 - conda update -n base conda
 - conda config --add channels conda-forge --force
 - if [%BUILD_TYPE%]==[MSVC19_64] conda create --name piranha cmake boost-cpp mpir mpfr tbb tbb-devel
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name piranha cmake boost-cpp mppp tbb tbb-devel clangdev ninja
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name piranha cmake boost-cpp mppp tbb tbb-devel clangdev ninja abseil-cpp
 - call activate piranha
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] clang-cl -v
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
@@ -39,22 +39,16 @@ build_script:
 - if [%BUILD_TYPE%]==[MSVC19_64] cd ..
 - if [%BUILD_TYPE%]==[MSVC19_64] cd ..
 
-# abseil setup.
-- git clone https://github.com/abseil/abseil-cpp.git
-- cd abseil-cpp
+# abseil setup (only for the MSVC19_64 build).
+- if [%BUILD_TYPE%]==[MSVC19_64] git clone https://github.com/abseil/abseil-cpp.git
+- if [%BUILD_TYPE%]==[MSVC19_64] cd abseil-cpp
 - if [%BUILD_TYPE%]==[MSVC19_64] git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] git checkout 20190808
-- mkdir build
-- cd build
-
+- if [%BUILD_TYPE%]==[MSVC19_64] mkdir build
+- if [%BUILD_TYPE%]==[MSVC19_64] cd build
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config Debug --target install
-
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang-cl
-- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install -- -v
-
-- cd ..
-- cd ..
+- if [%BUILD_TYPE%]==[MSVC19_64] cd ..
+- if [%BUILD_TYPE%]==[MSVC19_64] cd ..
 
 # piranha
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DPIRANHA_BUILD_TESTS=yes
