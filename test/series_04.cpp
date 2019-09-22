@@ -7,12 +7,14 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <cmath>
+#include <initializer_list>
 #include <stdexcept>
 #include <type_traits>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
+#include <piranha/math/evaluate.hpp>
 #include <piranha/math/pow.hpp>
 #include <piranha/polynomials/packed_monomial.hpp>
 #include <piranha/polynomials/polynomial.hpp>
@@ -91,4 +93,18 @@ TEST_CASE("series_pow_test")
               "and exponentiation via repeated multiplications is not possible (either because the "
               "exponent cannot be converted to an integral value, or because the series type does "
               "not support the necessary arithmetic operations)");
+}
+
+TEST_CASE("series_evaluate_test")
+{
+    using pm_t = packed_monomial<int>;
+    using p1_t = polynomial<pm_t, rat_t>;
+
+    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+    std::cout << evaluate(x * y - piranha::pow(z, 3) * 4, symbol_map<double>{{"x", 1.}, {"y", 2.}, {"z", 3.}}) << '\n';
+    std::cout << evaluate(x * y - piranha::pow(z, 3) * 4, symbol_map<mppp::integer<1>>{{"x", mppp::integer<1>{1}},
+                                                                                       {"y", mppp::integer<1>{2}},
+                                                                                       {"z", mppp::integer<1>{3}}})
+              << '\n';
 }
