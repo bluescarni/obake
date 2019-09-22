@@ -1,12 +1,12 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/config.hpp>
+#include <obake/config.hpp>
 
 #include <iterator>
 #include <limits>
@@ -20,18 +20,18 @@
 #include <type_traits>
 #include <vector>
 
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
 
 #include <string_view>
 
 #endif
 
-#include <piranha/detail/limits.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("is_integral")
 {
@@ -59,7 +59,7 @@ TEST_CASE("is_integral")
     REQUIRE(!is_integral_v<std::string>);
     REQUIRE(!is_integral_v<void>);
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE(is_integral_v<__int128_t>);
     REQUIRE(is_integral_v<const __int128_t>);
     REQUIRE(is_integral_v<const volatile __int128_t>);
@@ -77,7 +77,7 @@ TEST_CASE("is_integral")
     REQUIRE(!is_integral_v<__uint128_t &&>);
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Integral<int>);
     REQUIRE(Integral<const int>);
     REQUIRE(Integral<const volatile int>);
@@ -88,7 +88,7 @@ TEST_CASE("is_integral")
 #endif
 }
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 TEST_CASE("is_floating_point")
 {
     REQUIRE(FloatingPoint<float>);
@@ -114,7 +114,7 @@ TEST_CASE("is_arithmetic")
     REQUIRE(!is_arithmetic_v<std::string>);
     REQUIRE(!is_arithmetic_v<void>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Arithmetic<float>);
     REQUIRE(Arithmetic<const bool>);
     REQUIRE(Arithmetic<const volatile long>);
@@ -139,7 +139,7 @@ TEST_CASE("is_signed")
     REQUIRE(!is_signed_v<int &>);
     REQUIRE(!is_signed_v<int &&>);
     REQUIRE(!is_signed_v<const int &>);
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE(is_signed_v<__int128_t>);
     REQUIRE(is_signed_v<const __int128_t>);
     REQUIRE(is_signed_v<volatile __int128_t>);
@@ -156,7 +156,7 @@ TEST_CASE("is_signed")
     REQUIRE(!is_signed_v<const __uint128_t &>);
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Signed<void>);
     REQUIRE(!Signed<void>);
     REQUIRE(!Signed<unsigned>);
@@ -170,7 +170,7 @@ TEST_CASE("is_signed")
     REQUIRE(!Signed<int &>);
     REQUIRE(!Signed<int &&>);
     REQUIRE(!Signed<const int &>);
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE(Signed<__int128_t>);
     REQUIRE(Signed<const __int128_t>);
     REQUIRE(Signed<volatile __int128_t>);
@@ -200,7 +200,7 @@ TEST_CASE("make_unsigned")
     REQUIRE((std::is_same_v<const unsigned, make_unsigned_t<const unsigned>>));
     REQUIRE((std::is_same_v<volatile unsigned, make_unsigned_t<volatile unsigned>>));
     REQUIRE((std::is_same_v<const volatile unsigned, make_unsigned_t<const volatile unsigned>>));
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE((std::is_same_v<__uint128_t, make_unsigned_t<__uint128_t>>));
     REQUIRE((std::is_same_v<const __uint128_t, make_unsigned_t<const __uint128_t>>));
     REQUIRE((std::is_same_v<volatile __uint128_t, make_unsigned_t<volatile __uint128_t>>));
@@ -241,7 +241,7 @@ TEST_CASE("is_returnable")
     REQUIRE(!is_returnable_v<unreturnable_01>);
     REQUIRE(is_returnable_v<unreturnable_01 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Returnable<const volatile void>);
     REQUIRE(!Returnable<unreturnable_00>);
 #endif
@@ -263,7 +263,7 @@ TEST_CASE("is_same_cvr")
     REQUIRE(is_same_cvr_v<volatile void, const void>);
     REQUIRE(is_same_cvr_v<const volatile void, const void>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(SameCvr<int, int>);
     REQUIRE(SameCvr<int, int &>);
     REQUIRE(SameCvr<const int, int &>);
@@ -310,21 +310,21 @@ TEST_CASE("is_string_like_v")
     REQUIRE(is_string_like_v<const char[2]>);
     REQUIRE(!is_string_like_v<char(&&)[10]>);
 
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
     REQUIRE(is_string_like_v<std::string_view>);
     REQUIRE(!is_string_like_v<std::string_view &>);
     REQUIRE(!is_string_like_v<const std::string_view &>);
     REQUIRE(is_string_like_v<const std::string_view>);
 #endif
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StringLike<void>);
     REQUIRE(StringLike<char *>);
     REQUIRE(StringLike<const char *>);
     REQUIRE(!StringLike<char *&>);
     REQUIRE(!StringLike<const char(&)[10]>);
     REQUIRE(StringLike<std::string>);
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
     REQUIRE(StringLike<std::string_view>);
 #endif
     REQUIRE(!StringLike<std::string &>);
@@ -341,7 +341,7 @@ TEST_CASE("is_string_like_v")
     char s2[] = "blab";
     check_string_like_dispatch(s2);
     check_string_like_dispatch(&s2[0]);
-#if defined(PIRANHA_HAVE_STRING_VIEW)
+#if defined(OBAKE_HAVE_STRING_VIEW)
     const std::string_view sv1{"bubbbbba"};
     check_string_like_dispatch(sv1);
     std::string_view sv2{"bubbbba"};
@@ -388,7 +388,7 @@ TEST_CASE("is_addable")
     REQUIRE(!is_addable_v<nonaddable_1, addable_0>);
     REQUIRE(!is_addable_v<nonaddable_2, addable_0>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Addable<void>);
     REQUIRE(!Addable<void, void>);
     REQUIRE(!Addable<void, int>);
@@ -459,7 +459,7 @@ TEST_CASE("is_equality_comparable")
     REQUIRE(is_equality_comparable_v<comp_0>);
     REQUIRE(!is_equality_comparable_v<comp_0, noncomp_0>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!EqualityComparable<void>);
     REQUIRE(!EqualityComparable<void, void>);
     REQUIRE(!EqualityComparable<int, void>);
@@ -513,7 +513,7 @@ TEST_CASE("is_less_than_comparable")
     REQUIRE(is_less_than_comparable_v<lt_0>);
     REQUIRE(!is_less_than_comparable_v<lt_0, nonlt_0>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!LessThanComparable<void>);
     REQUIRE(!LessThanComparable<void, void>);
     REQUIRE(!LessThanComparable<int, void>);
@@ -539,7 +539,7 @@ TEST_CASE("is_pre_incrementable")
     REQUIRE(!is_pre_incrementable_v<int &&>);
     REQUIRE(!is_pre_incrementable_v<std::string &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PreIncrementable<void>);
     REQUIRE(PreIncrementable<int &>);
     REQUIRE(!PreIncrementable<const int &>);
@@ -556,7 +556,7 @@ TEST_CASE("is_post_incrementable")
     REQUIRE(!is_post_incrementable_v<int &&>);
     REQUIRE(!is_post_incrementable_v<std::string &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PostIncrementable<void>);
     REQUIRE(PostIncrementable<int &>);
     REQUIRE(!PostIncrementable<const int &>);
@@ -648,7 +648,7 @@ struct fake_it_traits_missing {
     using iterator_category = void;
 };
 
-#define PIRANHA_DECL_ITT_SPEC(it_type, trait_class)                                                                    \
+#define OBAKE_DECL_ITT_SPEC(it_type, trait_class)                                                                      \
     namespace std                                                                                                      \
     {                                                                                                                  \
     template <>                                                                                                        \
@@ -666,7 +666,7 @@ struct iter01 {
     bool operator!=(const iter01 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter01, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter01, fake_it_traits_input<int>)
 
 // Good iterator, minimal requirements.
 struct iter02 {
@@ -674,7 +674,7 @@ struct iter02 {
     iter02 &operator++();
 };
 
-PIRANHA_DECL_ITT_SPEC(iter02, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter02, fake_it_traits_input<int>)
 
 // Broken iterator, minimal requirements.
 struct iter03 {
@@ -682,7 +682,7 @@ struct iter03 {
     iter03 &operator++();
 };
 
-PIRANHA_DECL_ITT_SPEC(iter03, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter03, fake_it_traits_input<int>)
 
 // Broken iterator, minimal requirements.
 struct iter04 {
@@ -692,7 +692,7 @@ struct iter04 {
     iter04 &operator++();
 };
 
-PIRANHA_DECL_ITT_SPEC(iter04, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter04, fake_it_traits_input<int>)
 
 // Broken iterator, missing itt spec.
 struct iter05 {
@@ -700,7 +700,7 @@ struct iter05 {
     iter05 &operator++();
 };
 
-// PIRANHA_DECL_ITT_SPEC(iter05,fake_it_traits_input<int>)
+// OBAKE_DECL_ITT_SPEC(iter05,fake_it_traits_input<int>)
 
 // Good input iterator: missing arrow, but the value type is not a class.
 struct iter06 {
@@ -712,7 +712,7 @@ struct iter06 {
     bool operator!=(const iter06 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter06, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter06, fake_it_traits_input<int>)
 
 struct iter06a_v {
 };
@@ -727,7 +727,7 @@ struct iter06a {
     bool operator!=(const iter06a &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter06a, fake_it_traits_input<iter06a_v>)
+OBAKE_DECL_ITT_SPEC(iter06a, fake_it_traits_input<iter06a_v>)
 
 // Broken input iterator: missing equality.
 struct iter07 {
@@ -739,7 +739,7 @@ struct iter07 {
     bool operator!=(const iter07 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter07, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter07, fake_it_traits_input<int>)
 
 // Broken input iterator: missing itt spec.
 struct iter08 {
@@ -751,7 +751,7 @@ struct iter08 {
     bool operator!=(const iter08 &) const;
 };
 
-// PIRANHA_DECL_ITT_SPEC(iter08,fake_it_traits_input<int>)
+// OBAKE_DECL_ITT_SPEC(iter08,fake_it_traits_input<int>)
 
 // Good input iterator: broken arrow, but non-class.
 struct iter09 {
@@ -763,7 +763,7 @@ struct iter09 {
     bool operator!=(const iter09 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter09, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter09, fake_it_traits_input<int>)
 
 struct iter09a_v {
 };
@@ -778,7 +778,7 @@ struct iter09a {
     bool operator!=(const iter09a &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter09a, fake_it_traits_input<iter09a_v>)
+OBAKE_DECL_ITT_SPEC(iter09a, fake_it_traits_input<iter09a_v>)
 
 // Good input iterator: multiple arrow.
 struct iter10 {
@@ -790,7 +790,7 @@ struct iter10 {
     bool operator!=(const iter10 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter10, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter10, fake_it_traits_input<int>)
 
 // Good input iterator: multiple broken arrow, but non-class.
 struct iter11 {
@@ -802,7 +802,7 @@ struct iter11 {
     bool operator!=(const iter11 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter11, fake_it_traits_input<int>)
+OBAKE_DECL_ITT_SPEC(iter11, fake_it_traits_input<int>)
 
 // Bad input iterator: inconsistent arrow / star, and class value.
 struct foo_it_12 {
@@ -820,7 +820,7 @@ struct iter12 {
     bool operator!=(const iter12 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter12, fake_it_traits_input<iter12_v>)
+OBAKE_DECL_ITT_SPEC(iter12, fake_it_traits_input<iter12_v>)
 
 // Good input iterator: different but compatible arrow / star.
 struct iter13 {
@@ -856,7 +856,7 @@ struct iter14 {
     bool operator!=(const iter14 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter14, fake_it_traits_forward<int>)
+OBAKE_DECL_ITT_SPEC(iter14, fake_it_traits_forward<int>)
 
 // Bad forward iterator: missing def ctor.
 struct iter15 {
@@ -869,7 +869,7 @@ struct iter15 {
     bool operator!=(const iter15 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter15, fake_it_traits_forward<int>)
+OBAKE_DECL_ITT_SPEC(iter15, fake_it_traits_forward<int>)
 
 // Bad forward iterator: not having reference types as reference in traits.
 struct iter16 {
@@ -881,7 +881,7 @@ struct iter16 {
     bool operator!=(const iter16 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter16, fake_it_traits_forward_broken_ref<int>)
+OBAKE_DECL_ITT_SPEC(iter16, fake_it_traits_forward_broken_ref<int>)
 
 // Bad forward iterator: broken tag in traits.
 struct iter17 {
@@ -893,7 +893,7 @@ struct iter17 {
     bool operator!=(const iter17 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter17, fake_it_traits_output<int>)
+OBAKE_DECL_ITT_SPEC(iter17, fake_it_traits_output<int>)
 
 // Bad forward iterator: broken traits.
 struct iter18 {
@@ -905,7 +905,7 @@ struct iter18 {
     bool operator!=(const iter18 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter18, fake_it_traits_missing<int>)
+OBAKE_DECL_ITT_SPEC(iter18, fake_it_traits_missing<int>)
 
 // Bad forward iterator: broken ++.
 struct iter19 {
@@ -917,7 +917,7 @@ struct iter19 {
     bool operator!=(const iter19 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter19, fake_it_traits_forward<int>)
+OBAKE_DECL_ITT_SPEC(iter19, fake_it_traits_forward<int>)
 
 // Bad forward iterator: broken ++.
 struct iter20 {
@@ -929,7 +929,7 @@ struct iter20 {
     bool operator!=(const iter20 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter20, fake_it_traits_forward<int>)
+OBAKE_DECL_ITT_SPEC(iter20, fake_it_traits_forward<int>)
 
 struct iter21_v {
 };
@@ -945,9 +945,9 @@ struct iter21 {
     bool operator!=(const iter21 &) const;
 };
 
-PIRANHA_DECL_ITT_SPEC(iter21, fake_it_traits_forward<iter21_v>)
+OBAKE_DECL_ITT_SPEC(iter21, fake_it_traits_forward<iter21_v>)
 
-#undef PIRANHA_DECL_ITT_SPEC
+#undef OBAKE_DECL_ITT_SPEC
 
 TEST_CASE("iterators")
 {
@@ -1143,7 +1143,7 @@ TEST_CASE("iterators")
     REQUIRE((is_output_iterator_v<std::list<int>::iterator, int &>));
     REQUIRE((!is_output_iterator_v<std::list<int>::const_iterator, int &>));
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     // Just a few concept checks, as currently the concepts
     // are based on the type traits.
     REQUIRE(!Iterator<void>);
@@ -1172,7 +1172,7 @@ TEST_CASE("limits_digits")
     REQUIRE(std::numeric_limits<float>::digits == detail::limits_digits<float>);
     REQUIRE(std::numeric_limits<double>::digits == detail::limits_digits<double>);
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
     REQUIRE(128 == detail::limits_digits<__uint128_t>);
     REQUIRE(127 == detail::limits_digits<__int128_t>);
 #endif
@@ -1199,7 +1199,7 @@ TEST_CASE("semi_regular")
     REQUIRE(!is_semi_regular_v<nondtible>);
     REQUIRE(!is_semi_regular_v<nondfctible>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SemiRegular<void>);
     REQUIRE(!SemiRegular<void(int)>);
     REQUIRE(SemiRegular<int>);
@@ -1257,7 +1257,7 @@ TEST_CASE("stream_insertable")
     REQUIRE(is_stream_insertable_v<yes_si &>);
     REQUIRE(is_stream_insertable_v<yes_si &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertable<void>);
 
     REQUIRE(StreamInsertable<int>);
@@ -1309,7 +1309,7 @@ TEST_CASE("compound_addable")
     REQUIRE(!is_compound_addable_v<int, const int &>);
     REQUIRE(!is_compound_addable_v<int, int &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CompoundAddable<void, void>);
     REQUIRE(!CompoundAddable<void, int>);
     REQUIRE(!CompoundAddable<int, void>);
@@ -1375,7 +1375,7 @@ TEST_CASE("is_subtractable")
     REQUIRE(!is_subtractable_v<nonsubtractable_1, subtractable_0>);
     REQUIRE(!is_subtractable_v<nonsubtractable_2, subtractable_0>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Subtractable<void>);
     REQUIRE(!Subtractable<void, void>);
     REQUIRE(!Subtractable<void, int>);
@@ -1420,7 +1420,7 @@ TEST_CASE("compound_subtractable")
     REQUIRE(!is_compound_subtractable_v<int, const int &>);
     REQUIRE(!is_compound_subtractable_v<int, int &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CompoundSubtractable<void, void>);
     REQUIRE(!CompoundSubtractable<void, int>);
     REQUIRE(!CompoundSubtractable<int, void>);
@@ -1473,7 +1473,7 @@ TEST_CASE("constructible")
 
     REQUIRE(!is_constructible_v<nondestr00>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Constructible<void>);
 
     REQUIRE(Constructible<int>);
@@ -1500,7 +1500,7 @@ TEST_CASE("mutable_rvalue_reference")
     REQUIRE(!is_mutable_rvalue_reference_v<const int &&>);
     REQUIRE(is_mutable_rvalue_reference_v<int &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MutableRvalueReference<void>);
 
     REQUIRE(!MutableRvalueReference<int>);
@@ -1550,7 +1550,7 @@ TEST_CASE("is_multipliable")
     REQUIRE(!is_multipliable_v<nonmultipliable_1, multipliable_0>);
     REQUIRE(!is_multipliable_v<nonmultipliable_2, multipliable_0>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Multipliable<void>);
     REQUIRE(!Multipliable<void, void>);
     REQUIRE(!Multipliable<void, int>);
@@ -1595,7 +1595,7 @@ TEST_CASE("compound_multipliable")
     REQUIRE(!is_compound_multipliable_v<int, const int &>);
     REQUIRE(!is_compound_multipliable_v<int, int &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CompoundMultipliable<void, void>);
     REQUIRE(!CompoundMultipliable<void, int>);
     REQUIRE(!CompoundMultipliable<int, void>);
@@ -1661,7 +1661,7 @@ TEST_CASE("is_divisible")
     REQUIRE(!is_divisible_v<nondivisible_1, divisible_0>);
     REQUIRE(!is_divisible_v<nondivisible_2, divisible_0>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Divisible<void>);
     REQUIRE(!Divisible<void, void>);
     REQUIRE(!Divisible<void, int>);
@@ -1706,7 +1706,7 @@ TEST_CASE("compound_divisible")
     REQUIRE(!is_compound_divisible_v<int, const int &>);
     REQUIRE(!is_compound_divisible_v<int, int &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CompoundDivisible<void, void>);
     REQUIRE(!CompoundDivisible<void, int>);
     REQUIRE(!CompoundDivisible<int, void>);

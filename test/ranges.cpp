@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -12,7 +12,7 @@
 #include <list>
 #include <vector>
 
-#include <piranha/ranges.hpp>
+#include <obake/ranges.hpp>
 
 #include "catch.hpp"
 
@@ -26,7 +26,7 @@ struct foo {
 // NOTE: begin/end are not constexpr in MSVC 2015.
 #if !defined(_MSC_VER) || _MSC_VER >= 1910
 
-[[maybe_unused]] foo<piranha::begin(aint) != piranha::end(aint)> f;
+[[maybe_unused]] foo<obake::begin(aint) != obake::end(aint)> f;
 
 #endif
 
@@ -94,141 +94,141 @@ double *end(const norange03 &);
 
 TEST_CASE("ranges_test")
 {
-    REQUIRE(!piranha::is_range_v<void>);
-    REQUIRE(!piranha::is_input_range_v<void>);
-    REQUIRE(!piranha::is_forward_range_v<void>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<void>);
-    REQUIRE(piranha::is_range_v<std::vector<int>>);
-    REQUIRE(piranha::is_range_v<const std::vector<int>>);
-    REQUIRE(piranha::is_range_v<std::vector<int> &>);
-    REQUIRE(piranha::is_range_v<std::vector<int> &&>);
-    REQUIRE(piranha::is_range_v<const std::vector<int> &>);
-    REQUIRE(piranha::is_range_v<int(&)[3]>);
-    REQUIRE(piranha::is_range_v<ns::range00>);
-    REQUIRE(piranha::is_range_v<ns::range00 &>);
-    REQUIRE(piranha::is_range_v<const ns::range00 &>);
-    REQUIRE(piranha::is_mutable_forward_range_v<std::vector<int> &>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<const std::vector<int> &>);
-    REQUIRE((!piranha::is_mutable_forward_range_v<std::initializer_list<int> &&>));
-    REQUIRE(piranha::is_mutable_forward_range_v<std::list<int> &>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<const std::list<int> &>);
-    REQUIRE(piranha::is_mutable_forward_range_v<int(&)[3]>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<const int(&)[3]>);
-    REQUIRE(piranha::is_input_range_v<ns::range00>);
-    REQUIRE(piranha::is_input_range_v<ns::range00 &>);
-    REQUIRE(piranha::is_input_range_v<const ns::range00 &>);
-    REQUIRE(piranha::is_forward_range_v<ns::range00>);
-    REQUIRE(piranha::is_forward_range_v<ns::range00 &>);
-    REQUIRE(piranha::is_forward_range_v<const ns::range00 &>);
-    REQUIRE(piranha::is_range_v<ns::range01>);
-    REQUIRE(piranha::is_range_v<ns::range01 &>);
-    REQUIRE(piranha::is_range_v<const ns::range01 &>);
-    REQUIRE(piranha::is_range_v<ns::range02>);
-    REQUIRE(piranha::is_range_v<ns::range02 &>);
-    REQUIRE(piranha::is_range_v<const ns::range02 &>);
-    REQUIRE(!piranha::is_input_range_v<ns::range02>);
-    REQUIRE(!piranha::is_input_range_v<ns::range02 &>);
-    REQUIRE(!piranha::is_input_range_v<const ns::range02 &>);
-    REQUIRE(!piranha::is_range_v<ns::range03>);
-    REQUIRE(!piranha::is_input_range_v<ns::range03>);
-    REQUIRE(!piranha::is_forward_range_v<ns::range03>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<ns::range03>);
-    REQUIRE(piranha::is_range_v<ns::range03 &>);
-    REQUIRE(!piranha::is_range_v<const ns::range03 &>);
-    REQUIRE(piranha::is_input_range_v<ns::range04 &>);
-    REQUIRE(!piranha::is_forward_range_v<ns::range04 &>);
-    REQUIRE(!piranha::is_range_v<ns::norange00>);
-    REQUIRE(!piranha::is_input_range_v<ns::norange00>);
-    REQUIRE(!piranha::is_forward_range_v<ns::norange00>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<ns::norange00>);
-    REQUIRE(!piranha::is_range_v<ns::norange00 &>);
-    REQUIRE(!piranha::is_range_v<const ns::norange00 &>);
-    REQUIRE(!piranha::is_range_v<ns::norange01>);
-    REQUIRE(!piranha::is_range_v<ns::norange01 &>);
-    REQUIRE(!piranha::is_range_v<const ns::norange01 &>);
-    REQUIRE(!piranha::is_range_v<ns::norange02>);
-    REQUIRE(!piranha::is_range_v<ns::norange02 &>);
-    REQUIRE(!piranha::is_range_v<const ns::norange02 &>);
-    REQUIRE(!piranha::is_range_v<ns::norange03>);
-    REQUIRE(!piranha::is_range_v<ns::norange03 &>);
-    REQUIRE(!piranha::is_range_v<const ns::norange03 &>);
+    REQUIRE(!obake::is_range_v<void>);
+    REQUIRE(!obake::is_input_range_v<void>);
+    REQUIRE(!obake::is_forward_range_v<void>);
+    REQUIRE(!obake::is_mutable_forward_range_v<void>);
+    REQUIRE(obake::is_range_v<std::vector<int>>);
+    REQUIRE(obake::is_range_v<const std::vector<int>>);
+    REQUIRE(obake::is_range_v<std::vector<int> &>);
+    REQUIRE(obake::is_range_v<std::vector<int> &&>);
+    REQUIRE(obake::is_range_v<const std::vector<int> &>);
+    REQUIRE(obake::is_range_v<int(&)[3]>);
+    REQUIRE(obake::is_range_v<ns::range00>);
+    REQUIRE(obake::is_range_v<ns::range00 &>);
+    REQUIRE(obake::is_range_v<const ns::range00 &>);
+    REQUIRE(obake::is_mutable_forward_range_v<std::vector<int> &>);
+    REQUIRE(!obake::is_mutable_forward_range_v<const std::vector<int> &>);
+    REQUIRE((!obake::is_mutable_forward_range_v<std::initializer_list<int> &&>));
+    REQUIRE(obake::is_mutable_forward_range_v<std::list<int> &>);
+    REQUIRE(!obake::is_mutable_forward_range_v<const std::list<int> &>);
+    REQUIRE(obake::is_mutable_forward_range_v<int(&)[3]>);
+    REQUIRE(!obake::is_mutable_forward_range_v<const int(&)[3]>);
+    REQUIRE(obake::is_input_range_v<ns::range00>);
+    REQUIRE(obake::is_input_range_v<ns::range00 &>);
+    REQUIRE(obake::is_input_range_v<const ns::range00 &>);
+    REQUIRE(obake::is_forward_range_v<ns::range00>);
+    REQUIRE(obake::is_forward_range_v<ns::range00 &>);
+    REQUIRE(obake::is_forward_range_v<const ns::range00 &>);
+    REQUIRE(obake::is_range_v<ns::range01>);
+    REQUIRE(obake::is_range_v<ns::range01 &>);
+    REQUIRE(obake::is_range_v<const ns::range01 &>);
+    REQUIRE(obake::is_range_v<ns::range02>);
+    REQUIRE(obake::is_range_v<ns::range02 &>);
+    REQUIRE(obake::is_range_v<const ns::range02 &>);
+    REQUIRE(!obake::is_input_range_v<ns::range02>);
+    REQUIRE(!obake::is_input_range_v<ns::range02 &>);
+    REQUIRE(!obake::is_input_range_v<const ns::range02 &>);
+    REQUIRE(!obake::is_range_v<ns::range03>);
+    REQUIRE(!obake::is_input_range_v<ns::range03>);
+    REQUIRE(!obake::is_forward_range_v<ns::range03>);
+    REQUIRE(!obake::is_mutable_forward_range_v<ns::range03>);
+    REQUIRE(obake::is_range_v<ns::range03 &>);
+    REQUIRE(!obake::is_range_v<const ns::range03 &>);
+    REQUIRE(obake::is_input_range_v<ns::range04 &>);
+    REQUIRE(!obake::is_forward_range_v<ns::range04 &>);
+    REQUIRE(!obake::is_range_v<ns::norange00>);
+    REQUIRE(!obake::is_input_range_v<ns::norange00>);
+    REQUIRE(!obake::is_forward_range_v<ns::norange00>);
+    REQUIRE(!obake::is_mutable_forward_range_v<ns::norange00>);
+    REQUIRE(!obake::is_range_v<ns::norange00 &>);
+    REQUIRE(!obake::is_range_v<const ns::norange00 &>);
+    REQUIRE(!obake::is_range_v<ns::norange01>);
+    REQUIRE(!obake::is_range_v<ns::norange01 &>);
+    REQUIRE(!obake::is_range_v<const ns::norange01 &>);
+    REQUIRE(!obake::is_range_v<ns::norange02>);
+    REQUIRE(!obake::is_range_v<ns::norange02 &>);
+    REQUIRE(!obake::is_range_v<const ns::norange02 &>);
+    REQUIRE(!obake::is_range_v<ns::norange03>);
+    REQUIRE(!obake::is_range_v<ns::norange03 &>);
+    REQUIRE(!obake::is_range_v<const ns::norange03 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
-    REQUIRE(!piranha::Range<void>);
-    REQUIRE(!piranha::InputRange<void>);
-    REQUIRE(!piranha::ForwardRange<void>);
-    REQUIRE(!piranha::MutableForwardRange<void>);
-    REQUIRE(piranha::Range<std::vector<int>>);
-    REQUIRE(piranha::Range<const std::vector<int>>);
-    REQUIRE(piranha::Range<std::vector<int> &>);
-    REQUIRE(piranha::Range<std::vector<int> &&>);
-    REQUIRE(piranha::Range<const std::vector<int> &>);
-    REQUIRE(piranha::Range<int(&)[3]>);
-    REQUIRE(piranha::Range<ns::range00>);
-    REQUIRE(piranha::Range<ns::range00 &>);
-    REQUIRE(piranha::Range<const ns::range00 &>);
-    REQUIRE(piranha::MutableForwardRange<std::vector<int> &>);
-    REQUIRE(!piranha::MutableForwardRange<const std::vector<int> &>);
-    REQUIRE((!piranha::MutableForwardRange<std::initializer_list<int> &&>));
-    REQUIRE(piranha::MutableForwardRange<std::list<int> &>);
-    REQUIRE(!piranha::MutableForwardRange<const std::list<int> &>);
-    REQUIRE(piranha::MutableForwardRange<int(&)[3]>);
-    REQUIRE(!piranha::MutableForwardRange<const int(&)[3]>);
-    REQUIRE(piranha::InputRange<ns::range00>);
-    REQUIRE(piranha::InputRange<ns::range00 &>);
-    REQUIRE(piranha::InputRange<const ns::range00 &>);
-    REQUIRE(piranha::ForwardRange<ns::range00>);
-    REQUIRE(piranha::ForwardRange<ns::range00 &>);
-    REQUIRE(piranha::ForwardRange<const ns::range00 &>);
-    REQUIRE(piranha::Range<ns::range01>);
-    REQUIRE(piranha::Range<ns::range01 &>);
-    REQUIRE(piranha::Range<const ns::range01 &>);
-    REQUIRE(piranha::Range<ns::range02>);
-    REQUIRE(piranha::Range<ns::range02 &>);
-    REQUIRE(piranha::Range<const ns::range02 &>);
-    REQUIRE(!piranha::InputRange<ns::range02>);
-    REQUIRE(!piranha::InputRange<ns::range02 &>);
-    REQUIRE(!piranha::InputRange<const ns::range02 &>);
-    REQUIRE(!piranha::Range<ns::range03>);
-    REQUIRE(!piranha::InputRange<ns::range03>);
-    REQUIRE(!piranha::ForwardRange<ns::range03>);
-    REQUIRE(!piranha::MutableForwardRange<ns::range03>);
-    REQUIRE(piranha::Range<ns::range03 &>);
-    REQUIRE(!piranha::Range<const ns::range03 &>);
-    REQUIRE(piranha::InputRange<ns::range04 &>);
-    REQUIRE(!piranha::ForwardRange<ns::range04 &>);
-    REQUIRE(!piranha::Range<ns::norange00>);
-    REQUIRE(!piranha::InputRange<ns::norange00>);
-    REQUIRE(!piranha::ForwardRange<ns::norange00>);
-    REQUIRE(!piranha::MutableForwardRange<ns::norange00>);
-    REQUIRE(!piranha::Range<ns::norange00 &>);
-    REQUIRE(!piranha::Range<const ns::norange00 &>);
-    REQUIRE(!piranha::Range<ns::norange01>);
-    REQUIRE(!piranha::Range<ns::norange01 &>);
-    REQUIRE(!piranha::Range<const ns::norange01 &>);
-    REQUIRE(!piranha::Range<ns::norange02>);
-    REQUIRE(!piranha::Range<ns::norange02 &>);
-    REQUIRE(!piranha::Range<const ns::norange02 &>);
-    REQUIRE(!piranha::Range<ns::norange03>);
-    REQUIRE(!piranha::Range<ns::norange03 &>);
-    REQUIRE(!piranha::Range<const ns::norange03 &>);
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!obake::Range<void>);
+    REQUIRE(!obake::InputRange<void>);
+    REQUIRE(!obake::ForwardRange<void>);
+    REQUIRE(!obake::MutableForwardRange<void>);
+    REQUIRE(obake::Range<std::vector<int>>);
+    REQUIRE(obake::Range<const std::vector<int>>);
+    REQUIRE(obake::Range<std::vector<int> &>);
+    REQUIRE(obake::Range<std::vector<int> &&>);
+    REQUIRE(obake::Range<const std::vector<int> &>);
+    REQUIRE(obake::Range<int(&)[3]>);
+    REQUIRE(obake::Range<ns::range00>);
+    REQUIRE(obake::Range<ns::range00 &>);
+    REQUIRE(obake::Range<const ns::range00 &>);
+    REQUIRE(obake::MutableForwardRange<std::vector<int> &>);
+    REQUIRE(!obake::MutableForwardRange<const std::vector<int> &>);
+    REQUIRE((!obake::MutableForwardRange<std::initializer_list<int> &&>));
+    REQUIRE(obake::MutableForwardRange<std::list<int> &>);
+    REQUIRE(!obake::MutableForwardRange<const std::list<int> &>);
+    REQUIRE(obake::MutableForwardRange<int(&)[3]>);
+    REQUIRE(!obake::MutableForwardRange<const int(&)[3]>);
+    REQUIRE(obake::InputRange<ns::range00>);
+    REQUIRE(obake::InputRange<ns::range00 &>);
+    REQUIRE(obake::InputRange<const ns::range00 &>);
+    REQUIRE(obake::ForwardRange<ns::range00>);
+    REQUIRE(obake::ForwardRange<ns::range00 &>);
+    REQUIRE(obake::ForwardRange<const ns::range00 &>);
+    REQUIRE(obake::Range<ns::range01>);
+    REQUIRE(obake::Range<ns::range01 &>);
+    REQUIRE(obake::Range<const ns::range01 &>);
+    REQUIRE(obake::Range<ns::range02>);
+    REQUIRE(obake::Range<ns::range02 &>);
+    REQUIRE(obake::Range<const ns::range02 &>);
+    REQUIRE(!obake::InputRange<ns::range02>);
+    REQUIRE(!obake::InputRange<ns::range02 &>);
+    REQUIRE(!obake::InputRange<const ns::range02 &>);
+    REQUIRE(!obake::Range<ns::range03>);
+    REQUIRE(!obake::InputRange<ns::range03>);
+    REQUIRE(!obake::ForwardRange<ns::range03>);
+    REQUIRE(!obake::MutableForwardRange<ns::range03>);
+    REQUIRE(obake::Range<ns::range03 &>);
+    REQUIRE(!obake::Range<const ns::range03 &>);
+    REQUIRE(obake::InputRange<ns::range04 &>);
+    REQUIRE(!obake::ForwardRange<ns::range04 &>);
+    REQUIRE(!obake::Range<ns::norange00>);
+    REQUIRE(!obake::InputRange<ns::norange00>);
+    REQUIRE(!obake::ForwardRange<ns::norange00>);
+    REQUIRE(!obake::MutableForwardRange<ns::norange00>);
+    REQUIRE(!obake::Range<ns::norange00 &>);
+    REQUIRE(!obake::Range<const ns::norange00 &>);
+    REQUIRE(!obake::Range<ns::norange01>);
+    REQUIRE(!obake::Range<ns::norange01 &>);
+    REQUIRE(!obake::Range<const ns::norange01 &>);
+    REQUIRE(!obake::Range<ns::norange02>);
+    REQUIRE(!obake::Range<ns::norange02 &>);
+    REQUIRE(!obake::Range<const ns::norange02 &>);
+    REQUIRE(!obake::Range<ns::norange03>);
+    REQUIRE(!obake::Range<ns::norange03 &>);
+    REQUIRE(!obake::Range<const ns::norange03 &>);
 #endif
 
     // A couple of runtime tests.
     std::vector<int> v_int_0 = {1, 2, 3};
-    REQUIRE(piranha::begin(v_int_0) == v_int_0.begin());
-    REQUIRE(piranha::end(v_int_0) == v_int_0.end());
+    REQUIRE(obake::begin(v_int_0) == v_int_0.begin());
+    REQUIRE(obake::end(v_int_0) == v_int_0.end());
 
     double arr_d[] = {4, 5, 6};
-    REQUIRE(piranha::begin(arr_d) == &arr_d[0]);
-    REQUIRE(piranha::end(arr_d) == &arr_d[0] + 3);
+    REQUIRE(obake::begin(arr_d) == &arr_d[0]);
+    REQUIRE(obake::end(arr_d) == &arr_d[0] + 3);
 }
 
 #if !defined(_MSC_VER) || _MSC_VER >= 1910
 
 // Verify constexpr capabilities.
 constexpr std::array<int, 3> carr{};
-[[maybe_unused]] constexpr auto carr_range = piranha::detail::make_range(carr.begin(), carr.end());
+[[maybe_unused]] constexpr auto carr_range = obake::detail::make_range(carr.begin(), carr.end());
 
 #endif
 
@@ -236,21 +236,21 @@ TEST_CASE("make_range_test")
 {
     std::vector<int> v{1, 2, 3};
 
-    auto r = piranha::detail::make_range(v.begin(), v.end());
+    auto r = obake::detail::make_range(v.begin(), v.end());
     REQUIRE(r.b == v.begin());
     REQUIRE(r.e == v.end());
     REQUIRE(std::is_same_v<decltype(r.b), std::vector<int>::iterator>);
-    REQUIRE(piranha::is_range_v<decltype(r)>);
-    REQUIRE(piranha::is_input_range_v<decltype(r)>);
-    REQUIRE(piranha::is_forward_range_v<decltype(r)>);
-    REQUIRE(piranha::is_mutable_forward_range_v<decltype(r)>);
+    REQUIRE(obake::is_range_v<decltype(r)>);
+    REQUIRE(obake::is_input_range_v<decltype(r)>);
+    REQUIRE(obake::is_forward_range_v<decltype(r)>);
+    REQUIRE(obake::is_mutable_forward_range_v<decltype(r)>);
 
-    auto rc = piranha::detail::make_range(v.cbegin(), v.cend());
+    auto rc = obake::detail::make_range(v.cbegin(), v.cend());
     REQUIRE(rc.b == v.cbegin());
     REQUIRE(rc.e == v.cend());
     REQUIRE(std::is_same_v<decltype(rc.b), std::vector<int>::const_iterator>);
-    REQUIRE(piranha::is_range_v<decltype(rc)>);
-    REQUIRE(piranha::is_input_range_v<decltype(rc)>);
-    REQUIRE(piranha::is_forward_range_v<decltype(rc)>);
-    REQUIRE(!piranha::is_mutable_forward_range_v<decltype(rc)>);
+    REQUIRE(obake::is_range_v<decltype(rc)>);
+    REQUIRE(obake::is_input_range_v<decltype(rc)>);
+    REQUIRE(obake::is_forward_range_v<decltype(rc)>);
+    REQUIRE(!obake::is_mutable_forward_range_v<decltype(rc)>);
 }

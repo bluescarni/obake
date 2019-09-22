@@ -1,20 +1,20 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_CONFIG_HPP
-#define PIRANHA_CONFIG_HPP
+#ifndef OBAKE_CONFIG_HPP
+#define OBAKE_CONFIG_HPP
 
 // Start of defines instantiated by CMake.
 // clang-format off
-#define PIRANHA_VERSION_STRING "@piranha_VERSION@"
-#define PIRANHA_VERSION_MAJOR @piranha_VERSION_MAJOR@
-#define PIRANHA_VERSION_MINOR @piranha_VERSION_MINOR@
-@PIRANHA_ENABLE_LIBBACKTRACE@
+#define OBAKE_VERSION_STRING "@obake_VERSION@"
+#define OBAKE_VERSION_MAJOR @obake_VERSION_MAJOR@
+#define OBAKE_VERSION_MINOR @obake_VERSION_MINOR@
+@OBAKE_ENABLE_LIBBACKTRACE@
 // clang-format on
 // End of defines instantiated by CMake.
 
@@ -22,11 +22,11 @@
 // NOTE: clang has to go first, as it might define __GNUC__ internally.
 #if defined(__clang__)
 
-#define PIRANHA_COMPILER_IS_CLANG
+#define OBAKE_COMPILER_IS_CLANG
 
 #elif defined(__GNUC__)
 
-#define PIRANHA_COMPILER_IS_GCC
+#define OBAKE_COMPILER_IS_GCC
 
 #else
 // NOTE: additional compiler configurations go here.
@@ -35,16 +35,16 @@
 // Concepts setup.
 #if defined(__cpp_concepts)
 
-#define PIRANHA_HAVE_CONCEPTS
+#define OBAKE_HAVE_CONCEPTS
 
-#if defined(PIRANHA_COMPILER_IS_GCC)
+#if defined(OBAKE_COMPILER_IS_GCC)
 
 // NOTE: currently, all GCC versions are still using the concepts TS syntax.
-#define PIRANHA_CONCEPT_DECL concept bool
+#define OBAKE_CONCEPT_DECL concept bool
 
 #else
 
-#define PIRANHA_CONCEPT_DECL concept
+#define OBAKE_CONCEPT_DECL concept
 
 #endif
 
@@ -55,20 +55,20 @@
 
 #if defined(MPPP_HAVE_GCC_INT128)
 
-#define PIRANHA_HAVE_GCC_INT128
+#define OBAKE_HAVE_GCC_INT128
 
 #endif
 
 // likely/unlikely macros, supported on GCC/clang.
-#if defined(PIRANHA_COMPILER_IS_GCC) || defined(PIRANHA_COMPILER_IS_CLANG)
+#if defined(OBAKE_COMPILER_IS_GCC) || defined(OBAKE_COMPILER_IS_CLANG)
 
-#define piranha_likely(x) __builtin_expect(static_cast<bool>(x), 1)
-#define piranha_unlikely(x) __builtin_expect(static_cast<bool>(x), 0)
+#define obake_likely(x) __builtin_expect(static_cast<bool>(x), 1)
+#define obake_unlikely(x) __builtin_expect(static_cast<bool>(x), 0)
 
 #else
 
-#define piranha_likely(x) (x)
-#define piranha_unlikely(x) (x)
+#define obake_likely(x) (x)
+#define obake_unlikely(x) (x)
 
 #endif
 
@@ -76,7 +76,7 @@
 // Use the definition from mp++.
 #if defined(MPPP_HAVE_STRING_VIEW)
 
-#define PIRANHA_HAVE_STRING_VIEW
+#define OBAKE_HAVE_STRING_VIEW
 
 #endif
 

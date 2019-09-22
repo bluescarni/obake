@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -24,35 +24,35 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/limits.hpp>
-#include <piranha/detail/tuple_for_each.hpp>
-#include <piranha/hash.hpp>
-#include <piranha/k_packing.hpp>
-#include <piranha/key/key_degree.hpp>
-#include <piranha/key/key_is_compatible.hpp>
-#include <piranha/key/key_is_one.hpp>
-#include <piranha/key/key_is_zero.hpp>
-#include <piranha/key/key_merge_symbols.hpp>
-#include <piranha/key/key_p_degree.hpp>
-#include <piranha/key/key_stream_insert.hpp>
-#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
-#include <piranha/polynomials/monomial_mul.hpp>
-#include <piranha/polynomials/monomial_pow.hpp>
-#include <piranha/polynomials/monomial_range_overflow_check.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_name.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/limits.hpp>
+#include <obake/detail/tuple_for_each.hpp>
+#include <obake/hash.hpp>
+#include <obake/k_packing.hpp>
+#include <obake/key/key_degree.hpp>
+#include <obake/key/key_is_compatible.hpp>
+#include <obake/key/key_is_one.hpp>
+#include <obake/key/key_is_zero.hpp>
+#include <obake/key/key_merge_symbols.hpp>
+#include <obake/key/key_p_degree.hpp>
+#include <obake/key/key_stream_insert.hpp>
+#include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/polynomials/monomial_mul.hpp>
+#include <obake/polynomials/monomial_pow.hpp>
+#include <obake/polynomials/monomial_range_overflow_check.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_name.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
 // NOTE: clang + ubsan fail to compile with 128bit integers in this test.
-#if defined(PIRANHA_HAVE_GCC_INT128) && !defined(PIRANHA_TEST_CLANG_UBSAN)
+#if defined(OBAKE_HAVE_GCC_INT128) && !defined(OBAKE_TEST_CLANG_UBSAN)
                              ,
                              __int128_t, __uint128_t
 #endif
@@ -72,7 +72,7 @@ struct foo {
 
 TEST_CASE("ctor_test")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
@@ -211,7 +211,7 @@ TEST_CASE("hash_test")
         REQUIRE(hash(pm_t{4, 5, 6}) == static_cast<std::size_t>(pm_t{4, 5, 6}.get_value()));
 
         // Print a few randomly-generated hash values.
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
         if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
 #endif
         {
@@ -629,7 +629,7 @@ TEST_CASE("monomial_range_overflow_check")
         REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, void>);
         REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<pm_t>>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
         REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::vector<pm_t>>);
         REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::list<pm_t>>);
         REQUIRE(OverflowTestableMonomialRanges<std::list<pm_t>, std::vector<pm_t>>);
@@ -653,14 +653,14 @@ TEST_CASE("homomorphic_hash")
         REQUIRE(!is_homomorphically_hashable_monomial_v<pm_t &&>);
         REQUIRE(!is_homomorphically_hashable_monomial_v<const pm_t &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
         REQUIRE(HomomorphicallyHashableMonomial<pm_t>);
         REQUIRE(!HomomorphicallyHashableMonomial<pm_t &>);
         REQUIRE(!HomomorphicallyHashableMonomial<pm_t &&>);
         REQUIRE(!HomomorphicallyHashableMonomial<const pm_t &>);
 #endif
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
         if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
 #endif
         {
@@ -691,7 +691,7 @@ TEST_CASE("homomorphic_hash")
             }
         }
 
-#if defined(PIRANHA_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
         if constexpr (std::is_same_v<int_t, __uint128_t>) {
             const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
             const auto nbits = detail::k_packing_size_to_bits<int_t>(max_ss_size);
@@ -878,14 +878,14 @@ TEST_CASE("monomial_pow_test")
         REQUIRE(monomial_pow(pm_t{1, 2, 3}, 2, symbol_set{"x", "y", "z"}) == pm_t{2, 4, 6});
         REQUIRE(monomial_pow(pm_t{1, 2, 3}, mppp::integer<2>{4}, symbol_set{"x", "y", "z"}) == pm_t{4, 8, 12});
         REQUIRE(monomial_pow(pm_t{1, 2, 3}, mppp::rational<1>{4}, symbol_set{"x", "y", "z"}) == pm_t{4, 8, 12});
-        PIRANHA_REQUIRES_THROWS_CONTAINS(
+        OBAKE_REQUIRES_THROWS_CONTAINS(
             monomial_pow(pm_t{1, 2, 3}, mppp::rational<1>{4, 3}, symbol_set{"x", "y", "z"}), std::invalid_argument,
             "Invalid exponent for monomial exponentiation: the exponent (4/3) cannot be converted into an integral "
             "value");
 
         // Check overflows, both in the single exponent exponentiation and in the coding limits.
-        PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_max<int_t>}, 2, symbol_set{"x"}),
-                                         std::overflow_error, "");
+        OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_max<int_t>}, 2, symbol_set{"x"}),
+                                       std::overflow_error, "");
 
         // Get the delta bit width corresponding to a vector size of 2.
         const auto nbits = detail::k_packing_size_to_bits<int_t>(2u);
@@ -904,23 +904,23 @@ TEST_CASE("monomial_pow_test")
             REQUIRE(monomial_pow(pm_t{1, -2, 3}, -2, symbol_set{"x", "y", "z"}) == pm_t{-2, 4, -6});
             REQUIRE(monomial_pow(pm_t{1, -2, 3}, mppp::integer<2>{-4}, symbol_set{"x", "y", "z"}) == pm_t{-4, 8, -12});
 
-            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_min<int_t>}, 2, symbol_set{"x"}),
-                                             std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_min<int_t>}, 2, symbol_set{"x"}),
+                                           std::overflow_error, "");
 
-            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[0],
-                                                               detail::k_packing_get_climits<int_t>(nbits, 1)[0]},
-                                                          2, symbol_set{"x", "y"}),
-                                             std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[0],
+                                                             detail::k_packing_get_climits<int_t>(nbits, 1)[0]},
+                                                        2, symbol_set{"x", "y"}),
+                                           std::overflow_error, "");
 
-            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[1],
-                                                               detail::k_packing_get_climits<int_t>(nbits, 1)[1]},
-                                                          2, symbol_set{"x", "y"}),
-                                             std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[1],
+                                                             detail::k_packing_get_climits<int_t>(nbits, 1)[1]},
+                                                        2, symbol_set{"x", "y"}),
+                                           std::overflow_error, "");
         } else {
-            PIRANHA_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0),
-                                                               detail::k_packing_get_climits<int_t>(nbits, 1)},
-                                                          2, symbol_set{"x", "y"}),
-                                             std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0),
+                                                             detail::k_packing_get_climits<int_t>(nbits, 1)},
+                                                        2, symbol_set{"x", "y"}),
+                                           std::overflow_error, "");
         }
     });
 }

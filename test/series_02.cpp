@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -16,17 +16,17 @@
 
 #include <mp++/rational.hpp>
 
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/series.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/series.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
 using rat_t = mppp::rational<1>;
 
-using namespace piranha;
+using namespace obake;
 
 std::mt19937 rng;
 
@@ -34,7 +34,7 @@ const auto ntrials = 200;
 
 TEST_CASE("series_lookup")
 {
-    piranha_test::disable_slow_stack_traces();
+    obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, void>;
@@ -416,11 +416,11 @@ TEST_CASE("series_compound_add_sub")
         s1.set_symbol_set(symbol_set{"x"});
         s1.add_term(pm_t{1}, 3);
 
-        PIRANHA_REQUIRES_THROWS_CONTAINS(n += s1, std::invalid_argument,
-                                         "because the series does not consist of a single coefficient");
+        OBAKE_REQUIRES_THROWS_CONTAINS(n += s1, std::invalid_argument,
+                                       "because the series does not consist of a single coefficient");
 
-        PIRANHA_REQUIRES_THROWS_CONTAINS(n -= s1, std::invalid_argument,
-                                         "because the series does not consist of a single coefficient");
+        OBAKE_REQUIRES_THROWS_CONTAINS(n -= s1, std::invalid_argument,
+                                       "because the series does not consist of a single coefficient");
     }
 }
 
@@ -449,18 +449,18 @@ using s1_t = series<pm_t, rat_t, tag01>;
 
 } // namespace ns
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ns::s1_t> inline constexpr auto series_mul<T, T>
 #else
 inline constexpr auto series_mul<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
 #endif
     = [](const auto &, const auto &) { return false; };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 // Test for the default series multiplication
 // implementation.

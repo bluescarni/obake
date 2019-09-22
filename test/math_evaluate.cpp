@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -8,14 +8,14 @@
 
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/math/evaluate.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/math/evaluate.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("evaluate_arith")
 {
@@ -33,7 +33,7 @@ TEST_CASE("evaluate_arith")
     REQUIRE(!is_evaluable_v<int, int &>);
     REQUIRE(!is_evaluable_v<int, const int>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Evaluable<void, void>);
     REQUIRE(!Evaluable<void, int>);
     REQUIRE(!Evaluable<int, void>);
@@ -63,11 +63,11 @@ int evaluate(const evaluate_0 &, const symbol_map<int> &);
 struct evaluate_1 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, evaluate_1> inline constexpr auto evaluate<T, double>
 #else
 inline constexpr auto evaluate<T, double, std::enable_if_t<is_same_cvr_v<T, evaluate_1>>>
@@ -77,7 +77,7 @@ inline constexpr auto evaluate<T, double, std::enable_if_t<is_same_cvr_v<T, eval
     return true;
 };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("evaluate_custom")
 {
@@ -89,12 +89,12 @@ TEST_CASE("evaluate_custom")
     REQUIRE(is_evaluable_v<evaluate_1, double>);
     REQUIRE(is_evaluable_v<evaluate_1, int>);
 
-    REQUIRE(std::is_same_v<int, decltype(piranha::evaluate(evaluate_0{}, symbol_map<int>{}))>);
-    REQUIRE(std::is_same_v<evaluate_0, decltype(piranha::evaluate(evaluate_0{}, symbol_map<double>{}))>);
-    REQUIRE(std::is_same_v<evaluate_1, decltype(piranha::evaluate(evaluate_1{}, symbol_map<int>{}))>);
-    REQUIRE(std::is_same_v<bool, decltype(piranha::evaluate(evaluate_1{}, symbol_map<double>{}))>);
+    REQUIRE(std::is_same_v<int, decltype(obake::evaluate(evaluate_0{}, symbol_map<int>{}))>);
+    REQUIRE(std::is_same_v<evaluate_0, decltype(obake::evaluate(evaluate_0{}, symbol_map<double>{}))>);
+    REQUIRE(std::is_same_v<evaluate_1, decltype(obake::evaluate(evaluate_1{}, symbol_map<int>{}))>);
+    REQUIRE(std::is_same_v<bool, decltype(obake::evaluate(evaluate_1{}, symbol_map<double>{}))>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Evaluable<evaluate_base, int>);
     REQUIRE(!Evaluable<evaluate_base, int &>);
     REQUIRE(Evaluable<evaluate_0, int>);

@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -32,11 +32,11 @@
 
 #endif
 
-#include <piranha/config.hpp>
-#include <piranha/detail/to_string.hpp>
-#include <piranha/stack_trace.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/to_string.hpp>
+#include <obake/stack_trace.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 // NOTE: put local names in an anonymous namespace, in order to pre-empt
@@ -97,7 +97,7 @@ int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int l
 {
     // Check the skip parameter.
     // LCOV_EXCL_START
-    if (piranha_unlikely(skip > static_cast<unsigned>(::std::numeric_limits<int>::max()) - 2u)) {
+    if (obake_unlikely(skip > static_cast<unsigned>(::std::numeric_limits<int>::max()) - 2u)) {
         return "The stack trace could not be generated due to an overflow condition.";
     }
     // LCOV_EXCL_STOP
@@ -115,7 +115,7 @@ int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int l
     // to the docs in the libbacktrace headers. Thus, it *should* be safe to use
     // also on MinGW's buggy thread_local implementation.
     thread_local auto bt_state = ::backtrace_create_state(nullptr, 0, nullptr, nullptr);
-    if (piranha_unlikely(!bt_state)) {
+    if (obake_unlikely(!bt_state)) {
         // LCOV_EXCL_START
         return "The stack trace could not be generated because the backtrace_create_state() function failed to "
                "allocate the state structure.";
@@ -125,7 +125,7 @@ int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int l
     // Fetch the raw backtrace.
     const auto ret = ::backtrace_full(bt_state, 2 + static_cast<int>(skip), backtrace_callback, nullptr,
                                       static_cast<void *>(&st_data));
-    if (piranha_unlikely(ret)) {
+    if (obake_unlikely(ret)) {
         // LCOV_EXCL_START
         return "The stack trace could not be generated because the backtrace_full() function returned the error code "
                + detail::to_string(ret) + ".";
@@ -164,4 +164,4 @@ int backtrace_callback(void *data, ::std::uintptr_t, const char *filename, int l
     return retval;
 }
 
-} // namespace piranha::detail
+} // namespace obake::detail

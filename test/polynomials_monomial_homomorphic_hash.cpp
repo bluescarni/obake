@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -9,12 +9,12 @@
 #include <string>
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/config.hpp>
+#include <obake/polynomials/monomial_homomorphic_hash.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 struct hh0 {
 };
@@ -40,7 +40,7 @@ struct nhh1 {
 struct nhh2 {
 };
 
-namespace piranha
+namespace obake
 {
 
 template <>
@@ -87,7 +87,7 @@ inline bool monomial_hash_is_homomorphic<nhh2> = true;
 
 } // namespace customisation
 
-} // namespace piranha
+} // namespace obake
 
 TEST_CASE("monomial_hash_homomorphism")
 {
@@ -134,7 +134,7 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2 &&>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<const nhh2 &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!HomomorphicallyHashableMonomial<int>);
     REQUIRE(!HomomorphicallyHashableMonomial<std::string>);
 

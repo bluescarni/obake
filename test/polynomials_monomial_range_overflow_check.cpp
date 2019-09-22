@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -9,13 +9,13 @@
 #include <list>
 #include <vector>
 
-#include <piranha/config.hpp>
-#include <piranha/polynomials/monomial_range_overflow_check.hpp>
-#include <piranha/symbols.hpp>
+#include <obake/config.hpp>
+#include <obake/polynomials/monomial_range_overflow_check.hpp>
+#include <obake/symbols.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 namespace ns
 {
@@ -44,7 +44,7 @@ struct nomroc01 {
 };
 
 // External customisation.
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <>
@@ -58,7 +58,7 @@ template <>
 inline constexpr auto monomial_range_overflow_check<const std::vector<nomroc01> &, const std::vector<nomroc01> &> = [
 ](const auto &, const auto &, const symbol_set &) constexpr noexcept {};
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("monomial_range_overflow_check_test")
 {
@@ -85,7 +85,7 @@ TEST_CASE("monomial_range_overflow_check_test")
     REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<nomroc01>, std::vector<nomroc01>>);
     REQUIRE(!are_overflow_testable_monomial_ranges_v<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!OverflowTestableMonomialRanges<void, void>);
 
     REQUIRE(!OverflowTestableMonomialRanges<std::vector<ns::mroc00>, void>);

@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -9,11 +9,11 @@
 #include <initializer_list>
 #include <tuple>
 
-#include <piranha/symbols.hpp>
+#include <obake/symbols.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 TEST_CASE("symbol_set_to_string_test")
 {

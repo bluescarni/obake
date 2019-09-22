@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -8,11 +8,11 @@
 
 #include <atomic>
 
-#include <piranha/stack_trace.hpp>
+#include <obake/stack_trace.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 ::std::atomic_bool stack_trace_enabled(true);
 
-} // namespace piranha::detail
+} // namespace obake::detail

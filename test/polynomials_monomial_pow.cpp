@@ -1,18 +1,18 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <piranha/config.hpp>
-#include <piranha/polynomials/monomial_pow.hpp>
-#include <piranha/symbols.hpp>
+#include <obake/config.hpp>
+#include <obake/polynomials/monomial_pow.hpp>
+#include <obake/symbols.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 namespace ns
 {
@@ -44,7 +44,7 @@ struct nomp01 {
 };
 
 // External customisation.
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <>
@@ -57,7 +57,7 @@ template <>
 inline constexpr auto monomial_pow<const nomp01 &, int &&> = [](const auto &, int,
                                                                 const symbol_set &) constexpr noexcept {};
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("monomial_pow_test")
 {
@@ -86,7 +86,7 @@ TEST_CASE("monomial_pow_test")
     REQUIRE(!is_exponentiable_monomial_v<const nomp01 &, int>);
     REQUIRE(!is_exponentiable_monomial_v<nomp01 &&, int>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!ExponentiableMonomial<void, void>);
 
     REQUIRE(!ExponentiableMonomial<ns::mp00 &, void>);

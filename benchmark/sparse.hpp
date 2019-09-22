@@ -1,28 +1,28 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef PIRANHA_BENCHMARK_SPARSE_HPP
-#define PIRANHA_BENCHMARK_SPARSE_HPP
+#ifndef OBAKE_BENCHMARK_SPARSE_HPP
+#define OBAKE_BENCHMARK_SPARSE_HPP
 
 #include <iostream>
 
-#include <piranha/byte_size.hpp>
-#include <piranha/polynomials/polynomial.hpp>
+#include <obake/byte_size.hpp>
+#include <obake/polynomials/polynomial.hpp>
 
 #include "simple_timer.hpp"
 
-namespace piranha_benchmark
+namespace obake_benchmark
 {
 
 template <typename M, typename C>
 inline auto sparse_benchmark(int n)
 {
-    using namespace piranha;
+    using namespace obake;
 
     auto [x, y, z, t, u] = make_polynomials<polynomial<M, C>>("x", "y", "z", "t", "u");
 
@@ -50,6 +50,6 @@ inline auto sparse_benchmark(int n)
     return ret;
 }
 
-} // namespace piranha_benchmark
+} // namespace obake_benchmark
 
 #endif

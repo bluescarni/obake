@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -9,14 +9,14 @@
 #include <string>
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/key/key_evaluate.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/key/key_evaluate.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 // ADL-based implementations.
 namespace ns
@@ -50,11 +50,11 @@ struct ext_zt01 {
 struct ext_nzt00 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_zt00> inline constexpr auto key_evaluate<T, int>
 #else
 inline constexpr auto key_evaluate<T, int, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
@@ -65,7 +65,7 @@ inline constexpr auto key_evaluate<T, int, std::enable_if_t<is_same_cvr_v<T, ext
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_zt01> inline constexpr auto key_evaluate<T, double>
 #else
 inline constexpr auto key_evaluate<T, double, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
@@ -76,7 +76,7 @@ inline constexpr auto key_evaluate<T, double, std::enable_if_t<is_same_cvr_v<T, 
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_nzt00> inline constexpr auto key_evaluate<T, int>
 #else
 inline constexpr auto key_evaluate<T, int, std::enable_if_t<is_same_cvr_v<T, ext_nzt00>>>
@@ -86,7 +86,7 @@ inline constexpr auto key_evaluate<T, int, std::enable_if_t<is_same_cvr_v<T, ext
     return std::string{};
 };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("key_evaluate_test")
 {
@@ -136,7 +136,7 @@ TEST_CASE("key_evaluate_test")
 
     REQUIRE(!is_evaluable_key_v<ext_nzt00, int>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!EvaluableKey<void, void>);
     REQUIRE(!EvaluableKey<ns::zt00, void>);
     REQUIRE(!EvaluableKey<void, ns::zt00>);

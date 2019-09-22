@@ -19,14 +19,14 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'piranha'
+project = 'obake'
 copyright = '2019, Francesco Biscani'
 author = 'Francesco Biscani'
 
 # The short X.Y version
-version = '@piranha_VERSION@'
+version = '@obake_VERSION@'
 # The full version, including alpha/beta/rc tags
-release = '@piranha_VERSION@'
+release = '@obake_VERSION@'
 
 
 # -- General configuration ---------------------------------------------------
@@ -103,7 +103,7 @@ html_theme_options = {
     # https://material.io/icons/
     'header_links': [
         ('Home', 'index', False, 'home'),
-        ("GitHub", "https://github.com/bluescarni/piranha-tng", True, 'link')
+        ("GitHub", "https://github.com/bluescarni/obake", True, 'link')
     ],
 
     # Customize css colors.
@@ -154,7 +154,7 @@ html_theme_options = {
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'piranhadoc'
+htmlhelp_basename = 'obakedoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -181,7 +181,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'piranha.tex', 'piranha Documentation',
+    (master_doc, 'obake.tex', 'obake Documentation',
      'Francesco Biscani', 'manual'),
 ]
 
@@ -191,7 +191,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'piranha', 'piranha Documentation',
+    (master_doc, 'obake', 'obake Documentation',
      [author], 1)
 ]
 
@@ -202,8 +202,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'piranha', 'piranha Documentation',
-     author, 'piranha', 'One line description of project.',
+    (master_doc, 'obake', 'obake Documentation',
+     author, 'obake', 'One line description of project.',
      'Miscellaneous'),
 ]
 

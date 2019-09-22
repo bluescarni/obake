@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -10,19 +10,19 @@
 #include <new>
 #include <stdexcept>
 
-#include <piranha/exceptions.hpp>
+#include <obake/exceptions.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
 
 [[noreturn]] void foo()
 {
-    piranha_throw(std::invalid_argument, "dsadsada");
+    obake_throw(std::invalid_argument, "dsadsada");
 }
 
 [[noreturn]] void bar()
 {
-    piranha_throw(std::bad_alloc, );
+    obake_throw(std::bad_alloc, );
 }
 
 #if defined(_MSC_VER)
@@ -34,10 +34,10 @@
 
 TEST_CASE("exceptions_test")
 {
-    PIRANHA_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "dsadsada");
-    PIRANHA_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "Exception type");
-    PIRANHA_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "Exception message");
-    PIRANHA_REQUIRES_THROWS_CONTAINS(bar(), std::bad_alloc, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "dsadsada");
+    OBAKE_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "Exception type");
+    OBAKE_REQUIRES_THROWS_CONTAINS(foo(), std::invalid_argument, "Exception message");
+    OBAKE_REQUIRES_THROWS_CONTAINS(bar(), std::bad_alloc, "");
 
     // Print out an example of decorated exception.
     try {

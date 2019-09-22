@@ -25,7 +25,7 @@ bash ../tools/circleci_install_mppp.sh
 bash ../tools/circleci_install_abseil.sh
 
 # clang build.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DPIRANHA_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=undefined -DPIRANHA_TEST_CLANG_UBSAN"
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DOBAKE_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fsanitize=undefined -DOBAKE_TEST_CLANG_UBSAN"
 make -j2 VERBOSE=1
 # Run the tests.
 ctest -j4 -V

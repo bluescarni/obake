@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -10,18 +10,18 @@
 #include <limits>
 #include <new>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/atomic_flag_array.hpp>
-#include <piranha/exceptions.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/atomic_flag_array.hpp>
+#include <obake/exceptions.hpp>
 
-namespace piranha::detail
+namespace obake::detail
 {
 
 atomic_flag_array::atomic_flag_array(size_type size) : m_size(size)
 {
     // LCOV_EXCL_START
-    if (piranha_unlikely(size > ::std::numeric_limits<size_type>::max() / sizeof(value_type))) {
-        piranha_throw(::std::bad_alloc, );
+    if (obake_unlikely(size > ::std::numeric_limits<size_type>::max() / sizeof(value_type))) {
+        obake_throw(::std::bad_alloc, );
     }
     // LCOV_EXCL_STOP
 
@@ -45,4 +45,4 @@ atomic_flag_array::atomic_flag_array(size_type size) : m_size(size)
     }
 }
 
-} // namespace piranha::detail
+} // namespace obake::detail

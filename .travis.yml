@@ -10,10 +10,10 @@ branches:
 
 matrix:
   include:
-    - env: PIRANHA_BUILD_TYPE="Debug"
+    - env: OBAKE_BUILD_TYPE="Debug"
       os: osx
       osx_image: xcode10.3
-    - env: PIRANHA_BUILD_TYPE="Release"
+    - env: OBAKE_BUILD_TYPE="Release"
       os: osx
       osx_image: xcode10.3
 script:

@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -10,14 +10,14 @@
 #include <string>
 #include <type_traits>
 
-#include <piranha/config.hpp>
-#include <piranha/key/key_stream_insert.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/key/key_stream_insert.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 // ADL-based implementations.
 namespace ns
@@ -58,11 +58,11 @@ struct ext_si01 {
 struct ext_nsi00 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_si00> inline constexpr auto key_stream_insert<T>
 #else
 inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
@@ -73,7 +73,7 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_si01> inline constexpr auto key_stream_insert<T>
 #else
 inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
@@ -84,7 +84,7 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_nsi00> inline constexpr auto key_stream_insert<T>
 #else
 inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_nsi00>>>
@@ -95,7 +95,7 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ns::nsi01> inline constexpr auto key_stream_insert<T>
 #else
 inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::nsi01>>>
@@ -105,7 +105,7 @@ inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns:
     return true;
 };
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("key_stream_insert_test")
 {
@@ -152,7 +152,7 @@ TEST_CASE("key_stream_insert_test")
     REQUIRE(!is_stream_insertable_key_v<const ext_nsi00 &>);
     REQUIRE(!is_stream_insertable_key_v<ext_nsi00 &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertableKey<void>);
 
     REQUIRE(!StreamInsertableKey<int>);

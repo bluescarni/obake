@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -14,20 +14,20 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <piranha/config.hpp>
-#include <piranha/detail/tuple_for_each.hpp>
-#include <piranha/key/key_evaluate.hpp>
-#include <piranha/polynomials/packed_monomial.hpp>
-#include <piranha/symbols.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/config.hpp>
+#include <obake/detail/tuple_for_each.hpp>
+#include <obake/key/key_evaluate.hpp>
+#include <obake/polynomials/packed_monomial.hpp>
+#include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
 // NOTE: clang + ubsan fail to compile with 128bit integers in this test.
-#if defined(PIRANHA_HAVE_GCC_INT128) && !defined(PIRANHA_TEST_CLANG_UBSAN)
+#if defined(OBAKE_HAVE_GCC_INT128) && !defined(OBAKE_TEST_CLANG_UBSAN)
                              ,
                              __int128_t, __uint128_t
 #endif

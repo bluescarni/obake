@@ -1,6 +1,6 @@
 // Copyright 2019 Francesco Biscani (bluescarni@gmail.com)
 //
-// This file is part of the piranha library.
+// This file is part of the obake library.
 //
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
@@ -11,13 +11,13 @@
 #include <string>
 #include <type_traits>
 
-#include <piranha/cf/cf_stream_insert.hpp>
-#include <piranha/config.hpp>
-#include <piranha/type_traits.hpp>
+#include <obake/cf/cf_stream_insert.hpp>
+#include <obake/config.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 
-using namespace piranha;
+using namespace obake;
 
 // ADL-based implementations.
 namespace ns
@@ -51,11 +51,11 @@ struct int_si00 {
 struct int_si01 {
 };
 
-namespace piranha::customisation
+namespace obake::customisation
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_si00> inline constexpr auto cf_stream_insert<T>
 #else
 inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
@@ -66,7 +66,7 @@ inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, ext_si01> inline constexpr auto cf_stream_insert<T>
 #else
 inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
@@ -80,7 +80,7 @@ namespace internal
 {
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, int_si00> inline constexpr auto cf_stream_insert<T>
 #else
 inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si00>>>
@@ -91,7 +91,7 @@ inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_
 };
 
 template <typename T>
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, int_si01> inline constexpr auto cf_stream_insert<T>
 #else
 inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si01>>>
@@ -103,7 +103,7 @@ inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_
 
 } // namespace internal
 
-} // namespace piranha::customisation
+} // namespace obake::customisation
 
 TEST_CASE("cf_stream_insert_test")
 {
@@ -156,7 +156,7 @@ TEST_CASE("cf_stream_insert_test")
     REQUIRE(is_stream_insertable_cf_v<const int_si01 &>);
     REQUIRE(!is_stream_insertable_cf_v<int_si01 &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertableCf<void>);
 
     REQUIRE(StreamInsertableCf<int>);
@@ -217,7 +217,7 @@ TEST_CASE("cf_stream_insert_int128_test")
     REQUIRE(is_stream_insertable_cf_v<const __uint128_t &>);
     REQUIRE(is_stream_insertable_cf_v<__uint128_t &&>);
 
-#if defined(PIRANHA_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(StreamInsertableCf<__int128_t>);
     REQUIRE(StreamInsertableCf<__int128_t &>);
     REQUIRE(StreamInsertableCf<const __int128_t &>);
