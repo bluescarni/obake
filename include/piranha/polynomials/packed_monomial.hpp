@@ -663,12 +663,13 @@ constexpr auto pm_key_evaluate_algorithm_impl()
     if constexpr (is_exponentiable_v<::std::add_lvalue_reference_t<const U>, ::std::add_lvalue_reference_t<const T>>) {
         using ret_t = ::piranha::detail::pow_t<const U &, const T &>;
 
-        // We will need to construct the return value from 1 and
-        // to multiply it in-place.
+        // We will need to construct the return value from 1,
+        // multiply it in-place and then return it.
         if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, int>,
                                            // NOTE: we will be multiplying an
                                            // lvalue by an rvalue.
-                                           is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>>) {
+                                           is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                                           is_returnable<ret_t>>) {
             return ::std::make_pair(1, ::piranha::detail::type_c<ret_t>{});
         } else {
             return failure;
