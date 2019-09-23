@@ -85,8 +85,14 @@ TEST_CASE("evaluate_custom")
     REQUIRE(is_evaluable_v<evaluate_base, int>);
     REQUIRE(!is_evaluable_v<evaluate_base, int &>);
     REQUIRE(is_evaluable_v<evaluate_0, int>);
+    REQUIRE(!is_evaluable_v<evaluate_0, int &>);
+    REQUIRE(!is_evaluable_v<evaluate_0, const int &>);
+    REQUIRE(!is_evaluable_v<evaluate_0, const int>);
     REQUIRE(is_evaluable_v<evaluate_0, double>);
     REQUIRE(is_evaluable_v<evaluate_1, double>);
+    REQUIRE(!is_evaluable_v<evaluate_1, double &>);
+    REQUIRE(!is_evaluable_v<evaluate_1, const double &>);
+    REQUIRE(!is_evaluable_v<evaluate_1, const double>);
     REQUIRE(is_evaluable_v<evaluate_1, int>);
 
     REQUIRE(std::is_same_v<int, decltype(obake::evaluate(evaluate_0{}, symbol_map<int>{}))>);
