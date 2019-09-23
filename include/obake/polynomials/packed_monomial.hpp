@@ -717,6 +717,43 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
     return retval;
 }
 
+#if 0
+
+template <typename T, typename U>
+inline ::std::pair<detail::pm_monomial_subs_ret_t<T, U>, packed_monomial<T>>
+monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    // sm must not be larger than ss, and the last element
+    // of sm must have an index equal to the last index of ss.
+    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first == ss.size() - 1u));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    detail::pm_monomial_subs_ret_t<T, U> retval(1);
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp;
+    auto sm_it = sm.cbegin();
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+        if (sm_it->first == i) {
+            retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
+            kp << T(0);
+            assert(sm_it != sm.cend());
+            ++sm_it;
+        } else {
+            kp << tmp;
+        }
+    }
+    assert(sm_it == sm.cend());
+
+    return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
+}
+
+#endif
+
 } // namespace polynomials
 
 // Lift to the obake namespace.

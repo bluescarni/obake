@@ -62,7 +62,7 @@ struct is_monomial_subs_retval<::std::pair<T, M>, M> : ::std::true_type {
 
 // Machinery to enable the monomial_subs() implementation only
 // if the return value is a std::pair whose second element has
-// the same type as the input monomial.
+// the same type as the input monomial (after cvref removal).
 template <typename T, typename U>
 using monomial_subs_impl_ret_t
     = decltype(detail::monomial_subs_impl(::std::declval<T>(), ::std::declval<const symbol_idx_map<U> &>(),
