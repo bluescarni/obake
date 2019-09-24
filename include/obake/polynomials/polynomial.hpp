@@ -184,7 +184,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... na
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 template <typename T>
 struct make_polynomials_msvc {
@@ -700,7 +700,14 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             };
 
             using ::obake::detail::type_c;
+#if defined(_MSC_VER) && (_MSVC_LANG > 201703L)
+            auto vd1 = sorter(v1, type_c<T>{}, vseg1);
+            auto vd2 = sorter(v2, type_c<U>{}, vseg2);
+            return [vd1,vd2,
+#else
+            
             return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+#endif
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {

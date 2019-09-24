@@ -111,7 +111,7 @@ OBAKE_CONCEPT_DECL Cf = is_cf_v<T>;
 #endif
 
 // Forward declaration.
-#if defined(OBAKE_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
 template <Key, Cf, typename>
 #else
 template <typename K, typename C, typename, typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
@@ -126,7 +126,7 @@ inline constexpr ::std::size_t series_rank_impl = 0;
 
 template <typename K, typename C, typename Tag>
 inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> =
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
     series_rank_impl<C> + 1u
 #else
     []() {
@@ -538,7 +538,7 @@ struct series_rref_clearer {
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
-#if defined(OBAKE_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
 template <Key K, Cf C, typename Tag>
 #else
 template <typename K, typename C, typename Tag, typename>
@@ -546,12 +546,11 @@ template <typename K, typename C, typename Tag, typename>
 class series
 {
     // Make friends with all series types.
-    template <typename, typename, typename
-#if !defined(OBAKE_HAVE_CONCEPTS)
-              ,
-              typename
+#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
+    template <typename, typename, typename>
+#else
+     template <typename, typename, typename, typename>
 #endif
-              >
     friend class series;
 
 public:
@@ -1399,7 +1398,7 @@ struct series_default_pow_impl {
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
+    requires (series_default_pow_impl::algo<T, U> != 0) inline constexpr auto pow<T, U>
 #else
 inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
 #endif
@@ -1718,7 +1717,7 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 struct series_stream_insert_msvc {
     template <typename T>
@@ -2189,7 +2188,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 struct series_add_msvc {
     template <typename T, typename U>
@@ -2275,7 +2274,7 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 struct series_sub_msvc {
     template <typename T, typename U>
@@ -2523,7 +2522,7 @@ constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 struct series_mul_msvc {
     template <typename T, typename U>
@@ -2713,7 +2712,7 @@ constexpr auto series_div_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 struct series_div_msvc {
     template <typename T, typename U>
@@ -2974,7 +2973,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && _MSVC_LANG < 201703L && _MSC_FULL_VER < 192428117
 
 struct series_equal_to_msvc {
     template <typename T, typename U>
@@ -3181,7 +3180,7 @@ struct series_default_degree_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_degree_impl::algo<T> != 0 inline constexpr auto degree<T>
+    requires (series_default_degree_impl::algo<T> != 0) inline constexpr auto degree<T>
 #else
 inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
 #endif
@@ -3285,7 +3284,7 @@ struct series_default_p_degree_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_p_degree_impl::algo<T> != 0 inline constexpr auto p_degree<T>
+    requires (series_default_p_degree_impl::algo<T> != 0) inline constexpr auto p_degree<T>
 #else
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
 #endif
@@ -3405,7 +3404,7 @@ struct series_default_evaluate_impl {
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_evaluate_impl::algo<T, U> != 0 inline constexpr auto evaluate<T, U>
+    requires (series_default_evaluate_impl::algo<T, U> != 0) inline constexpr auto evaluate<T, U>
 #else
 inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
 #endif
