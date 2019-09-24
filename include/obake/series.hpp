@@ -2273,7 +2273,6 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
 } // namespace detail
 
 #if defined(_MSC_VER)
-
 struct series_sub_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
@@ -2520,7 +2519,7 @@ constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER) 
+#if defined(_MSC_VER)
 
 struct series_mul_msvc {
     template <typename T, typename U>
@@ -2971,7 +2970,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER) 
+#if defined(_MSC_VER)
 
 struct series_equal_to_msvc {
     template <typename T, typename U>
