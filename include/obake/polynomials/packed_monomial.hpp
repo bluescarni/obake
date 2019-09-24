@@ -740,7 +740,7 @@ using pm_monomial_subs_ret_t = typename decltype(pm_key_evaluate_algorithm<T, U>
 // Substitution of symbols in a packed monomial.
 // NOTE: this requires that p is compatible with ss,
 // and that sm is consistent with ss.
-template <typename T, typename U>
+template <typename T, typename U, ::std::enable_if_t<detail::pm_monomial_subs_algo<T, U> != 0, int> = 0>
 inline ::std::pair<detail::pm_monomial_subs_ret_t<T, U>, packed_monomial<T>>
 monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const symbol_set &ss)
 {
@@ -758,13 +758,13 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
     k_packer<T> kp(s_size);
     T tmp;
     auto sm_it = sm.cbegin();
+    const auto sm_end = sm.cend();
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
 
-        if (sm_it->first == i) {
+        if (sm_it != sm_end && sm_it->first == i) {
             // The current exponent is in the subs map,
             // accumulate the result of the substitution.
-            assert(sm_it != sm.cend());
             retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
 
             // Set the exponent to zero in the output
@@ -774,8 +774,9 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
             // Move to the next item in the map.
             ++sm_it;
         } else {
-            // The current exponent is not in the subs map,
-            // just copy it into the output monomial.
+            // Either the current exponent is not in the subs map,
+            // or we already reached the end of the map.
+            // Just copy the original exponent into the output monomial.
             kp << tmp;
         }
     }
