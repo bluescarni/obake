@@ -47,10 +47,12 @@
 #include <obake/math/is_zero.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/math/subs.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
 #include <obake/polynomials/monomial_pow.hpp>
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
+#include <obake/polynomials/monomial_subs.hpp>
 #include <obake/ranges.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
@@ -140,8 +142,8 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         const auto it = ::std::lower_bound(ss.begin(), ss.end(), s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
             obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
-                                                       + " from the generator '" + s
-                                                       + "': the generator is not in the symbol set");
+                                                     + " from the generator '" + s
+                                                     + "': the generator is not in the symbol set");
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -333,7 +335,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     constexpr ::std::uint64_t s1 = 18379758338774109289ull;
     constexpr ::std::uint64_t s2 = 15967298767098049689ull;
     ::obake::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
-                                             s2 + static_cast<::std::uint64_t>(v2.size())};
+                                           s2 + static_cast<::std::uint64_t>(v2.size())};
 
     // The idea now is to compute a small amount of term-by-term
     // multiplications and determine the average size in bytes
@@ -467,10 +469,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // Do the monomial overflow checking, if possible.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
     const auto r2
         = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
         // Do the monomial overflow checking.
         if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
@@ -841,10 +843,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Check the table size against the max allowed size.
                 if (obake_unlikely(table.size() > mts)) {
                     obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
-                                                         "polynomials resulted in a table whose size ("
-                                                             + ::obake::detail::to_string(table.size())
-                                                             + ") is larger than the maximum allowed value ("
-                                                             + ::obake::detail::to_string(mts) + ")");
+                                                       "polynomials resulted in a table whose size ("
+                                                           + ::obake::detail::to_string(table.size())
+                                                           + ") is larger than the maximum allowed value ("
+                                                           + ::obake::detail::to_string(mts) + ")");
                 }
                 // LCOV_EXCL_STOP
             }
@@ -917,10 +919,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     // Do the monomial overflow checking, if possible.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
     const auto r2
         = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
         // Do the monomial overflow checking.
         if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
@@ -1404,6 +1406,58 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
         return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
     }
 }
+
+#if 0
+
+namespace detail
+{
+
+template <typename T, typename U>
+constexpr auto poly_subs_algo_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the subs implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        if constexpr (::std::conjunction_v<::std::negation<is_substitutable_monomial<const key_t &, U>>,
+                                           ::std::negation<is_substitutable<const cf_t &, U>>>) {
+            // Neither cf nor key support substitution.
+            return failure;
+        } else if constexpr (::std::conjunction_v<is_substitutable_monomial<const key_t &, U>,
+                                                  is_substitutable<const cf_t &, U>>) {
+            // Both cf and key support substitution.
+        } else if constexpr (is_substitutable_monomial_<const key_t &, U>) {
+            // Only key supports substitution.
+        } else {
+            // Only cf supports substitution.
+        }
+    }
+}
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_subs_algo<T &&, U> != 0, int> = 0>
+inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
+{
+    // Need only const access to x.
+    const auto &x = ::std::as_const(x_);
+
+    for (const auto &tab : x._get_s_table()) {
+        for (const auto &t : tab) {
+        }
+    }
+}
+
+#endif
 
 } // namespace polynomials
 
