@@ -6,8 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef OBAKE_POLYNOMIALS_MONOMIAL_SUB_HPP
-#define OBAKE_POLYNOMIALS_MONOMIAL_SUB_HPP
+#ifndef OBAKE_POLYNOMIALS_MONOMIAL_SUBS_HPP
+#define OBAKE_POLYNOMIALS_MONOMIAL_SUBS_HPP
 
 #include <type_traits>
 #include <utility>

@@ -663,11 +663,13 @@ constexpr auto pm_key_evaluate_algorithm_impl()
 
         // We will need to construct the return value from 1,
         // multiply it in-place and then return it.
+        // NOTE: require also a semi-regular type,
+        // it's just easier to reason about.
         if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, int>,
                                            // NOTE: we will be multiplying an
                                            // lvalue by an rvalue.
                                            is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                           is_returnable<ret_t>>) {
+                                           is_semi_regular<ret_t>, is_returnable<ret_t>>) {
             return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
         } else {
             return failure;
@@ -717,20 +719,40 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
     return retval;
 }
 
-#if 0
+namespace detail
+{
 
+// NOTE: the metaprogramming for the monomial_subs() implementation for packed_monomial
+// is identical to the key_evaluate() implementation.
+
+// Shortcuts.
+template <typename T, typename U>
+inline constexpr auto pm_monomial_subs_algorithm = detail::pm_key_evaluate_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int pm_monomial_subs_algo = pm_key_evaluate_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using pm_monomial_subs_ret_t = typename decltype(pm_key_evaluate_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+// Substitution of symbols in a packed monomial.
+// NOTE: this requires that p is compatible with ss,
+// and that sm is consistent with ss.
 template <typename T, typename U>
 inline ::std::pair<detail::pm_monomial_subs_ret_t<T, U>, packed_monomial<T>>
 monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(p, ss));
     // sm must not be larger than ss, and the last element
-    // of sm must have an index equal to the last index of ss.
-    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first == ss.size() - 1u));
+    // of sm must have an index not larger than the last index of ss.
+    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first <= ss.size() - 1u));
 
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
 
+    // Init the return value and the (un)packing machinery.
     detail::pm_monomial_subs_ret_t<T, U> retval(1);
     k_unpacker<T> ku(p.get_value(), s_size);
     k_packer<T> kp(s_size);
@@ -738,12 +760,22 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
     auto sm_it = sm.cbegin();
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
+
         if (sm_it->first == i) {
-            retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
-            kp << T(0);
+            // The current exponent is in the subs map,
+            // accumulate the result of the substitution.
             assert(sm_it != sm.cend());
+            retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
+
+            // Set the exponent to zero in the output
+            // monomial.
+            kp << T(0);
+
+            // Move to the next item in the map.
             ++sm_it;
         } else {
+            // The current exponent is not in the subs map,
+            // just copy it into the output monomial.
             kp << tmp;
         }
     }
@@ -751,8 +783,6 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
 
     return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
 }
-
-#endif
 
 } // namespace polynomials
 
