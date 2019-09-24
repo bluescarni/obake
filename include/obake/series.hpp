@@ -60,6 +60,7 @@
 #include <obake/math/negate.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/math/subs.hpp>
 #include <obake/symbols.hpp>
@@ -643,7 +644,7 @@ public:
                 auto &tab = m_s_table[i];
 
                 // Reserve space in the current table.
-                tab.reserve(xt.size());
+                tab.reserve(::obake::safe_cast<decltype(tab.size())>(xt.size()));
 
                 for (auto &t : xt) {
                     // NOTE: old clang does not like structured
@@ -1798,7 +1799,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // Set the number of segments, reserve space.
     const auto from_log2_size = from.get_s_size();
     to.set_n_segments(from_log2_size);
-    to.reserve(from.size());
+    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
 
     // Establish if we need to check for zero coefficients
     // when inserting. We don't if the coefficient types of to and from
