@@ -61,6 +61,7 @@
 #include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_convert.hpp>
+#include <obake/math/subs.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
@@ -3421,6 +3422,84 @@ inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_
     = series_default_evaluate_impl{};
 
 } // namespace customisation::internal
+
+#if 0
+
+namespace customisation::internal
+{
+
+// Metaprogramming to establish the algorithm/return
+// type of the default series subs computation.
+// NOTE: the default implementation is activated only
+// if the coefficient type supports substitution.
+template <typename T, typename U>
+constexpr auto series_default_subs_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+    if constexpr (!is_cvr_series_v<T>) {
+        // Not a series type.
+        return failure;
+    } else {
+        using rT = remove_cvref_t<T>;
+        using cf_t = series_cf_t<rT>;
+
+        if constexpr (is_substitutable_v<const cf_t &, U>) {
+
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Default implementation of series substitution.
+struct series_default_subs_impl {
+    // A couple of handy shortcuts.
+    template <typename T, typename U>
+    static constexpr auto algo_ret = internal::series_default_subs_algorithm_impl<T, U>();
+
+    template <typename T, typename U>
+    static constexpr auto algo = series_default_subs_impl::algo_ret<T, U>.first;
+
+    template <typename T, typename U>
+    using ret_t = typename decltype(series_default_subs_impl::algo_ret<T, U>.second)::type;
+
+    // Implementation.
+    template <typename T, typename U>
+    ret_t<T &&, U> operator()(T &&x, const symbol_map<U> &sm) const
+    {
+        // Sanity check.
+        static_assert(algo<T &&, U> != 0);
+
+        using rT = remove_cvref_t<T>;
+        using cf_t = series_cf_t<rT>;
+        using cf_subs_t = detail::subs_t<const cf_t &, U>;
+        using new_cf_t = detail::mul_t<const cf_subs_t &, const cf_t &>;
+
+        if constexpr (::std::is_same_v<new_cf_t, cf_t>) {
+        } else {
+            const auto &xc = ::std::as_const(x);
+            const auto &ss = xc.get_symbol_set();
+
+            for (const auto &t : xc) {
+                ret_t<T &&, U> tmp;
+                tmp.set_symbol_set(ss);
+            }
+        }
+    }
+};
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+    requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
+#else
+inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
+#endif
+    = series_default_pow_impl{};
+
+} // namespace customisation::internal
+
+#endif
 
 } // namespace obake
 
