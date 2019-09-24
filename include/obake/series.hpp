@@ -3424,8 +3424,6 @@ inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_
 
 } // namespace customisation::internal
 
-#if 0
-
 namespace customisation::internal
 {
 
@@ -3445,8 +3443,12 @@ constexpr auto series_default_subs_algorithm_impl()
         using rT = remove_cvref_t<T>;
         using cf_t = series_cf_t<rT>;
 
-        if constexpr (is_substitutable_v<const cf_t &, U>) {
-
+        // The coefficient must be substitutable, yielding
+        // a coefficient type. Substitution is checked
+        // via const lvalue ref.
+        using cf_subs_t = detected_t<detail::subs_t, const cf_t &, U>;
+        if constexpr (is_cf_v<cf_subs_t>) {
+            return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_subs_t, series_tag_t<rT>>>{});
         } else {
             return failure;
         }
@@ -3467,40 +3469,66 @@ struct series_default_subs_impl {
 
     // Implementation.
     template <typename T, typename U>
-    ret_t<T &&, U> operator()(T &&x, const symbol_map<U> &sm) const
+    ret_t<T &&, U> operator()(T &&x_, const symbol_map<U> &sm) const
     {
         // Sanity check.
         static_assert(algo<T &&, U> != 0);
 
-        using rT = remove_cvref_t<T>;
-        using cf_t = series_cf_t<rT>;
-        using cf_subs_t = detail::subs_t<const cf_t &, U>;
-        using new_cf_t = detail::mul_t<const cf_subs_t &, const cf_t &>;
+        // Need only const access to x.
+        const auto &x = ::std::as_const(x_);
 
-        if constexpr (::std::is_same_v<new_cf_t, cf_t>) {
-        } else {
-            const auto &xc = ::std::as_const(x);
-            const auto &ss = xc.get_symbol_set();
+        // Init retval: get the symbol set from x, and
+        // use the same number of segments.
+        ret_t<T &&, U> retval;
+        retval.set_symbol_set(x.get_symbol_set());
+        retval.set_n_segments(x.get_s_size());
 
-            for (const auto &t : xc) {
-                ret_t<T &&, U> tmp;
-                tmp.set_symbol_set(ss);
+        try {
+            // NOTE: parallelisation opportunities here.
+            for (decltype(x._get_s_table().size()) i = 0; i < x._get_s_table().size(); ++i) {
+                // Fetch the current input/output tables.
+                const auto &tab_in = x._get_s_table()[i];
+                auto &tab_out = retval._get_s_table()[i];
+                // Make space in the output table.
+                tab_out.reserve(::obake::safe_cast<decltype(tab_out.size())>(tab_in.size()));
+
+                for (const auto &t : tab_in) {
+                    // Create the new term from the original term's key and
+                    // the substituted coefficient.
+                    const auto res = tab_out.try_emplace(t.first, ::obake::subs(t.second, sm));
+                    assert(res.second);
+
+                    // NOTE: the only thing that can go wrong is the result
+                    // of the substitution being zero. Erase it in such a case.
+                    if (obake_unlikely(::obake::is_zero(res.first->second))) {
+                        tab_out.erase(res.first);
+                    }
+                }
             }
+        } catch (...) {
+            // LCOV_EXCL_START
+            // In case of exceptions, clear out
+            // before rethrowing in order to avoid
+            // inconsistent state in retval.
+            retval.clear();
+
+            throw;
+            // LCOV_EXCL_STOP
         }
+
+        return retval;
     }
 };
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
+    requires series_default_subs_impl::algo<T, U> != 0 inline constexpr auto subs<T, U>
 #else
-inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
+inline constexpr auto subs<T, U, ::std::enable_if_t<series_default_subs_impl::algo<T, U> != 0>>
 #endif
-    = series_default_pow_impl{};
+    = series_default_subs_impl{};
 
 } // namespace customisation::internal
-
-#endif
 
 } // namespace obake
 
