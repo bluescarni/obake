@@ -55,18 +55,23 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
-constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<2>)
+constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<3>)
     OBAKE_SS_FORWARD_FUNCTION((customisation::subs<T &&, U>)(::std::forward<T>(x), sm));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<1>)
+constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<2>)
     OBAKE_SS_FORWARD_FUNCTION(subs(::std::forward<T>(x), sm));
 
 // Explicit override in the internal customisation namespace.
 template <typename T, typename U>
-constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<0>)
+constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<1>)
     OBAKE_SS_FORWARD_FUNCTION((customisation::internal::subs<T &&, U>)(::std::forward<T>(x), sm));
+
+// Lowest-priority: forward-construct the input value.
+template <typename T, typename U>
+constexpr auto subs_impl(T &&x, const symbol_map<U> &, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(remove_cvref_t<T>(::std::forward<T>(x)));
 
 } // namespace detail
 
@@ -82,7 +87,7 @@ struct subs_functor {
     // regular type here for meta-programming purposes.
     template <typename T, typename U, ::std::enable_if_t<is_semi_regular_v<U>, int> = 0>
     constexpr auto operator()(T &&x, const symbol_map<U> &sm) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::subs_impl(::std::forward<T>(x), sm, detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::subs_impl(::std::forward<T>(x), sm, detail::priority_tag<3>{}))
 };
 
 inline constexpr auto subs = subs_functor{};

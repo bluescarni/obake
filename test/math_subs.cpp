@@ -26,10 +26,10 @@ TEST_CASE("subs_arith")
     REQUIRE(!is_substitutable_v<const int &, void>);
     REQUIRE(!is_substitutable_v<const int, void>);
 
-    REQUIRE(!is_substitutable_v<int, int>);
-    REQUIRE(!is_substitutable_v<int &, int>);
-    REQUIRE(!is_substitutable_v<const int &, int>);
-    REQUIRE(!is_substitutable_v<const int, int>);
+    REQUIRE(is_substitutable_v<int, int>);
+    REQUIRE(is_substitutable_v<int &, int>);
+    REQUIRE(is_substitutable_v<const int &, int>);
+    REQUIRE(is_substitutable_v<const int, int>);
     REQUIRE(!is_substitutable_v<int, int &>);
     REQUIRE(!is_substitutable_v<int, const int>);
 
@@ -41,14 +41,17 @@ TEST_CASE("subs_arith")
     REQUIRE(!Substitutable<const int &, void>);
     REQUIRE(!Substitutable<const int, void>);
 
-    REQUIRE(!Substitutable<int, int>);
-    REQUIRE(!Substitutable<int &, int>);
-    REQUIRE(!Substitutable<const int &, int>);
-    REQUIRE(!Substitutable<const int, int>);
+    REQUIRE(Substitutable<int, int>);
+    REQUIRE(Substitutable<int &, int>);
+    REQUIRE(Substitutable<const int &, int>);
+    REQUIRE(Substitutable<const int, int>);
     REQUIRE(!Substitutable<int, int &>);
     REQUIRE(!Substitutable<int, const int>);
 #endif
 }
+
+struct subs_base {
+};
 
 // OK ADL implementation.
 struct subs_0 {
@@ -79,24 +82,30 @@ inline constexpr auto subs<T, double, std::enable_if_t<is_same_cvr_v<T, subs_1>>
 TEST_CASE("subs_custom")
 {
     // Check type-traits/concepts.
+    REQUIRE(is_substitutable_v<subs_base, int>);
+    REQUIRE(!is_substitutable_v<subs_base, int &>);
     REQUIRE(is_substitutable_v<subs_0, int>);
     REQUIRE(!is_substitutable_v<subs_0, int &>);
-    REQUIRE(!is_substitutable_v<subs_0, const int>);
     REQUIRE(!is_substitutable_v<subs_0, const int &>);
-    REQUIRE(!is_substitutable_v<subs_0, double>);
+    REQUIRE(!is_substitutable_v<subs_0, const int>);
+    REQUIRE(is_substitutable_v<subs_0, double>);
     REQUIRE(is_substitutable_v<subs_1, double>);
     REQUIRE(!is_substitutable_v<subs_1, double &>);
     REQUIRE(!is_substitutable_v<subs_1, const double &>);
     REQUIRE(!is_substitutable_v<subs_1, const double>);
-    REQUIRE(!is_substitutable_v<subs_1, int>);
+    REQUIRE(is_substitutable_v<subs_1, int>);
 
     REQUIRE(std::is_same_v<int, decltype(obake::subs(subs_0{}, symbol_map<int>{}))>);
+    REQUIRE(std::is_same_v<subs_0, decltype(obake::subs(subs_0{}, symbol_map<double>{}))>);
+    REQUIRE(std::is_same_v<subs_1, decltype(obake::subs(subs_1{}, symbol_map<int>{}))>);
     REQUIRE(std::is_same_v<bool, decltype(obake::subs(subs_1{}, symbol_map<double>{}))>);
 
 #if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(Substitutable<subs_base, int>);
+    REQUIRE(!Substitutable<subs_base, int &>);
     REQUIRE(Substitutable<subs_0, int>);
-    REQUIRE(!Substitutable<subs_0, double>);
+    REQUIRE(Substitutable<subs_0, double>);
     REQUIRE(Substitutable<subs_1, double>);
-    REQUIRE(!Substitutable<subs_1, int>);
+    REQUIRE(Substitutable<subs_1, int>);
 #endif
 }
