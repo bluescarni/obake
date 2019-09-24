@@ -3057,9 +3057,11 @@ constexpr auto series_default_degree_algorithm_impl()
                     if constexpr (::std::conjunction_v<
                                       is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                       ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                      ::std::is_move_assignable<degree_t>>) {
+                                      // NOTE: require a semi-regular type,
+                                      // it's just easier to reason about.
+                                      is_semi_regular<degree_t>>) {
                         // degree_t supports operator<, it can be constructed from int,
-                        // it is returnable and move-assignable.
+                        // it is returnable and semi-regular (hence, move-assignable).
                         return ::std::make_pair(1, detail::type_c<degree_t>{});
                     } else {
                         return failure;
@@ -3075,9 +3077,11 @@ constexpr auto series_default_degree_algorithm_impl()
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                   ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  ::std::is_move_assignable<degree_t>>) {
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
                     // degree_t supports operator<, it can be constructed from int,
-                    // it is returnable and move-assignable.
+                    // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(2, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3089,9 +3093,11 @@ constexpr auto series_default_degree_algorithm_impl()
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                   ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  ::std::is_move_assignable<degree_t>>) {
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
                     // degree_t supports operator<, it can be constructed from int,
-                    // it is returnable and move-assignable.
+                    // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(3, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3323,7 +3329,10 @@ constexpr auto series_default_evaluate_algorithm_impl()
             using ret_t = detected_t<detail::mul_t, key_eval_t, key_cf_t>;
 
             if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>>) {
+                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
+                                               // NOTE: require a semi-regular type,
+                                               // it's just easier to reason about.
+                                               is_semi_regular<ret_t>>) {
                 return ::std::make_pair(1, detail::type_c<ret_t>{});
             } else {
                 return failure;
