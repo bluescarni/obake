@@ -786,6 +786,31 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
     return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
 }
 
+// Identify non-trimmable exponents in p.
+// NOTE: this requires that p is compatible with ss,
+// and that v has the same size as ss.
+template <typename T>
+inline void key_trim_identify(::std::vector<int> &v, const packed_monomial<T> &p, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    assert(v.size() == ss.size());
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    k_unpacker<T> ku(p.get_value(), s_size);
+    T tmp;
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (tmp != T(0)) {
+            // The current exponent is nonzero,
+            // thus it must not be trimmed.
+            v[i] = 0;
+        }
+    }
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
