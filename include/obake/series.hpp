@@ -3431,6 +3431,8 @@ namespace customisation::internal
 // type of the default series subs computation.
 // NOTE: the default implementation is activated only
 // if the coefficient type supports substitution.
+// It will not perform any substitution
+// in the keys.
 template <typename T, typename U>
 constexpr auto series_default_subs_algorithm_impl()
 {

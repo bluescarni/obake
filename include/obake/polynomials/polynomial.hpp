@@ -1407,13 +1407,15 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
     }
 }
 
-#if 0
-
 namespace detail
 {
 
+// Meta-programming for the selection of the
+// polynomial substitution algorithm.
+// NOTE: currently this supports only the case
+// in which both cf and key are substitutable.
 template <typename T, typename U>
-constexpr auto poly_subs_algo_impl()
+constexpr auto poly_subs_algorithm_impl()
 {
     using rT = remove_cvref_t<T>;
 
@@ -1421,43 +1423,100 @@ constexpr auto poly_subs_algo_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if (!is_polynomial_v<rT>) {
+    if constexpr (!is_polynomial_v<rT>) {
         // Not a polynomial.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
         using key_t = series_key_t<rT>;
 
-        if constexpr (::std::conjunction_v<::std::negation<is_substitutable_monomial<const key_t &, U>>,
-                                           ::std::negation<is_substitutable<const cf_t &, U>>>) {
-            // Neither cf nor key support substitution.
-            return failure;
-        } else if constexpr (::std::conjunction_v<is_substitutable_monomial<const key_t &, U>,
-                                                  is_substitutable<const cf_t &, U>>) {
-            // Both cf and key support substitution.
-        } else if constexpr (is_substitutable_monomial_<const key_t &, U>) {
-            // Only key supports substitution.
+        if constexpr (::std::conjunction_v<is_substitutable_monomial<const key_t &, U>,
+                                           is_substitutable<const cf_t &, U>>) {
+            // Both cf and key support substitution (via const lvalue refs).
+            using key_subs_t = typename ::obake::detail::monomial_subs_t<const key_t &, U>::first_type;
+            using cf_subs_t = ::obake::detail::subs_t<const cf_t &, U>;
+
+            // The type of the product of key_subs_t * cf_subs_t
+            // (via rvalues).
+            using subs_prod_t = detected_t<::obake::detail::mul_t, key_subs_t, cf_subs_t>;
+            // The candidate return type: rvalue subs_prod_t * const lvalue ref rT.
+            using ret_t = detected_t<::obake::detail::mul_t, subs_prod_t, const rT &>;
+
+            // ret_t must be addable in place by an rvalue, and the original coefficient
+            // type must be constructible from int.
+            if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                                               ::std::is_constructible<cf_t, int>>) {
+                return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
+            } else {
+                return failure;
+            }
         } else {
-            // Only cf supports substitution.
+            return failure;
         }
     }
 }
+
+template <typename T, typename U>
+inline constexpr auto poly_subs_algorithm = detail::poly_subs_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int poly_subs_algo = poly_subs_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using poly_subs_ret_t = typename decltype(poly_subs_algorithm<T, U>.second)::type;
 
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_subs_algo<T &&, U> != 0, int> = 0>
 inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
 {
+    // Sanity check.
+    static_assert(detail::poly_subs_algo<T &&, U> == 1);
+
     // Need only const access to x.
     const auto &x = ::std::as_const(x_);
 
-    for (const auto &tab : x._get_s_table()) {
-        for (const auto &t : tab) {
-        }
-    }
-}
+    // Cache a reference to the symbol set.
+    const auto &ss = x.get_symbol_set();
 
-#endif
+    // Compute the intersection between sm and ss.
+    const auto si = ::obake::detail::sm_intersect_idx(sm, ss);
+
+    // Init a temp poly that we will use in the loop below.
+    remove_cvref_t<T> tmp_poly;
+    tmp_poly.set_symbol_set(ss);
+
+    // The return value (this will default-construct
+    // an empty polynomial).
+    detail::poly_subs_ret_t<T &&, U> retval;
+
+    // NOTE: parallelisation opportunities here
+    // for segmented tables.
+    for (const auto &t : x) {
+        const auto &k = t.first;
+        const auto &c = t.second;
+
+        // Do the monomial substitution.
+        auto k_sub(::obake::monomial_subs(k, si, ss));
+
+        // Clear up tmp_poly, add a term with unitary
+        // coefficient containing the monomial result of the
+        // substitution above.
+        tmp_poly.clear_terms();
+        tmp_poly.add_term(::std::move(k_sub.second), 1);
+
+        // Compute the product of the substitutions and accumulate
+        // it into the return value.
+        // NOTE: if the type of retval coincides with the type
+        // of the original poly, we could probably optimise this
+        // to do term insertions rather than going through with
+        // the multiplications. E.g., substitution with integral
+        // values in a polynomial with integral coefficients.
+        retval += ::std::move(k_sub.first) * ::obake::subs(c, sm) * ::std::as_const(tmp_poly);
+    }
+
+    return retval;
+}
 
 } // namespace polynomials
 
