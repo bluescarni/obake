@@ -60,6 +60,7 @@
 #include <obake/math/negate.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_name.hpp>
@@ -642,7 +643,7 @@ public:
                 auto &tab = m_s_table[i];
 
                 // Reserve space in the current table.
-                tab.reserve(xt.size());
+                tab.reserve(::obake::safe_cast<decltype(tab.size())>(xt.size()));
 
                 for (auto &t : xt) {
                     // NOTE: old clang does not like structured
@@ -1797,7 +1798,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // Set the number of segments, reserve space.
     const auto from_log2_size = from.get_s_size();
     to.set_n_segments(from_log2_size);
-    to.reserve(from.size());
+    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
 
     // Establish if we need to check for zero coefficients
     // when inserting. We don't if the coefficient types of to and from
@@ -3057,9 +3058,11 @@ constexpr auto series_default_degree_algorithm_impl()
                     if constexpr (::std::conjunction_v<
                                       is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                       ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                      ::std::is_move_assignable<degree_t>>) {
+                                      // NOTE: require a semi-regular type,
+                                      // it's just easier to reason about.
+                                      is_semi_regular<degree_t>>) {
                         // degree_t supports operator<, it can be constructed from int,
-                        // it is returnable and move-assignable.
+                        // it is returnable and semi-regular (hence, move-assignable).
                         return ::std::make_pair(1, detail::type_c<degree_t>{});
                     } else {
                         return failure;
@@ -3075,9 +3078,11 @@ constexpr auto series_default_degree_algorithm_impl()
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                   ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  ::std::is_move_assignable<degree_t>>) {
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
                     // degree_t supports operator<, it can be constructed from int,
-                    // it is returnable and move-assignable.
+                    // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(2, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3089,9 +3094,11 @@ constexpr auto series_default_degree_algorithm_impl()
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                   ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  ::std::is_move_assignable<degree_t>>) {
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
                     // degree_t supports operator<, it can be constructed from int,
-                    // it is returnable and move-assignable.
+                    // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(3, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3323,7 +3330,10 @@ constexpr auto series_default_evaluate_algorithm_impl()
             using ret_t = detected_t<detail::mul_t, key_eval_t, key_cf_t>;
 
             if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>>) {
+                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
+                                               // NOTE: require a semi-regular type,
+                                               // it's just easier to reason about.
+                                               is_semi_regular<ret_t>>) {
                 return ::std::make_pair(1, detail::type_c<ret_t>{});
             } else {
                 return failure;
