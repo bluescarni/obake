@@ -92,8 +92,11 @@ using key_merge_symbols_t = decltype(::obake::key_merge_symbols(
 
 }
 
-// NOTE: runtime requirement: the output key will be
-// compatible with the merged symbol set.
+// NOTE: runtime requirements:
+// - the output key will be compatible with the merged symbol set,
+// - if two keys compared different before the merge, then the merged
+//   keys will also compare different (provided the other arguments to
+//   key_merge_symbols() are identical).
 template <typename T>
 using is_symbols_mergeable_key = is_detected<detail::key_merge_symbols_t, T>;
 
