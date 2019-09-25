@@ -62,7 +62,6 @@
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
-#include <obake/math/subs.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
@@ -3421,114 +3420,6 @@ template <typename T, typename U>
 inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
 #endif
     = series_default_evaluate_impl{};
-
-} // namespace customisation::internal
-
-namespace customisation::internal
-{
-
-// Metaprogramming to establish the algorithm/return
-// type of the default series subs computation.
-// NOTE: the default implementation is activated only
-// if the coefficient type supports substitution.
-// It will not perform any substitution
-// in the keys.
-template <typename T, typename U>
-constexpr auto series_default_subs_algorithm_impl()
-{
-    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
-
-    if constexpr (!is_cvr_series_v<T>) {
-        // Not a series type.
-        return failure;
-    } else {
-        using rT = remove_cvref_t<T>;
-        using cf_t = series_cf_t<rT>;
-
-        // The coefficient must be substitutable, yielding
-        // a coefficient type. Substitution is checked
-        // via const lvalue ref.
-        using cf_subs_t = detected_t<detail::subs_t, const cf_t &, U>;
-        if constexpr (is_cf_v<cf_subs_t>) {
-            return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_subs_t, series_tag_t<rT>>>{});
-        } else {
-            return failure;
-        }
-    }
-}
-
-// Default implementation of series substitution.
-struct series_default_subs_impl {
-    // A couple of handy shortcuts.
-    template <typename T, typename U>
-    static constexpr auto algo_ret = internal::series_default_subs_algorithm_impl<T, U>();
-
-    template <typename T, typename U>
-    static constexpr auto algo = series_default_subs_impl::algo_ret<T, U>.first;
-
-    template <typename T, typename U>
-    using ret_t = typename decltype(series_default_subs_impl::algo_ret<T, U>.second)::type;
-
-    // Implementation.
-    template <typename T, typename U>
-    ret_t<T &&, U> operator()(T &&x_, const symbol_map<U> &sm) const
-    {
-        // Sanity check.
-        static_assert(algo<T &&, U> != 0);
-
-        // Need only const access to x.
-        const auto &x = ::std::as_const(x_);
-
-        // Init retval: get the symbol set from x, and
-        // use the same number of segments.
-        ret_t<T &&, U> retval;
-        retval.set_symbol_set(x.get_symbol_set());
-        retval.set_n_segments(x.get_s_size());
-
-        try {
-            // NOTE: parallelisation opportunities here.
-            for (decltype(x._get_s_table().size()) i = 0; i < x._get_s_table().size(); ++i) {
-                // Fetch the current input/output tables.
-                const auto &tab_in = x._get_s_table()[i];
-                auto &tab_out = retval._get_s_table()[i];
-                // Make space in the output table.
-                tab_out.reserve(::obake::safe_cast<decltype(tab_out.size())>(tab_in.size()));
-
-                for (const auto &t : tab_in) {
-                    // Create the new term from the original term's key and
-                    // the substituted coefficient.
-                    const auto res = tab_out.try_emplace(t.first, ::obake::subs(t.second, sm));
-                    assert(res.second);
-
-                    // NOTE: the only thing that can go wrong is the result
-                    // of the substitution being zero. Erase it in such a case.
-                    if (obake_unlikely(::obake::is_zero(res.first->second))) {
-                        tab_out.erase(res.first);
-                    }
-                }
-            }
-        } catch (...) {
-            // LCOV_EXCL_START
-            // In case of exceptions, clear out
-            // before rethrowing in order to avoid
-            // inconsistent state in retval.
-            retval.clear();
-
-            throw;
-            // LCOV_EXCL_STOP
-        }
-
-        return retval;
-    }
-};
-
-template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_subs_impl::algo<T, U> != 0 inline constexpr auto subs<T, U>
-#else
-inline constexpr auto subs<T, U, ::std::enable_if_t<series_default_subs_impl::algo<T, U> != 0>>
-#endif
-    = series_default_subs_impl{};
 
 } // namespace customisation::internal
 

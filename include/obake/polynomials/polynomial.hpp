@@ -1442,7 +1442,7 @@ constexpr auto poly_subs_algorithm_impl()
             // The candidate return type: rvalue subs_prod_t * const lvalue ref rT.
             using ret_t = detected_t<::obake::detail::mul_t, subs_prod_t, const rT &>;
 
-            // ret_t must be addable in place by an rvalue, and the original coefficient
+            // ret_t must be addable in place with an rvalue, and the original coefficient
             // type must be constructible from int.
             if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
                                                ::std::is_constructible<cf_t, int>>) {

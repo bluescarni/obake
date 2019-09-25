@@ -16,7 +16,6 @@
 
 #include <obake/math/evaluate.hpp>
 #include <obake/math/pow.hpp>
-#include <obake/math/subs.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
@@ -175,35 +174,4 @@ TEST_CASE("series_evaluate_test")
         std::invalid_argument,
         "Cannot evaluate a series: the evaluation map, which contains the symbols {'t', 'u', 'x', 'y'}, does not "
         "contain all the symbols in the series' symbol set, {'x', 'y', 'z'}");
-}
-
-TEST_CASE("series_subs_test")
-{
-    using pm_t = packed_monomial<int>;
-    using p1_t = polynomial<pm_t, rat_t>;
-
-    REQUIRE(!is_substitutable_v<p1_t, void>);
-    REQUIRE(is_substitutable_v<p1_t, int>);
-    REQUIRE(is_substitutable_v<p1_t &, int>);
-    REQUIRE(is_substitutable_v<const p1_t &, int>);
-    REQUIRE(is_substitutable_v<const p1_t, int>);
-    REQUIRE(!is_substitutable_v<p1_t, int &>);
-
-    REQUIRE(subs(p1_t{}, symbol_map<int>{}).empty());
-    REQUIRE(subs(p1_t{}, symbol_map<int>{}).get_s_size() == 0u);
-
-    p1_t tmp;
-    tmp.set_n_segments(4);
-    REQUIRE(subs(tmp, symbol_map<int>{}).get_s_size() == 4u);
-
-    tmp.set_symbol_set(symbol_set{"x", "y"});
-    tmp.add_term(pm_t{1, 2}, 3);
-    tmp.add_term(pm_t{4, 5}, 6);
-    tmp.add_term(pm_t{7, 8}, 9);
-
-    auto tmp2(tmp);
-    auto tmp3 = subs(tmp, symbol_map<int>{});
-
-    REQUIRE(tmp3 == tmp2);
-    REQUIRE(tmp3.get_s_size() == tmp2.get_s_size());
 }
