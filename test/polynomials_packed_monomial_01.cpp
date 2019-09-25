@@ -19,6 +19,7 @@
 #include <obake/config.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/key/key_evaluate.hpp>
+#include <obake/key/key_trim.hpp>
 #include <obake/key/key_trim_identify.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
@@ -199,5 +200,28 @@ TEST_CASE("key_trim_identify")
         key_trim_identify(v, pm_t{0, 0, 0}, symbol_set{"x", "y", "z"});
         REQUIRE(v == std::vector<int>{1, 1, 1});
         v.clear();
+    });
+}
+
+TEST_CASE("key_trim")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(is_trimmable_key_v<pm_t>);
+        REQUIRE(is_trimmable_key_v<pm_t &>);
+        REQUIRE(is_trimmable_key_v<const pm_t &>);
+        REQUIRE(is_trimmable_key_v<const pm_t>);
+
+        REQUIRE(key_trim(pm_t{}, symbol_idx_set{}, symbol_set{}) == pm_t{});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{}, symbol_set{"x", "y", "z"}) == pm_t{1, 2, 3});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{0}, symbol_set{"x", "y", "z"}) == pm_t{2, 3});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{1}, symbol_set{"x", "y", "z"}) == pm_t{1, 3});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{2}, symbol_set{"x", "y", "z"}) == pm_t{1, 2});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{0, 1}, symbol_set{"x", "y", "z"}) == pm_t{3});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{0, 2}, symbol_set{"x", "y", "z"}) == pm_t{2});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{1, 2}, symbol_set{"x", "y", "z"}) == pm_t{1});
+        REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{0, 1, 2}, symbol_set{"x", "y", "z"}) == pm_t{});
     });
 }

@@ -89,6 +89,9 @@ using key_trim_t = decltype(::obake::key_trim(::std::declval<T>(), ::std::declva
 
 }
 
+// NOTE: runtime requirement: the result of trimming must be
+// compatible with the symbol set resulting from removing
+// from ss the symbols at indices in si.
 template <typename T>
 using is_trimmable_key = is_detected<detail::key_trim_t, T>;
 

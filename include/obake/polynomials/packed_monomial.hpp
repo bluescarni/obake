@@ -811,6 +811,43 @@ inline void key_trim_identify(::std::vector<int> &v, const packed_monomial<T> &p
     }
 }
 
+// Eliminate from p the exponents at the indices
+// specifed by si.
+// NOTE: this requires that p is compatible with ss,
+// and that si is consistent with ss.
+template <typename T>
+inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx_set &si, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    // NOTE: si cannot be larger than ss, and its last element must be smaller
+    // than the size of ss.
+    assert(si.size() <= ss.size() && (si.empty() || *(si.cend() - 1) < ss.size()));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(static_cast<unsigned>(s_size - si.size()));
+    T tmp;
+    auto si_it = si.cbegin();
+    const auto si_end = si.cend();
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (si_it != si_end && *si_it == i) {
+            // The current exponent must be trimmed. Don't
+            // add it to kp, and move to the next item in the trim set.
+            ++si_it;
+        } else {
+            // The current exponent must be kept.
+            kp << tmp;
+        }
+    }
+    assert(si_it == si_end);
+
+    return packed_monomial<T>(kp.get());
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
