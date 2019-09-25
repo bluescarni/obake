@@ -1825,6 +1825,9 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
                 //   max table size was not exceeded in the original series,
                 //   it might be now (as the merged key may end up in a different
                 //   table).
+                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
+                // that symbol merging does not affect is_zero(), compatibility and
+                // uniqueness.
                 if constexpr (is_mutable_rvalue_reference_v<From &&>) {
                     detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
                                             sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
