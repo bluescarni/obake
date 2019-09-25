@@ -747,8 +747,8 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
 {
     assert(polynomials::key_is_compatible(p, ss));
     // sm must not be larger than ss, and the last element
-    // of sm must have an index not larger than the last index of ss.
-    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first <= ss.size() - 1u));
+    // of sm must have an index smaller than the size of ss.
+    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first < ss.size()));
 
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
@@ -781,7 +781,7 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
             kp << tmp;
         }
     }
-    assert(sm_it == sm.cend());
+    assert(sm_it == sm_end);
 
     return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
 }
