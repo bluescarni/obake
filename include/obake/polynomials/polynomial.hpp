@@ -42,7 +42,9 @@
 #include <obake/detail/xoroshiro128_plus.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/hash.hpp>
+#include <obake/key/key_degree.hpp>
 #include <obake/key/key_merge_symbols.hpp>
+#include <obake/math/degree.hpp>
 #include <obake/math/fma3.hpp>
 #include <obake/math/is_zero.hpp>
 #include <obake/math/pow.hpp>
@@ -1513,6 +1515,128 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
         // the multiplications. E.g., substitution with integral
         // values in a polynomial with integral coefficients.
         retval += ::std::move(k_sub.first) * ::obake::subs(c, sm) * ::std::as_const(tmp_poly);
+    }
+
+    return retval;
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
+// truncate_degree() algorithm.
+// NOTE: at this time, we support only truncation
+// based on key filtering.
+template <typename T, typename U>
+constexpr auto poly_truncate_degree_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the truncate_degree() implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using key_t = series_key_t<rT>;
+
+        if constexpr (is_key_with_degree_v<const key_t &>) {
+            // The key supports degree computation.
+
+            if constexpr (::std::disjunction_v<is_with_degree<const series_cf_t<rT> &>>) {
+                // NOTE: for the time being, we deal with only truncation
+                // based on key filtering. Thus, if the coefficient type
+                // has a degree, return failure.
+                return failure;
+            } else {
+                // The truncation will involve only key-based
+                // filtering. We need to be able to lt-compare U
+                // to the degree type of the key (const lvalue
+                // ref vs rvalue). The degree of the key
+                // is computed via lvalue ref.
+                if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>,
+                                                        ::obake::detail::key_degree_t<const key_t &>>) {
+                    return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
+                } else {
+                    return failure;
+                }
+            }
+        } else {
+            // The key does not support degree computation, fail.
+            // NOTE: the case in which the coefficient is degree
+            // truncatable and the key does not support degree computation
+            // should eventually be handled in a default series implementation
+            // of truncate_degree().
+            return failure;
+        }
+    }
+}
+
+template <typename T, typename U>
+inline constexpr auto poly_truncate_degree_algorithm = detail::poly_truncate_degree_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int poly_truncate_degree_algo = poly_truncate_degree_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using poly_truncate_degree_ret_t = typename decltype(poly_truncate_degree_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U &&y_)
+{
+    using ret_t = detail::poly_truncate_degree_ret_t<T &&, U &&>;
+    constexpr auto algo = detail::poly_truncate_degree_algo<T &&, U &&>;
+
+    // Sanity checks.
+    static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
+    static_assert(algo == 1);
+
+    // We will need only const access to x and y.
+    const auto &x = ::std::as_const(x_);
+    const auto &y = ::std::as_const(y_);
+
+    // Cache the symbol set.
+    const auto &ss = x.get_symbol_set();
+
+    // Prepare the return value: same symbol set,
+    // same number of segments, but don't reserve
+    // space beforehand.
+    ret_t retval;
+    retval.set_symbol_set(ss);
+    retval.set_n_segments(x.get_s_size());
+
+    // Get references to the in & out tables.
+    const auto &in_s_table = x._get_s_table();
+    auto &out_s_table = retval._get_s_table();
+
+    // NOTE: parallelisation opportunities here,
+    // since we operate table by table.
+    // NOTE: in principle we could exploit an x rvalue
+    // here to move the existing coefficients instead
+    // of copying them (as we do elsewhere with the help
+    // of a rref_cleaner). Keep it in mind for the
+    // future.
+    for (decltype(in_s_table.size()) i = 0; i < in_s_table.size(); ++i) {
+        const auto &tab_in = in_s_table[i];
+        auto &tab_out = out_s_table[i];
+
+        for (const auto &t : tab_in) {
+            const auto &k = t.first;
+
+            if (!(y < ::obake::key_degree(k, ss))) {
+                // The key degree does not exceed the
+                // limit, add the term to the return value.
+                // NOTE: we can emplace directly into the table
+                // with no checks, as we are not changing anything
+                // in the term.
+                [[maybe_unused]] const auto res = tab_out.try_emplace(k, t.second);
+                assert(res.second);
+            }
+        }
     }
 
     return retval;
