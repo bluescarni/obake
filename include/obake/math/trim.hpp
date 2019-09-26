@@ -70,7 +70,7 @@ constexpr auto trim_impl(T &&x, priority_tag<1>)
 template <typename T>
 constexpr auto trim_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(remove_cvref_t<T>(::std::forward<T>(x)));
 
-// Machinery to enable the trim implementation only if the return
+// Machinery to enable the trim() implementation only if the return
 // type is the same as the input type (after cvref removal).
 template <typename T>
 using trim_impl_ret_t = decltype(detail::trim_impl(::std::declval<T>(), priority_tag<3>{}));
