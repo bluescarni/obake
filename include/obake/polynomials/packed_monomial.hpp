@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <mp++/integer.hpp>
 
@@ -746,8 +747,8 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
 {
     assert(polynomials::key_is_compatible(p, ss));
     // sm must not be larger than ss, and the last element
-    // of sm must have an index not larger than the last index of ss.
-    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first <= ss.size() - 1u));
+    // of sm must have an index smaller than the size of ss.
+    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first < ss.size()));
 
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
@@ -780,9 +781,71 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
             kp << tmp;
         }
     }
-    assert(sm_it == sm.cend());
+    assert(sm_it == sm_end);
 
     return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
+}
+
+// Identify non-trimmable exponents in p.
+// NOTE: this requires that p is compatible with ss,
+// and that v has the same size as ss.
+template <typename T>
+inline void key_trim_identify(::std::vector<int> &v, const packed_monomial<T> &p, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    assert(v.size() == ss.size());
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    k_unpacker<T> ku(p.get_value(), s_size);
+    T tmp;
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (tmp != T(0)) {
+            // The current exponent is nonzero,
+            // thus it must not be trimmed.
+            v[i] = 0;
+        }
+    }
+}
+
+// Eliminate from p the exponents at the indices
+// specifed by si.
+// NOTE: this requires that p is compatible with ss,
+// and that si is consistent with ss.
+template <typename T>
+inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx_set &si, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    // NOTE: si cannot be larger than ss, and its last element must be smaller
+    // than the size of ss.
+    assert(si.size() <= ss.size() && (si.empty() || *(si.cend() - 1) < ss.size()));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(static_cast<unsigned>(s_size - si.size()));
+    T tmp;
+    auto si_it = si.cbegin();
+    const auto si_end = si.cend();
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (si_it != si_end && *si_it == i) {
+            // The current exponent must be trimmed. Don't
+            // add it to kp, and move to the next item in the trim set.
+            ++si_it;
+        } else {
+            // The current exponent must be kept.
+            kp << tmp;
+        }
+    }
+    assert(si_it == si_end);
+
+    return packed_monomial<T>(kp.get());
 }
 
 } // namespace polynomials
