@@ -25,6 +25,10 @@ namespace customisation
 {
 
 // External customisation point for obake::truncate_degree().
+// NOTE: no internal customisation point for the time being,
+// but it probably makes sense to have a default implementation
+// for series kicking in when only the coefficient has a degree
+// (i.e., for Poisson series).
 template <typename T, typename U
 #if !defined(OBAKE_HAVE_CONCEPTS)
           ,
