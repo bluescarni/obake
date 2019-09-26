@@ -549,15 +549,6 @@ template <typename K, typename C, typename Tag, typename>
 #endif
 class series
 {
-    // Make friends with all series types.
-    template <typename, typename, typename
-#if !defined(OBAKE_HAVE_CONCEPTS)
-              ,
-              typename
-#endif
-              >
-    friend class series;
-
 public:
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
     using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
@@ -628,11 +619,11 @@ public:
             // coefficients from x below.
             detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
-            // Copy/move over the symbol set.
-            m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+            // Copy over the symbol set.
+            m_symbol_set = x.get_symbol_set();
 
             // Set the number of segments.
-            const auto x_log2_size = x.m_log2_size;
+            const auto x_log2_size = x.get_s_size();
             set_n_segments(x_log2_size);
 
             // Insert the terms from x. Although the coefficients
@@ -642,7 +633,7 @@ public:
             // NOTE: this could be parallelised, if needed.
             for (s_size_type i = 0; i < (s_size_type(1) << x_log2_size); ++i) {
                 // Extract references to the tables in x and this.
-                auto &xt = x.m_s_table[i];
+                auto &xt = x._get_s_table()[i];
                 auto &tab = m_s_table[i];
 
                 // Reserve space in the current table.
