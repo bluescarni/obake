@@ -848,6 +848,46 @@ inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx
     return packed_monomial<T>(kp.get());
 }
 
+// Monomial differentiation.
+// NOTE: this requires that p is compatible with ss.
+template <typename T>
+inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T> &p, const symbol_idx &idx,
+                                                        const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    // Init the (un)packing machinery.
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp, ret_exp(0);
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (i == idx && tmp != T(0)) {
+            // NOTE: the differentiation variable is in the monomial,
+            // and its exponent is not zero. Take the derivative.
+            // NOTE: if the exponent is zero, ret_exp will remain to
+            // its initial value (0) and the output monomial
+            // will be the same as p.
+            if (obake_unlikely(tmp == ::obake::detail::limits_min<T>)) {
+                obake_throw(::std::overflow_error,
+                            "Overflow detected while computing the derivative of a packed monomial: the exponent of "
+                            "the variable with respect to which the differentiation is being taken is too small ("
+                                + ::obake::detail::to_string(tmp)
+                                + "), and taking the derivative would generate a negative overflow");
+            }
+            ret_exp = tmp--;
+        }
+
+        kp << tmp;
+    }
+
+    return ::std::make_pair(ret_exp, packed_monomial<T>(kp.get()));
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
