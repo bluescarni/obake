@@ -45,11 +45,13 @@
 #include <obake/key/key_degree.hpp>
 #include <obake/key/key_merge_symbols.hpp>
 #include <obake/math/degree.hpp>
+#include <obake/math/diff.hpp>
 #include <obake/math/fma3.hpp>
 #include <obake/math/is_zero.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/subs.hpp>
+#include <obake/polynomials/monomial_diff.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
 #include <obake/polynomials/monomial_pow.hpp>
@@ -1640,6 +1642,168 @@ inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U 
     }
 
     return retval;
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
+// diff() algorithm.
+template <typename T>
+constexpr auto poly_diff_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the diff() implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        if constexpr (::std::conjunction_v<is_differentiable<const cf_t &>,
+                                           is_differentiable_monomial<const key_t &>>) {
+            // Both cf and key are differentiable.
+            using cf_diff_t = ::obake::detail::diff_t<const cf_t &>;
+            using key_diff_t = typename ::obake::detail::monomial_diff_t<const key_t &>::first_type;
+
+            // Fetch the type of the multiplication of the coefficient
+            // by key_diff_t (const lref vs rvalue).
+            using prod1_t = detected_t<::obake::detail::mul_t, const cf_t &, key_diff_t>;
+
+            if constexpr (::std::conjunction_v<::std::is_same<cf_diff_t, cf_t>,
+                                               // NOTE: this condition also checks
+                                               // that prod1_t is detected (nonesuch
+                                               // cannot be a coefficient type).
+                                               ::std::is_same<prod1_t, cf_t>>) {
+                // Special case: the differentiation of the coefficient does not change its type,
+                // and prod1_t is the original coefficient type. In this case, we can implement
+                // differentiation by repeated term insertions on a series of type rT.
+                return ::std::make_pair(2, ::obake::detail::type_c<rT>{});
+            } else {
+                // General case: deduce the return type via the
+                // product rule.
+                using prod2_t = detected_t<::obake::detail::mul_t, cf_diff_t, const rT &>;
+                using prod3_t = detected_t<::obake::detail::mul_t, prod1_t, const rT &>;
+                // The candidate return type.
+                using s_t = detected_t<::obake::detail::add_t, prod2_t, prod3_t>;
+
+                if constexpr (::std::conjunction_v<
+                                  // Verify the detection of the type aliases above.
+                                  is_multipliable<cf_diff_t, const rT &>, is_multipliable<const cf_t &, key_diff_t>,
+                                  is_multipliable<prod1_t, const rT &>,
+                                  // The return type must be accumulable.
+                                  // NOTE: this condition also checks that s_t is detected,
+                                  // as nonesuch is not compound addable.
+                                  is_compound_addable<::std::add_lvalue_reference_t<s_t>, s_t>,
+                                  // Need to init s_t to zero for accumulation.
+                                  ::std::is_constructible<s_t, int>,
+                                  // Need to construct cf_t from 1 for the temporary
+                                  // polynomials.
+                                  ::std::is_constructible<cf_t, int>>) {
+                    return ::std::make_pair(1, ::obake::detail::type_c<s_t>{});
+                } else {
+                    return failure;
+                }
+            }
+        } else {
+            return failure;
+        }
+    }
+}
+
+template <typename T>
+inline constexpr auto poly_diff_algorithm = detail::poly_diff_algorithm_impl<T>();
+
+template <typename T>
+inline constexpr int poly_diff_algo = poly_diff_algorithm<T>.first;
+
+template <typename T>
+using poly_diff_ret_t = typename decltype(poly_diff_algorithm<T>.second)::type;
+
+} // namespace detail
+
+template <typename T, ::std::enable_if_t<detail::poly_diff_algo<T &&> != 0, int> = 0>
+inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
+{
+    using ret_t = detail::poly_diff_ret_t<T &&>;
+    constexpr auto algo = detail::poly_diff_algo<T &&>;
+
+    // Sanity checks.
+    static_assert(algo == 1 || algo == 2);
+
+    // Need only const access to x.
+    const auto &x = ::std::as_const(x_);
+
+    // Cache the symbol set.
+    const auto &ss = x.get_symbol_set();
+
+    // Determine the index of s in the symbol set.
+    const auto idx = ss.index_of(ss.find(s));
+
+    if constexpr (algo == 1) {
+        // The general algorithm.
+        // Init temp polys that we will use in the loop below.
+        // These will represent the original monomial and its
+        // derivative as series of type T (after cvref removal).
+        remove_cvref_t<T> tmp_p1, tmp_p2;
+        tmp_p1.set_symbol_set(ss);
+        tmp_p2.set_symbol_set(ss);
+
+        ret_t retval(0);
+        for (const auto &t : x) {
+            const auto &k = t.first;
+            const auto &c = t.second;
+
+            // Prepare the first temp poly.
+            tmp_p1.clear_terms();
+            tmp_p1.add_term(k, 1);
+
+            // Do the monomial differentiation.
+            auto key_diff(::obake::monomial_diff(k, idx, ss));
+
+            // Prepare the second temp poly.
+            tmp_p2.clear_terms();
+            tmp_p2.add_term(::std::move(key_diff.second), 1);
+
+            // Put everything together.
+            retval += ::obake::diff(c, s) * ::std::as_const(tmp_p1)
+                      + c * ::std::move(key_diff.first) * ::std::as_const(tmp_p2);
+        }
+
+        return retval;
+    } else {
+        // Faster implementation via term insertions.
+        // The return type must be the original poly type.
+        static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
+
+        // Init retval, using the same symbol set
+        // and segmentation from x, and reserving
+        // the same size as x.
+        ret_t retval;
+        retval.set_symbol_set(ss);
+        retval.set_n_segments(x.get_s_size());
+        retval.reserve(x.size());
+
+        for (const auto &t : x) {
+            const auto &k = t.first;
+            const auto &c = t.second;
+
+            // Do the monomial differentiation.
+            auto key_diff(::obake::monomial_diff(k, idx, ss));
+
+            // Add the new terms arising from the application
+            // of the product rule.
+            retval.add_term(k, ::obake::diff(c, s));
+            retval.add_term(::std::move(key_diff.second), c * ::std::move(key_diff.first));
+        }
+
+        return retval;
+    }
 }
 
 } // namespace polynomials
