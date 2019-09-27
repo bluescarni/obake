@@ -270,6 +270,8 @@ constexpr auto poly_mul_algorithm_impl()
 
             if constexpr (::std::conjunction_v<
                               // If ret_cf_t a coefficient type?
+                              // NOTE: this checks ensures that ret_cf_t is detected,
+                              // because nonesuch is not a coefficient type.
                               is_cf<ret_cf_t>,
                               // We may need to merge new symbols into the original key type.
                               // NOTE: the key types of T and U must be identical at the moment,
@@ -1310,6 +1312,8 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
             if constexpr (::std::conjunction_v<
+                              // NOTE: verify deg_add_t, before using it below.
+                              is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
                               ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
                               ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
                               is_less_than_comparable<::std::add_lvalue_reference_t<const V>,
@@ -1448,8 +1452,12 @@ constexpr auto poly_subs_algorithm_impl()
 
             // ret_t must be addable in place with an rvalue, and the original coefficient
             // type must be constructible from int.
-            if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                               ::std::is_constructible<cf_t, int>>) {
+            if constexpr (::std::conjunction_v<
+                              // NOTE: verify the detection of subs_prod_t, as it is used
+                              // in ret_t.
+                              is_detected<::obake::detail::mul_t, key_subs_t, cf_subs_t>,
+                              is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                              ::std::is_constructible<cf_t, int>>) {
                 return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
             } else {
                 return failure;
@@ -1694,8 +1702,9 @@ constexpr auto poly_diff_algorithm_impl()
 
                 if constexpr (::std::conjunction_v<
                                   // Verify the detection of the type aliases above.
-                                  is_multipliable<cf_diff_t, const rT &>, is_multipliable<const cf_t &, key_diff_t>,
-                                  is_multipliable<prod1_t, const rT &>,
+                                  is_detected<::obake::detail::mul_t, const cf_t &, key_diff_t>,
+                                  is_detected<::obake::detail::mul_t, cf_diff_t, const rT &>,
+                                  is_detected<::obake::detail::mul_t, prod1_t, const rT &>,
                                   // The return type must be accumulable.
                                   // NOTE: this condition also checks that s_t is detected,
                                   // as nonesuch is not compound addable.
