@@ -101,6 +101,9 @@ using monomial_diff_t = decltype(::obake::monomial_diff(::std::declval<T>(), ::s
 
 // NOTE: runtime requirement: the returned monomial must be compatible with the reference
 // symbol set.
+// NOTE: if symbol_idx is not within the size of the input symbol set,
+// then the derivative will be interpreted to be taken with respect
+// to a symbol not in the monomial.
 template <typename T>
 using is_differentiable_monomial = is_detected<detail::monomial_diff_t, T>;
 
