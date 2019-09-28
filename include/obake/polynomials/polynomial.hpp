@@ -1817,6 +1817,18 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
 
             // Add the term corresponding to the differentiation
             // of the coefficient.
+            // NOTE: generally speaking, here we probably need
+            // all insertion checks:
+            // - mixing diffed and non-diffed
+            //   monomials in retval will produce non-unique
+            //   monomials,
+            // - diff on coefficients/keys may result in zero,
+            // - table size could end up being anything.
+            // Probably the only check we can currently drop is about
+            // monomial compatibility. Keep it in mind for the future,
+            // if performance becomes a concern. Also, as usual,
+            // we could differentiate between segmented and non
+            // segmented layouts to improve performance.
             retval.add_term(k, ::obake::diff(c, s));
 
             if (s_present) {
