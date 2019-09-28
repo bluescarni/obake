@@ -877,7 +877,8 @@ inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T>
             if (obake_unlikely(tmp == ::obake::detail::limits_min<T>)) {
                 obake_throw(::std::overflow_error,
                             "Overflow detected while computing the derivative of a packed monomial: the exponent of "
-                            "the variable with respect to which the differentiation is being taken is too small ("
+                            "the variable with respect to which the differentiation is being taken ('"
+                                + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too small ("
                                 + ::obake::detail::to_string(tmp)
                                 + "), and taking the derivative would generate a negative overflow");
             }
@@ -886,6 +887,57 @@ inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T>
 
         kp << tmp;
     }
+
+    return ::std::make_pair(ret_exp, packed_monomial<T>(kp.get()));
+}
+
+// Monomial integration.
+// NOTE: this requires that p is compatible with ss,
+// and idx is within ss.
+template <typename T>
+inline ::std::pair<T, packed_monomial<T>> monomial_integrate(const packed_monomial<T> &p, const symbol_idx &idx,
+                                                             const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    assert(idx < ss.size());
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    // Init the (un)packing machinery.
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp, ret_exp(0);
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (i == idx) {
+            if constexpr (is_signed_v<T>) {
+                // For signed integrals, make sure
+                // we are not integrating x**-1.
+                if (obake_unlikely(tmp == T(-1))) {
+                    obake_throw(::std::domain_error,
+                                "Cannot integrate a packed monomial: the exponent of the integration variable ('"
+                                    + *ss.nth(static_cast<decltype(ss.size())>(i))
+                                    + "') is -1, and the integration would generate a logarithmic term");
+                }
+            }
+
+            if (obake_unlikely(tmp == ::obake::detail::limits_max<T>)) {
+                obake_throw(::std::overflow_error,
+                            "Overflow detected while computing the integral of a packed monomial: the exponent of "
+                            "the integration variable ('"
+                                + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too large ("
+                                + ::obake::detail::to_string(tmp)
+                                + "), and the computation would generate a positive overflow");
+            }
+            ret_exp = ++tmp;
+        }
+
+        kp << tmp;
+    }
+    // We must have written some nonzero value to ret_exp.
+    assert(ret_exp != T(0));
 
     return ::std::make_pair(ret_exp, packed_monomial<T>(kp.get()));
 }
