@@ -1271,8 +1271,11 @@ constexpr auto series_default_pow_algorithm_impl()
         // lvalue refs.
         using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
 
-        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>, is_cf<cf_pow_t>,
-                                           ::std::is_constructible<cf_pow_t, int>,
+        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>,
+                                           // NOTE: these take care of ensuring that cf_pow_t
+                                           // is detected (nonesuch is not ctible from int,
+                                           // nor it is a coefficient).
+                                           is_cf<cf_pow_t>, ::std::is_constructible<cf_pow_t, int>,
                                            is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
             return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
         } else {
@@ -3047,25 +3050,20 @@ constexpr auto series_default_degree_algorithm_impl()
                 using key_degree_t = KeyDegreeT<const key_t &>;
 
                 // NOTE: check for addability using rvalues.
-                if constexpr (is_addable_v<key_degree_t, cf_degree_t>) {
-                    // cf and key degree types are addable.
-                    using degree_t = detail::add_t<key_degree_t, cf_degree_t>;
+                using degree_t = detected_t<detail::add_t, key_degree_t, cf_degree_t>;
 
-                    // NOTE: lt-comparability is tested via const lvalue refs.
-                    if constexpr (::std::conjunction_v<
-                                      is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                      ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                      // NOTE: require a semi-regular type,
-                                      // it's just easier to reason about.
-                                      is_semi_regular<degree_t>>) {
-                        // degree_t supports operator<, it can be constructed from int,
-                        // it is returnable and semi-regular (hence, move-assignable).
-                        return ::std::make_pair(1, detail::type_c<degree_t>{});
-                    } else {
-                        return failure;
-                    }
+                if constexpr (::std::conjunction_v<
+                                  // NOTE: these take care of ensuring that degree_t is detected
+                                  // (because nonesuch is not lt-comparable etc.)
+                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
+                    // degree_t is well defined, it supports operator<, it can be constructed from int,
+                    // it is returnable and semi-regular (hence, move-assignable).
+                    return ::std::make_pair(1, detail::type_c<degree_t>{});
                 } else {
-                    // cf and key degree types are not addable.
                     return failure;
                 }
             } else if constexpr (cf_has_degree) {
@@ -3326,11 +3324,13 @@ constexpr auto series_default_evaluate_algorithm_impl()
             // constructible from int and returnable.
             using ret_t = detected_t<detail::mul_t, key_eval_t, key_cf_t>;
 
-            if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
-                                               // NOTE: require a semi-regular type,
-                                               // it's just easier to reason about.
-                                               is_semi_regular<ret_t>>) {
+            if constexpr (::std::conjunction_v<
+                              // NOTE: these will also verify that ret_t is detected.
+                              is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                              ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
+                              // NOTE: require a semi-regular type,
+                              // it's just easier to reason about.
+                              is_semi_regular<ret_t>>) {
                 return ::std::make_pair(1, detail::type_c<ret_t>{});
             } else {
                 return failure;
