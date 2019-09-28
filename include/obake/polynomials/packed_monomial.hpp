@@ -849,12 +849,14 @@ inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx
 }
 
 // Monomial differentiation.
-// NOTE: this requires that p is compatible with ss.
+// NOTE: this requires that p is compatible with ss,
+// and idx is within ss.
 template <typename T>
 inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T> &p, const symbol_idx &idx,
                                                         const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(p, ss));
+    assert(idx < ss.size());
 
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
@@ -867,8 +869,8 @@ inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T>
         ku >> tmp;
 
         if (i == idx && tmp != T(0)) {
-            // NOTE: the differentiation variable is in the monomial,
-            // and its exponent is not zero. Take the derivative.
+            // NOTE: the exponent of the differentiation variable
+            // is not zero. Take the derivative.
             // NOTE: if the exponent is zero, ret_exp will remain to
             // its initial value (0) and the output monomial
             // will be the same as p.
