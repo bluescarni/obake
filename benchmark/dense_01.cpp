@@ -7,33 +7,15 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <obake/polynomials/packed_monomial.hpp>
-#include <obake/polynomials/polynomial.hpp>
 
 #include <mp++/integer.hpp>
 
-#include "simple_timer.hpp"
+#include "dense.hpp"
 
 using namespace obake;
 using namespace obake_benchmark;
 
 int main()
 {
-    using int_t = mppp::integer<2>;
-    using pm_t = packed_monomial<unsigned long>;
-    using p_type = polynomial<pm_t, int_t>;
-
-    auto [x, y, z, t] = make_polynomials<p_type>("x", "y", "z", "t");
-
-    auto f = x + y + z + t + 1;
-    auto tmp(f);
-    for (auto i = 1; i < 30; ++i) {
-        f *= tmp;
-    }
-    p_type ret;
-    {
-        simple_timer t;
-        ret = f * (f + 1);
-    }
-
-    std::cout << ret.size() << '\n';
+    dense_benchmark<packed_monomial<unsigned long>, mppp::integer<2>>(30);
 }
