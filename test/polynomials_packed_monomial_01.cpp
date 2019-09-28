@@ -245,25 +245,15 @@ TEST_CASE("monomial_diff")
         REQUIRE(is_differentiable_monomial_v<const pm_t>);
         REQUIRE(std::is_same_v<decltype(monomial_diff(pm_t{}, 0, symbol_set{})), std::pair<int_t, pm_t>>);
 
-        REQUIRE(monomial_diff(pm_t{}, 0, symbol_set{}) == std::make_pair(int_t(0), pm_t{}));
-        REQUIRE(monomial_diff(pm_t{}, 1, symbol_set{}) == std::make_pair(int_t(0), pm_t{}));
-        REQUIRE(monomial_diff(pm_t{}, 2, symbol_set{}) == std::make_pair(int_t(0), pm_t{}));
-
         REQUIRE(monomial_diff(pm_t{0}, 0, symbol_set{"x"}) == std::make_pair(int_t(0), pm_t{0}));
-        REQUIRE(monomial_diff(pm_t{0}, 1, symbol_set{"x"}) == std::make_pair(int_t(0), pm_t{0}));
         REQUIRE(monomial_diff(pm_t{1}, 0, symbol_set{"x"}) == std::make_pair(int_t(1), pm_t{0}));
         REQUIRE(monomial_diff(pm_t{2}, 0, symbol_set{"x"}) == std::make_pair(int_t(2), pm_t{1}));
         REQUIRE(monomial_diff(pm_t{3}, 0, symbol_set{"x"}) == std::make_pair(int_t(3), pm_t{2}));
-        REQUIRE(monomial_diff(pm_t{3}, 1, symbol_set{"x"}) == std::make_pair(int_t(0), pm_t{3}));
 
         REQUIRE(monomial_diff(pm_t{0, 0}, 0, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{0, 0}));
         REQUIRE(monomial_diff(pm_t{0, 1}, 0, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{0, 1}));
         REQUIRE(monomial_diff(pm_t{0, 0}, 1, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{0, 0}));
         REQUIRE(monomial_diff(pm_t{1, 0}, 1, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{1, 0}));
-        REQUIRE(monomial_diff(pm_t{0, 0}, 2, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{0, 0}));
-        REQUIRE(monomial_diff(pm_t{1, 0}, 2, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{1, 0}));
-        REQUIRE(monomial_diff(pm_t{0, 1}, 2, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{0, 1}));
-        REQUIRE(monomial_diff(pm_t{1, 1}, 2, symbol_set{"x", "y"}) == std::make_pair(int_t(0), pm_t{1, 1}));
         REQUIRE(monomial_diff(pm_t{2, 1}, 0, symbol_set{"x", "y"}) == std::make_pair(int_t(2), pm_t{1, 1}));
         REQUIRE(monomial_diff(pm_t{3, 1}, 0, symbol_set{"x", "y"}) == std::make_pair(int_t(3), pm_t{2, 1}));
         REQUIRE(monomial_diff(pm_t{3, 2}, 1, symbol_set{"x", "y"}) == std::make_pair(int_t(2), pm_t{3, 1}));
@@ -272,7 +262,6 @@ TEST_CASE("monomial_diff")
         REQUIRE(monomial_diff(pm_t{1, 2, 3}, 0, symbol_set{"x", "y", "z"}) == std::make_pair(int_t(1), pm_t{0, 2, 3}));
         REQUIRE(monomial_diff(pm_t{1, 2, 3}, 1, symbol_set{"x", "y", "z"}) == std::make_pair(int_t(2), pm_t{1, 1, 3}));
         REQUIRE(monomial_diff(pm_t{1, 2, 3}, 2, symbol_set{"x", "y", "z"}) == std::make_pair(int_t(3), pm_t{1, 2, 2}));
-        REQUIRE(monomial_diff(pm_t{1, 2, 3}, 3, symbol_set{"x", "y", "z"}) == std::make_pair(int_t(0), pm_t{1, 2, 3}));
 
         if constexpr (is_signed_v<int_t>) {
             REQUIRE(monomial_diff(pm_t{-1}, 0, symbol_set{"x"}) == std::make_pair(int_t(-1), pm_t{-2}));

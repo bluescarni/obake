@@ -1709,6 +1709,9 @@ constexpr auto poly_diff_algorithm_impl()
                                   // NOTE: this condition also checks that s_t is detected,
                                   // as nonesuch is not compound addable.
                                   is_compound_addable<::std::add_lvalue_reference_t<s_t>, s_t>,
+                                  // Need also to add in place with prod2_t in case
+                                  // the differentiation variable is not in the polynomial.
+                                  is_compound_addable<::std::add_lvalue_reference_t<s_t>, prod2_t>,
                                   // Need to init s_t to zero for accumulation.
                                   ::std::is_constructible<s_t, int>,
                                   // Need to construct cf_t from 1 for the temporary
@@ -1753,6 +1756,9 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
 
     // Determine the index of s in the symbol set.
     const auto idx = ss.index_of(ss.find(s));
+    // The symbol is present if its index
+    // is not ss.size().
+    const auto s_present = (idx != ss.size());
 
     if constexpr (algo == 1) {
         // The general algorithm.
@@ -1772,16 +1778,23 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
             tmp_p1.clear_terms();
             tmp_p1.add_term(k, 1);
 
-            // Do the monomial differentiation.
-            auto key_diff(::obake::monomial_diff(k, idx, ss));
+            if (s_present) {
+                // The symbol is present in the symbol set,
+                // need to diff the monomial.
+                auto key_diff(::obake::monomial_diff(k, idx, ss));
 
-            // Prepare the second temp poly.
-            tmp_p2.clear_terms();
-            tmp_p2.add_term(::std::move(key_diff.second), 1);
+                // Prepare the second temp poly.
+                tmp_p2.clear_terms();
+                tmp_p2.add_term(::std::move(key_diff.second), 1);
 
-            // Put everything together.
-            retval += ::obake::diff(c, s) * ::std::as_const(tmp_p1)
-                      + c * ::std::move(key_diff.first) * ::std::as_const(tmp_p2);
+                // Put everything together.
+                retval += ::obake::diff(c, s) * ::std::as_const(tmp_p1)
+                          + c * ::std::move(key_diff.first) * ::std::as_const(tmp_p2);
+            } else {
+                // The symbol is not present in the symbol set,
+                // need to diff only the coefficient.
+                retval += ::obake::diff(c, s) * ::std::as_const(tmp_p1);
+            }
         }
 
         return retval;
@@ -1802,13 +1815,28 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
             const auto &k = t.first;
             const auto &c = t.second;
 
-            // Do the monomial differentiation.
-            auto key_diff(::obake::monomial_diff(k, idx, ss));
-
-            // Add the new terms arising from the application
-            // of the product rule.
+            // Add the term corresponding to the differentiation
+            // of the coefficient.
+            // NOTE: generally speaking, here we probably need
+            // all insertion checks:
+            // - mixing diffed and non-diffed
+            //   monomials in retval will produce non-unique
+            //   monomials,
+            // - diff on coefficients/keys may result in zero,
+            // - table size could end up being anything.
+            // Probably the only check we can currently drop is about
+            // monomial compatibility. Keep it in mind for the future,
+            // if performance becomes a concern. Also, as usual,
+            // we could differentiate between segmented and non
+            // segmented layouts to improve performance.
             retval.add_term(k, ::obake::diff(c, s));
-            retval.add_term(::std::move(key_diff.second), c * ::std::move(key_diff.first));
+
+            if (s_present) {
+                // The symbol is present in the symbol set,
+                // need to diff the monomial too.
+                auto key_diff(::obake::monomial_diff(k, idx, ss));
+                retval.add_term(::std::move(key_diff.second), c * ::std::move(key_diff.first));
+            }
         }
 
         return retval;
