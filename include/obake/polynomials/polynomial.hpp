@@ -42,15 +42,21 @@
 #include <obake/detail/xoroshiro128_plus.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/hash.hpp>
+#include <obake/key/key_degree.hpp>
 #include <obake/key/key_merge_symbols.hpp>
+#include <obake/math/degree.hpp>
+#include <obake/math/diff.hpp>
 #include <obake/math/fma3.hpp>
 #include <obake/math/is_zero.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/math/subs.hpp>
+#include <obake/polynomials/monomial_diff.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
 #include <obake/polynomials/monomial_pow.hpp>
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
+#include <obake/polynomials/monomial_subs.hpp>
 #include <obake/ranges.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
@@ -140,8 +146,8 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         const auto it = ::std::lower_bound(ss.begin(), ss.end(), s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
             obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
-                                                       + " from the generator '" + s
-                                                       + "': the generator is not in the symbol set");
+                                                     + " from the generator '" + s
+                                                     + "': the generator is not in the symbol set");
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -263,6 +269,8 @@ constexpr auto poly_mul_algorithm_impl()
 
             if constexpr (::std::conjunction_v<
                               // If ret_cf_t a coefficient type?
+                              // NOTE: this checks ensures that ret_cf_t is detected,
+                              // because nonesuch is not a coefficient type.
                               is_cf<ret_cf_t>,
                               // We may need to merge new symbols into the original key type.
                               // NOTE: the key types of T and U must be identical at the moment,
@@ -332,7 +340,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     constexpr ::std::uint64_t s1 = 18379758338774109289ull;
     constexpr ::std::uint64_t s2 = 15967298767098049689ull;
     ::obake::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
-                                             s2 + static_cast<::std::uint64_t>(v2.size())};
+                                           s2 + static_cast<::std::uint64_t>(v2.size())};
 
     // The idea now is to compute a small amount of term-by-term
     // multiplications and determine the average size in bytes
@@ -466,10 +474,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // Do the monomial overflow checking, if possible.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
     const auto r2
         = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
         // Do the monomial overflow checking.
         if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
@@ -847,10 +855,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Check the table size against the max allowed size.
                 if (obake_unlikely(table.size() > mts)) {
                     obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
-                                                         "polynomials resulted in a table whose size ("
-                                                             + ::obake::detail::to_string(table.size())
-                                                             + ") is larger than the maximum allowed value ("
-                                                             + ::obake::detail::to_string(mts) + ")");
+                                                       "polynomials resulted in a table whose size ("
+                                                           + ::obake::detail::to_string(table.size())
+                                                           + ") is larger than the maximum allowed value ("
+                                                           + ::obake::detail::to_string(mts) + ")");
                 }
                 // LCOV_EXCL_STOP
             }
@@ -923,10 +931,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     // Do the monomial overflow checking, if possible.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
     const auto r2
         = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                        ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
         // Do the monomial overflow checking.
         if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
@@ -1310,6 +1318,8 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
             if constexpr (::std::conjunction_v<
+                              // NOTE: verify deg_add_t, before using it below.
+                              is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
                               ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
                               ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
                               is_less_than_comparable<::std::add_lvalue_reference_t<const V>,
@@ -1408,6 +1418,434 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
         // Cannot do monomial exponentiation, perfect forward to
         // the series implementation.
         return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+    }
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
+// polynomial substitution algorithm.
+// NOTE: currently this supports only the case
+// in which both cf and key are substitutable.
+template <typename T, typename U>
+constexpr auto poly_subs_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the subs implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        if constexpr (::std::conjunction_v<is_substitutable_monomial<const key_t &, U>,
+                                           is_substitutable<const cf_t &, U>>) {
+            // Both cf and key support substitution (via const lvalue refs).
+            using key_subs_t = typename ::obake::detail::monomial_subs_t<const key_t &, U>::first_type;
+            using cf_subs_t = ::obake::detail::subs_t<const cf_t &, U>;
+
+            // The type of the product of key_subs_t * cf_subs_t
+            // (via rvalues).
+            using subs_prod_t = detected_t<::obake::detail::mul_t, key_subs_t, cf_subs_t>;
+            // The candidate return type: rvalue subs_prod_t * const lvalue ref rT.
+            using ret_t = detected_t<::obake::detail::mul_t, subs_prod_t, const rT &>;
+
+            // ret_t must be addable in place with an rvalue, and the original coefficient
+            // type must be constructible from int.
+            if constexpr (::std::conjunction_v<
+                              // NOTE: verify the detection of subs_prod_t, as it is used
+                              // in ret_t.
+                              is_detected<::obake::detail::mul_t, key_subs_t, cf_subs_t>,
+                              is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                              ::std::is_constructible<cf_t, int>>) {
+                return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
+            } else {
+                return failure;
+            }
+        } else {
+            return failure;
+        }
+    }
+}
+
+template <typename T, typename U>
+inline constexpr auto poly_subs_algorithm = detail::poly_subs_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int poly_subs_algo = poly_subs_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using poly_subs_ret_t = typename decltype(poly_subs_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_subs_algo<T &&, U> != 0, int> = 0>
+inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
+{
+    // Sanity check.
+    static_assert(detail::poly_subs_algo<T &&, U> == 1);
+
+    // Need only const access to x.
+    const auto &x = ::std::as_const(x_);
+
+    // Cache a reference to the symbol set.
+    const auto &ss = x.get_symbol_set();
+
+    // Compute the intersection between sm and ss.
+    const auto si = ::obake::detail::sm_intersect_idx(sm, ss);
+
+    // Init a temp poly that we will use in the loop below.
+    remove_cvref_t<T> tmp_poly;
+    tmp_poly.set_symbol_set(ss);
+
+    // The return value (this will default-construct
+    // an empty polynomial).
+    detail::poly_subs_ret_t<T &&, U> retval;
+
+    // NOTE: parallelisation opportunities here
+    // for segmented tables.
+    for (const auto &t : x) {
+        const auto &k = t.first;
+        const auto &c = t.second;
+
+        // Do the monomial substitution.
+        auto k_sub(::obake::monomial_subs(k, si, ss));
+
+        // Clear up tmp_poly, add a term with unitary
+        // coefficient containing the monomial result of the
+        // substitution above.
+        tmp_poly.clear_terms();
+        tmp_poly.add_term(::std::move(k_sub.second), 1);
+
+        // Compute the product of the substitutions and accumulate
+        // it into the return value.
+        // NOTE: if the type of retval coincides with the type
+        // of the original poly, we could probably optimise this
+        // to do term insertions rather than going through with
+        // the multiplications. E.g., substitution with integral
+        // values in a polynomial with integral coefficients.
+        retval += ::std::move(k_sub.first) * ::obake::subs(c, sm) * ::std::as_const(tmp_poly);
+    }
+
+    return retval;
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
+// truncate_degree() algorithm.
+// NOTE: at this time, we support only truncation
+// based on key filtering.
+template <typename T, typename U>
+constexpr auto poly_truncate_degree_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the truncate_degree() implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using key_t = series_key_t<rT>;
+
+        if constexpr (is_key_with_degree_v<const key_t &>) {
+            // The key supports degree computation.
+
+            if constexpr (::std::disjunction_v<is_with_degree<const series_cf_t<rT> &>>) {
+                // NOTE: for the time being, we deal with only truncation
+                // based on key filtering. Thus, if the coefficient type
+                // has a degree, return failure.
+                return failure;
+            } else {
+                // The truncation will involve only key-based
+                // filtering. We need to be able to lt-compare U
+                // to the degree type of the key (const lvalue
+                // ref vs rvalue). The degree of the key
+                // is computed via lvalue ref.
+                if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>,
+                                                        ::obake::detail::key_degree_t<const key_t &>>) {
+                    return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
+                } else {
+                    return failure;
+                }
+            }
+        } else {
+            // The key does not support degree computation, fail.
+            // NOTE: the case in which the coefficient is degree
+            // truncatable and the key does not support degree computation
+            // should eventually be handled in a default series implementation
+            // of truncate_degree().
+            return failure;
+        }
+    }
+}
+
+template <typename T, typename U>
+inline constexpr auto poly_truncate_degree_algorithm = detail::poly_truncate_degree_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int poly_truncate_degree_algo = poly_truncate_degree_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using poly_truncate_degree_ret_t = typename decltype(poly_truncate_degree_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U &&y_)
+{
+    using ret_t = detail::poly_truncate_degree_ret_t<T &&, U &&>;
+    constexpr auto algo = detail::poly_truncate_degree_algo<T &&, U &&>;
+
+    // Sanity checks.
+    static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
+    static_assert(algo == 1);
+
+    // We will need only const access to x and y.
+    const auto &x = ::std::as_const(x_);
+    const auto &y = ::std::as_const(y_);
+
+    // Cache the symbol set.
+    const auto &ss = x.get_symbol_set();
+
+    // Prepare the return value: same symbol set,
+    // same number of segments, but don't reserve
+    // space beforehand.
+    ret_t retval;
+    retval.set_symbol_set(ss);
+    retval.set_n_segments(x.get_s_size());
+
+    // Get references to the in & out tables.
+    const auto &in_s_table = x._get_s_table();
+    auto &out_s_table = retval._get_s_table();
+
+    // NOTE: parallelisation opportunities here,
+    // since we operate table by table.
+    // NOTE: in principle we could exploit an x rvalue
+    // here to move the existing coefficients instead
+    // of copying them (as we do elsewhere with the help
+    // of a rref_cleaner). Keep it in mind for the
+    // future.
+    for (decltype(in_s_table.size()) i = 0; i < in_s_table.size(); ++i) {
+        const auto &tab_in = in_s_table[i];
+        auto &tab_out = out_s_table[i];
+
+        for (const auto &t : tab_in) {
+            const auto &k = t.first;
+
+            if (!(y < ::obake::key_degree(k, ss))) {
+                // The key degree does not exceed the
+                // limit, add the term to the return value.
+                // NOTE: we can emplace directly into the table
+                // with no checks, as we are not changing anything
+                // in the term.
+                [[maybe_unused]] const auto res = tab_out.try_emplace(k, t.second);
+                assert(res.second);
+            }
+        }
+    }
+
+    return retval;
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
+// diff() algorithm.
+template <typename T>
+constexpr auto poly_diff_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the diff() implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        if constexpr (::std::conjunction_v<is_differentiable<const cf_t &>,
+                                           is_differentiable_monomial<const key_t &>>) {
+            // Both cf and key are differentiable.
+            using cf_diff_t = ::obake::detail::diff_t<const cf_t &>;
+            using key_diff_t = typename ::obake::detail::monomial_diff_t<const key_t &>::first_type;
+
+            // Fetch the type of the multiplication of the coefficient
+            // by key_diff_t (const lref vs rvalue).
+            using prod1_t = detected_t<::obake::detail::mul_t, const cf_t &, key_diff_t>;
+
+            if constexpr (::std::conjunction_v<::std::is_same<cf_diff_t, cf_t>,
+                                               // NOTE: this condition also checks
+                                               // that prod1_t is detected (nonesuch
+                                               // cannot be a coefficient type).
+                                               ::std::is_same<prod1_t, cf_t>>) {
+                // Special case: the differentiation of the coefficient does not change its type,
+                // and prod1_t is the original coefficient type. In this case, we can implement
+                // differentiation by repeated term insertions on a series of type rT.
+                return ::std::make_pair(2, ::obake::detail::type_c<rT>{});
+            } else {
+                // General case: deduce the return type via the
+                // product rule.
+                using prod2_t = detected_t<::obake::detail::mul_t, cf_diff_t, const rT &>;
+                using prod3_t = detected_t<::obake::detail::mul_t, prod1_t, const rT &>;
+                // The candidate return type.
+                using s_t = detected_t<::obake::detail::add_t, prod2_t, prod3_t>;
+
+                if constexpr (::std::conjunction_v<
+                                  // Verify the detection of the type aliases above.
+                                  is_detected<::obake::detail::mul_t, const cf_t &, key_diff_t>,
+                                  is_detected<::obake::detail::mul_t, cf_diff_t, const rT &>,
+                                  is_detected<::obake::detail::mul_t, prod1_t, const rT &>,
+                                  // The return type must be accumulable.
+                                  // NOTE: this condition also checks that s_t is detected,
+                                  // as nonesuch is not compound addable.
+                                  is_compound_addable<::std::add_lvalue_reference_t<s_t>, s_t>,
+                                  // Need also to add in place with prod2_t in case
+                                  // the differentiation variable is not in the polynomial.
+                                  is_compound_addable<::std::add_lvalue_reference_t<s_t>, prod2_t>,
+                                  // Need to init s_t to zero for accumulation.
+                                  ::std::is_constructible<s_t, int>,
+                                  // Need to construct cf_t from 1 for the temporary
+                                  // polynomials.
+                                  ::std::is_constructible<cf_t, int>>) {
+                    return ::std::make_pair(1, ::obake::detail::type_c<s_t>{});
+                } else {
+                    return failure;
+                }
+            }
+        } else {
+            return failure;
+        }
+    }
+}
+
+template <typename T>
+inline constexpr auto poly_diff_algorithm = detail::poly_diff_algorithm_impl<T>();
+
+template <typename T>
+inline constexpr int poly_diff_algo = poly_diff_algorithm<T>.first;
+
+template <typename T>
+using poly_diff_ret_t = typename decltype(poly_diff_algorithm<T>.second)::type;
+
+} // namespace detail
+
+template <typename T, ::std::enable_if_t<detail::poly_diff_algo<T &&> != 0, int> = 0>
+inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
+{
+    using ret_t = detail::poly_diff_ret_t<T &&>;
+    constexpr auto algo = detail::poly_diff_algo<T &&>;
+
+    // Sanity checks.
+    static_assert(algo == 1 || algo == 2);
+
+    // Need only const access to x.
+    const auto &x = ::std::as_const(x_);
+
+    // Cache the symbol set.
+    const auto &ss = x.get_symbol_set();
+
+    // Determine the index of s in the symbol set.
+    const auto idx = ss.index_of(ss.find(s));
+    // The symbol is present if its index
+    // is not ss.size().
+    const auto s_present = (idx != ss.size());
+
+    if constexpr (algo == 1) {
+        // The general algorithm.
+        // Init temp polys that we will use in the loop below.
+        // These will represent the original monomial and its
+        // derivative as series of type T (after cvref removal).
+        remove_cvref_t<T> tmp_p1, tmp_p2;
+        tmp_p1.set_symbol_set(ss);
+        tmp_p2.set_symbol_set(ss);
+
+        ret_t retval(0);
+        for (const auto &t : x) {
+            const auto &k = t.first;
+            const auto &c = t.second;
+
+            // Prepare the first temp poly.
+            tmp_p1.clear_terms();
+            tmp_p1.add_term(k, 1);
+
+            if (s_present) {
+                // The symbol is present in the symbol set,
+                // need to diff the monomial.
+                auto key_diff(::obake::monomial_diff(k, idx, ss));
+
+                // Prepare the second temp poly.
+                tmp_p2.clear_terms();
+                tmp_p2.add_term(::std::move(key_diff.second), 1);
+
+                // Put everything together.
+                retval += ::obake::diff(c, s) * ::std::as_const(tmp_p1)
+                          + c * ::std::move(key_diff.first) * ::std::as_const(tmp_p2);
+            } else {
+                // The symbol is not present in the symbol set,
+                // need to diff only the coefficient.
+                retval += ::obake::diff(c, s) * ::std::as_const(tmp_p1);
+            }
+        }
+
+        return retval;
+    } else {
+        // Faster implementation via term insertions.
+        // The return type must be the original poly type.
+        static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
+
+        // Init retval, using the same symbol set
+        // and segmentation from x, and reserving
+        // the same size as x.
+        ret_t retval;
+        retval.set_symbol_set(ss);
+        retval.set_n_segments(x.get_s_size());
+        retval.reserve(x.size());
+
+        for (const auto &t : x) {
+            const auto &k = t.first;
+            const auto &c = t.second;
+
+            // Add the term corresponding to the differentiation
+            // of the coefficient.
+            // NOTE: generally speaking, here we probably need
+            // all insertion checks:
+            // - mixing diffed and non-diffed
+            //   monomials in retval will produce non-unique
+            //   monomials,
+            // - diff on coefficients/keys may result in zero,
+            // - table size could end up being anything.
+            // Probably the only check we can currently drop is about
+            // monomial compatibility. Keep it in mind for the future,
+            // if performance becomes a concern. Also, as usual,
+            // we could differentiate between segmented and non
+            // segmented layouts to improve performance.
+            retval.add_term(k, ::obake::diff(c, s));
+
+            if (s_present) {
+                // The symbol is present in the symbol set,
+                // need to diff the monomial too.
+                auto key_diff(::obake::monomial_diff(k, idx, ss));
+                retval.add_term(::std::move(key_diff.second), c * ::std::move(key_diff.first));
+            }
+        }
+
+        return retval;
     }
 }
 

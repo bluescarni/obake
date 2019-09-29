@@ -54,13 +54,17 @@
 #include <obake/key/key_merge_symbols.hpp>
 #include <obake/key/key_p_degree.hpp>
 #include <obake/key/key_stream_insert.hpp>
+#include <obake/key/key_trim.hpp>
+#include <obake/key/key_trim_identify.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/evaluate.hpp>
 #include <obake/math/is_zero.hpp>
 #include <obake/math/negate.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
+#include <obake/math/trim.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
@@ -538,21 +542,13 @@ struct series_rref_clearer {
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
-#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
 template <typename K, typename C, typename Tag, typename>
 #endif
 class series
 {
-    // Make friends with all series types.
-#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
-    template <typename, typename, typename>
-#else
-     template <typename, typename, typename, typename>
-#endif
-    friend class series;
-
 public:
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
     using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
@@ -623,11 +619,11 @@ public:
             // coefficients from x below.
             detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
-            // Copy/move over the symbol set.
-            m_symbol_set = ::std::forward<T>(x).m_symbol_set;
+            // Copy over the symbol set.
+            m_symbol_set = x.get_symbol_set();
 
             // Set the number of segments.
-            const auto x_log2_size = x.m_log2_size;
+            const auto x_log2_size = x.get_s_size();
             set_n_segments(x_log2_size);
 
             // Insert the terms from x. Although the coefficients
@@ -637,11 +633,11 @@ public:
             // NOTE: this could be parallelised, if needed.
             for (s_size_type i = 0; i < (s_size_type(1) << x_log2_size); ++i) {
                 // Extract references to the tables in x and this.
-                auto &xt = x.m_s_table[i];
+                auto &xt = x._get_s_table()[i];
                 auto &tab = m_s_table[i];
 
                 // Reserve space in the current table.
-                tab.reserve(xt.size());
+                tab.reserve(::obake::safe_cast<decltype(tab.size())>(xt.size()));
 
                 for (auto &t : xt) {
                     // NOTE: old clang does not like structured
@@ -1275,8 +1271,11 @@ constexpr auto series_default_pow_algorithm_impl()
         // lvalue refs.
         using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
 
-        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>, is_cf<cf_pow_t>,
-                                           ::std::is_constructible<cf_pow_t, int>,
+        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>,
+                                           // NOTE: these take care of ensuring that cf_pow_t
+                                           // is detected (nonesuch is not ctible from int,
+                                           // nor it is a coefficient).
+                                           is_cf<cf_pow_t>, ::std::is_constructible<cf_pow_t, int>,
                                            is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
             return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
         } else {
@@ -1795,7 +1794,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // Set the number of segments, reserve space.
     const auto from_log2_size = from.get_s_size();
     to.set_n_segments(from_log2_size);
-    to.reserve(from.size());
+    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
 
     // Establish if we need to check for zero coefficients
     // when inserting. We don't if the coefficient types of to and from
@@ -1822,6 +1821,9 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
                 //   max table size was not exceeded in the original series,
                 //   it might be now (as the merged key may end up in a different
                 //   table).
+                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
+                // that symbol merging does not affect is_zero(), compatibility and
+                // uniqueness.
                 if constexpr (is_mutable_rvalue_reference_v<From &&>) {
                     detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
                                             sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
@@ -3045,25 +3047,22 @@ constexpr auto series_default_degree_algorithm_impl()
                 using key_degree_t = KeyDegreeT<const key_t &>;
 
                 // NOTE: check for addability using rvalues.
-                if constexpr (is_addable_v<key_degree_t, cf_degree_t>) {
-                    // cf and key degree types are addable.
-                    using degree_t = detail::add_t<key_degree_t, cf_degree_t>;
+                using degree_t = detected_t<detail::add_t, key_degree_t, cf_degree_t>;
 
-                    // NOTE: lt-comparability is tested via const lvalue refs.
                     if constexpr (::std::conjunction_v<
+                                  // NOTE: these take care of ensuring that degree_t is detected
+                                  // (because nonesuch is not lt-comparable etc.)
                                       is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                       ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                      ::std::is_move_assignable<degree_t>>) {
-                        // degree_t supports operator<, it can be constructed from int,
-                        // it is returnable and move-assignable.
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
+                    // degree_t is well defined, it supports operator<, it can be constructed from int,
+                    // it is returnable and semi-regular (hence, move-assignable).
                         return ::std::make_pair(1, detail::type_c<degree_t>{});
                     } else {
                         return failure;
                     }
-                } else {
-                    // cf and key degree types are not addable.
-                    return failure;
-                }
             } else if constexpr (cf_has_degree) {
                 // Only the coefficient is with degree.
                 using degree_t = DegreeT<const cf_t &>;
@@ -3071,9 +3070,11 @@ constexpr auto series_default_degree_algorithm_impl()
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                   ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  ::std::is_move_assignable<degree_t>>) {
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
                     // degree_t supports operator<, it can be constructed from int,
-                    // it is returnable and move-assignable.
+                    // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(2, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3085,9 +3086,11 @@ constexpr auto series_default_degree_algorithm_impl()
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
                                   ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  ::std::is_move_assignable<degree_t>>) {
+                                  // NOTE: require a semi-regular type,
+                                  // it's just easier to reason about.
+                                  is_semi_regular<degree_t>>) {
                     // degree_t supports operator<, it can be constructed from int,
-                    // it is returnable and move-assignable.
+                    // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(3, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3318,8 +3321,13 @@ constexpr auto series_default_evaluate_algorithm_impl()
             // constructible from int and returnable.
             using ret_t = detected_t<detail::mul_t, key_eval_t, key_cf_t>;
 
-            if constexpr (::std::conjunction_v<is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>>) {
+            if constexpr (::std::conjunction_v<
+                              // NOTE: these will also verify that ret_t is detected.
+                              is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                              ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
+                              // NOTE: require a semi-regular type,
+                              // it's just easier to reason about.
+                              is_semi_regular<ret_t>>) {
                 return ::std::make_pair(1, detail::type_c<ret_t>{});
             } else {
                 return failure;
@@ -3406,6 +3414,132 @@ template <typename T, typename U>
 inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
 #endif
     = series_default_evaluate_impl{};
+
+} // namespace customisation::internal
+
+namespace customisation::internal
+{
+
+// Metaprogramming to establish the algorithm/return
+// type of the default series trim computation.
+template <typename T>
+constexpr auto series_default_trim_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
+
+    if constexpr (!is_cvr_series_v<T>) {
+        // Not a series type.
+        return failure;
+    } else {
+        using rT = remove_cvref_t<T>;
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        // We need to be able to:
+        // - run key_trim_identify() on the keys,
+        // - trim both cfs and keys,
+        // all using const lvalue refs.
+        if constexpr (::std::conjunction_v<is_trim_identifiable_key<const key_t &>, is_trimmable_key<const key_t &>,
+                                           is_trimmable<const cf_t &>>) {
+            // The return type is the original series type (after cvref removal),
+            // because cf/key trimming is guaranteed not to change the cf/key
+            // types.
+            return ::std::make_pair(1, detail::type_c<rT>{});
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Default implementation of series trim.
+struct series_default_trim_impl {
+    // A couple of handy shortcuts.
+    template <typename T>
+    static constexpr auto algo_ret = internal::series_default_trim_algorithm_impl<T>();
+
+    template <typename T>
+    static constexpr auto algo = series_default_trim_impl::algo_ret<T>.first;
+
+    template <typename T>
+    using ret_t = typename decltype(series_default_trim_impl::algo_ret<T>.second)::type;
+
+    // Implementation.
+    template <typename T>
+    ret_t<T &&> operator()(T &&x_) const
+    {
+        // Sanity checks.
+        static_assert(algo<T &&> != 0);
+        static_assert(::std::is_same_v<ret_t<T &&>, remove_cvref_t<T>>);
+
+        // Need only const access to x.
+        const auto &x = ::std::as_const(x_);
+
+        // Cache x's original symbol set.
+        const auto &ss = x.get_symbol_set();
+
+        // Run trim_identify() on all the keys.
+        ::std::vector<int> trim_v(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()), 1);
+        for (const auto &t : x) {
+            ::obake::key_trim_identify(trim_v, t.first, ss);
+        }
+
+        // Create the set of symbol indices for trimming,
+        // and the trimmed symbol set.
+        symbol_idx_set::sequence_type si_seq;
+        si_seq.reserve(static_cast<decltype(si_seq.size())>(ss.size()));
+        symbol_set::sequence_type new_ss_seq;
+        new_ss_seq.reserve(static_cast<decltype(new_ss_seq.size())>(ss.size()));
+        for (symbol_idx i = 0; i < ss.size(); ++i) {
+            if (trim_v[i] != 0) {
+                si_seq.push_back(i);
+            } else {
+                new_ss_seq.push_back(*ss.nth(i));
+            }
+        }
+        symbol_idx_set si;
+        si.adopt_sequence(::boost::container::ordered_unique_range_t{}, ::std::move(si_seq));
+        symbol_set new_ss;
+        new_ss.adopt_sequence(::boost::container::ordered_unique_range_t{}, ::std::move(new_ss_seq));
+
+        // Prepare the return value.
+        ret_t<T &&> retval;
+        retval.set_symbol_set(new_ss);
+        // NOTE: use the same number of segments as x
+        // and reserve space for the same number of terms.
+        retval.set_n_segments(retval.get_s_size());
+        retval.reserve(x.size());
+
+        for (const auto &t : x) {
+            // NOTE: run all checks on insertion:
+            // - we don't know if something becomes zero after
+            //   trimming,
+            // - we don't know if a key loses compatibility after
+            //   trimming (this is difficult to impose as a runtime
+            //   requirement on key_trim()),
+            // - we don't know if keys are not unique any more after
+            //   trimming (same problem as above),
+            // - we don't know if we are going to go over the table
+            //   size limit (as terms will be shuffled around after
+            //   trimming).
+            // We can always think about removing some checks at
+            // a later stage.
+            // NOTE: in the series_sym_extender() helper, we distinguish
+            // the segmented vs non-segmented case. Perhaps we can do it
+            // here as well in the future, if it makes sense for performance.
+            retval.add_term(::obake::key_trim(t.first, si, ss), ::obake::trim(t.second));
+        }
+
+        return retval;
+    }
+};
+
+template <typename T>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires(series_default_trim_impl::algo<T> != 0) inline constexpr auto trim<T>
+#else
+inline constexpr auto trim<T, ::std::enable_if_t<series_default_trim_impl::algo<T> != 0>>
+#endif
+    = series_default_trim_impl{};
 
 } // namespace customisation::internal
 

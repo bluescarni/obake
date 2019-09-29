@@ -36,7 +36,8 @@ tested in obake's continuous integration setup:
 * GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),
 * Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),
 * Visual Studio 2019 on Windows,
-* Clang 8 on Windows (via the ``clang-cl`` driver),
+* Clang + Visual Studio 2015 on Windows
+  (via the ``clang-cl`` driver),
 * Clang 4 and Xcode 10.2 on OSX.
 
 See also the
@@ -165,7 +166,7 @@ Visual Studio:
 
 GCC:
 
-* Due to a compiler bug, when using GCC 7 obake's customisable functors
+* Due to a compiler bug, when using GCC 7 obake's customisation points
   do not have any ``noexcept`` specifier.
 
 Clang:
@@ -176,7 +177,8 @@ Clang:
 
 OSX:
 
-* On OSX, only the most recent versions of Xcode are capable of compiling obake.
+* On OSX, only the most recent versions of Xcode (i.e., Xcode 9 or later)
+  are capable of compiling obake.
   As an alternative to Xcode, one can install a more modern compiler toolchain
   using package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
   `Homebrew <https://brew.sh/>`_.

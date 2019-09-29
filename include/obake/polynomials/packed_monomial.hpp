@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <mp++/integer.hpp>
 
@@ -663,11 +664,13 @@ constexpr auto pm_key_evaluate_algorithm_impl()
 
         // We will need to construct the return value from 1,
         // multiply it in-place and then return it.
+        // NOTE: require also a semi-regular type,
+        // it's just easier to reason about.
         if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, int>,
                                            // NOTE: we will be multiplying an
                                            // lvalue by an rvalue.
                                            is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                                           is_returnable<ret_t>>) {
+                                           is_semi_regular<ret_t>, is_returnable<ret_t>>) {
             return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
         } else {
             return failure;
@@ -715,6 +718,176 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
     }
 
     return retval;
+}
+
+namespace detail
+{
+
+// NOTE: the metaprogramming for the monomial_subs() implementation for packed_monomial
+// is identical to the key_evaluate() implementation.
+
+// Shortcuts.
+template <typename T, typename U>
+inline constexpr auto pm_monomial_subs_algorithm = detail::pm_key_evaluate_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int pm_monomial_subs_algo = pm_key_evaluate_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using pm_monomial_subs_ret_t = typename decltype(pm_key_evaluate_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+// Substitution of symbols in a packed monomial.
+// NOTE: this requires that p is compatible with ss,
+// and that sm is consistent with ss.
+template <typename T, typename U, ::std::enable_if_t<detail::pm_monomial_subs_algo<T, U> != 0, int> = 0>
+inline ::std::pair<detail::pm_monomial_subs_ret_t<T, U>, packed_monomial<T>>
+monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    // sm must not be larger than ss, and the last element
+    // of sm must have an index smaller than the size of ss.
+    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first < ss.size()));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    // Init the return value and the (un)packing machinery.
+    detail::pm_monomial_subs_ret_t<T, U> retval(1);
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp;
+    auto sm_it = sm.cbegin();
+    const auto sm_end = sm.cend();
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (sm_it != sm_end && sm_it->first == i) {
+            // The current exponent is in the subs map,
+            // accumulate the result of the substitution.
+            retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
+
+            // Set the exponent to zero in the output
+            // monomial.
+            kp << T(0);
+
+            // Move to the next item in the map.
+            ++sm_it;
+        } else {
+            // Either the current exponent is not in the subs map,
+            // or we already reached the end of the map.
+            // Just copy the original exponent into the output monomial.
+            kp << tmp;
+        }
+    }
+    assert(sm_it == sm_end);
+
+    return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
+}
+
+// Identify non-trimmable exponents in p.
+// NOTE: this requires that p is compatible with ss,
+// and that v has the same size as ss.
+template <typename T>
+inline void key_trim_identify(::std::vector<int> &v, const packed_monomial<T> &p, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    assert(v.size() == ss.size());
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    k_unpacker<T> ku(p.get_value(), s_size);
+    T tmp;
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (tmp != T(0)) {
+            // The current exponent is nonzero,
+            // thus it must not be trimmed.
+            v[i] = 0;
+        }
+    }
+}
+
+// Eliminate from p the exponents at the indices
+// specifed by si.
+// NOTE: this requires that p is compatible with ss,
+// and that si is consistent with ss.
+template <typename T>
+inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx_set &si, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    // NOTE: si cannot be larger than ss, and its last element must be smaller
+    // than the size of ss.
+    assert(si.size() <= ss.size() && (si.empty() || *(si.cend() - 1) < ss.size()));
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(static_cast<unsigned>(s_size - si.size()));
+    T tmp;
+    auto si_it = si.cbegin();
+    const auto si_end = si.cend();
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (si_it != si_end && *si_it == i) {
+            // The current exponent must be trimmed. Don't
+            // add it to kp, and move to the next item in the trim set.
+            ++si_it;
+        } else {
+            // The current exponent must be kept.
+            kp << tmp;
+        }
+    }
+    assert(si_it == si_end);
+
+    return packed_monomial<T>(kp.get());
+}
+
+// Monomial differentiation.
+// NOTE: this requires that p is compatible with ss,
+// and idx is within ss.
+template <typename T>
+inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T> &p, const symbol_idx &idx,
+                                                        const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(p, ss));
+    assert(idx < ss.size());
+
+    // NOTE: because we assume compatibility, the static cast is safe.
+    const auto s_size = static_cast<unsigned>(ss.size());
+
+    // Init the (un)packing machinery.
+    k_unpacker<T> ku(p.get_value(), s_size);
+    k_packer<T> kp(s_size);
+    T tmp, ret_exp(0);
+    for (auto i = 0u; i < s_size; ++i) {
+        ku >> tmp;
+
+        if (i == idx && tmp != T(0)) {
+            // NOTE: the exponent of the differentiation variable
+            // is not zero. Take the derivative.
+            // NOTE: if the exponent is zero, ret_exp will remain to
+            // its initial value (0) and the output monomial
+            // will be the same as p.
+            if (obake_unlikely(tmp == ::obake::detail::limits_min<T>)) {
+                obake_throw(::std::overflow_error,
+                            "Overflow detected while computing the derivative of a packed monomial: the exponent of "
+                            "the variable with respect to which the differentiation is being taken is too small ("
+                                + ::obake::detail::to_string(tmp)
+                                + "), and taking the derivative would generate a negative overflow");
+            }
+            ret_exp = tmp--;
+        }
+
+        kp << tmp;
+    }
+
+    return ::std::make_pair(ret_exp, packed_monomial<T>(kp.get()));
 }
 
 } // namespace polynomials

@@ -16,6 +16,7 @@
 
 #include <obake/math/evaluate.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/math/trim.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
@@ -174,4 +175,44 @@ TEST_CASE("series_evaluate_test")
         std::invalid_argument,
         "Cannot evaluate a series: the evaluation map, which contains the symbols {'t', 'u', 'x', 'y'}, does not "
         "contain all the symbols in the series' symbol set, {'x', 'y', 'z'}");
+}
+
+TEST_CASE("series_trim_test")
+{
+    using pm_t = packed_monomial<int>;
+    using p1_t = polynomial<pm_t, rat_t>;
+
+    REQUIRE(is_trimmable_v<p1_t>);
+    REQUIRE(is_trimmable_v<p1_t &>);
+    REQUIRE(is_trimmable_v<const p1_t &>);
+    REQUIRE(is_trimmable_v<const p1_t>);
+
+    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+    REQUIRE(trim(x) == x);
+    REQUIRE(trim(x).get_symbol_set() == x.get_symbol_set());
+
+    auto p1 = x * x + 2 * y - 3 * z;
+    REQUIRE(trim(p1) == p1);
+    REQUIRE(trim(p1).get_symbol_set() == p1.get_symbol_set());
+
+    auto p2 = p1 * p1 * p1 * p1;
+    REQUIRE(trim(p2) == p2);
+    REQUIRE(trim(p2).get_symbol_set() == p2.get_symbol_set());
+
+    auto p3 = x * x + 2 * y - 3 * z + 3 * z;
+    REQUIRE(trim(p3) == p3);
+    REQUIRE(trim(p3).get_symbol_set() != p3.get_symbol_set());
+    REQUIRE(trim(p3).get_symbol_set() == symbol_set{"x", "y"});
+
+    auto p4 = x * x + 2 * y - 3 * z + 3 * z - 2 * y;
+    REQUIRE(trim(p4) == p4);
+    REQUIRE(trim(p4).get_symbol_set() != p4.get_symbol_set());
+    REQUIRE(trim(p4).get_symbol_set() == symbol_set{"x"});
+
+    auto p5 = x * x + 2 * y - 3 * z + 3 * z - 2 * y - x * x;
+    REQUIRE(p5.empty());
+    REQUIRE(trim(p5) == p5);
+    REQUIRE(trim(p5).get_symbol_set() != p5.get_symbol_set());
+    REQUIRE(trim(p5).get_symbol_set() == symbol_set{});
 }
