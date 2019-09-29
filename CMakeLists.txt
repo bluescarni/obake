@@ -132,11 +132,21 @@ if(YACMA_COMPILER_IS_MSVC)
         list(APPEND OBAKE_CXX_FLAGS_RELEASE "/wd4459")
     endif()
 endif()
+if(MINGW)
+    # In MinGW some tests generate big object files.
+    message(STATUS "Enabling the '-Wa,-mbig-obj' flag for MinGW.")
+    list(APPEND OBAKE_CXX_FLAGS_DEBUG "-Wa,-mbig-obj")
+    list(APPEND OBAKE_CXX_FLAGS_RELEASE "-Wa,-mbig-obj")
+endif()
 
 # Find the dependencies.
 
 # mp++.
-find_package(mp++ 0.17 REQUIRED)
+# NOTE: put the minimum version in a variable
+# so that we can re-use it in the config-file package
+# machinery below.
+set (_OBAKE_MIN_MPPP_VERSION 0.17)
+find_package(mp++ "${_OBAKE_MIN_MPPP_VERSION}" REQUIRED)
 
 # abseil.
 find_package(absl REQUIRED)
@@ -157,6 +167,9 @@ find_package(TBB REQUIRED)
 if(YACMA_COMPILER_IS_MSVC)
     find_package(DbgEng REQUIRED)
 endif()
+
+# Wrap the CMAKE_DL_LIBS variable in an imported target.
+include(ObakeFindDl)
 
 # Initial setup of the obake target.
 set(OBAKE_SRC_FILES
@@ -193,21 +206,14 @@ target_include_directories(obake PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(obake PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost)
+target_link_libraries(obake PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost TBB::tbb)
 if(OBAKE_WITH_LIBBACKTRACE)
     target_link_libraries(obake PUBLIC libbacktrace::libbacktrace)
 else()
     # NOTE: Boost stacktrace sometimes requires linking to the system
-    # DL libs. There's a CMake variable for that, which I hope
-    # behaves gracefully on non-unix platforms.
-    # NOTE: when we enable obake's installation machinery,
-    # we may have to sort this out (CMAKE_DL_LIBS does not
-    # look like an imported target).
-    target_link_libraries(obake PUBLIC ${CMAKE_DL_LIBS})
+    # DL libs.
+    target_link_libraries(obake PUBLIC obake::dl)
 endif()
-
-# TBB.
-target_link_libraries(obake PUBLIC TBB::tbb)
 
 # Link to DbgEng on MSVC.
 if(YACMA_COMPILER_IS_MSVC)
@@ -231,6 +237,27 @@ install(TARGETS obake
     ARCHIVE DESTINATION "${OBAKE_INSTALL_LIBDIR}"
     RUNTIME DESTINATION bin
 )
+
+# Setup of the optional deps.
+set(_OBAKE_CONFIG_OPTIONAL_DEPS)
+if(OBAKE_WITH_LIBBACKTRACE)
+    set(_OBAKE_CONFIG_OPTIONAL_DEPS "${_OBAKE_CONFIG_OPTIONAL_DEPS}find_package(libbacktrace REQUIRED)\n")
+endif()
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/obake-config.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/obake-config.cmake" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/obake-config.cmake" DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindDbgEng.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindTBB.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Findlibbacktrace.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ObakeFindBoost.cmake"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ObakeFindDl.cmake"
+DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
+install(EXPORT obake_export NAMESPACE obake:: DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
+# Take care of versioning.
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" VERSION ${obake_VERSION}
+	COMPATIBILITY SameMajorVersion)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 
 if(OBAKE_BUILD_TESTS)
     enable_testing()
