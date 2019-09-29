@@ -37,6 +37,7 @@ rm -fr abseil-cpp
 
 cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=${OBAKE_BUILD_TYPE} -DOBAKE_BUILD_TESTS=yes
 make -j2 VERBOSE=1
+make install
 ctest -j4 -V
 
 set +e

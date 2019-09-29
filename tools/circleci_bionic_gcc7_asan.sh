@@ -19,8 +19,9 @@ bash ../tools/circleci_install_mppp.sh
 bash ../tools/circleci_install_abseil.sh
 
 # GCC build.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DOBAKE_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-march=native -fsanitize=address" -DOBAKE_WITH_LIBBACKTRACE=YES
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=~/.local -DCMAKE_PREFIX_PATH=~/.local -DOBAKE_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-march=native -fsanitize=address" -DOBAKE_WITH_LIBBACKTRACE=YES
 make -j2 VERBOSE=1
+make install
 # Run the tests. Enable the custom suppression file for ASAN
 # in order to suppress spurious warnings from TBB code.
 LSAN_OPTIONS=suppressions=/home/circleci/project/tools/lsan.supp ctest -j4 -V
