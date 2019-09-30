@@ -16,6 +16,7 @@
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/math/diff.hpp>
 #include <obake/math/integrate.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/math/truncate_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
@@ -49,6 +50,12 @@ TEST_CASE("polynomial_diff")
         REQUIRE(diff(x + y + z, "y") == 1);
         REQUIRE(diff(x + y + z, "z") == 1);
         REQUIRE(diff(x + y + z, "zz") == 0);
+        if constexpr (std::is_same_v<mppp::integer<1>, cf_t>) {
+            // Try a couple of negative powers as well.
+            REQUIRE(diff(x + y + obake::pow(z, -5), "z") == -5 * obake::pow(z, -6));
+            REQUIRE(diff(x * z + y * z + 3 * x * y * obake::pow(z, -5), "z")
+                    == x + y - 5 * 3 * x * y * obake::pow(z, -6));
+        }
 
         auto p = 3 * x * x * y - 2 * z * y + 4 * x * z * z * z;
         REQUIRE(std::is_same_v<decltype(p), poly_t>);
@@ -121,6 +128,11 @@ TEST_CASE("polynomial_integrate")
             if constexpr (std::is_same_v<mppp::rational<1>, cf_t>) {
                 REQUIRE(integrate(x, "x") == x * x / 2);
                 REQUIRE(integrate(x * y + z, "x") == x / 2 * x * y + z * x);
+
+                // Try a couple of negative powers as well.
+                REQUIRE(integrate(x + y + obake::pow(z, -5), "z") == x * z + y * z - obake::pow(z, -4) / 4);
+                REQUIRE(integrate(x * z + y * z + 3 * x * y * obake::pow(z, -5), "z")
+                        == x * z * z / 2 + y * z * z / 2 - 3 * x * y * obake::pow(z, -4) / 4);
             }
 
             auto p = 2 * x * y * z + x + y;
