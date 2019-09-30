@@ -165,5 +165,5 @@ jobs:
           cmake --build . --config RelWithDebInfo
           set PATH=%PATH%;%CD%\RelWithDebInfo
           ctest -j4 -V -C RelWithDebInfo
-          cmake --build . --target install
+          cmake --build . --config RelWithDebInfo --target install
         displayName: "Configure, build and test"
