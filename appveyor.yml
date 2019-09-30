@@ -56,6 +56,7 @@ build_script:
 
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DOBAKE_BUILD_TESTS=ON
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . -- -v
+- if [%BUILD_TYPE%]==[MSVC15_clang_64] cmake --build . --target install
 
 
 test_script:
