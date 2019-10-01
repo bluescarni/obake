@@ -28,6 +28,12 @@ struct si00 {
 
 void key_tex_stream_insert(std::ostream &os, const si00 &, const symbol_set &);
 
+// A class whose implementation offloads to key_stream_insert().
+struct si00a {
+};
+
+void key_stream_insert(std::ostream &os, const si00a &, const symbol_set &);
+
 struct si01 {
 };
 
@@ -119,6 +125,11 @@ TEST_CASE("key_tex_stream_insert_test")
     REQUIRE(is_tex_stream_insertable_key_v<const ns::si00 &>);
     REQUIRE(is_tex_stream_insertable_key_v<ns::si00 &&>);
 
+    REQUIRE(is_tex_stream_insertable_key_v<ns::si00a>);
+    REQUIRE(is_tex_stream_insertable_key_v<ns::si00a &>);
+    REQUIRE(is_tex_stream_insertable_key_v<const ns::si00a &>);
+    REQUIRE(is_tex_stream_insertable_key_v<ns::si00a &&>);
+
     REQUIRE(!is_tex_stream_insertable_key_v<ns::si01>);
     REQUIRE(is_tex_stream_insertable_key_v<ns::si01 &>);
     REQUIRE(!is_tex_stream_insertable_key_v<const ns::si01 &>);
@@ -162,6 +173,11 @@ TEST_CASE("key_tex_stream_insert_test")
     REQUIRE(TexStreamInsertableKey<ns::si00 &>);
     REQUIRE(TexStreamInsertableKey<const ns::si00 &>);
     REQUIRE(TexStreamInsertableKey<ns::si00 &&>);
+
+    REQUIRE(TexStreamInsertableKey<ns::si00a>);
+    REQUIRE(TexStreamInsertableKey<ns::si00a &>);
+    REQUIRE(TexStreamInsertableKey<const ns::si00a &>);
+    REQUIRE(TexStreamInsertableKey<ns::si00a &&>);
 
     REQUIRE(!TexStreamInsertableKey<ns::si01>);
     REQUIRE(TexStreamInsertableKey<ns::si01 &>);

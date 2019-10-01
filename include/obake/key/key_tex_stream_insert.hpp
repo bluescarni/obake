@@ -16,6 +16,7 @@
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
+#include <obake/key/key_stream_insert.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -41,13 +42,18 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
-constexpr auto key_tex_stream_insert_impl(::std::ostream &os, T &&x, const symbol_set &ss, priority_tag<1>)
+constexpr auto key_tex_stream_insert_impl(::std::ostream &os, T &&x, const symbol_set &ss, priority_tag<2>)
     OBAKE_SS_FORWARD_FUNCTION((customisation::key_tex_stream_insert<T &&>)(os, ::std::forward<T>(x), ss));
 
 // Unqualified function call implementation.
 template <typename T>
-constexpr auto key_tex_stream_insert_impl(::std::ostream &os, T &&x, const symbol_set &ss, priority_tag<0>)
+constexpr auto key_tex_stream_insert_impl(::std::ostream &os, T &&x, const symbol_set &ss, priority_tag<1>)
     OBAKE_SS_FORWARD_FUNCTION(key_tex_stream_insert(os, ::std::forward<T>(x), ss));
+
+// Default implementation: offload to key_stream_insert().
+template <typename T>
+constexpr auto key_tex_stream_insert_impl(::std::ostream &os, T &&x, const symbol_set &ss, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(::obake::key_stream_insert(os, ::std::forward<T>(x), ss));
 
 } // namespace detail
 
@@ -57,7 +63,7 @@ struct key_tex_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&x, const symbol_set &ss) const
         OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::key_tex_stream_insert_impl(os, ::std::forward<T>(x), ss,
-                                                                                 detail::priority_tag<1>{})))
+                                                                                 detail::priority_tag<2>{})))
 };
 
 inline constexpr auto key_tex_stream_insert = key_tex_stream_insert_msvc{};
@@ -66,7 +72,7 @@ inline constexpr auto key_tex_stream_insert = key_tex_stream_insert_msvc{};
 
 inline constexpr auto key_tex_stream_insert =
     [](::std::ostream & os, auto &&x, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
-        void(detail::key_tex_stream_insert_impl(os, ::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
+        void(detail::key_tex_stream_insert_impl(os, ::std::forward<decltype(x)>(x), ss, detail::priority_tag<2>{})));
 
 #endif
 
