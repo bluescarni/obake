@@ -7,6 +7,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 
@@ -32,7 +33,10 @@ void key_tex_stream_insert(std::ostream &os, const si00 &, const symbol_set &);
 struct si00a {
 };
 
-void key_stream_insert(std::ostream &os, const si00a &, const symbol_set &);
+inline void key_stream_insert(std::ostream &os, const si00a &, const symbol_set &)
+{
+    os << "Hello world";
+}
 
 struct si01 {
 };
@@ -129,6 +133,11 @@ TEST_CASE("key_tex_stream_insert_test")
     REQUIRE(is_tex_stream_insertable_key_v<ns::si00a &>);
     REQUIRE(is_tex_stream_insertable_key_v<const ns::si00a &>);
     REQUIRE(is_tex_stream_insertable_key_v<ns::si00a &&>);
+    // Verify the implementation for si00a really forwards
+    // to key_stream_insert().
+    std::ostringstream oss;
+    key_tex_stream_insert(oss, ns::si00a{}, symbol_set{});
+    REQUIRE(oss.str() == "Hello world");
 
     REQUIRE(!is_tex_stream_insertable_key_v<ns::si01>);
     REQUIRE(is_tex_stream_insertable_key_v<ns::si01 &>);

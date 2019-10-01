@@ -116,6 +116,8 @@ TEST_CASE("tex_stream_insert_test")
     REQUIRE(is_tex_stream_insertable_v<std::string &>);
     REQUIRE(is_tex_stream_insertable_v<const std::string &>);
 
+    // Verify that tex_stream_insert() default
+    // to normal stream insertion.
     std::ostringstream oss1, oss2;
     tex_stream_insert(oss1, 42);
     oss2 << 42;

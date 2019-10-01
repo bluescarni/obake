@@ -32,7 +32,10 @@ void cf_tex_stream_insert(std::ostream &os, const si00 &);
 struct si00a {
 };
 
-void cf_stream_insert(std::ostream &os, const si00a &);
+inline void cf_stream_insert(std::ostream &os, const si00a &)
+{
+    os << "Hello world";
+}
 
 struct si01 {
 };
@@ -136,6 +139,9 @@ TEST_CASE("cf_tex_stream_insert_test")
     REQUIRE(is_tex_stream_insertable_cf_v<ns::si00a &>);
     REQUIRE(is_tex_stream_insertable_cf_v<const ns::si00a &>);
     REQUIRE(is_tex_stream_insertable_cf_v<ns::si00a &&>);
+    oss1.str("");
+    cf_tex_stream_insert(oss1, ns::si00a{});
+    REQUIRE(oss1.str() == "Hello world");
 
     REQUIRE(!is_tex_stream_insertable_cf_v<ns::si01>);
     REQUIRE(is_tex_stream_insertable_cf_v<ns::si01 &>);
