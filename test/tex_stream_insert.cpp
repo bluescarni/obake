@@ -11,6 +11,8 @@
 #include <string>
 #include <type_traits>
 
+#include <mp++/rational.hpp>
+
 #include <obake/config.hpp>
 #include <obake/tex_stream_insert.hpp>
 #include <obake/type_traits.hpp>
@@ -203,4 +205,83 @@ TEST_CASE("tex_stream_insert_test")
     REQUIRE(TexStreamInsertable<const int_si01 &>);
     REQUIRE(!TexStreamInsertable<int_si01 &&>);
 #endif
+}
+
+#if defined(MPPP_HAVE_GCC_INT128)
+
+TEST_CASE("tex_stream_insert_int128_test")
+{
+    REQUIRE(is_tex_stream_insertable_v<__int128_t>);
+    REQUIRE(is_tex_stream_insertable_v<__int128_t &>);
+    REQUIRE(is_tex_stream_insertable_v<const __int128_t &>);
+    REQUIRE(is_tex_stream_insertable_v<__int128_t &&>);
+
+    REQUIRE(is_tex_stream_insertable_v<__uint128_t>);
+    REQUIRE(is_tex_stream_insertable_v<__uint128_t &>);
+    REQUIRE(is_tex_stream_insertable_v<const __uint128_t &>);
+    REQUIRE(is_tex_stream_insertable_v<__uint128_t &&>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(TexStreamInsertable<__int128_t>);
+    REQUIRE(TexStreamInsertable<__int128_t &>);
+    REQUIRE(TexStreamInsertable<const __int128_t &>);
+    REQUIRE(TexStreamInsertable<__int128_t &&>);
+
+    REQUIRE(TexStreamInsertable<__uint128_t>);
+    REQUIRE(TexStreamInsertable<__uint128_t &>);
+    REQUIRE(TexStreamInsertable<const __uint128_t &>);
+    REQUIRE(TexStreamInsertable<__uint128_t &&>);
+#endif
+
+    std::ostringstream oss;
+    tex_stream_insert(oss, __int128_t(-42));
+    REQUIRE(oss.str() == "-42");
+    oss.str("");
+    tex_stream_insert(oss, __uint128_t(42));
+    REQUIRE(oss.str() == "42");
+}
+
+#endif
+
+TEST_CASE("tex_stream_insert_rational_test")
+{
+    using rat_t = mppp::rational<1>;
+
+    REQUIRE(is_tex_stream_insertable_v<rat_t>);
+    REQUIRE(is_tex_stream_insertable_v<rat_t &>);
+    REQUIRE(is_tex_stream_insertable_v<const rat_t &>);
+    REQUIRE(is_tex_stream_insertable_v<rat_t &&>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(TexStreamInsertable<rat_t>);
+    REQUIRE(TexStreamInsertable<rat_t &>);
+    REQUIRE(TexStreamInsertable<const rat_t &>);
+    REQUIRE(TexStreamInsertable<rat_t &&>);
+#endif
+
+    std::ostringstream oss;
+
+    tex_stream_insert(oss, rat_t{});
+    REQUIRE(oss.str() == "0");
+    oss.str("");
+
+    tex_stream_insert(oss, rat_t{42});
+    REQUIRE(oss.str() == "42");
+    oss.str("");
+
+    tex_stream_insert(oss, rat_t{42, 47});
+    REQUIRE(oss.str() == "\\frac{42}{47}");
+    oss.str("");
+
+    tex_stream_insert(oss, rat_t{42, -47});
+    REQUIRE(oss.str() == "-\\frac{42}{47}");
+    oss.str("");
+
+    tex_stream_insert(oss, rat_t{1, -47});
+    REQUIRE(oss.str() == "-\\frac{1}{47}");
+    oss.str("");
+
+    tex_stream_insert(oss, rat_t{1, 3});
+    REQUIRE(oss.str() == "\\frac{1}{3}");
+    oss.str("");
 }
