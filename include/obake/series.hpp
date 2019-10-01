@@ -1687,7 +1687,35 @@ inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>
 namespace customisation::internal
 {
 
+// Metaprogramming to establish the algorithm
+// of the default cf_tex_stream_insert() implementation for series.
+template <typename T>
+constexpr auto series_default_cf_tex_stream_insert_algorithm_impl()
+{
+    if constexpr (!is_cvr_series_v<T>) {
+        // Not a series type.
+        return 0;
+    } else {
+        // The coefficient/key types of the series
+        // must be suitable for tex stream insertion
+        // (via const lvalue refs).
+        using rT = remove_cvref_t<T>;
+
+        if constexpr (::std::conjunction_v<is_tex_stream_insertable_cf<const series_cf_t<rT> &>,
+                                           is_tex_stream_insertable_key<const series_key_t<rT> &>>) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+}
+
+// Default implementation of cf_tex_stream_insert() for series.
 struct series_default_cf_tex_stream_insert_impl {
+    // Shortcut.
+    template <typename T>
+    static constexpr auto algo = internal::series_default_cf_tex_stream_insert_algorithm_impl<T>();
+
     template <typename T>
     void operator()(::std::ostream &os, const T &x) const
     {
@@ -1704,15 +1732,10 @@ struct series_default_cf_tex_stream_insert_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires CvrSeries<T> &&TexStreamInsertableCf<const series_cf_t<remove_cvref_t<T>> &>
-    &&TexStreamInsertableKey<const series_key_t<remove_cvref_t<T>> &> inline constexpr auto cf_tex_stream_insert<T>
+requires(series_default_cf_tex_stream_insert_impl::algo<T> != 0) inline constexpr auto cf_tex_stream_insert<T>
 #else
-inline constexpr auto cf_tex_stream_insert<
-    T, ::std::enable_if_t<::std::conjunction_v<
-           is_cvr_series<T>,
-           is_tex_stream_insertable_cf<::std::add_lvalue_reference_t<const detected_t<series_cf_t, remove_cvref_t<T>>>>,
-           is_tex_stream_insertable_key<
-               ::std::add_lvalue_reference_t<const detected_t<series_key_t, remove_cvref_t<T>>>>>>>
+inline constexpr auto
+    cf_tex_stream_insert<T, ::std::enable_if_t<series_default_cf_tex_stream_insert_impl::algo<T> != 0>>
 #endif
     = series_default_cf_tex_stream_insert_impl{};
 
@@ -1793,6 +1816,34 @@ template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
 constexpr auto operator<<(::std::ostream &os, S &&s)
     OBAKE_SS_FORWARD_FUNCTION((void(::obake::series_stream_insert(os, ::std::forward<S>(s))), os));
 
+// Customise obake::tex_stream_insert() for series types.
+namespace customisation::internal
+{
+
+// Default implementation of tex_stream_insert() for series.
+struct series_default_tex_stream_insert_impl {
+    // NOTE: the requirements on T are the same as in the default implementation
+    // of cf_tex_stream_insert() for series, re-use them.
+    template <typename T>
+    static constexpr auto algo = series_default_cf_tex_stream_insert_impl::algo<T>;
+
+    template <typename T>
+    void operator()(::std::ostream &os, const T &x) const
+    {
+        detail::series_stream_terms_impl<true>(os, x);
+    }
+};
+
+template <typename T>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires(series_default_tex_stream_insert_impl::algo<T> != 0) inline constexpr auto tex_stream_insert<T>
+#else
+inline constexpr auto tex_stream_insert<T, ::std::enable_if_t<series_default_tex_stream_insert_impl::algo<T> != 0>>
+#endif
+    = series_default_tex_stream_insert_impl{};
+
+} // namespace customisation::internal
+
 namespace customisation
 {
 
@@ -1806,34 +1857,6 @@ template <typename T, typename U
 inline constexpr auto series_add = not_implemented;
 
 } // namespace customisation
-
-// Customise obake::tex_stream_insert() for series types.
-namespace customisation::internal
-{
-
-struct series_default_tex_stream_insert_impl {
-    template <typename T>
-    void operator()(::std::ostream &os, const T &x) const
-    {
-        detail::series_stream_terms_impl<true>(os, x);
-    }
-};
-
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires CvrSeries<T> &&TexStreamInsertableCf<const series_cf_t<remove_cvref_t<T>> &>
-    &&TexStreamInsertableKey<const series_key_t<remove_cvref_t<T>> &> inline constexpr auto tex_stream_insert<T>
-#else
-inline constexpr auto tex_stream_insert<
-    T, ::std::enable_if_t<::std::conjunction_v<
-           is_cvr_series<T>,
-           is_tex_stream_insertable_cf<::std::add_lvalue_reference_t<const detected_t<series_cf_t, remove_cvref_t<T>>>>,
-           is_tex_stream_insertable_key<
-               ::std::add_lvalue_reference_t<const detected_t<series_key_t, remove_cvref_t<T>>>>>>>
-#endif
-    = series_default_tex_stream_insert_impl{};
-
-} // namespace customisation::internal
 
 namespace detail
 {
