@@ -1688,7 +1688,8 @@ namespace customisation::internal
 {
 
 // Metaprogramming to establish the algorithm
-// of the default cf_tex_stream_insert() implementation for series.
+// of the default cf_tex_stream_insert() implementation
+// for series types.
 template <typename T>
 constexpr auto series_default_cf_tex_stream_insert_algorithm_impl()
 {
@@ -1706,7 +1707,7 @@ constexpr auto series_default_cf_tex_stream_insert_algorithm_impl()
     }
 }
 
-// Default implementation of cf_tex_stream_insert() for series.
+// Default implementation of cf_tex_stream_insert() for series types.
 struct series_default_cf_tex_stream_insert_impl {
     // Shortcut.
     template <typename T>
@@ -1816,7 +1817,7 @@ constexpr auto operator<<(::std::ostream &os, S &&s)
 namespace customisation::internal
 {
 
-// Default implementation of tex_stream_insert() for series.
+// Default implementation of tex_stream_insert() for series types.
 struct series_default_tex_stream_insert_impl {
     // NOTE: the requirements on T are the same as in the default implementation
     // of cf_tex_stream_insert() for series, re-use them.
