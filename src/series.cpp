@@ -14,7 +14,7 @@ namespace obake::detail
 {
 
 // Implementation of the default streaming for a single term.
-void series_stream_single_term(::std::string &ret, ::std::string &str_cf, const ::std::string &str_key)
+void series_stream_single_term(::std::string &ret, ::std::string &str_cf, const ::std::string &str_key, bool tex_mode)
 {
     // Detect unitary cf/key.
     const bool cf_is_one = (str_cf == "1"), cf_is_minus_one = (str_cf == "-1"), key_is_one = (str_key == "1");
@@ -36,9 +36,10 @@ void series_stream_single_term(::std::string &ret, ::std::string &str_cf, const 
 
     // Append the (possibly-transformed) coefficient.
     ret += str_cf;
-    if (!cf_is_one && !cf_is_minus_one && !key_is_one) {
-        // If the abs(coefficient) is not unitary and
-        // the key is also not unitary, then we need the
+    if (!cf_is_one && !cf_is_minus_one && !key_is_one && !tex_mode) {
+        // If the abs(coefficient) is not unitary,
+        // the key is also not unitary, and we are not
+        // in Tex mode, then we need the
         // multiplication sign.
         ret += '*';
     }

@@ -1,6 +1,10 @@
 add_library(obake_test STATIC catch_main.cpp)
-target_compile_options(obake_test PRIVATE "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>" 
-                       "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>")
+target_compile_options(obake_test PRIVATE
+  "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
+  "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
+)
 set_property(TARGET obake_test PROPERTY CXX_STANDARD 17)
 set_property(TARGET obake_test PROPERTY CXX_STANDARD_REQUIRED YES)
 set_property(TARGET obake_test PROPERTY CXX_EXTENSIONS NO)
@@ -8,8 +12,12 @@ set_property(TARGET obake_test PROPERTY CXX_EXTENSIONS NO)
 function(ADD_OBAKE_TESTCASE arg1)
   add_executable(${arg1} ${arg1}.cpp)
   target_link_libraries(${arg1} obake obake_test)
-  target_compile_options(${arg1} PRIVATE "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>" 
-                                         "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>")
+  target_compile_options(${arg1} PRIVATE
+    "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
+    "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  )
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
@@ -19,6 +27,7 @@ endfunction()
 ADD_OBAKE_TESTCASE(atomic_utils)
 ADD_OBAKE_TESTCASE(byte_size)
 ADD_OBAKE_TESTCASE(cf_cf_stream_insert)
+ADD_OBAKE_TESTCASE(cf_cf_tex_stream_insert)
 ADD_OBAKE_TESTCASE(exceptions)
 ADD_OBAKE_TESTCASE(hash)
 ADD_OBAKE_TESTCASE(hc)
@@ -31,6 +40,7 @@ ADD_OBAKE_TESTCASE(key_key_is_zero)
 ADD_OBAKE_TESTCASE(key_key_p_degree)
 ADD_OBAKE_TESTCASE(key_key_merge_symbols)
 ADD_OBAKE_TESTCASE(key_key_stream_insert)
+ADD_OBAKE_TESTCASE(key_key_tex_stream_insert)
 ADD_OBAKE_TESTCASE(key_key_trim)
 ADD_OBAKE_TESTCASE(key_key_trim_identify)
 ADD_OBAKE_TESTCASE(math_degree)
@@ -56,6 +66,7 @@ ADD_OBAKE_TESTCASE(polynomials_monomial_subs)
 ADD_OBAKE_TESTCASE(polynomials_monomial_range_overflow_check)
 ADD_OBAKE_TESTCASE(polynomials_packed_monomial_00)
 ADD_OBAKE_TESTCASE(polynomials_packed_monomial_01)
+ADD_OBAKE_TESTCASE(polynomials_packed_monomial_02)
 ADD_OBAKE_TESTCASE(polynomials_polynomial_00)
 ADD_OBAKE_TESTCASE(polynomials_polynomial_01)
 ADD_OBAKE_TESTCASE(polynomials_polynomial_02)
@@ -67,9 +78,11 @@ ADD_OBAKE_TESTCASE(series_01)
 ADD_OBAKE_TESTCASE(series_02)
 ADD_OBAKE_TESTCASE(series_03)
 ADD_OBAKE_TESTCASE(series_04)
+ADD_OBAKE_TESTCASE(series_05)
 ADD_OBAKE_TESTCASE(symbols)
 ADD_OBAKE_TESTCASE(fcast)
 ADD_OBAKE_TESTCASE(limits)
+ADD_OBAKE_TESTCASE(tex_stream_insert)
 ADD_OBAKE_TESTCASE(to_string)
 ADD_OBAKE_TESTCASE(type_traits)
 ADD_OBAKE_TESTCASE(stacktrace)

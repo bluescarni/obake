@@ -146,7 +146,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
 
         // Try to locate s within the symbol set.
         ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
-        const auto it = ::std::lower_bound(ss.begin(), ss.end(), s);
+        const auto it = ss.find(s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
             obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
                                                      + " from the generator '" + s
@@ -2023,7 +2023,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
     const auto &ss = x_.get_symbol_set();
 
     // Check if s is in the original symbol set.
-    const auto it_s = ::std::lower_bound(ss.cbegin(), ss.cend(), s);
+    const auto it_s = ss.find(s);
     // Determine its index as well.
     const auto s_idx = ss.index_of(it_s);
     if (it_s == ss.cend() || *it_s != s) {

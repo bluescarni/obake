@@ -1,8 +1,12 @@
 function(ADD_OBAKE_BENCHMARK arg1)
   add_executable(${arg1} ${arg1}.cpp)
   target_link_libraries(${arg1} obake)
-  target_compile_options(${arg1} PRIVATE "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
-                                         "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>")
+  target_compile_options(${arg1} PRIVATE
+    "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
+    "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  )
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
