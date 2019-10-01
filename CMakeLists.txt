@@ -192,8 +192,12 @@ endif()
 add_library(obake SHARED "${OBAKE_SRC_FILES}")
 set_property(TARGET obake PROPERTY VERSION "1.0")
 set_property(TARGET obake PROPERTY SOVERSION 1 )
-target_compile_options(obake PRIVATE "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>" "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>" "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>" 
-                                        "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>")
+target_compile_options(obake PRIVATE
+    "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
+    "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
+)
 set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
 set_property(TARGET obake PROPERTY CXX_STANDARD 17)
