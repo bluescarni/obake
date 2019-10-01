@@ -276,6 +276,71 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
     }
 }
 
+// Implementation of tex stream insertion.
+// NOTE: requires that m is compatible with s.
+template <typename T>
+inline void key_tex_stream_insert(::std::ostream &os, const packed_monomial<T> &m, const symbol_set &s)
+{
+    assert(polynomials::key_is_compatible(m, s));
+
+    // Use separate streams for numerator and denominator
+    // (the denominator is used only in case of negative powers).
+    ::std::ostringstream oss_num, oss_den, *cur_oss;
+
+    // NOTE: we know s is not too large from the assert.
+    const auto s_size = static_cast<unsigned>(s.size());
+    k_unpacker<T> ku(m.get_value(), s_size);
+    T tmp;
+    // Go through a multiprecision integer for the stream
+    // insertion. This allows us not to care about potential
+    // overflow conditions when manipulating the exponents
+    // below.
+    ::mppp::integer<1> tmp_mp;
+    for (const auto &var : s) {
+        // Extract the current exponent into
+        // tmp_mp.
+        ku >> tmp;
+        tmp_mp = tmp;
+
+        const auto sgn = tmp_mp.sgn();
+        if (sgn != 0) {
+            // Non-zero exponent, we will write something.
+            if (sgn == 1) {
+                // Positive exponent, we will write
+                // to the numerator stream.
+                cur_oss = &oss_num;
+            } else {
+                // Negative exponent: take the absolute value
+                // and write to the denominator stream.
+                tmp_mp.neg();
+                cur_oss = &oss_den;
+            }
+
+            // Print the symbol name.
+            *cur_oss << '{' << var << '}';
+
+            // Raise to power, if the exponent is not one.
+            if (!tmp_mp.is_one()) {
+                *cur_oss << "^{" << tmp_mp << '}';
+            }
+        }
+    }
+
+    const auto num_str = oss_num.str(), den_str = oss_den.str();
+
+    if (!num_str.empty() && !den_str.empty()) {
+        // We have both negative and positive exponents,
+        // print them both in a fraction.
+        os << "\\frac{" << num_str << "}{" << den_str << '}';
+    } else if (!num_str.empty() && den_str.empty()) {
+        // Only positive exponents.
+        os << num_str;
+    } else if (num_str.empty() && !den_str.empty()) {
+        // Only negative exponents, display them as 1/something.
+        os << "\\frac{1}{" << den_str << '}';
+    }
+}
+
 // Implementation of symbols merging.
 // NOTE: requires that m is compatible with s, and ins_map consistent with s.
 template <typename T>
