@@ -1604,17 +1604,17 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
         // Get the string representations of coefficient and key.
         oss.str("");
         if constexpr (TexMode) {
-            ::obake::tex_stream_insert(static_cast<::std::ostream &>(oss), it->second);
+            ::obake::cf_tex_stream_insert(oss, it->second);
         } else {
-            ::obake::cf_stream_insert(static_cast<::std::ostream &>(oss), it->second);
+            ::obake::cf_stream_insert(oss, it->second);
         }
         auto str_cf = oss.str();
 
         oss.str("");
         if constexpr (TexMode) {
-            ::obake::key_tex_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
+            ::obake::key_tex_stream_insert(oss, it->first, ss);
         } else {
-            ::obake::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
+            ::obake::key_stream_insert(oss, it->first, ss);
         }
         const auto str_key = oss.str();
 
@@ -1701,12 +1701,8 @@ constexpr auto series_default_cf_tex_stream_insert_algorithm_impl()
         // (via const lvalue refs).
         using rT = remove_cvref_t<T>;
 
-        if constexpr (::std::conjunction_v<is_tex_stream_insertable_cf<const series_cf_t<rT> &>,
-                                           is_tex_stream_insertable_key<const series_key_t<rT> &>>) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return static_cast<int>(::std::conjunction_v<is_tex_stream_insertable_cf<const series_cf_t<rT> &>,
+                                                     is_tex_stream_insertable_key<const series_key_t<rT> &>>);
     }
 }
 
