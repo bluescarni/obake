@@ -542,7 +542,7 @@ struct series_rref_clearer {
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
-#if defined(OBAKE_HAVE_CONCEPTS)
+#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
 template <Key K, Cf C, typename Tag>
 #else
 template <typename K, typename C, typename Tag, typename>
