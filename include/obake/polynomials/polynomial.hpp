@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <numeric>
 #include <stdexcept>
 #include <string>
@@ -22,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include <boost/container/container_fwd.hpp>
 #include <boost/iterator/permutation_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/numeric/conversion/cast.hpp>
@@ -53,6 +55,7 @@
 #include <obake/math/subs.hpp>
 #include <obake/polynomials/monomial_diff.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/polynomials/monomial_integrate.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
 #include <obake/polynomials/monomial_pow.hpp>
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
@@ -1846,6 +1849,208 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         }
 
         return retval;
+    }
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
+// integrate() algorithm.
+// NOTE: this currently supports only the case
+// in which the monomial is integrable and the
+// coefficient is differentiable, with a derivative
+// which is always zero (i.e., constant coefficients).
+template <typename T>
+constexpr auto poly_integrate_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the integrate() implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        using cf_t = series_cf_t<rT>;
+        using key_t = series_key_t<rT>;
+
+        if constexpr (::std::conjunction_v<is_differentiable<const cf_t &>, is_integrable_monomial<const key_t &>,
+                                           is_symbols_mergeable_key<const key_t &>>) {
+            // cf is differentiable, key is integrable and symbol mergeable.
+            using cf_diff_t = ::obake::detail::diff_t<const cf_t &>;
+            using key_int_t = typename ::obake::detail::monomial_integrate_t<const key_t &>::first_type;
+
+            // Fetch the type of the division of the coefficient
+            // by key_int_t (const lref vs rvalue).
+            using quot_t = detected_t<::obake::detail::div_t, const cf_t &, key_int_t>;
+
+            if constexpr (::std::conjunction_v<is_zero_testable<cf_diff_t>,
+                                               // NOTE: this condition also checks
+                                               // that quot_t is detected (nonesuch
+                                               // cannot be a coefficient type).
+                                               ::std::is_same<quot_t, cf_t>>) {
+                // Special case: the differentiation of the coefficient is zero-testable,
+                // and quot_t is the original coefficient type. In this case, we can implement
+                // integration by repeated term insertions on a series of type rT.
+                return ::std::make_pair(2, ::obake::detail::type_c<rT>{});
+            } else {
+                // General case: the return type is quot_t * const rT &.
+                using ret_t = detected_t<::obake::detail::mul_t, quot_t, const rT &>;
+
+                if constexpr (::std::conjunction_v<
+                                  //  Ensure quot_t is detected, as we use it in the definition of ret_t.
+                                  is_detected<::obake::detail::div_t, const cf_t &, key_int_t>,
+                                  // The return type must be accumulable.
+                                  // NOTE: this condition also checks that ret_t is detected,
+                                  // as nonesuch is not compound addable.
+                                  is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                                  // Need to init ret_t to zero for accumulation.
+                                  ::std::is_constructible<ret_t, int>,
+                                  // Need to construct cf_t from 1 for the temporary
+                                  // polynomials.
+                                  ::std::is_constructible<cf_t, int>,
+                                  // Need to test that the derivative of the coefficient is zero.
+                                  is_zero_testable<cf_diff_t>>) {
+                    return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
+                } else {
+                    return failure;
+                }
+            }
+        } else {
+            return failure;
+        }
+    }
+}
+
+template <typename T>
+inline constexpr auto poly_integrate_algorithm = detail::poly_integrate_algorithm_impl<T>();
+
+template <typename T>
+inline constexpr int poly_integrate_algo = poly_integrate_algorithm<T>.first;
+
+template <typename T>
+using poly_integrate_ret_t = typename decltype(poly_integrate_algorithm<T>.second)::type;
+
+} // namespace detail
+
+template <typename T, ::std::enable_if_t<detail::poly_integrate_algo<T &&> != 0, int> = 0>
+inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string &s)
+{
+    using ret_t = detail::poly_integrate_ret_t<T &&>;
+    using rT = remove_cvref_t<T>;
+
+    // The implementation function.
+    auto impl = [&s](const rT &x, symbol_idx idx) {
+        constexpr auto algo = detail::poly_integrate_algo<T &&>;
+
+        // Sanity check.
+        static_assert(algo == 1 || algo == 2);
+
+        // Cache the symbol set.
+        const auto &ss = x.get_symbol_set();
+        // idx has to be present.
+        assert(idx != ss.size());
+
+        // Error message if a coefficient has nonzero derivative with respect to s.
+        const auto cf_diff_err_msg = "The current polynomial integration algorithm requires the derivatives of all "
+                                     "coefficients with respect to the symbol '"
+                                     + s + "' to be zero, but a coefficient with nonzero derivative was detected";
+
+        if constexpr (algo == 1) {
+            // The general algorithm.
+            // Init temp poly that we will use in the loop below.
+            // This will represent the integral of the original monomial
+            // as a series of type rT.
+            rT tmp_p;
+            tmp_p.set_symbol_set(ss);
+
+            // Produce retval by accumulation.
+            ret_t retval(0);
+            for (const auto &t : x) {
+                const auto &c = t.second;
+
+                if (obake_unlikely(!::obake::is_zero(::obake::diff(c, s)))) {
+                    obake_throw(::std::invalid_argument, cf_diff_err_msg);
+                }
+
+                // Do the monomial integration.
+                auto key_int(::obake::monomial_integrate(t.first, idx, ss));
+
+                // Prepare the temp poly.
+                tmp_p.clear_terms();
+                tmp_p.add_term(::std::move(key_int.second), 1);
+
+                // Put everything together.
+                retval += c / ::std::move(key_int.first) * ::std::as_const(tmp_p);
+            }
+
+            return retval;
+        } else {
+            // Faster implementation via term insertions.
+            // The return type must be the original poly type.
+            static_assert(::std::is_same_v<ret_t, rT>);
+
+            // Init retval, using the same symbol set
+            // and segmentation from x, and reserving
+            // the same size as x.
+            ret_t retval;
+            retval.set_symbol_set(ss);
+            retval.set_n_segments(x.get_s_size());
+            retval.reserve(x.size());
+
+            for (const auto &t : x) {
+                const auto &c = t.second;
+
+                if (obake_unlikely(!::obake::is_zero(::obake::diff(c, s)))) {
+                    obake_throw(::std::invalid_argument, cf_diff_err_msg);
+                }
+
+                // Do the monomial integration, mix it with the coefficient.
+                auto key_int(::obake::monomial_integrate(t.first, idx, ss));
+                // NOTE: here we could probably avoid most checks in the
+                // term addition logic. Keep it in mind for the future.
+                retval.add_term(::std::move(key_int.second), c / ::std::move(key_int.first));
+            }
+
+            return retval;
+        }
+    };
+
+    // Cache the original symbol set.
+    const auto &ss = x_.get_symbol_set();
+
+    // Check if s is in the original symbol set.
+    const auto it_s = ::std::lower_bound(ss.cbegin(), ss.cend(), s);
+    // Determine its index as well.
+    const auto s_idx = ss.index_of(it_s);
+    if (it_s == ss.cend() || *it_s != s) {
+        // s is not in the original symbol set,
+        // we will have to extend x with s.
+
+        // Prepare the new symbol set.
+        symbol_set::sequence_type seq;
+        seq.reserve(ss.size() + 1u);
+        seq.insert(seq.end(), ss.cbegin(), it_s);
+        seq.push_back(s);
+        seq.insert(seq.end(), it_s, ss.cend());
+        assert(::std::is_sorted(seq.cbegin(), seq.cend()));
+        symbol_set new_ss;
+        new_ss.adopt_sequence(::boost::container::ordered_unique_range_t{}, ::std::move(seq));
+
+        // Prepare the merged version of x.
+        rT merged_x;
+        merged_x.set_symbol_set(new_ss);
+        ::obake::detail::series_sym_extender(merged_x, ::std::forward<T>(x_), symbol_idx_map<symbol_set>{{s_idx, {s}}});
+
+        // Run the implementation on merged_x.
+        return impl(merged_x, s_idx);
+    } else {
+        // s is in the original symbol set, run
+        // the implementation directly on x_.
+        return impl(x_, s_idx);
     }
 }
 

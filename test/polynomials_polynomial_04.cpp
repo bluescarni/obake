@@ -6,18 +6,23 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 
 #include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
 
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/math/diff.hpp>
+#include <obake/math/integrate.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/math/truncate_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
 #include "catch.hpp"
+#include "test_utils.hpp"
 
 using namespace obake;
 
@@ -45,6 +50,12 @@ TEST_CASE("polynomial_diff")
         REQUIRE(diff(x + y + z, "y") == 1);
         REQUIRE(diff(x + y + z, "z") == 1);
         REQUIRE(diff(x + y + z, "zz") == 0);
+        if constexpr (std::is_same_v<mppp::integer<1>, cf_t>) {
+            // Try a couple of negative powers as well.
+            REQUIRE(diff(x + y + obake::pow(z, -5), "z") == -5 * obake::pow(z, -6));
+            REQUIRE(diff(x * z + y * z + 3 * x * y * obake::pow(z, -5), "z")
+                    == x + y - 5 * 3 * x * y * obake::pow(z, -6));
+        }
 
         auto p = 3 * x * x * y - 2 * z * y + 4 * x * z * z * z;
         REQUIRE(std::is_same_v<decltype(p), poly_t>);
@@ -83,6 +94,87 @@ TEST_CASE("polynomial_diff")
     REQUIRE(diff(p, "z") == -2 * y + 4 * x * 3 * z * z);
     REQUIRE(diff(p, "zz") == 0);
     REQUIRE(diff(p, "aa") == 0);
+}
+
+TEST_CASE("polynomial_integrate")
+{
+    detail::tuple_for_each(std::make_tuple(1, mppp::rational<1>{}), [](auto n) {
+        using cf_t = decltype(n);
+
+        using pm_t = packed_monomial<long long>;
+        using poly_t = polynomial<pm_t, cf_t>;
+
+        {
+            REQUIRE(is_integrable_v<poly_t>);
+            REQUIRE(is_integrable_v<poly_t &>);
+            REQUIRE(is_integrable_v<const poly_t &>);
+            REQUIRE(is_integrable_v<const poly_t>);
+
+            auto [x, y, z, zz] = make_polynomials<poly_t>("x", "y", "z", "zz");
+
+            REQUIRE(integrate(poly_t{}, "x").empty());
+            REQUIRE(integrate(poly_t{1}, "x") == x);
+            REQUIRE(integrate(poly_t{2}, "x") == 2 * x);
+            REQUIRE(integrate(poly_t{1}, "y") == y);
+            REQUIRE(integrate(poly_t{-2}, "y") == -2 * y);
+
+            REQUIRE(integrate(2 * x, "x") == x * x);
+            REQUIRE(integrate(2 * x * y + z, "x") == x * x * y + z * x);
+            REQUIRE(integrate(2 * y, "y") == y * y);
+            REQUIRE(integrate(2 * x * y + z, "y") == y * y * x + z * y);
+            REQUIRE(integrate(2 * z, "z") == z * z);
+
+            // Check also some fractional results.
+            if constexpr (std::is_same_v<mppp::rational<1>, cf_t>) {
+                REQUIRE(integrate(x, "x") == x * x / 2);
+                REQUIRE(integrate(x * y + z, "x") == x / 2 * x * y + z * x);
+
+                // Try a couple of negative powers as well.
+                REQUIRE(integrate(x + y + obake::pow(z, -5), "z") == x * z + y * z - obake::pow(z, -4) / 4);
+                REQUIRE(integrate(x * z + y * z + 3 * x * y * obake::pow(z, -5), "z")
+                        == x * z * z / 2 + y * z * z / 2 - 3 * x * y * obake::pow(z, -4) / 4);
+            }
+
+            auto p = 2 * x * y * z + x + y;
+            REQUIRE(integrate(p, "z") == z * z * x * y + z * x + z * y);
+            REQUIRE(integrate(p, "zz") == p * zz);
+
+            // Verify the return types (for the int coefficient case,
+            // we will have type promotion due to the long long exponents).
+            if constexpr (std::is_same_v<int, cf_t>) {
+                REQUIRE(std::is_same_v<decltype(integrate(p, "x")), polynomial<pm_t, long long>>);
+            } else {
+                REQUIRE(std::is_same_v<decltype(integrate(p, "x")), poly_t>);
+            }
+        }
+
+        {
+            // Try with polynomial coefficients whose coefficients
+            // have zero derivative.
+            using pp_t = polynomial<pm_t, poly_t>;
+            auto [x, y, z, zz] = make_polynomials<pp_t>("x", "y", "z", "zz");
+            REQUIRE(integrate(2 * x, "x") == x * x);
+            REQUIRE(integrate(2 * x * y + z, "x") == x * x * y + z * x);
+            REQUIRE(integrate(2 * y, "y") == y * y);
+            REQUIRE(integrate(2 * x * y + z, "y") == y * y * x + z * y);
+            REQUIRE(integrate(2 * z, "z") == z * z);
+
+            auto p = 2 * x * y * z + x + y;
+            REQUIRE(integrate(p, "z") == z * z * x * y + z * x + z * y);
+            REQUIRE(integrate(p, "zz") == p * zz);
+
+            // Check the error condition as well.
+            auto [zp, a] = make_polynomials<poly_t>("z", "a");
+
+            OBAKE_REQUIRES_THROWS_CONTAINS(
+                integrate(p * zp, "z"), std::invalid_argument,
+                "The current polynomial integration algorithm requires the derivatives of all "
+                "coefficients with respect to the symbol 'z' to be zero, but a coefficient with nonzero derivative was "
+                "detected");
+
+            REQUIRE(integrate(p * a, "z") == a * (z * z * x * y + z * x + z * y));
+        }
+    });
 }
 
 TEST_CASE("polynomial_truncate_degree")

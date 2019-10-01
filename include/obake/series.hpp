@@ -1784,6 +1784,10 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     assert(!ins_map.empty());
     assert(to.empty());
 
+    // Ensure that the key type of From
+    // is symbol mergeable (via const lvalue ref).
+    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
+
     // We may end up moving coefficients from "from" in the conversion to "to".
     // Make sure we will clear "from" out properly.
     series_rref_clearer<From> from_c(::std::forward<From>(from));
