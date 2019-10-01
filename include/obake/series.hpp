@@ -32,6 +32,7 @@
 
 #include <obake/byte_size.hpp>
 #include <obake/cf/cf_stream_insert.hpp>
+#include <obake/cf/cf_tex_stream_insert.hpp>
 #include <obake/config.hpp>
 #include <obake/detail/abseil.hpp>
 #include <obake/detail/fcast.hpp>
@@ -1682,6 +1683,41 @@ inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>
 
 } // namespace customisation::internal
 
+// Customise obake::cf_tex_stream_insert() for series types.
+namespace customisation::internal
+{
+
+struct series_default_cf_tex_stream_insert_impl {
+    template <typename T>
+    void operator()(::std::ostream &os, const T &x) const
+    {
+        if (x.size() > 1u) {
+            // NOTE: if the series has more than 1 term, bracket it.
+            os << "\\left(";
+            detail::series_stream_terms_impl<true>(os, x);
+            os << "\\right)";
+        } else {
+            detail::series_stream_terms_impl<true>(os, x);
+        }
+    }
+};
+
+template <typename T>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires CvrSeries<T> &&TexStreamInsertableCf<const series_cf_t<remove_cvref_t<T>> &>
+    &&TexStreamInsertableKey<const series_key_t<remove_cvref_t<T>> &> inline constexpr auto cf_tex_stream_insert<T>
+#else
+inline constexpr auto cf_tex_stream_insert<
+    T, ::std::enable_if_t<::std::conjunction_v<
+           is_cvr_series<T>,
+           is_tex_stream_insertable_cf<::std::add_lvalue_reference_t<const detected_t<series_cf_t, remove_cvref_t<T>>>>,
+           is_tex_stream_insertable_key<
+               ::std::add_lvalue_reference_t<const detected_t<series_key_t, remove_cvref_t<T>>>>>>>
+#endif
+    = series_default_cf_tex_stream_insert_impl{};
+
+} // namespace customisation::internal
+
 namespace customisation
 {
 
@@ -1770,6 +1806,34 @@ template <typename T, typename U
 inline constexpr auto series_add = not_implemented;
 
 } // namespace customisation
+
+// Customise obake::tex_stream_insert() for series types.
+namespace customisation::internal
+{
+
+struct series_default_tex_stream_insert_impl {
+    template <typename T>
+    void operator()(::std::ostream &os, const T &x) const
+    {
+        detail::series_stream_terms_impl<true>(os, x);
+    }
+};
+
+template <typename T>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires CvrSeries<T> &&TexStreamInsertableCf<const series_cf_t<remove_cvref_t<T>> &>
+    &&TexStreamInsertableKey<const series_key_t<remove_cvref_t<T>> &> inline constexpr auto tex_stream_insert<T>
+#else
+inline constexpr auto tex_stream_insert<
+    T, ::std::enable_if_t<::std::conjunction_v<
+           is_cvr_series<T>,
+           is_tex_stream_insertable_cf<::std::add_lvalue_reference_t<const detected_t<series_cf_t, remove_cvref_t<T>>>>,
+           is_tex_stream_insertable_key<
+               ::std::add_lvalue_reference_t<const detected_t<series_key_t, remove_cvref_t<T>>>>>>>
+#endif
+    = series_default_tex_stream_insert_impl{};
+
+} // namespace customisation::internal
 
 namespace detail
 {

@@ -28,11 +28,11 @@ struct si00 {
 
 void cf_tex_stream_insert(std::ostream &os, const si00 &);
 
-// An implementation that forwards to cf_stream_insert().
+// An implementation that forwards to tex_stream_insert().
 struct si00a {
 };
 
-inline void cf_stream_insert(std::ostream &os, const si00a &)
+inline void tex_stream_insert(std::ostream &os, const si00a &)
 {
     os << "Hello world";
 }

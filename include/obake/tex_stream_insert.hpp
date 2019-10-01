@@ -9,13 +9,18 @@
 #ifndef OBAKE_TEX_STREAM_INSERT_HPP
 #define OBAKE_TEX_STREAM_INSERT_HPP
 
+#include <cassert>
+#include <cstddef>
 #include <ostream>
 #include <utility>
+
+#include <mp++/rational.hpp>
 
 #include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
+#include <obake/detail/visibility.hpp>
 #include <obake/type_traits.hpp>
 
 namespace obake
@@ -51,6 +56,36 @@ inline constexpr auto tex_stream_insert = not_implemented;
 
 namespace detail
 {
+
+#if defined(MPPP_HAVE_GCC_INT128)
+
+// Implementation for 128-bit integers.
+OBAKE_DLL_PUBLIC void tex_stream_insert(::std::ostream &, const __int128_t &);
+OBAKE_DLL_PUBLIC void tex_stream_insert(::std::ostream &, const __uint128_t &);
+
+#endif
+
+// Implementation for mppp::rational.
+template <::std::size_t SSize>
+inline void tex_stream_insert(::std::ostream &os, const ::mppp::rational<SSize> &q)
+{
+    if (q.get_den().is_one()) {
+        os << q.get_num();
+    } else {
+        const auto sgn = q.get_num().sgn();
+        // NOTE: the sign must be strictly positive/negative,
+        // because if q is zero then its den is 1 and we
+        // end up in the above branch.
+        assert(sgn == 1 || sgn == -1);
+
+        if (sgn == 1) {
+            os << "\\frac{" << q.get_num();
+        } else {
+            os << "-\\frac{" << -q.get_num();
+        }
+        os << "}{" << q.get_den() << '}';
+    }
+}
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>

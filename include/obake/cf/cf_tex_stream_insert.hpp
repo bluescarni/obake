@@ -12,11 +12,11 @@
 #include <ostream>
 #include <utility>
 
-#include <obake/cf/cf_stream_insert.hpp>
 #include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
+#include <obake/tex_stream_insert.hpp>
 #include <obake/type_traits.hpp>
 
 namespace obake
@@ -68,10 +68,10 @@ template <typename T>
 constexpr auto cf_tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
     OBAKE_SS_FORWARD_FUNCTION((customisation::internal::cf_tex_stream_insert<T &&>)(os, ::std::forward<T>(x)));
 
-// Default implementation: offload to cf_stream_insert().
+// Default implementation: offload to tex_stream_insert().
 template <typename T>
 constexpr auto cf_tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION(::obake::cf_stream_insert(os, ::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::tex_stream_insert(os, ::std::forward<T>(x)));
 
 } // namespace detail
 
