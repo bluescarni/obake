@@ -54,6 +54,7 @@
 #include <obake/key/key_merge_symbols.hpp>
 #include <obake/key/key_p_degree.hpp>
 #include <obake/key/key_stream_insert.hpp>
+#include <obake/key/key_tex_stream_insert.hpp>
 #include <obake/key/key_trim.hpp>
 #include <obake/key/key_trim_identify.hpp>
 #include <obake/math/degree.hpp>
@@ -66,6 +67,7 @@
 #include <obake/math/safe_convert.hpp>
 #include <obake/math/trim.hpp>
 #include <obake/symbols.hpp>
+#include <obake/tex_stream_insert.hpp>
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
 
@@ -1573,10 +1575,10 @@ namespace detail
 {
 
 // Implementation of the default streaming for a single term.
-OBAKE_DLL_PUBLIC void series_stream_single_term(::std::string &, ::std::string &, const ::std::string &);
+OBAKE_DLL_PUBLIC void series_stream_single_term(::std::string &, ::std::string &, const ::std::string &, bool);
 
 // Implementation of the default streaming to os of a series' terms.
-template <typename T>
+template <bool TexMode, typename T>
 inline void series_stream_terms_impl(::std::ostream &os, const T &s)
 {
     if (s.empty()) {
@@ -1597,22 +1599,26 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
     ::std::ostringstream oss;
     ::std::string ret;
 
-    for (; it != end;) {
-        if (limit && count == limit) {
-            break;
-        }
-
+    while (it != end && (!limit || count != limit)) {
         // Get the string representations of coefficient and key.
         oss.str("");
-        ::obake::cf_stream_insert(static_cast<::std::ostream &>(oss), it->second);
+        if constexpr (TexMode) {
+            ::obake::tex_stream_insert(static_cast<::std::ostream &>(oss), it->second);
+        } else {
+            ::obake::cf_stream_insert(static_cast<::std::ostream &>(oss), it->second);
+        }
         auto str_cf = oss.str();
 
         oss.str("");
-        ::obake::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
+        if constexpr (TexMode) {
+            ::obake::key_tex_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
+        } else {
+            ::obake::key_stream_insert(static_cast<::std::ostream &>(oss), it->first, ss);
+        }
         const auto str_key = oss.str();
 
         // Print the term.
-        detail::series_stream_single_term(ret, str_cf, str_key);
+        detail::series_stream_single_term(ret, str_cf, str_key, TexMode);
 
         // Increase the counters.
         ++count;
@@ -1625,7 +1631,11 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
 
     // If we reached the limit without printing all terms in the series, print the ellipsis.
     if (limit && count == limit && it != end) {
-        ret += "...";
+        if constexpr (TexMode) {
+            ret += "\\ldots";
+        } else {
+            ret += "...";
+        }
     }
 
     // Transform "+-" into "-".
@@ -1654,10 +1664,10 @@ struct series_default_cf_stream_insert_impl {
         if (x.size() > 1u) {
             // NOTE: if the series has more than 1 term, bracket it.
             os << '(';
-            detail::series_stream_terms_impl(os, x);
+            detail::series_stream_terms_impl<false>(os, x);
             os << ')';
         } else {
-            detail::series_stream_terms_impl(os, x);
+            detail::series_stream_terms_impl<false>(os, x);
         }
     }
 };
@@ -1713,7 +1723,7 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
     os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
     os << "Number of terms : " << s.size() << '\n';
 
-    series_stream_terms_impl(os, s);
+    series_stream_terms_impl<false>(os, s);
 }
 
 } // namespace detail

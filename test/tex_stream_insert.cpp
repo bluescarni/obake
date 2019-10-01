@@ -202,39 +202,3 @@ TEST_CASE("tex_stream_insert_test")
     REQUIRE(!TexStreamInsertable<int_si01 &&>);
 #endif
 }
-
-#if defined(MPPP_HAVE_GCC_INT128)
-
-TEST_CASE("tex_stream_insert_int128_test")
-{
-    REQUIRE(is_tex_stream_insertable_v<__int128_t>);
-    REQUIRE(is_tex_stream_insertable_v<__int128_t &>);
-    REQUIRE(is_tex_stream_insertable_v<const __int128_t &>);
-    REQUIRE(is_tex_stream_insertable_v<__int128_t &&>);
-
-    REQUIRE(is_tex_stream_insertable_v<__uint128_t>);
-    REQUIRE(is_tex_stream_insertable_v<__uint128_t &>);
-    REQUIRE(is_tex_stream_insertable_v<const __uint128_t &>);
-    REQUIRE(is_tex_stream_insertable_v<__uint128_t &&>);
-
-#if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(TexStreamInsertable<__int128_t>);
-    REQUIRE(TexStreamInsertable<__int128_t &>);
-    REQUIRE(TexStreamInsertable<const __int128_t &>);
-    REQUIRE(TexStreamInsertable<__int128_t &&>);
-
-    REQUIRE(TexStreamInsertable<__uint128_t>);
-    REQUIRE(TexStreamInsertable<__uint128_t &>);
-    REQUIRE(TexStreamInsertable<const __uint128_t &>);
-    REQUIRE(TexStreamInsertable<__uint128_t &&>);
-#endif
-
-    std::ostringstream oss;
-    tex_stream_insert(oss, __int128_t(-42));
-    REQUIRE(oss.str() == "-42");
-    oss.str("");
-    tex_stream_insert(oss, __uint128_t(42));
-    REQUIRE(oss.str() == "42");
-}
-
-#endif

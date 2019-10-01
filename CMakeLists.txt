@@ -180,7 +180,6 @@ set(OBAKE_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/stack_trace.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/series.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/tex_stream_insert.cpp"
 )
 
 if(OBAKE_WITH_LIBBACKTRACE)

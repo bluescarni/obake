@@ -16,7 +16,6 @@
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
-#include <obake/detail/visibility.hpp>
 #include <obake/type_traits.hpp>
 
 namespace obake
@@ -53,14 +52,6 @@ inline constexpr auto tex_stream_insert = not_implemented;
 namespace detail
 {
 
-#if defined(MPPP_HAVE_GCC_INT128)
-
-// Implementation for 128-bit integers.
-OBAKE_DLL_PUBLIC void tex_stream_insert(::std::ostream &, const __int128_t &);
-OBAKE_DLL_PUBLIC void tex_stream_insert(::std::ostream &, const __uint128_t &);
-
-#endif
-
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<3>)
@@ -96,6 +87,9 @@ inline constexpr auto tex_stream_insert = tex_stream_insert_msvc{};
 
 #else
 
+// NOTE: perhaps here, and in the other stream insertion functions,
+// it would be more ergonomic to return a reference to os. Let's keep
+// it in mind for the future.
 inline constexpr auto tex_stream_insert = [](::std::ostream & os, auto &&x) OBAKE_SS_FORWARD_LAMBDA(
     void(detail::tex_stream_insert_impl(os, ::std::forward<decltype(x)>(x), detail::priority_tag<3>{})));
 
