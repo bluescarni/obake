@@ -42,7 +42,22 @@ namespace obake::detail
     return retval;
 }
 
-// Merge symbol sets.
+// This function will merge the input sets s1 and s2, returning a tuple
+// of three elements:
+//
+// - a set representing the union u of s1 and s2,
+// - two insertion maps m1 and m2 representing the set differences u\\s1
+//   and u\\s2 respectively.
+//
+// The insertion maps contain the indices in s1 and s2 at which symbols must be added
+// so that s1 and s2, after the insertion of the symbols in m1 and m2, become identical to u.
+//
+// For example, given the input sets s1 = ["b", "c", "e"] and s2 = ["a", "c", "d", "f", "g"],
+// the return values will be:
+//
+// - u = ["a", "b", "c", "d", "e", "f", "g"],
+// - m1 = [(0, ["a"]), (2, ["d"]), (3, ["f", "g"])],
+// - m2 = [(1, ["b"]), (3, ["e"])].
 ::std::tuple<symbol_set, symbol_idx_map<symbol_set>, symbol_idx_map<symbol_set>> merge_symbol_sets(const symbol_set &s1,
                                                                                                    const symbol_set &s2)
 {
