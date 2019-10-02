@@ -544,6 +544,102 @@ struct series_rref_clearer {
     T &&m_ref;
 };
 
+// Helper to extend the keys of "from" with the symbol insertion map ins_map.
+// The new series will be written to "to". The coefficient type of "to"
+// may be different from the coefficient type of "from", in which case a coefficient
+// conversion will take place. "to" is supposed to have to correct symbol set already,
+// but, apart from that, it must be empty, and the number of segments and space
+// reservation will be taken from "from".
+template <typename To, typename From>
+inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
+{
+    // NOTE: we assume that this helper is
+    // invoked with a non-empty insertion map, and an empty
+    // "to" series. "to" must have the correct symbol set.
+    assert(!ins_map.empty());
+    assert(to.empty());
+
+    // Ensure that the key type of From
+    // is symbol mergeable (via const lvalue ref).
+    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
+
+    // We may end up moving coefficients from "from" in the conversion to "to".
+    // Make sure we will clear "from" out properly.
+    series_rref_clearer<From> from_c(::std::forward<From>(from));
+
+    // Cache the original symbol set.
+    const auto &orig_ss = from.get_symbol_set();
+
+    // Set the number of segments, reserve space.
+    const auto from_log2_size = from.get_s_size();
+    to.set_n_segments(from_log2_size);
+    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
+
+    // Establish if we need to check for zero coefficients
+    // when inserting. We don't if the coefficient types of to and from
+    // coincide (i.e., no cf conversion takes place),
+    // otherwise the conversion might generate zeroes.
+    constexpr auto check_zero
+        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+
+    // Merge the terms, distinguishing the segmented vs non-segmented case.
+    if (from_log2_size) {
+        for (auto &t : from._get_s_table()) {
+            for (auto &term : t) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                auto &k = term.first;
+                auto &c = term.second;
+
+                // Compute the merged key.
+                auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+
+                // Insert the term. We need the following checks:
+                // - zero check, in case the coefficient type changes,
+                // - table size check, because even if we know the
+                //   max table size was not exceeded in the original series,
+                //   it might be now (as the merged key may end up in a different
+                //   table).
+                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
+                // that symbol merging does not affect is_zero(), compatibility and
+                // uniqueness.
+                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
+                } else {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
+                }
+            }
+        }
+    } else {
+        auto &to_table = to._get_s_table()[0];
+
+        for (auto &t : from._get_s_table()[0]) {
+            // NOTE: old clang does not like structured
+            // bindings in the for loop.
+            auto &k = t.first;
+            auto &c = t.second;
+
+            // Compute the merged key.
+            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+
+            // Insert the term: the only check we may need is check_zero, in case
+            // the coefficient type changes. We know that the table size cannot be
+            // exceeded as we are dealing with a single table.
+            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::move(c));
+            } else {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::as_const(c));
+            }
+        }
+    }
+}
+
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
@@ -1867,100 +1963,6 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<2>)
 template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
     OBAKE_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
-
-// Helper to extend the keys of "from" with the symbol insertion map ins_map.
-// The new series will be written to "to". The coefficient type of "to"
-// may be different from the coefficient type of "from", in which case a coefficient
-// conversion will take place.
-template <typename To, typename From>
-inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
-{
-    // NOTE: we assume that this helper is
-    // invoked with a non-empty insertion map, and an empty
-    // "to" series. "to" must have the correct symbol set.
-    assert(!ins_map.empty());
-    assert(to.empty());
-
-    // Ensure that the key type of From
-    // is symbol mergeable (via const lvalue ref).
-    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
-
-    // We may end up moving coefficients from "from" in the conversion to "to".
-    // Make sure we will clear "from" out properly.
-    series_rref_clearer<From> from_c(::std::forward<From>(from));
-
-    // Cache the original symbol set.
-    const auto &orig_ss = from.get_symbol_set();
-
-    // Set the number of segments, reserve space.
-    const auto from_log2_size = from.get_s_size();
-    to.set_n_segments(from_log2_size);
-    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
-
-    // Establish if we need to check for zero coefficients
-    // when inserting. We don't if the coefficient types of to and from
-    // coincide (i.e., no cf conversion takes place),
-    // otherwise the conversion might generate zeroes.
-    constexpr auto check_zero
-        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
-
-    // Merge the terms, distinguishing the segmented vs non-segmented case.
-    if (from_log2_size) {
-        for (auto &t : from._get_s_table()) {
-            for (auto &term : t) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                auto &k = term.first;
-                auto &c = term.second;
-
-                // Compute the merged key.
-                auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
-
-                // Insert the term. We need the following checks:
-                // - zero check, in case the coefficient type changes,
-                // - table size check, because even if we know the
-                //   max table size was not exceeded in the original series,
-                //   it might be now (as the merged key may end up in a different
-                //   table).
-                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
-                // that symbol merging does not affect is_zero(), compatibility and
-                // uniqueness.
-                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
-                } else {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
-                }
-            }
-        }
-    } else {
-        auto &to_table = to._get_s_table()[0];
-
-        for (auto &t : from._get_s_table()[0]) {
-            // NOTE: old clang does not like structured
-            // bindings in the for loop.
-            auto &k = t.first;
-            auto &c = t.second;
-
-            // Compute the merged key.
-            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
-
-            // Insert the term: the only check we may need is check_zero, in case
-            // the coefficient type changes. We know that the table size cannot be
-            // exceeded as we are dealing with a single table.
-            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::move(c));
-            } else {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::as_const(c));
-            }
-        }
-    }
-}
 
 // Meta-programming to establish the algorithm and return type
 // of the default implementation of series add/sub. It will return
