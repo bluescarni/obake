@@ -9,6 +9,7 @@
 #include <bitset>
 #include <cstdint>
 #include <iostream>
+#include <random>
 
 #include <obake/config.hpp>
 #include <obake/detail/xoroshiro128_plus.hpp>
@@ -29,4 +30,21 @@ TEST_CASE("random_test")
     std::cout << "Random 128bit number: " << std::bitset<64>(static_cast<std::uint64_t>(r >> 64))
               << std::bitset<64>(static_cast<std::uint64_t>((r << 64) >> 64)) << '\n';
 #endif
+}
+
+// Check we can use detail::xoroshiro128_plus as a random engine
+// for the standard library facilities.
+TEST_CASE("cpp_random_interface_test")
+{
+    std::cout << "Ten random integers:\n";
+    std::uniform_int_distribution<int> idist(0, 100);
+    for (auto i = 0; i < 10; ++i) {
+        std::cout << idist(rng) << '\n';
+    }
+
+    std::cout << "Ten random floats:\n";
+    std::uniform_real_distribution<double> rdist(0., 1.);
+    for (auto i = 0; i < 10; ++i) {
+        std::cout << rdist(rng) << '\n';
+    }
 }
