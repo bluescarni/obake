@@ -93,11 +93,11 @@ struct xoroshiro128_plus {
     // Provide also an interface compatible with the UniformRandomBitGenerator concept:
     // https://en.cppreference.com/w/cpp/named_req/UniformRandomBitGenerator
     using result_type = ::std::uint64_t;
-    constexpr result_type min() const
+    static constexpr result_type min()
     {
         return 0;
     }
-    constexpr result_type max() const
+    static constexpr result_type max()
     {
         return limits_max<result_type>;
     }
