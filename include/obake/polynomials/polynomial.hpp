@@ -462,14 +462,19 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
     }
 
     // Create the degree data. In untruncated multiplication,
-    // this will just be an empty tuple.
+    // this will just be an empty tuple, otherwise it will
+    // be a pair containing the (partial) degree of the terms
+    // of x and y in the original order.
     auto degree_data = [&x, &y, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
+            // No truncation.
             ::obake::detail::ignore(x, y, ss);
 
             return ::std::tuple{};
         } else if constexpr (sizeof...(args) == 1u) {
-            // Total degree.
+            // Total degree truncation.
+            ::obake::detail::ignore(args...);
+
             using d_impl = customisation::internal::series_default_degree_impl;
             using deg1_t = decltype(d_impl::d_extractor<T>{&ss}(x[0]));
             using deg2_t = decltype(d_impl::d_extractor<U>{&ss}(y[0]));
@@ -480,7 +485,7 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                 ::std::vector<deg2_t>(::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<U>{&ss}),
                                       ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<U>{&ss})));
         } else {
-            // Partial degree.
+            // Partial degree truncation.
             using d_impl = customisation::internal::series_default_p_degree_impl;
 
             // Fetch the list of symbols from the arguments and turn it into a
@@ -510,16 +515,15 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
     };
     const auto vidx1 = make_idx_vector(x);
     const auto vidx2 = [&make_idx_vector, &y, &degree_data, &args...]() {
+        ::obake::detail::ignore(args...);
+
         auto ret = make_idx_vector(y);
 
         // In truncated multiplication, order
-        // the indices of y according to the degree of
-        // the terms.
+        // the indices into y according to the degree of
+        // the terms, and sort the vector of
+        // degrees as well.
         if constexpr (sizeof...(args) > 0u) {
-            // Verify we can index into vidx2 when
-            // establishing the multiplication limits below.
-            ::obake::detail::container_it_diff_check(ret);
-
             auto &v2_deg = ::std::get<1>(degree_data);
 
             ::std::sort(ret.begin(), ret.end(), [&v2_deg](const auto &idx1, const auto &idx2) {
@@ -535,27 +539,31 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
             // Verify the sorting in debug mode.
             assert(::std::is_sorted(v2_deg.cbegin(), v2_deg.cend()));
         } else {
+            // Nothing to do in untruncated multiplication,
+            // we will just return the iota.
             ::obake::detail::ignore(y, degree_data);
         }
 
         return ret;
     }();
 
+    // Parameters for the random trials.
     const auto n_trials = 20u;
     const auto multiplier = 2u;
 
+    // Run the trials.
     const auto c_est = ::tbb::parallel_reduce(
         ::tbb::blocked_range<unsigned>(0, n_trials), ::mppp::integer<1>{},
         [multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range, ::mppp::integer<1> cur) {
-            // Make local copy of vidx1.
+            // Make a local copy of vidx1.
             auto vidx1_copy(vidx1);
 
-            // Prepare int distribution for randomly choosing into vidx2.
+            // Prepare a distribution for randomly indexing into vidx2.
             using dist_type = ::std::uniform_int_distribution<decltype(vidx2.size())>;
             using dist_param_type = typename dist_type::param_type;
             dist_type idist;
 
-            // Init the hash set we'll be using for the trials.
+            // Init the hash set we will be using for the trials.
             using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
                                                     ::obake::detail::series_key_comparer>;
             local_set ls;
@@ -569,7 +577,7 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                 ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(i + s1),
                                                        static_cast<::std::uint64_t>(i + s2)};
 
-                // Shuffle the first series.
+                // Shuffle the indices into the first series.
                 ::std::shuffle(vidx1_copy.begin(), vidx1_copy.end(), rng);
 
                 // This will be used to determine the average number of terms in y
@@ -581,35 +589,45 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                 key_type tmp_key;
 
                 for (auto idx1 : vidx1_copy) {
-                    // Get the limit idx in s2.
-                    const auto limit = [&degree_data, &x, &y, idx1, &vidx2, &args...]() {
+                    // Get the upper limit for indexing in vidx2.
+                    // NOTE: this will be an index into a vector of indices.
+                    const auto limit = [&degree_data, idx1, &vidx2, &args...]() {
                         if constexpr (sizeof...(args) == 0u) {
-                            ::obake::detail::ignore(degree_data, x, y, idx1);
+                            // Untruncated case, just return the size of vidx2.
+                            ::obake::detail::ignore(degree_data, idx1);
 
                             return vidx2.size();
                         } else {
-                            // Fetch the degree limit.
+                            // Truncated case: determine the first index
+                            // into vidx2 which does not satisfy the truncation
+                            // limit.
+                            ::obake::detail::ignore(vidx2);
+
+                            // Fetch the truncation limit.
                             const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
 
+                            // Get the degree data for x and y.
+                            const auto &[v1_deg, v2_deg] = degree_data;
+
                             // Fetch the degree of the current term in x.
-                            const auto &d1 = ::std::get<0>(degree_data)[idx1];
+                            const auto &d1 = v1_deg[idx1];
 
-                            // Find the first term t in y such that d1 + degree(t) > max_degree.
+                            // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
                             const auto it = ::std::upper_bound(
-                                vidx2.cbegin(), vidx2.cend(), max_deg,
-                                [&d1, &v2_deg = ::std::get<1>(degree_data)](const auto &deg, const auto &idx) {
-                                    return deg < d1 + ::std::as_const(v2_deg[idx]);
-                                });
+                                v2_deg.cbegin(), v2_deg.cend(), max_deg,
+                                [&d1](const auto &mdeg, const auto &d2) { return mdeg < d1 + d2; });
 
-                            // We checked when constructing vidx2 that we can
-                            // safely index into it using it_diff_t.
-                            return static_cast<decltype(vidx2.size())>(it - vidx2.begin());
+                            // We checked when constructing v2_deg that its iterator
+                            // diff type can represent the total size. Because
+                            // the sizes of vidx2 and v2_deg are the same, the static cast
+                            // is also safe.
+                            return static_cast<decltype(vidx2.size())>(it - v2_deg.cbegin());
                         }
                     }();
 
                     if (limit == 0u) {
                         // The upper limit is 0, we cannot multiply by any
-                        // term in y.
+                        // term in y without violating the truncation constraint.
                         continue;
                     }
 
@@ -618,18 +636,21 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                     acc_y += limit;
 
                     // Pick a random index in s2 within the limit.
-                    const auto idx2 = idist(rng, dist_param_type(0u, limit - 1u));
+                    const auto idx2 = vidx2[idist(rng, dist_param_type(0u, limit - 1u))];
 
                     // Try to do the multiplication.
                     ::obake::monomial_mul(tmp_key, x[idx1].first, y[idx2].first, ss);
 
+                    // Try the insertion into the local set.
                     const auto ret = ls.insert(tmp_key);
                     if (!ret.second) {
+                        // The key already exists, break out.
                         break;
                     }
                 }
 
-                // Determine how many unique terms were generated.
+                // Determine how many unique terms were generated
+                // in the loop above.
                 const auto count = ls.size();
 
                 if (count == vidx1_copy.size()) {
@@ -651,11 +672,12 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                 ls.clear();
             }
 
+            // Return the accumulated estimate.
             return cur;
         },
         [](const auto &a, const auto &b) { return a + b; });
 
-    // Return the average of the estimates.
+    // Return the average of the estimates (but don't return zero).
     const auto ret = c_est / n_trials;
     if (ret.is_zero()) {
         return ::mppp::integer<1>{1};
@@ -731,7 +753,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     std::cout << "x size: " << x.size() << '\n';
     std::cout << "y size: " << y.size() << '\n';
 
-    std::cout << "Estimated size: " << detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss) << '\n';
+    std::cout << "Estimated size: "
+              << (v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
+                                         : detail::poly_mul_estimate_product_size<T, U>(v2, v1, ss, args...))
+              << '\n';
 
     // Sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
@@ -853,6 +878,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         // Total degree.
                         using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+
+                        ::obake::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
@@ -1211,6 +1238,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                         // Total degree.
                         using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+
+                        ::obake::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
