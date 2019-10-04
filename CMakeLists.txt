@@ -211,7 +211,15 @@ target_include_directories(obake PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(obake PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost TBB::tbb)
+target_link_libraries(obake PUBLIC
+    Threads::Threads
+    mp++::mp++
+    absl::flat_hash_map
+    absl::flat_hash_set
+    absl::hash
+    Boost::boost
+    TBB::tbb
+)
 if(OBAKE_WITH_LIBBACKTRACE)
     target_link_libraries(obake PUBLIC libbacktrace::libbacktrace)
 else()

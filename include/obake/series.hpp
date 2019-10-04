@@ -1278,6 +1278,48 @@ public:
         m_symbol_set.clear();
     }
 
+    // TODO requirements on F.
+    template <typename F>
+    series filter(const F &f) const
+    {
+        series retval;
+        retval.set_symbol_set(get_symbol_set());
+        retval.set_n_segments(get_s_size());
+
+        const auto n_tables = m_s_table.size();
+        for (decltype(m_s_table.size()) table_idx = 0; table_idx < n_tables; ++table_idx) {
+            const auto &in_table = m_s_table[table_idx];
+            auto &out_table = retval.m_s_table[table_idx];
+
+            for (const auto &t : in_table) {
+                if (f(t)) {
+                    [[maybe_unused]] const auto res = out_table.insert(t);
+                    assert(res.second);
+                }
+            }
+        }
+
+        return retval;
+    }
+
+    // TODO requirement on symbols mergeable key.
+    series add_symbols(const symbol_set &ss) const
+    {
+        const auto [merged_ss, ins_map, _] = detail::merge_symbol_sets(m_symbol_set, ss);
+
+        if (ins_map.empty()) {
+            // Empty insertion map: there are no
+            // symbols to add.
+            return *this;
+        }
+
+        series retval;
+        retval.set_symbol_set(merged_ss);
+        detail::series_sym_extender(retval, *this, ins_map);
+
+        return retval;
+    }
+
 private:
     // Implementation of find(), for both the const and mutable
     // variants.

@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <numeric>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -30,11 +31,13 @@
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 
 #include <mp++/integer.hpp>
 
 #include <obake/byte_size.hpp>
 #include <obake/config.hpp>
+#include <obake/detail/abseil.hpp>
 #include <obake/detail/container_it_diff_check.hpp>
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
@@ -386,7 +389,7 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // seem to hurt performance much.
     // NOTE: this factor might become a user-tunable parameter.
     // Need to test more.
-    const auto est_total_size = 5. / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
+    const auto est_total_size = .01 / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
 
     // Compute the number of segments by enforcing a fixed
     // amount of bytes per segment.
@@ -436,6 +439,117 @@ struct poly_mul_impl_degree_adder {
     }
     const T *x_ptr;
 };
+
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_set &ss, const Args &... args)
+{
+    // Preconditions.
+    assert(!x.empty());
+    assert(!y.empty());
+    assert(x.size() >= y.size());
+
+    // Make sure that the key types of T and U coincide.
+    using key_type = typename T::value_type::first_type;
+    static_assert(::std::is_same_v<key_type, typename U::value_type::first_type>);
+
+    const auto size1 = x.size();
+    const auto size2 = y.size();
+
+    // If either series has a size of 1, just return size1 * size2.
+    if (size1 == 1u || size2 == 1u) {
+        return ::mppp::integer<1>{size1} * size2;
+    }
+
+    // Create vectors of indices into x and y.
+    auto make_idx_vector = [](const auto &v) {
+        ::std::vector<decltype(v.size())> ret;
+        ret.resize(::obake::safe_cast<decltype(ret.size())>(v.size()));
+        ::std::iota(ret.begin(), ret.end(), decltype(v.size())(0));
+        return ret;
+    };
+    const auto vidx1 = make_idx_vector(x);
+    const auto vidx2 = make_idx_vector(y);
+
+    const auto n_trials = 20u;
+    const auto multiplier = 2u;
+
+    const auto c_est = ::tbb::parallel_reduce(
+        ::tbb::blocked_range<unsigned>(0, n_trials), ::mppp::integer<1>{},
+        [multiplier, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range, ::mppp::integer<1> cur) {
+            // Make local copy of vidx1.
+            auto vidx1_copy(vidx1);
+
+            // Prepare int distribution for randomly choosing into vidx2.
+            using dist_type = ::std::uniform_int_distribution<decltype(vidx2.size())>;
+            using dist_param_type = typename dist_type::param_type;
+            dist_type idist;
+
+            // Init the hash set we'll be using for the trials.
+            using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
+                                                    ::obake::detail::series_key_comparer>;
+            local_set ls;
+            ls.reserve(::obake::safe_cast<decltype(ls.size())>(vidx1.size()));
+
+            for (auto i = range.begin(); i != range.end(); ++i) {
+                // Init a random engine for this trial, mixing compile
+                // time randomness with the current trial index.
+                constexpr ::std::uint64_t s1 = 14295768699618639914ull;
+                constexpr ::std::uint64_t s2 = 12042842946850383048ull;
+                ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(i + s1),
+                                                       static_cast<::std::uint64_t>(i + s2)};
+
+                // Shuffle the first series.
+                ::std::shuffle(vidx1_copy.begin(), vidx1_copy.end(), rng);
+
+                // This will be used to determine the average number of terms in y
+                // that participate in the multiplication.
+                ::mppp::integer<1> acc_y{};
+
+                // Temporary object for monomial multiplications.
+                key_type tmp_key;
+
+                for (auto idx1: vidx1_copy) {
+                    // Get the limit idx in s2.
+                    // TODO proper computation, and skip loop
+                    // body if there's nothing to do (limit == 0 perhaps?).
+                    const auto limit = vidx2.size();
+
+                    acc_y += limit;
+
+                    // Pick a random index in s2 within the limit.
+                    const auto idx2 = idist(rng, dist_param_type(0u, limit - 1u));
+
+                    // Try to do the multiplication.
+                    ::obake::monomial_mul(tmp_key, x[idx1].first, y[idx2].first, ss);
+
+                    const auto ret = ls.insert(tmp_key);
+                    if (!ret.second) {
+                        break;
+                    }
+                }
+
+                const auto count = ls.size();
+
+                if (count == vidx1_copy.size()) {
+                    cur += acc_y;
+                } else {
+                    cur += ::mppp::integer<1>{multiplier} * count * count;
+                }
+
+                ls.clear();
+            }
+
+            return cur;
+        },
+        [](const auto &a, const auto &b) { return a + b; });
+
+    const auto ret = c_est / n_trials;
+    if (ret.is_zero()) {
+        return ::mppp::integer<1>{1};
+    } else {
+        return ret;
+    }
+}
 
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U, typename... Args>
@@ -499,6 +613,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Cache the number of segments.
     const auto nsegs = s_size_t(1) << log2_nsegs;
+
+    std::cout << "Total number of segments: " << nsegs << '\n';
+    std::cout << "x size: " << x.size() << '\n';
+    std::cout << "y size: " << y.size() << '\n';
+
+    std::cout << "Estimated size: " << detail::poly_mul_estimate_product_size(v1, v2, ss) << '\n';
 
     // Sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
