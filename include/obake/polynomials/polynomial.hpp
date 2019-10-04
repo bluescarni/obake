@@ -470,7 +470,7 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
             // No truncation.
             ::obake::detail::ignore(x, y, ss);
 
-            return ::std::tuple{};
+            return ::std::make_tuple();
         } else if constexpr (sizeof...(args) == 1u) {
             // Total degree truncation.
             ::obake::detail::ignore(args...);
@@ -551,6 +551,9 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
     const auto n_trials = 20u;
     const auto multiplier = 2u;
 
+    // NOTE: workaround for a GCC 7 issue.
+    using vidx2_size_t = typename ::std::vector<decltype(y.size())>::size_type;
+
     // Run the trials.
     const auto c_est = ::tbb::parallel_reduce(
         ::tbb::blocked_range<unsigned>(0, n_trials), ::mppp::integer<1>{},
@@ -559,7 +562,7 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
             auto vidx1_copy(vidx1);
 
             // Prepare a distribution for randomly indexing into vidx2.
-            using dist_type = ::std::uniform_int_distribution<decltype(vidx2.size())>;
+            using dist_type = ::std::uniform_int_distribution<vidx2_size_t>;
             using dist_param_type = typename dist_type::param_type;
             dist_type idist;
 
@@ -613,15 +616,20 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                             const auto &d1 = v1_deg[idx1];
 
                             // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
-                            const auto it = ::std::upper_bound(
-                                v2_deg.cbegin(), v2_deg.cend(), max_deg,
-                                [&d1](const auto &mdeg, const auto &d2) { return mdeg < d1 + d2; });
+                            const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
+                                                               [&d1](const auto &mdeg, const auto &d2) {
+                                                                   // NOTE: cache as a const value,
+                                                                   // so that the comparison below
+                                                                   // uses const qualified values.
+                                                                   const auto d_add(d1 + d2);
+                                                                   return mdeg < d_add;
+                                                               });
 
                             // We checked when constructing v2_deg that its iterator
                             // diff type can represent the total size. Because
                             // the sizes of vidx2 and v2_deg are the same, the static cast
                             // is also safe.
-                            return static_cast<decltype(vidx2.size())>(it - v2_deg.cbegin());
+                            return static_cast<vidx2_size_t>(it - v2_deg.cbegin());
                         }
                     }();
 
