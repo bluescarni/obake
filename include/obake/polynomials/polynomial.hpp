@@ -621,6 +621,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
 
+                        ::obake::detail::ignore(args...);
+
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
                             ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
@@ -978,6 +980,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                         // Total degree.
                         using d_impl = customisation::internal::series_default_degree_impl;
                         using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
+
+                        ::obake::detail::ignore(args...);
 
                         return ::std::vector<deg_t>(
                             ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
