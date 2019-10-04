@@ -667,11 +667,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 ::obake::detail::container_it_diff_check(vd);
                 // NOTE: use cbegin/cend on vd to ensure the copy ctor of
                 // the degree type is being called.
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.cbegin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.cend()));
                 ::obake::detail::container_it_diff_check(v);
-                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
-                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
+                v = ::std::remove_reference_t<decltype(v)>(
+                    ::boost::make_permutation_iterator(v.cbegin(), vidx.cbegin()),
+                    ::boost::make_permutation_iterator(v.cend(), vidx.cend()));
 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
@@ -1021,11 +1022,12 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 ::obake::detail::container_it_diff_check(vd);
                 // NOTE: use cbegin/cend on vd to ensure the copy ctor of
                 // the degree type is being called.
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.cbegin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.cend()));
                 ::obake::detail::container_it_diff_check(v);
-                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
-                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
+                v = ::std::remove_reference_t<decltype(v)>(
+                    ::boost::make_permutation_iterator(v.cbegin(), vidx.cbegin()),
+                    ::boost::make_permutation_iterator(v.cend(), vidx.cend()));
 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
