@@ -502,7 +502,8 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                 ::std::shuffle(vidx1_copy.begin(), vidx1_copy.end(), rng);
 
                 // This will be used to determine the average number of terms in y
-                // that participate in the multiplication.
+                // that participate in the multiplication. It is used only in case
+                // there are no collisions at the end of the loop below.
                 ::mppp::integer<1> acc_y{};
 
                 // Temporary object for monomial multiplications.
@@ -514,6 +515,8 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                     // body if there's nothing to do (limit == 0 perhaps?).
                     const auto limit = vidx2.size();
 
+                    // Keep track of how many terms in y would be multiplied
+                    // by the current term in x in the full multiplication.
                     acc_y += limit;
 
                     // Pick a random index in s2 within the limit.
@@ -528,14 +531,25 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
                     }
                 }
 
+                // Determine how many unique terms were generated.
                 const auto count = ls.size();
 
                 if (count == vidx1_copy.size()) {
+                    // We generated as many unique terms as
+                    // the number of terms in x. This means that
+                    // we will estimate a perfect sparsity. In untruncated
+                    // multiplication, this means nx * ny, in a truncated
+                    // multiplication is less than that (depending on
+                    // how many terms were skipped due to the truncation
+                    // limits).
                     cur += acc_y;
                 } else {
+                    // We detected a duplicate term, use the
+                    // quadratic estimate.
                     cur += ::mppp::integer<1>{multiplier} * count * count;
                 }
 
+                // Clear up the local set for the next iteration.
                 ls.clear();
             }
 
@@ -543,6 +557,7 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
         },
         [](const auto &a, const auto &b) { return a + b; });
 
+    // Return the average of the estimates.
     const auto ret = c_est / n_trials;
     if (ret.is_zero()) {
         return ::mppp::integer<1>{1};
