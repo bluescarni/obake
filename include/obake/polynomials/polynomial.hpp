@@ -429,8 +429,9 @@ struct poly_mul_impl_pair_transform {
 // the truncation limits.
 // Requires x and y not empty, x not shorter than y. The returned
 // value is guaranteed to be nonzero.
-template <typename S1, typename S2, typename T, typename U, typename... Args>
-inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_set &ss, const Args &... args)
+template <typename S1, typename S2, typename T1, typename T2, typename... Args>
+inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::std::vector<T2> &y, const symbol_set &ss,
+                                           const Args &... args)
 {
     // Preconditions.
     assert(!x.empty());
@@ -438,9 +439,13 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
     assert(x.size() >= y.size());
     static_assert(sizeof...(args) <= 2u);
 
-    // Make sure that the key types of T and U coincide.
-    using key_type = typename T::value_type::first_type;
-    static_assert(::std::is_same_v<key_type, typename U::value_type::first_type>);
+    // Make sure that the input types are consistent.
+    using key_type = typename T1::first_type;
+    static_assert(::std::is_same_v<key_type, typename T2::first_type>);
+    static_assert(::std::is_same_v<series_key_t<S1>, key_type>);
+    static_assert(::std::is_same_v<series_key_t<S2>, key_type>);
+    static_assert(::std::is_same_v<series_cf_t<S1>, typename T1::second_type>);
+    static_assert(::std::is_same_v<series_cf_t<S2>, typename T2::second_type>);
 
     const auto size1 = x.size();
     const auto size2 = y.size();
@@ -465,14 +470,14 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
             ::obake::detail::ignore(args...);
 
             using d_impl = customisation::internal::series_default_degree_impl;
-            using deg1_t = decltype(d_impl::d_extractor<T>{&ss}(x[0]));
-            using deg2_t = decltype(d_impl::d_extractor<U>{&ss}(y[0]));
+            using deg1_t = decltype(d_impl::d_extractor<S1>{&ss}(x[0]));
+            using deg2_t = decltype(d_impl::d_extractor<S2>{&ss}(y[0]));
 
             return ::std::make_tuple(
-                ::std::vector<deg1_t>(::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<T>{&ss}),
-                                      ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<T>{&ss})),
-                ::std::vector<deg2_t>(::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<U>{&ss}),
-                                      ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<U>{&ss})));
+                ::std::vector<deg1_t>(::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<S1>{&ss}),
+                                      ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<S1>{&ss})),
+                ::std::vector<deg2_t>(::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<S2>{&ss}),
+                                      ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<S2>{&ss})));
         } else {
             // Partial degree truncation.
             using d_impl = customisation::internal::series_default_p_degree_impl;
@@ -482,16 +487,16 @@ inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_
             const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
             const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
-            using deg1_t = decltype(d_impl::d_extractor<T>{&s, &si, &ss}(x[0]));
-            using deg2_t = decltype(d_impl::d_extractor<U>{&s, &si, &ss}(y[0]));
+            using deg1_t = decltype(d_impl::d_extractor<S1>{&s, &si, &ss}(x[0]));
+            using deg2_t = decltype(d_impl::d_extractor<S2>{&s, &si, &ss}(y[0]));
 
             return ::std::make_tuple(
                 ::std::vector<deg1_t>(
-                    ::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<T>{&s, &si, &ss}),
-                    ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<T>{&s, &si, &ss})),
+                    ::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<S1>{&s, &si, &ss}),
+                    ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<S1>{&s, &si, &ss})),
                 ::std::vector<deg2_t>(
-                    ::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<U>{&s, &si, &ss}),
-                    ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<U>{&s, &si, &ss})));
+                    ::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<S2>{&s, &si, &ss}),
+                    ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<S2>{&s, &si, &ss})));
         }
     }();
 
@@ -752,7 +757,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     std::cout << "Estimated size: "
               << (v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
-                                         : detail::poly_mul_estimate_product_size<T, U>(v2, v1, ss, args...))
+                                         : detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...))
               << '\n';
 
     // Sort the input terms according to the hash value modulo
