@@ -420,23 +420,6 @@ struct poly_mul_impl_pair_transform {
     }
 };
 
-// Add an input value y to another value x, a reference
-// to which is created on construction.
-template <typename T>
-struct poly_mul_impl_degree_adder {
-    // Ensure def-constructability.
-    poly_mul_impl_degree_adder() : x_ptr(nullptr) {}
-    explicit poly_mul_impl_degree_adder(const T *ptr) : x_ptr(ptr) {}
-    template <typename U>
-    auto operator()(const U &y) const
-    {
-        assert(x_ptr != nullptr);
-
-        return *x_ptr + y;
-    }
-    const T *x_ptr;
-};
-
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U, typename... Args>
 inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &... args)
@@ -721,28 +704,27 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
-                using deg_t = remove_cvref_t<decltype(d_i)>;
 
                 // Find the first term in the range r2 such
                 // that d_i + d_j > max_deg.
                 // NOTE: we checked above that the static cast
                 // to the it diff type is safe.
                 using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
-                const auto it = ::std::upper_bound(
-                    ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
-                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.second),
-                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
-                    max_deg,
-                    // Supply custom comparer in order to ensure the comparison
-                    // happens via const lvalue refs.
-                    [](const auto &a, const auto &b) { return a < b; });
+                const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
+                                                   vd2.cbegin() + static_cast<it_diff_t>(r2.second), max_deg,
+                                                   [&d_i](const auto &mdeg, const auto &d_j) {
+                                                       // NOTE: cache as a const value,
+                                                       // so that the comparison below
+                                                       // uses const qualified values.
+                                                       const auto d_add(d_i + d_j);
+                                                       return mdeg < d_add;
+                                                   });
 
                 // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
                 // type can safely be used as an index (for both
                 // vd1 and vd2).
-                return static_cast<idx_t>(it.base() - vd2.cbegin());
+                return static_cast<idx_t>(it - vd2.cbegin());
             };
         }
     }();
@@ -1071,22 +1053,23 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
-                using deg_t = remove_cvref_t<decltype(d_i)>;
 
                 // Find the first term in the second series such
                 // that d_i + d_j > max_deg.
-                const auto it = ::std::upper_bound(
-                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder<deg_t>(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder<deg_t>(&d_i)), max_deg,
-                    // Supply custom comparer in order to ensure the comparison
-                    // happens via const lvalue refs.
-                    [](const auto &a, const auto &b) { return a < b; });
+                const auto it
+                    = ::std::upper_bound(vd2.cbegin(), vd2.cend(), max_deg, [&d_i](const auto &mdeg, const auto &d_j) {
+                          // NOTE: cache as a const value,
+                          // so that the comparison below
+                          // uses const qualified values.
+                          const auto d_add(d_i + d_j);
+                          return mdeg < d_add;
+                      });
 
                 // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
                 // type can safely be used as an index (for both
                 // vd1 and vd2).
-                return static_cast<idx_t>(it.base() - vd2.cbegin());
+                return static_cast<idx_t>(it - vd2.cbegin());
             };
         }
     }();
