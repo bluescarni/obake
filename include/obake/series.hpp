@@ -3271,7 +3271,7 @@ struct series_default_degree_impl {
         auto operator()(const U &p) const
         {
             constexpr auto al = algo<remove_cvref_t<T>>;
-            static_assert(al > 0 || al <= 2);
+            static_assert(al > 0 && al <= 3);
             assert(ss != nullptr);
 
             if constexpr (al == 1) {
@@ -3363,7 +3363,7 @@ struct series_default_p_degree_impl {
         auto operator()(const U &p) const
         {
             constexpr auto al = algo<remove_cvref_t<T>>;
-            static_assert(al > 0 || al <= 2);
+            static_assert(al > 0 && al <= 3);
             assert(s != nullptr);
             assert(si != nullptr);
             assert(ss != nullptr);

@@ -346,8 +346,8 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // randomness mixed in with the sizes of v1/v2.
     constexpr ::std::uint64_t s1 = 18379758338774109289ull;
     constexpr ::std::uint64_t s2 = 15967298767098049689ull;
-    ::obake::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
-                                           s2 + static_cast<::std::uint64_t>(v2.size())};
+    ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(s1 + v1.size()),
+                                           static_cast<::std::uint64_t>(s2 + v2.size())};
 
     // The idea now is to compute a small amount of term-by-term
     // multiplications and determine the average size in bytes
