@@ -440,6 +440,12 @@ struct poly_mul_impl_degree_adder {
     const T *x_ptr;
 };
 
+// Estimate the size of the product of two input polynomials.
+// S1 and S2 are the types of the polyomials, x and y the polynomials
+// represented as vectors of terms. The extra arguments represent
+// the truncation limits.
+// Requires x and y not empty, x not shorter than y. The returned
+// value is guaranteed to be nonzero.
 template <typename S1, typename S2, typename T, typename U, typename... Args>
 inline auto poly_mul_estimate_product_size(const T &x, const U &y, const symbol_set &ss, const Args &... args)
 {
