@@ -31,6 +31,7 @@
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_invoke.h>
 #include <tbb/parallel_reduce.h>
 
 #include <mp++/integer.hpp>
@@ -785,42 +786,51 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
-    // Do the monomial overflow checking, if possible.
-    const auto r1
-        = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
-    const auto r2
-        = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                      ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
-    if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
-        // Do the monomial overflow checking.
-        if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
-            obake_throw(
-                ::std::overflow_error,
-                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+    auto overflow_checker = [&v1, &v2, &ss]() {
+        const auto r1
+            = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                                          ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+        const auto r2
+            = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                                          ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+        if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
+            // Do the monomial overflow checking.
+            if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
+                obake_throw(
+                    ::std::overflow_error,
+                    "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+            }
+        } else {
+            ::obake::detail::ignore(ss);
         }
-    }
+    };
 
-    // Determination of log2_nsegs.
-    const auto log2_nsegs = detail::poly_mul_impl_mt_hm_compute_log2_nsegs<ret_cf_t>(v1, v2, ss);
+    ::std::size_t avg_term_size;
+    ::mppp::integer<1> est_nterms;
+
+    ::tbb::parallel_invoke(
+        overflow_checker,
+        [&est_nterms, &v1, &v2, &ss, &args...]() {
+            est_nterms = (v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
+                                                 : detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...));
+        },
+        [&avg_term_size, &v1, &v2, &ss]() {
+            avg_term_size = detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss);
+        });
+
+    // Put everything together to determine the number of segments: estimate
+    // the final size in bytes of the result, and enforce a max number
+    // of bytes per bucket.
+    const auto est_nsegs = (est_nterms * avg_term_size) / (500ul * 1024ul);
+
+    const auto log2_nsegs
+        = ::std::min(::obake::safe_cast<unsigned>(est_nsegs.nbits()), polynomial<ret_key_t, ret_cf_t>::get_max_s_size());
 
     // Setup the number of segments in retval.
     retval.set_n_segments(log2_nsegs);
 
     // Cache the number of segments.
     const auto nsegs = s_size_t(1) << log2_nsegs;
-
-    std::cout << "Total number of segments: " << nsegs << '\n';
-    std::cout << "x size: " << x.size() << '\n';
-    std::cout << "y size: " << y.size() << '\n';
-
-    std::cout << "Estimated avg coefficient size: "
-              << detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss) << '\n';
-
-    std::cout << "Estimated size: "
-              << (v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
-                                         : detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...))
-              << '\n';
 
     // Sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
