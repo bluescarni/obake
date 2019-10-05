@@ -325,6 +325,65 @@ struct poly_cf_mul_expr {
     }
 };
 
+// Helper to estimate the average term size (in bytes) in a poly multiplication.
+template <typename RetCf, typename T1, typename T2>
+inline ::std::size_t poly_mul_impl_estimate_average_term_size(const ::std::vector<T1> &v1, const ::std::vector<T2> &v2,
+                                                              const symbol_set &ss)
+{
+    using ret_key_t = typename T1::first_type;
+    static_assert(::std::is_same_v<ret_key_t, typename T2::first_type>);
+
+    // Compute the padding in the term class.
+    constexpr auto pad_size = sizeof(series_term_t<polynomial<ret_key_t, RetCf>>) - (sizeof(RetCf) + sizeof(ret_key_t));
+
+    // Preconditions.
+    assert(!v1.empty());
+    assert(!v2.empty());
+
+    // Init a xoroshiro rng, with some compile-time
+    // randomness mixed in with the sizes of v1/v2.
+    constexpr ::std::uint64_t s1 = 18379758338774109289ull;
+    constexpr ::std::uint64_t s2 = 15967298767098049689ull;
+    ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(s1 + v1.size()),
+                                           static_cast<::std::uint64_t>(s2 + v2.size())};
+
+    // The idea now is to compute a small amount of term-by-term
+    // multiplications and determine the average size in bytes
+    // of the produced terms.
+    constexpr auto ntrials = 10u;
+
+    // Temporary monomial used for term-by-term multiplications.
+    ret_key_t tmp_key;
+
+    // Create the distributions.
+    ::std::uniform_int_distribution<decltype(v1.size())> dist1(0, v1.size() - 1u);
+    ::std::uniform_int_distribution<decltype(v2.size())> dist2(0, v2.size() - 1u);
+
+    // Run the trials.
+    ::std::size_t acc = 0;
+    for (auto i = 0u; i < ntrials; ++i) {
+        // Pick a random term in each series.
+        const auto idx1 = dist1(rng);
+        const auto idx2 = dist2(rng);
+
+        // Multiply monomial and coefficient.
+        ::obake::monomial_mul(tmp_key, v1[idx1].first, v2[idx2].first, ss);
+        const auto tmp_cf = v1[idx1].second * v2[idx2].second;
+
+        // Accumulate the size of the produced term: size of monomial,
+        // coefficient, and, if present, padding.
+        acc += ::obake::byte_size(::std::as_const(tmp_key)) + ::obake::byte_size(tmp_cf) + pad_size;
+    }
+
+    // Compute the ceil of the average term size.
+    const auto ret = acc / ntrials + static_cast<::std::size_t>(acc % ntrials != 0u);
+
+    // NOTE: theoretically ret could be zero if
+    // in the loop above we somehow overflow std::size_t.
+    // Thus, make it 1 in such a case.
+    return ret + static_cast<::std::size_t>(ret == 0u);
+}
+
 // Helper to estimate an appropriate log2 of the number of segments
 // of the destination polynomial in a multithreaded homomorphic
 // polynomial multiplication.
@@ -754,6 +813,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     std::cout << "Total number of segments: " << nsegs << '\n';
     std::cout << "x size: " << x.size() << '\n';
     std::cout << "y size: " << y.size() << '\n';
+
+    std::cout << "Estimated avg coefficient size: "
+              << detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss) << '\n';
 
     std::cout << "Estimated size: "
               << (v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
