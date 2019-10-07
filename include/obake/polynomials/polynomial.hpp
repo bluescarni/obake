@@ -602,15 +602,17 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     }();
 
     // Parameters for the random trials.
-    const auto n_trials = 20u;
-    const auto multiplier = 2u;
+    const auto ntrials = 20u;
+    // NOTE: we further divide by 2 below, so that the
+    // multiplier is actually 3/2.
+    const auto multiplier = 3u;
 
     // NOTE: workaround for a GCC 7 issue.
     using vidx2_size_t = typename ::std::vector<decltype(y.size())>::size_type;
 
     // Run the trials.
     const auto c_est = ::tbb::parallel_reduce(
-        ::tbb::blocked_range<unsigned>(0, n_trials), ::mppp::integer<1>{},
+        ::tbb::blocked_range<unsigned>(0, ntrials), ::mppp::integer<1>{},
         [multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range, ::mppp::integer<1> cur) {
             // Make a local copy of vidx1.
             auto vidx1_copy(vidx1);
@@ -640,7 +642,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                 // This will be used to determine the average number of terms in y
                 // that participate in the multiplication. It is used only in case
                 // there are no collisions at the end of the loop below.
-                ::mppp::integer<1> acc_y{};
+                ::mppp::integer<1> acc_y;
 
                 // Temporary object for monomial multiplications.
                 key_type tmp_key;
@@ -727,7 +729,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                 } else {
                     // We detected a duplicate term, use the
                     // quadratic estimate.
-                    cur += ::mppp::integer<1>{multiplier} * count * count;
+                    cur += (::mppp::integer<1>{multiplier} * count * count) >> 1;
                 }
 
                 // Clear up the local set for the next iteration.
@@ -740,7 +742,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
         [](const auto &a, const auto &b) { return a + b; });
 
     // Return the average of the estimates (but don't return zero).
-    const auto ret = c_est / n_trials;
+    const auto ret = c_est / ntrials;
     if (ret.is_zero()) {
         return ::mppp::integer<1>{1};
     } else {
@@ -786,50 +788,76 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
-    auto overflow_checker = [&v1, &v2, &ss]() {
-        const auto r1
-            = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
-                                          ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
-        const auto r2
-            = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
-                                          ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
-        if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
-            // Do the monomial overflow checking.
-            if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
-                obake_throw(
-                    ::std::overflow_error,
-                    "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
-            }
-        } else {
-            ::obake::detail::ignore(ss);
-        }
-    };
-
+    // Prepare the variables for storing the
+    // estimated average size in bytes of the terms,
+    // and the estimated number of terms in the product.
     ::std::size_t avg_term_size;
     ::mppp::integer<1> est_nterms;
 
+    // Run in parallel the overflow check, and the estimations for the
+    // average term size and the number of terms in the product.
     ::tbb::parallel_invoke(
-        overflow_checker,
+        [&v1, &v2, &ss]() {
+            const auto r1 = ::obake::detail::make_range(
+                ::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
+                ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
+            const auto r2 = ::obake::detail::make_range(
+                ::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
+                ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
+            if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
+                // The monomial overflow checking is supported, run it.
+                if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
+                    obake_throw(::std::overflow_error, "An overflow in the monomial exponents was detected while "
+                                                       "attempting to multiply two polynomials");
+                }
+            } else {
+                ::obake::detail::ignore(ss);
+            }
+        },
         [&est_nterms, &v1, &v2, &ss, &args...]() {
-            est_nterms = (v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
-                                                 : detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...));
+            est_nterms = v1.size() >= v2.size() ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
+                                                : detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...);
         },
         [&avg_term_size, &v1, &v2, &ss]() {
             avg_term_size = detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss);
         });
 
-    // Put everything together to determine the number of segments: estimate
-    // the final size in bytes of the result, and enforce a max number
-    // of bytes per bucket.
-    const auto est_nsegs = (est_nterms * avg_term_size) / (500ul * 1024ul);
+    // Compute the estimated sparsity.
+    const auto est_sp
+        = static_cast<double>(est_nterms) / (static_cast<double>(v1.size()) * static_cast<double>(v2.size()));
 
-    const auto log2_nsegs
-        = ::std::min(::obake::safe_cast<unsigned>(est_nsegs.nbits()), polynomial<ret_key_t, ret_cf_t>::get_max_s_size());
+    // Establish the desired segment size in kilobytes.
+    // NOTE: the idea here is the following. For highly
+    // sparse polynomials (est_sp >= threshold), we want to pick
+    // a relatively large size so that it fits somewhere in L2
+    // cache, say. The reason is that we won't do much computation
+    // per segment due to the sparsity, thus we aim at reducing
+    // the parallelisation overhead by operating on larger chunks
+    // of the product series. When the sparsity is smaller, then
+    // we have a higher computational density, thus we will spend
+    // more time computing a single segment, and thus we can aim
+    // at staying in L1 cache instead, as the parallelisation overhead
+    // will be smaller. Note that these values will be just rule-of-thumb,
+    // because the sparsity is not estimated accurately and because
+    // of further manipulations below. Additionally, it is not clear
+    // to me how smooth the transition between high and low sparsity
+    // will be. Eventually, we may perhaps want to leave this parameter as
+    // a tunable parameter for the user or perhaps even determine
+    // the cache sizes at runtime and use those.
+    const auto seg_size = est_sp >= 1E-3 ? 200ul : 20ul;
+
+    // Estimate the number of segments via the deduced segment size.
+    const auto est_nsegs = (est_nterms * avg_term_size) / (seg_size * 1024ul);
+
+    // Fetch the base-2 logarithm + 1 of est_nsegs, making sure it does not
+    // overflow the max allowed value for the return polynomial type.
+    const auto log2_nsegs = ::std::min(::obake::safe_cast<unsigned>(est_nsegs.nbits()),
+                                       polynomial<ret_key_t, ret_cf_t>::get_max_s_size());
 
     // Setup the number of segments in retval.
     retval.set_n_segments(log2_nsegs);
 
-    // Cache the number of segments.
+    // Cache the actual number of segments.
     const auto nsegs = s_size_t(1) << log2_nsegs;
 
     // Sort the input terms according to the hash value modulo
