@@ -530,6 +530,19 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     using vidx2_size_t = typename ::std::vector<decltype(y.size())>::size_type;
 
     // Run the trials.
+    // NOTE: ideally, we would like to select without repetition random term-by-term
+    // multiplications. This could be done by mapping the two sizes of v1 and v2
+    // into a single integer N (k-packing style), and then using a linear congruential
+    // generator with period N which guarantees that there are no repetitions within
+    // that period. See:
+    // https://stackoverflow.com/questions/9755538/how-do-i-create-a-list-of-random-numbers-without-duplicates/53646842
+    // https://en.wikipedia.org/wiki/Linear_congruential_generator
+    // (see the SO answer a bit down the page).
+    // However, I don't know how this would work when truncation is involved.
+    // The current approach is to shuffle v1 and then pick randomly into v2.
+    // This result in a choice of index in v1 without repetitions, but the
+    // random picking in v2 could have repetitions, so it's not precisely
+    // equivalent to having truly random term-by-term multiplications.
     const auto c_est = ::tbb::parallel_reduce(
         ::tbb::blocked_range<unsigned>(0, ntrials), ::mppp::integer<1>{},
         [multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range, ::mppp::integer<1> cur) {
