@@ -720,6 +720,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
+    // NOTE: we have to sequence the overflow checking before the product
+    // size estimation and the average term size estimation, as those two
+    // operations might generate overflows during monomial multiplication.
     // Do the monomial overflow checking, if supported.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
@@ -1496,6 +1499,26 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 }
 
 // Top level function for poly multiplication.
+// NOTE: future improvements:
+// - better heuristic for choosing between simple and mt,
+//   based on the byte size of the operands. This should also
+//   allow to use more reliably parallel primitives (e.g.,
+//   parallel sort) in the implementation;
+// - the vseg vectors are currently represented in a dense fashion
+//   (i.e., their sizes are equal to the number of segments in the
+//   output series), but probably they should really be represented
+//   in a sparse fashion. For instance, in a highly rectangular
+//   multiplication, e.g., 1000000 x 16, the 16 terms in the second series
+//   will sparsely fill the output table, and most of the ranges
+//   in vseg2 will be empty. This creates unnecessary overhead
+//   in the multiplication loop. Perhaps we could also have 2 cases,
+//   dense and sparse vsegs depending on the smallest ratio between the number
+//   of terms in each series wrt the number of segments in the product?
+// - Parallelisation of overflow checking (see in packed_monomial for instance);
+// - parallelisation in the degree computation, and avoid doing it multiple
+//   times in the implementation functions. Perhaps we should have a helper
+//   in series.hpp to create the vector of degrees for a series (both parallel
+//   and serial fashions)?
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
@@ -1625,6 +1648,7 @@ inline constexpr auto poly_mul_truncated_p_degree_algo
 
 // Truncated multiplication.
 // NOTE: do we need the type traits/concepts as well?
+// NOTE: should these be function objects?
 template <typename T, typename U, typename V,
           ::std::enable_if_t<detail::poly_mul_truncated_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
