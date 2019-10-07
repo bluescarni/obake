@@ -722,10 +722,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
+    // Do the monomial overflow checking, if supported.
     // NOTE: we have to sequence the overflow checking before the product
     // size estimation and the average term size estimation, as those two
     // operations might generate overflows during monomial multiplication.
-    // Do the monomial overflow checking, if supported.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                       ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
