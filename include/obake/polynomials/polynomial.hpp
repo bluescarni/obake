@@ -555,6 +555,8 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
             dist_type idist;
 
             // Init the hash set we will be using for the trials.
+            // NOTE: use exactly the same hasher/comparer as in series.hpp, so that
+            // we are sure we are being consistent wrt type requirements, etc.
             using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
                                                     ::obake::detail::series_key_comparer>;
             local_set ls;
