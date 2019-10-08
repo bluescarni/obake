@@ -1065,7 +1065,21 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     for (auto idx1 = r1.first; idx1 != idx_end1; ++idx1) {
                         const auto &[k1, c1] = *(vptr1 + idx1);
 
-                        const auto end2 = vptr2 + compute_end_idx2(idx1, r2);
+                        // Compute the end index in the second range
+                        // for the current value of idx1.
+                        const auto idx_end2 = compute_end_idx2(idx1, r2);
+
+                        // In the truncated case, check if the end index
+                        // is the beginning of the second range. In such a case,
+                        // we can skip all the remaining indices in r1 because
+                        // none of them will ever generate a term which respects
+                        // the tuncation limits (both r1 and r2 are sorted
+                        // according to the degree).
+                        if (sizeof...(Args) > 0u && idx_end2 == r2.first) {
+                            break;
+                        }
+
+                        const auto end2 = vptr2 + idx_end2;
                         for (auto ptr2 = vptr2 + r2.first; ptr2 != end2; ++ptr2) {
                             const auto &[k2, c2] = *ptr2;
 
