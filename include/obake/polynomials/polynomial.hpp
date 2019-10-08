@@ -1060,10 +1060,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         const auto idx_end2 = compute_end_idx2(idx1, r2);
 
                         // In the truncated case, check if the end index
-                        // is the beginning of the second range. In such a case,
+                        // coincides with the begin index. In such a case,
                         // we can skip all the remaining indices in r1 because
                         // none of them will ever generate a term which respects
-                        // the tuncation limits (both r1 and r2 are sorted
+                        // the truncation limits (both r1 and r2 are sorted
                         // according to the degree).
                         if (sizeof...(Args) > 0u && idx_end2 == r2.first) {
                             break;
