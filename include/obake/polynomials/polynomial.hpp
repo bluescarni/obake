@@ -309,22 +309,6 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
-// A small wrapper representing the lazy multiplication
-// of two coefficients.
-template <typename C1, typename C2, typename CR>
-struct poly_cf_mul_expr {
-    // The two factors.
-    const C1 &c1;
-    const C2 &c2;
-
-    // Conversion operator to compute
-    // and fetch the result of the multiplication.
-    explicit operator CR() const
-    {
-        return c1 * c2;
-    }
-};
-
 // Helper to estimate the average term size (in bytes) in a poly multiplication.
 template <typename RetCf, typename T1, typename T2>
 inline ::std::size_t poly_mul_impl_estimate_average_term_size(const ::std::vector<T1> &v1, const ::std::vector<T2> &v2,
@@ -1093,13 +1077,28 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                             // Check that the result ends up in the correct bucket.
                             assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
 
-                            // Attempt the insertion. The coefficients are lazily multiplied
-                            // only if the insertion actually takes place.
-                            const auto res
-                                = table.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+                            // Attempt the insertion.
+                            // NOTE: this will attempt to insert a term with a default-constructed
+                            // coefficient. This is wasteful, it would be better to directly
+                            // construct the coefficient product only if the insertion actually
+                            // takes place (using a lazy multiplication approach).
+                            // Unfortunately, abseil's hash map is not exception safe,
+                            // and if the lazy multiplication throws, the table will be left
+                            // in an inconsistent state. See:
+                            // https://github.com/abseil/abseil-cpp/issues/388
+                            // See the commit
+                            // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                            // for an implementation of the lazy multiplication approach.
+                            // If they fix the exception safety issue, we can re-enable the
+                            // lazy approach.
+                            // NOTE: the coefficient concept demands default constructibility,
+                            // thus we can always emplace without arguments for the coefficient.
+                            const auto res = table.try_emplace(tmp_key);
 
                             // NOTE: optimise with likely/unlikely here?
-                            if (!res.second) {
+                            if (res.second) {
+                                res.first->second = c1 * c2;
+                            } else {
                                 // The insertion failed, a term with the same monomial
                                 // exists already. Accumulate c1*c2 into the
                                 // existing coefficient.
@@ -1407,10 +1406,15 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 ::obake::monomial_mul(tmp_key, k1, t2->first, ss);
 
                 // Try to insert the new term.
-                const auto res = tab.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+                // NOTE: see the explanation in the other
+                // multiplication function about why we adopt
+                // this scheme (i.e., default-emplace the coefficient).
+                const auto res = tab.try_emplace(tmp_key);
 
                 // NOTE: optimise with likely/unlikely here?
-                if (!res.second) {
+                if (res.second) {
+                    res.first->second = c1 * c2;
+                } else {
                     // The insertion failed, accumulate c1*c2 into the
                     // existing coefficient.
                     // NOTE: do it with fma3(), if possible.
