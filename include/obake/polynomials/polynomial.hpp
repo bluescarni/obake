@@ -47,9 +47,7 @@
 #include <obake/detail/xoroshiro128_plus.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/hash.hpp>
-#include <obake/key/key_degree.hpp>
 #include <obake/key/key_merge_symbols.hpp>
-#include <obake/math/degree.hpp>
 #include <obake/math/diff.hpp>
 #include <obake/math/fma3.hpp>
 #include <obake/math/is_zero.hpp>
@@ -1596,6 +1594,8 @@ namespace detail
 // Metaprogramming to establish if we can perform
 // truncated total/partial degree multiplication on the
 // polynomial operands T and U with degree limit of type V.
+// NOTE: at this time, truncated multiplication is implemented
+// only if only the key is with degree.
 template <typename T, typename U, typename V, bool Total>
 constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
@@ -1604,15 +1604,15 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
     if constexpr (poly_mul_algo<T, U> == 0) {
         return 0;
     } else {
-        using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
-                                            customisation::internal::series_default_p_degree_impl>;
-
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
+        using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
+                                            customisation::internal::series_default_p_degree_impl>;
         constexpr auto algo1 = d_impl::template algo<T>;
         constexpr auto algo2 = d_impl::template algo<U>;
 
-        if constexpr (algo1 != 0 && algo2 != 0) {
+        // NOTE: algo == 3 means that only the key is with degree.
+        if constexpr (algo1 == 3 && algo2 == 3) {
             // Fetch the degree types.
             using deg1_t = typename d_impl::template ret_t<T>;
             using deg2_t = typename d_impl::template ret_t<U>;
@@ -1865,34 +1865,29 @@ constexpr auto poly_truncate_degree_algorithm_impl()
         // Not a polynomial.
         return failure;
     } else {
-        using key_t = series_key_t<rT>;
+        // Check if we can compute the degree of the terms via the default
+        // implementation for series.
+        using d_impl = customisation::internal::series_default_degree_impl;
+        constexpr auto algo = d_impl::template algo<T>;
 
-        if constexpr (is_key_with_degree_v<const key_t &>) {
-            // The key supports degree computation.
+        if constexpr (algo == 3) {
+            // The truncation will involve only key-based
+            // filtering. We need to be able to lt-compare U
+            // to the degree type of the key (const lvalue
+            // ref vs rvalue).
+            using deg_t = typename d_impl::template ret_t<T>;
 
-            if constexpr (::std::disjunction_v<is_with_degree<const series_cf_t<rT> &>>) {
-                // NOTE: for the time being, we deal with only truncation
-                // based on key filtering. Thus, if the coefficient type
-                // has a degree, return failure.
-                return failure;
+            if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t>) {
+                return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
             } else {
-                // The truncation will involve only key-based
-                // filtering. We need to be able to lt-compare U
-                // to the degree type of the key (const lvalue
-                // ref vs rvalue). The degree of the key
-                // is computed via lvalue ref.
-                if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>,
-                                                        ::obake::detail::key_degree_t<const key_t &>>) {
-                    return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
-                } else {
-                    return failure;
-                }
+                return failure;
             }
         } else {
-            // The key does not support degree computation, fail.
+            // The key degree computation is not possible, or it
+            // involves the coefficient in addition to the key.
             // NOTE: the case in which the coefficient is degree
             // truncatable and the key does not support degree computation
-            // should eventually be handled in a default series implementation
+            // may eventually be handled in a default series implementation
             // of truncate_degree().
             return failure;
         }
@@ -1911,7 +1906,7 @@ using poly_truncate_degree_ret_t = typename decltype(poly_truncate_degree_algori
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U &&y_)
+inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x, U &&y_)
 {
     using ret_t = detail::poly_truncate_degree_ret_t<T &&, U &&>;
     constexpr auto algo = detail::poly_truncate_degree_algo<T &&, U &&>;
@@ -1920,51 +1915,15 @@ inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U 
     static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
     static_assert(algo == 1);
 
-    // We will need only const access to x and y.
-    const auto &x = ::std::as_const(x_);
-    const auto &y = ::std::as_const(y_);
+    // Use the default functor for the extraction of the term degree.
+    using d_impl = customisation::internal::series_default_degree_impl;
 
-    // Cache the symbol set.
-    const auto &ss = x.get_symbol_set();
-
-    // Prepare the return value: same symbol set,
-    // same number of segments, but don't reserve
-    // space beforehand.
-    ret_t retval;
-    retval.set_symbol_set(ss);
-    retval.set_n_segments(x.get_s_size());
-
-    // Get references to the in & out tables.
-    const auto &in_s_table = x._get_s_table();
-    auto &out_s_table = retval._get_s_table();
-
-    // NOTE: parallelisation opportunities here,
-    // since we operate table by table.
-    // NOTE: in principle we could exploit an x rvalue
-    // here to move the existing coefficients instead
-    // of copying them (as we do elsewhere with the help
-    // of a rref_cleaner). Keep it in mind for the
-    // future.
-    for (decltype(in_s_table.size()) i = 0; i < in_s_table.size(); ++i) {
-        const auto &tab_in = in_s_table[i];
-        auto &tab_out = out_s_table[i];
-
-        for (const auto &t : tab_in) {
-            const auto &k = t.first;
-
-            if (!(y < ::obake::key_degree(k, ss))) {
-                // The key degree does not exceed the
-                // limit, add the term to the return value.
-                // NOTE: we can emplace directly into the table
-                // with no checks, as we are not changing anything
-                // in the term.
-                [[maybe_unused]] const auto res = tab_out.try_emplace(k, t.second);
-                assert(res.second);
-            }
-        }
-    }
-
-    return retval;
+    // Implement on top of filter().
+    // NOTE: d_extractor will strip out the cvref
+    // from T, thus we can just pass in T as-is.
+    return ::obake::filter(::std::forward<T>(x),
+                           [deg_ext = d_impl::d_extractor<T>{&x.get_symbol_set()},
+                            &y = ::std::as_const(y_)](const auto &t) { return !(y < deg_ext(t)); });
 }
 
 namespace detail
