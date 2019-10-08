@@ -3648,6 +3648,119 @@ inline constexpr auto trim<T, ::std::enable_if_t<series_default_trim_impl::algo<
 
 } // namespace customisation::internal
 
+namespace detail
+{
+
+// The type returned by the application of the functor
+// F to a term of a series with key K, coefficient C and tag Tag.
+// Everything done via const lvalue refs.
+template <typename F, typename K, typename C, typename Tag>
+using term_filter_return_t
+    = decltype(::std::declval<const F &>()(::std::declval<const series_term_t<series<K, C, Tag>> &>()));
+
+// NOTE: for now, pass the series with a const reference. In the future,
+// we may want to allow for perfect forwarding to exploit move-construction
+// of the coefficients, as done elsewhere (see rref cleaner).
+template <typename K, typename C, typename Tag, typename F,
+          ::std::enable_if_t<::std::is_convertible_v<detected_t<term_filter_return_t, F, K, C, Tag>, bool>, int> = 0>
+inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
+{
+    // Init the return value. Same symbol set
+    // and same number of segments as s.
+    series<K, C, Tag> retval;
+    retval.set_symbol_set(s.get_symbol_set());
+    retval.set_n_segments(s.get_s_size());
+
+    // Do the filtering table by table.
+    // NOTE: this can easily be parallelised.
+    const auto n_tables = s._get_s_table().size();
+    for (decltype(s._get_s_table().size()) table_idx = 0; table_idx < n_tables; ++table_idx) {
+        // Fetch references to the input/output tables.
+        const auto &in_table = s._get_s_table()[table_idx];
+        auto &out_table = retval._get_s_table()[table_idx];
+
+        for (const auto &t : in_table) {
+            if (f(t)) {
+                [[maybe_unused]] const auto res = out_table.insert(t);
+                // The insertion must be successful,
+                // as we are not changing the original keys.
+                assert(res.second);
+            }
+        }
+    }
+
+    return retval;
+}
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct filter_msvc {
+    template <typename T, typename F>
+    constexpr auto operator()(T &&s, const F &f) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::filter_impl(::std::forward<T>(s), f))
+};
+
+inline constexpr auto filter = filter_msvc{};
+
+#else
+
+// NOTE: do we need a concept/type trait for this? See also the testing.
+// NOTE: force const reference passing for f as a hint
+// that the implementation may be parallel.
+inline constexpr auto filter =
+    [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filter_impl(::std::forward<decltype(s)>(s), f));
+
+#endif
+
+namespace detail
+{
+
+// NOTE: for now, pass the series with a const reference. In the future,
+// we may want to allow for perfect forwarding to exploit rvalue
+// semantics in series_sym_extender().
+template <typename K, typename C, typename Tag, ::std::enable_if_t<is_symbols_mergeable_key_v<const K &>, int> = 0>
+inline series<K, C, Tag> add_symbols_impl(const series<K, C, Tag> &s, const symbol_set &ss)
+{
+    const auto [merged_ss, ins_map, _] = detail::merge_symbol_sets(s.get_symbol_set(), ss);
+    detail::ignore(_);
+
+    if (ins_map.empty()) {
+        // Empty insertion map: there are no
+        // symbols to add.
+        return s;
+    }
+
+    series<K, C, Tag> retval;
+    // NOTE: the sym extender takes care of the segmentation/allocation,
+    // it just needs the proper symbol set.
+    retval.set_symbol_set(merged_ss);
+    detail::series_sym_extender(retval, s, ins_map);
+
+    return retval;
+}
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct add_symbols_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&s, const symbol_set &ss) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::add_symbols_impl(::std::forward<T>(s), ss))
+};
+
+inline constexpr auto add_symbols = add_symbols_msvc{};
+
+#else
+
+// NOTE: do we need a concept/type trait for this? See also the testing.
+inline constexpr auto add_symbols = [](auto &&s, const symbol_set &ss)
+    OBAKE_SS_FORWARD_LAMBDA(detail::add_symbols_impl(::std::forward<decltype(s)>(s), ss));
+
+#endif
+
 } // namespace obake
 
 #endif
