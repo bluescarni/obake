@@ -1902,7 +1902,7 @@ using poly_truncate_degree_ret_t = typename decltype(poly_truncate_degree_algori
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U &&y_)
+inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x, U &&y_)
 {
     using ret_t = detail::poly_truncate_degree_ret_t<T &&, U &&>;
     constexpr auto algo = detail::poly_truncate_degree_algo<T &&, U &&>;
@@ -1911,55 +1911,15 @@ inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U 
     static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
     static_assert(algo == 1);
 
-    // We will need only const access to x and y.
-    const auto &x = ::std::as_const(x_);
-    const auto &y = ::std::as_const(y_);
-
-    // Cache the symbol set.
-    const auto &ss = x.get_symbol_set();
-
-    // Prepare the return value: same symbol set,
-    // same number of segments, but don't reserve
-    // space beforehand.
-    ret_t retval;
-    retval.set_symbol_set(ss);
-    retval.set_n_segments(x.get_s_size());
-
-    // Get references to the in & out tables.
-    const auto &in_s_table = x._get_s_table();
-    auto &out_s_table = retval._get_s_table();
-
-    // Create the functor for the extraction of the term degree.
+    // Use the default functor for the extraction of the term degree.
     using d_impl = customisation::internal::series_default_degree_impl;
+
+    // Implement on top of filter().
     // NOTE: d_extractor will strip out the cvref
-    // from T.
-    d_impl::d_extractor<T> deg_ext{&ss};
-
-    // NOTE: parallelisation opportunities here,
-    // since we operate table by table.
-    // NOTE: in principle we could exploit an x rvalue
-    // here to move the existing coefficients instead
-    // of copying them (as we do elsewhere with the help
-    // of a rref_cleaner). Keep it in mind for the
-    // future.
-    for (decltype(in_s_table.size()) i = 0; i < in_s_table.size(); ++i) {
-        const auto &tab_in = in_s_table[i];
-        auto &tab_out = out_s_table[i];
-
-        for (const auto &t : tab_in) {
-            if (!(y < deg_ext(t))) {
-                // The term degree does not exceed the
-                // limit, add the term to the return value.
-                // NOTE: we can insert directly into the table
-                // with no checks, as we are not changing anything
-                // in the term.
-                [[maybe_unused]] const auto res = tab_out.insert(t);
-                assert(res.second);
-            }
-        }
-    }
-
-    return retval;
+    // from T, thus we can just pass in T as-is.
+    return ::obake::filter(::std::forward<T>(x),
+                           [deg_ext = d_impl::d_extractor<T>{&x.get_symbol_set()},
+                            &y = ::std::as_const(y_)](const auto &t) { return !(y < deg_ext(t)); });
 }
 
 namespace detail
