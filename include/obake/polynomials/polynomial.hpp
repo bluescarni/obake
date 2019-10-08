@@ -408,14 +408,6 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     static_assert(::std::is_same_v<series_cf_t<S1>, typename T1::second_type>);
     static_assert(::std::is_same_v<series_cf_t<S2>, typename T2::second_type>);
 
-    const auto size1 = x.size();
-    const auto size2 = y.size();
-
-    // If either series has a size of 1, just return size1 * size2.
-    if (size1 == 1u || size2 == 1u) {
-        return ::mppp::integer<1>{size1} * size2;
-    }
-
     // Create the degree data. In untruncated multiplication,
     // this will just be an empty tuple, otherwise it will
     // be a pair containing the (partial) degree of the terms
@@ -469,16 +461,14 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
         return ret;
     };
     const auto vidx1 = make_idx_vector(x);
-    const auto vidx2 = [&make_idx_vector, &y, &degree_data, &args...]() {
-        ::obake::detail::ignore(args...);
-
+    const auto vidx2 = [&make_idx_vector, &y, &degree_data]() {
         auto ret = make_idx_vector(y);
 
         // In truncated multiplication, order
         // the indices into y according to the degree of
         // the terms, and sort the vector of
         // degrees as well.
-        if constexpr (sizeof...(args) > 0u) {
+        if constexpr (sizeof...(Args) > 0u) {
             auto &v2_deg = ::std::get<1>(degree_data);
 
             ::std::sort(ret.begin(), ret.end(), [&v2_deg](const auto &idx1, const auto &idx2) {
