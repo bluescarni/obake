@@ -1109,6 +1109,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                             // NOTE: optimise with likely/unlikely here?
                             if (res.second) {
+                                // NOTE: coefficients are guaranteed to be move-assignable.
                                 res.first->second = c1 * c2;
                             } else {
                                 // The insertion failed, a term with the same monomial
