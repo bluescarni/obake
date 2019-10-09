@@ -511,7 +511,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     ::mppp::integer<1> c_est, tot_n_mults;
 
     ::tbb::parallel_invoke(
-        [&c_est, ntrials, multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...]() {
+        [&c_est, multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...]() {
             // Run the trials.
             // NOTE: ideally, we would like to select without repetition random term-by-term
             // multiplications. This could be done by mapping the two sizes of v1 and v2
