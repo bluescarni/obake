@@ -1394,8 +1394,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // Get the upper limit of the multiplication
             // range in v2.
             const auto j_end = compute_j_end(i);
-            if (j_end == 0u) {
-                // If j_end is zero, we don't need to perform
+            if (sizeof...(Args) != 0u && j_end == 0u) {
+                // In truncated mode, if j_end is zero, we don't need to perform
                 // any more term multiplications as the remaining
                 // ones will all end up above the truncation limit.
                 break;
