@@ -10,6 +10,8 @@
 #define OBAKE_POLYNOMIALS_D_PACKED_MONOMIAL_HPP
 
 #include <algorithm>
+#include <cstddef>
+#include <iterator>
 #include <stdexcept>
 #include <type_traits>
 
@@ -19,7 +21,9 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/k_packing.hpp>
+#include <obake/math/safe_cast.hpp>
 #include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 namespace obake
 {
@@ -39,41 +43,100 @@ template <typename T, unsigned NBits,
 #endif
         class d_packed_monomial
 {
+public:
     // The number of exponents to be packed into each T instance.
     static constexpr unsigned psize = static_cast<unsigned>(::obake::detail::limits_digits<T>) / NBits;
 
-    // Put a cap on the maximum number of elements in m_container,
-    // ensuring also that max_v_size * psize is still representable by unsigned.
-    static constexpr auto max_v_size = ::std::min(256u, ::obake::detail::limits_max<unsigned> / psize);
+private:
+    // Small helper to determine the container size
+    // we need to store n exponents. U must be an
+    // unsigned integral type.
+    template <typename U>
+    static constexpr auto nexpos_to_vsize(const U &n) noexcept
+    {
+        static_assert(is_integral_v<U> && !is_signed_v<U>);
+        return n / psize + static_cast<U>(n % psize != 0u);
+    }
 
 public:
     // Alias for T.
     using value_type = T;
+
+    // The container type.
+    using container_t = ::boost::container::small_vector<T, 1>;
 
     // Default constructor.
     d_packed_monomial() = default;
 
     // Constructor from symbol set.
     explicit d_packed_monomial(const symbol_set &ss)
+        : m_container(::obake::safe_cast<typename container_t::size_type>(nexpos_to_vsize(ss.size())))
     {
-        const auto v_size = ss.size() / psize;
-        if (obake_unlikely(v_size > max_v_size)) {
-            obake_throw(
-                ::std::invalid_argument,
-                "Cannot create a dynamic packed monomial from the input symbol set: the size of the symbol set ("
-                    + ::obake::detail::to_string(ss.size())
-                    + ") overflows the maximum allowed size for the container of packed exponents ("
-                    + ::obake::detail::to_string(max_v_size) + ")");
+    }
+
+    // Constructor from input iterator and size.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename It>
+    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
+#else
+    template <
+        typename It,
+        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
+                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
+                           int> = 0>
+#endif
+        explicit d_packed_monomial(It it, ::std::size_t n)
+    {
+        const auto vsize = nexpos_to_vsize(n);
+        m_container.resize(::obake::safe_cast<typename container_t::size_type>(vsize));
+        auto it_c = m_container.begin();
+
+        ::std::size_t counter = 0;
+        for (auto i = 0u; i < vsize; ++i, ++it_c) {
+            k_packer<T> kp(psize);
+
+            auto j = 0u;
+            for (; j < psize && counter < n; ++j, ++counter, ++it) {
+                kp << ::obake::safe_cast<T>(*it);
+            }
+
+            for (; j < psize; ++j) {
+                kp << T(0);
+            }
+
+            *it_c = kp.get();
         }
-        m_container.resize(v_size);
+    }
+
+    container_t &_container()
+    {
+        return m_container;
+    }
+    const container_t &_container() const
+    {
+        return m_container;
     }
 
 private:
-    ::boost::container::small_vector<T, 1> m_container;
+    container_t m_container;
 };
+
+// Comparisons.
+template <typename T, unsigned NBits>
+inline bool operator==(const d_packed_monomial<T, NBits> &d1, const d_packed_monomial<T, NBits> &d2)
+{
+    return d1._container() == d2._container();
+}
+
+template <typename T, unsigned NBits>
+inline bool operator!=(const d_packed_monomial<T, NBits> &d1, const d_packed_monomial<T, NBits> &d2)
+{
+    return !(d1 == d2);
+}
 
 } // namespace polynomials
 
+// Lift to the obake namespace.
 template <typename T, unsigned NBits>
 using d_packed_monomial = polynomials::d_packed_monomial<T, NBits>;
 
