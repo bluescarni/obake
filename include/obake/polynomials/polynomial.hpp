@@ -664,13 +664,13 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                 // In the untruncated case, the total number of term-by-term
                 // multiplications to be performed is simply the product
                 // of the series sizes.
-
                 ::obake::detail::ignore(degree_data, args...);
 
                 tot_n_mults = ::mppp::integer<1>(vidx1.size()) * vidx2.size();
             } else {
                 // In the truncated case, we need to take into account
                 // the truncation limit term by term.
+                ::obake::detail::ignore(vidx2);
 
                 // Fetch the truncation limit.
                 const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
