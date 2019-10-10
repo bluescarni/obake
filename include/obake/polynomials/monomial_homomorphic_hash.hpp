@@ -9,6 +9,7 @@
 #ifndef OBAKE_POLYNOMIALS_MONOMIAL_HOMOMORPHIC_HASH_HPP
 #define OBAKE_POLYNOMIALS_MONOMIAL_HOMOMORPHIC_HASH_HPP
 
+#include <cstddef>
 #include <type_traits>
 
 #include <obake/config.hpp>
@@ -17,6 +18,15 @@
 
 namespace obake
 {
+
+// NOTE: for homomorphic hashing to be usable, we need
+// to make sure that std::size_t is not subject to any integral
+// promotion. An integral promotion could in theory
+// convert std::size_t to a signed type when we do an addition
+// of hashes, which could then result in UB in case of overflows
+// (instead of modulo arithmetics).
+static_assert(::std::is_same_v<::std::common_type_t<::std::size_t>, ::std::size_t>,
+              "std::size_t cannot be subject to integral promotions.");
 
 namespace customisation
 {
