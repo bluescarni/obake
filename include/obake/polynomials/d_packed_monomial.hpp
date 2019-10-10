@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <initializer_list>
 #include <iterator>
 #include <stdexcept>
 #include <type_traits>
@@ -87,25 +88,81 @@ public:
 #endif
         explicit d_packed_monomial(It it, ::std::size_t n)
     {
+        // Prepare the container.
         const auto vsize = nexpos_to_vsize(n);
         m_container.resize(::obake::safe_cast<typename container_t::size_type>(vsize));
-        auto it_c = m_container.begin();
 
         ::std::size_t counter = 0;
-        for (auto i = 0u; i < vsize; ++i, ++it_c) {
+        for (auto &out : m_container) {
             k_packer<T> kp(psize);
 
+            // Keep packing until we get to psize or we have
+            // exhausted the input values.
             auto j = 0u;
             for (; j < psize && counter < n; ++j, ++counter, ++it) {
                 kp << ::obake::safe_cast<T>(*it);
+            }
+
+            // This will be executed only at the last iteration
+            // of the for loop, and it will zero pad
+            // the last element of the container if n does not
+            // divide exactly psize.
+            for (; j < psize; ++j) {
+                kp << T(0);
+            }
+
+            out = kp.get();
+        }
+    }
+
+private:
+    struct input_it_ctor_tag {
+    };
+    template <typename It>
+    explicit d_packed_monomial(input_it_ctor_tag, It b, It e)
+    {
+        while (b != e) {
+            k_packer<T> kp(psize);
+
+            auto j = 0u;
+            for (; j < psize && b != e; ++j, ++b) {
+                kp << ::obake::safe_cast<T>(*b);
             }
 
             for (; j < psize; ++j) {
                 kp << T(0);
             }
 
-            *it_c = kp.get();
+            m_container.push_back(kp.get());
         }
+    }
+
+public:
+    // Ctor from a pair of input iterators.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename It>
+    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
+#else
+    template <
+        typename It,
+        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
+                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
+                           int> = 0>
+#endif
+        explicit d_packed_monomial(It b, It e) : d_packed_monomial(input_it_ctor_tag{}, b, e)
+    {
+    }
+
+    // Ctor from init list.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename U>
+    requires SafelyCastable<const U &, T>
+#else
+    template <typename U, ::std::enable_if_t<is_safely_castable_v<const U &, T>, int> = 0>
+#endif
+        explicit d_packed_monomial(::std::initializer_list<U> l)
+        : d_packed_monomial(input_it_ctor_tag{}, l.begin(), l.end())
+    {
     }
 
     container_t &_container()

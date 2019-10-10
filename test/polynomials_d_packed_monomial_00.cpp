@@ -34,6 +34,7 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
 #endif
                              >;
 
+// The bit widths over which we will be testing for type T.
 template <typename T>
 using bits_widths = std::tuple<std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, 6>,
 #if !defined(_MSC_VER) || defined(__clang__)
@@ -71,17 +72,28 @@ TEST_CASE("basic_tests")
                 REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container() == c_t{0});
             }
 
-            // Constructor from input iterator.
+            // Constructors from iterators.
             int_t arr[] = {1, 1, 1};
 
             // Try empty size first.
             REQUIRE(pm_t(arr, 0) == pm_t{});
+            REQUIRE(pm_t(arr, arr) == pm_t{});
 
             REQUIRE(pm_t(arr, 1)._container() == c_t{1});
+            REQUIRE(pm_t(arr, arr + 1)._container() == c_t{1});
             if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
                 REQUIRE(pm_t(arr, 3)._container() == c_t{1, 1, 1});
+                REQUIRE(pm_t(arr, arr + 3)._container() == c_t{1, 1, 1});
             } else if constexpr (bw == 3u) {
                 REQUIRE(pm_t(arr, 3)._container().size() == 1u);
+                REQUIRE(pm_t(arr, arr + 3)._container().size() == 1u);
+            }
+
+            // Try the init list ctor as well.
+            if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
+                REQUIRE(pm_t{1, 1, 1}._container() == c_t{1, 1, 1});
+            } else if constexpr (bw == 3u) {
+                REQUIRE(pm_t{1, 1, 1}._container().size() == 1u);
             }
 
             // Random testing.
@@ -108,7 +120,10 @@ TEST_CASE("basic_tests")
                         }
                     }
 
+                    // Construct the monomial.
                     pm_t pm(tmp.data(), i);
+
+                    // Unpack it into cmp.
                     cmp.clear();
                     for (const auto &n : pm._container()) {
                         k_unpacker<int_t> ku(n, pm.psize);
@@ -117,6 +132,25 @@ TEST_CASE("basic_tests")
                             cmp.push_back(tmp_n);
                         }
                     }
+
+                    // Verify.
+                    REQUIRE(cmp.size() >= tmp.size());
+                    REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
+                    REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
+                                        [](const auto &n) { return n == int_t(0); }));
+
+                    // Do the same with input iterators.
+                    pm = pm_t(tmp.begin(), tmp.end());
+
+                    cmp.clear();
+                    for (const auto &n : pm._container()) {
+                        k_unpacker<int_t> ku(n, pm.psize);
+                        for (auto j = 0u; j < pm.psize; ++j) {
+                            ku >> tmp_n;
+                            cmp.push_back(tmp_n);
+                        }
+                    }
+
                     REQUIRE(cmp.size() >= tmp.size());
                     REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
                     REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
