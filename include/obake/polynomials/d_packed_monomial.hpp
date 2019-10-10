@@ -15,6 +15,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 #include <boost/container/small_vector.hpp>
 
@@ -23,6 +24,8 @@
 #include <obake/detail/to_string.hpp>
 #include <obake/k_packing.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/ranges.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -153,6 +156,24 @@ public:
     {
     }
 
+    // Ctor from input range.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename Range>
+    requires InputRange<Range> &&SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>
+#else
+    template <
+        typename Range,
+        ::std::enable_if_t<::std::conjunction_v<
+                               is_input_range<Range>,
+                               is_safely_castable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>>,
+                           int> = 0>
+#endif
+        explicit d_packed_monomial(Range &&r)
+        : d_packed_monomial(input_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
+                            ::obake::end(::std::forward<Range>(r)))
+    {
+    }
+
     // Ctor from init list.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename U>
@@ -178,6 +199,20 @@ private:
     container_t m_container;
 };
 
+// Implementation of key_is_zero(). A monomial is never zero.
+template <typename T, unsigned NBits>
+inline bool key_is_zero(const d_packed_monomial<T, NBits> &, const symbol_set &)
+{
+    return false;
+}
+
+// Implementation of key_is_one(). A monomial is one if all its exponents are zero.
+template <typename T, unsigned NBits>
+inline bool key_is_one(const d_packed_monomial<T, NBits> &d, const symbol_set &)
+{
+    return ::std::all_of(d._container().cbegin(), d._container().cend(), [](const T &n) { return n == T(0); });
+}
+
 // Comparisons.
 template <typename T, unsigned NBits>
 inline bool operator==(const d_packed_monomial<T, NBits> &d1, const d_packed_monomial<T, NBits> &d2)
@@ -191,11 +226,28 @@ inline bool operator!=(const d_packed_monomial<T, NBits> &d1, const d_packed_mon
     return !(d1 == d2);
 }
 
+// Hash implementation.
+template <typename T, unsigned NBits>
+inline ::std::size_t hash(const d_packed_monomial<T, NBits> &d)
+{
+    // NOTE: the idea is that we will mix the individual
+    // hashes for every pack of exponents via addition.
+    ::std::size_t ret = 0;
+    for (const auto &n : d._container()) {
+        ret += static_cast<::std::size_t>(n);
+    }
+    return ret;
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
 template <typename T, unsigned NBits>
 using d_packed_monomial = polynomials::d_packed_monomial<T, NBits>;
+
+// Specialise monomial_has_homomorphic_hash.
+template <typename T, unsigned NBits>
+inline constexpr bool monomial_hash_is_homomorphic<d_packed_monomial<T, NBits>> = true;
 
 } // namespace obake
 

@@ -7,7 +7,11 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
+#include <bitset>
+#include <cstddef>
 #include <initializer_list>
+#include <iostream>
+#include <limits>
 #include <random>
 #include <tuple>
 #include <type_traits>
@@ -16,9 +20,14 @@
 #include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
+#include <obake/hash.hpp>
 #include <obake/k_packing.hpp>
+#include <obake/key/key_is_one.hpp>
+#include <obake/key/key_is_zero.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
+#include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/symbols.hpp>
+#include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
@@ -55,6 +64,10 @@ TEST_CASE("basic_tests")
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
             using c_t = typename pm_t::container_t;
+
+            REQUIRE(!std::is_constructible_v<pm_t, void>);
+            REQUIRE(!std::is_constructible_v<pm_t, int>);
+            REQUIRE(!std::is_constructible_v<pm_t, const double &>);
 
             // Default ctor.
             REQUIRE(pm_t{}._container().empty());
@@ -97,7 +110,7 @@ TEST_CASE("basic_tests")
             }
 
             // Random testing.
-            if constexpr (bw == 6u
+            if constexpr (bw >= 6u
 #if defined(OBAKE_HAVE_GCC_INT128)
                           && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>
 #endif
@@ -155,6 +168,109 @@ TEST_CASE("basic_tests")
                     REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
                     REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
                                         [](const auto &n) { return n == int_t(0); }));
+
+                    // Do the same with input range.
+                    pm = pm_t(tmp);
+
+                    cmp.clear();
+                    for (const auto &n : pm._container()) {
+                        k_unpacker<int_t> ku(n, pm.psize);
+                        for (auto j = 0u; j < pm.psize; ++j) {
+                            ku >> tmp_n;
+                            cmp.push_back(tmp_n);
+                        }
+                    }
+
+                    REQUIRE(cmp.size() >= tmp.size());
+                    REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
+                    REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
+                                        [](const auto &n) { return n == int_t(0); }));
+                }
+            }
+        });
+    });
+}
+
+TEST_CASE("key_is_zero_tests")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_zero_testable_key_v<pm_t>);
+            REQUIRE(is_zero_testable_key_v<pm_t &>);
+            REQUIRE(is_zero_testable_key_v<const pm_t &>);
+            REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
+            REQUIRE(!key_is_zero(pm_t{0, 1, 0}, symbol_set{"x", "y", "z"}));
+        });
+    });
+}
+
+TEST_CASE("key_is_one_tests")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_one_testable_key_v<pm_t>);
+            REQUIRE(is_one_testable_key_v<pm_t &>);
+            REQUIRE(is_one_testable_key_v<const pm_t &>);
+            REQUIRE(key_is_one(pm_t{}, symbol_set{}));
+            REQUIRE(key_is_one(pm_t{0, 0, 0}, symbol_set{"x", "y", "z"}));
+            REQUIRE(!key_is_one(pm_t{0, 1, 0}, symbol_set{"x", "y", "z"}));
+        });
+    });
+}
+
+TEST_CASE("hash_tests")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_hashable_v<pm_t>);
+            REQUIRE(is_hashable_v<pm_t &>);
+            REQUIRE(is_hashable_v<const pm_t &>);
+
+            REQUIRE(hash(pm_t{}) == 0u);
+
+            // Generate and print a few random hashes.
+            if constexpr (bw == 6u
+#if defined(OBAKE_HAVE_GCC_INT128)
+                          && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>
+#endif
+            ) {
+                using idist_t = std::uniform_int_distribution<int_t>;
+                using param_t = typename idist_t::param_type;
+                idist_t dist;
+
+                std::vector<int_t> tmp;
+
+                for (auto i = 0u; i < 50u; ++i) {
+                    tmp.resize(i);
+
+                    for (auto j = 0u; j < i; ++j) {
+                        if constexpr (is_signed_v<int_t>) {
+                            tmp[j] = dist(rng, param_t{-10, 10});
+                        } else {
+                            tmp[j] = dist(rng, param_t{0, 20});
+                        }
+                    }
+
+                    std::cout << "Hash for type " << type_name<int_t>() << ", bit width " << bw << ", size " << i
+                              << ": "
+                              << std::bitset<std::numeric_limits<std::size_t>::digits>(
+                                     hash(pm_t(tmp.begin(), tmp.end())))
+                              << '\n';
                 }
             }
         });
