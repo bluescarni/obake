@@ -36,7 +36,9 @@ using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsi
 
 template <typename T>
 using bits_widths = std::tuple<std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, 6>,
+#if !defined(_MSC_VER) || defined(__clang__)
                                std::integral_constant<unsigned, detail::limits_digits<T> / 2>,
+#endif
                                std::integral_constant<unsigned, detail::limits_digits<T>>>;
 
 std::mt19937 rng;
@@ -83,10 +85,11 @@ TEST_CASE("basic_tests")
             }
 
             // Random testing.
+            if constexpr (bw == 6u
 #if defined(OBAKE_HAVE_GCC_INT128)
-            if constexpr (bw == 6u && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>)
+                          && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>
 #endif
-            {
+            ) {
                 using idist_t = std::uniform_int_distribution<int_t>;
                 using param_t = typename idist_t::param_type;
                 idist_t dist;
