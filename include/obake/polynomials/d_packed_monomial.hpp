@@ -10,9 +10,11 @@
 #define OBAKE_POLYNOMIALS_D_PACKED_MONOMIAL_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <initializer_list>
 #include <iterator>
+#include <ostream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -266,23 +268,75 @@ inline bool key_is_compatible(const d_packed_monomial<T, NBits> &d, const symbol
     // values representable by T are allowed.
     if constexpr (NBits == ::obake::detail::limits_digits<T>) {
         return true;
-    }
-
-    // Fetch the elimits corresponding to a packing size of psize.
-    const auto &e_lim = ::obake::detail::k_packing_get_elimits<T>(d_packed_monomial<T, NBits>::psize);
-    for (const auto &n : c) {
-        if constexpr (is_signed_v<T>) {
-            if (n < e_lim[0] || n > e_lim[1]) {
-                return false;
+    } else {
+        // Fetch the elimits corresponding to a packing size of psize.
+        const auto &e_lim = ::obake::detail::k_packing_get_elimits<T>(d_packed_monomial<T, NBits>::psize);
+        for (const auto &n : c) {
+            if constexpr (is_signed_v<T>) {
+                if (n < e_lim[0] || n > e_lim[1]) {
+                    return false;
+                }
+            } else {
+                if (n > e_lim) {
+                    return false;
+                }
             }
-        } else {
-            if (n > e_lim) {
-                return false;
+        }
+
+        return true;
+    }
+}
+
+// Implementation of stream insertion.
+// NOTE: requires that d is compatible with s.
+template <typename T, unsigned NBits>
+inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBits> &d, const symbol_set &s)
+{
+    assert(polynomials::key_is_compatible(d, s));
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto &c = d._container();
+    auto s_it = s.cbegin();
+    const auto s_end = s.cend();
+
+    T tmp;
+    bool wrote_something = false;
+    for (const auto &n : c) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && s_it != s_end; ++j, ++s_it) {
+            ku >> tmp;
+
+            if (tmp != T(0)) {
+                // The exponent of the current variable
+                // is nonzero.
+                if (wrote_something) {
+                    // We already printed something
+                    // earlier, make sure we put
+                    // the multiplication sign
+                    // in front of the variable
+                    // name.
+                    os << '*';
+                }
+                // Print the variable name.
+                os << *s_it;
+                wrote_something = true;
+                if (tmp != T(1)) {
+                    // The exponent is not unitary,
+                    // print it.
+                    os << "**" << ::obake::detail::to_string(tmp);
+                }
             }
         }
     }
 
-    return true;
+    if (!wrote_something) {
+        // We did not write anything to the stream.
+        // It means that all variables have zero
+        // exponent, thus we print only "1".
+        os << '1';
+    }
 }
 
 } // namespace polynomials
