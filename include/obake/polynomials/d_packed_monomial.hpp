@@ -35,6 +35,22 @@ namespace obake
 namespace polynomials
 {
 
+namespace detail
+{
+
+// Small helper to determine the container size
+// we need to store n exponents in a dynamic packed
+// monomial of type T. U must be an
+// unsigned integral type.
+template <typename T, typename U>
+constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
+{
+    static_assert(is_integral_v<U> && !is_signed_v<U>);
+    return n / T::psize + static_cast<U>(n % T::psize != 0u);
+}
+
+} // namespace detail
+
 // Dynamic packed monomial.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <KPackable T, unsigned NBits>
@@ -51,18 +67,6 @@ public:
     // The number of exponents to be packed into each T instance.
     static constexpr unsigned psize = static_cast<unsigned>(::obake::detail::limits_digits<T>) / NBits;
 
-private:
-    // Small helper to determine the container size
-    // we need to store n exponents. U must be an
-    // unsigned integral type.
-    template <typename U>
-    static constexpr auto nexpos_to_vsize(const U &n) noexcept
-    {
-        static_assert(is_integral_v<U> && !is_signed_v<U>);
-        return n / psize + static_cast<U>(n % psize != 0u);
-    }
-
-public:
     // Alias for T.
     using value_type = T;
 
@@ -74,7 +78,8 @@ public:
 
     // Constructor from symbol set.
     explicit d_packed_monomial(const symbol_set &ss)
-        : m_container(::obake::safe_cast<typename container_t::size_type>(nexpos_to_vsize(ss.size())))
+        : m_container(::obake::safe_cast<typename container_t::size_type>(
+            detail::dpm_nexpos_to_vsize<d_packed_monomial>(ss.size())))
     {
     }
 
@@ -92,7 +97,7 @@ public:
         explicit d_packed_monomial(It it, ::std::size_t n)
     {
         // Prepare the container.
-        const auto vsize = nexpos_to_vsize(n);
+        const auto vsize = detail::dpm_nexpos_to_vsize<d_packed_monomial>(n);
         m_container.resize(::obake::safe_cast<typename container_t::size_type>(vsize));
 
         ::std::size_t counter = 0;
@@ -237,6 +242,47 @@ inline ::std::size_t hash(const d_packed_monomial<T, NBits> &d)
         ret += static_cast<::std::size_t>(n);
     }
     return ret;
+}
+
+// Symbol set compatibility implementation.
+template <typename T, unsigned NBits>
+inline bool key_is_compatible(const d_packed_monomial<T, NBits> &d, const symbol_set &s)
+{
+    const auto s_size = s.size();
+    const auto &c = d._container();
+
+    // Determine the size the container must have in order
+    // to be able to represent s_size exponents.
+    const auto exp_size = detail::dpm_nexpos_to_vsize<d_packed_monomial<T, NBits>>(s_size);
+
+    // Check if c has the expected size.
+    if (c.size() != exp_size) {
+        return false;
+    }
+
+    // We need to check if the encoded values in the container
+    // are within the limits. If NBits is maximal,
+    // we don't need any checking as all encoded
+    // values representable by T are allowed.
+    if constexpr (NBits == ::obake::detail::limits_digits<T>) {
+        return true;
+    }
+
+    // Fetch the elimits corresponding to a packing size of psize.
+    const auto &e_lim = ::obake::detail::k_packing_get_elimits<T>(d_packed_monomial<T, NBits>::psize);
+    for (const auto &n : c) {
+        if constexpr (is_signed_v<T>) {
+            if (n < e_lim[0] || n > e_lim[1]) {
+                return false;
+            }
+        } else {
+            if (n > e_lim) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 } // namespace polynomials

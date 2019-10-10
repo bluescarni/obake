@@ -19,9 +19,11 @@
 
 #include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
+#include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
 #include <obake/k_packing.hpp>
+#include <obake/key/key_is_compatible.hpp>
 #include <obake/key/key_is_one.hpp>
 #include <obake/key/key_is_zero.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
@@ -53,7 +55,7 @@ using bits_widths = std::tuple<std::integral_constant<unsigned, 3>, std::integra
 
 std::mt19937 rng;
 
-TEST_CASE("basic_tests")
+TEST_CASE("basic_test")
 {
     obake_test::disable_slow_stack_traces();
 
@@ -191,7 +193,7 @@ TEST_CASE("basic_tests")
     });
 }
 
-TEST_CASE("key_is_zero_tests")
+TEST_CASE("key_is_zero_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
@@ -209,7 +211,7 @@ TEST_CASE("key_is_zero_tests")
     });
 }
 
-TEST_CASE("key_is_one_tests")
+TEST_CASE("key_is_one_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
@@ -228,7 +230,7 @@ TEST_CASE("key_is_one_tests")
     });
 }
 
-TEST_CASE("hash_tests")
+TEST_CASE("hash_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
@@ -271,6 +273,77 @@ TEST_CASE("hash_tests")
                               << std::bitset<std::numeric_limits<std::size_t>::digits>(
                                      hash(pm_t(tmp.begin(), tmp.end())))
                               << '\n';
+                }
+            }
+        });
+    });
+}
+
+TEST_CASE("compatibility_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_compatibility_testable_key_v<pm_t>);
+            REQUIRE(is_compatibility_testable_key_v<pm_t &>);
+            REQUIRE(is_compatibility_testable_key_v<const pm_t &>);
+
+            REQUIRE(key_is_compatible(pm_t{}, symbol_set{}));
+            REQUIRE(!key_is_compatible(pm_t{}, symbol_set{"x"}));
+            REQUIRE(!key_is_compatible(pm_t{1}, symbol_set{}));
+            REQUIRE(key_is_compatible(pm_t{1}, symbol_set{"x"}));
+            REQUIRE(key_is_compatible(pm_t{1, 1}, symbol_set{"x", "y"}));
+
+            constexpr auto psize = pm_t::psize;
+            std::vector<int_t> tmp;
+            symbol_set tmp_ss;
+            for (auto i = 0u; i < psize * 2u; ++i) {
+                tmp.emplace_back(1);
+                tmp_ss.insert(tmp_ss.end(), "x_" + detail::to_string(i));
+            }
+            REQUIRE(key_is_compatible(pm_t(tmp), tmp_ss));
+
+            if constexpr (psize > 1u) {
+                auto tmp_ss2(tmp_ss);
+                tmp_ss2.insert(tmp_ss2.end(), "a");
+
+                REQUIRE(!key_is_compatible(pm_t(tmp), tmp_ss2));
+
+                auto tmp2(tmp);
+                tmp2.emplace_back(1);
+
+                REQUIRE(!key_is_compatible(pm_t(tmp2), tmp_ss));
+
+                REQUIRE(key_is_compatible(pm_t(tmp2), tmp_ss2));
+            }
+
+            if constexpr (psize > 1u) {
+                // Try with values exceeding the encoded limits.
+                constexpr auto &e_lim = detail::k_packing_get_elimits<int_t>(psize);
+
+                pm_t tmp_pm;
+
+                if constexpr (is_signed_v<int_t>) {
+                    if constexpr (e_lim[0] > detail::limits_min<int_t>) {
+                        tmp_pm._container().push_back(detail::limits_min<int_t>);
+                        REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
+                        tmp_pm._container().clear();
+                    }
+                    if constexpr (e_lim[1] < detail::limits_max<int_t>) {
+                        tmp_pm._container().push_back(detail::limits_max<int_t>);
+                        REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
+                        tmp_pm._container().clear();
+                    }
+                } else {
+                    if constexpr (e_lim < detail::limits_max<int_t>) {
+                        tmp_pm._container().push_back(detail::limits_max<int_t>);
+                        REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
+                        tmp_pm._container().clear();
+                    }
                 }
             }
         });
