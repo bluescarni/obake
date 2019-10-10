@@ -30,7 +30,6 @@
 #include <obake/key/key_stream_insert.hpp>
 #include <obake/key/key_tex_stream_insert.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
-#include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
