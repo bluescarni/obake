@@ -28,6 +28,7 @@
 #include <obake/key/key_is_one.hpp>
 #include <obake/key/key_is_zero.hpp>
 #include <obake/key/key_stream_insert.hpp>
+#include <obake/key/key_tex_stream_insert.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/symbols.hpp>
@@ -416,6 +417,113 @@ TEST_CASE("stream_insert_test")
                     REQUIRE(oss_wrap(pm_t{2, 0, -1}, symbol_set{"x", "y", "z"}) == "x**2*z**-1");
                     REQUIRE(oss_wrap(pm_t{0, -2, 3}, symbol_set{"x", "y", "z"}) == "y**-2*z**3");
                     REQUIRE(oss_wrap(pm_t{1, 1, -4}, symbol_set{"x", "y", "z"}) == "x*y*z**-4");
+                }
+            }
+        });
+    });
+}
+
+TEST_CASE("tex_stream_insert_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_tex_stream_insertable_key_v<pm_t>);
+            REQUIRE(is_tex_stream_insertable_key_v<pm_t &>);
+            REQUIRE(is_tex_stream_insertable_key_v<const pm_t &>);
+            REQUIRE(is_tex_stream_insertable_key_v<const pm_t>);
+
+            if constexpr (bw > 3u) {
+                std::ostringstream oss;
+
+                key_tex_stream_insert(oss, pm_t{}, symbol_set{});
+                REQUIRE(oss.str().empty());
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{1}, symbol_set{"x"});
+                REQUIRE(oss.str() == "{x}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{1, 2}, symbol_set{"x", "y"});
+                REQUIRE(oss.str() == "{x}{y}^{2}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{0, 2}, symbol_set{"x", "y"});
+                REQUIRE(oss.str() == "{y}^{2}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{1, 0}, symbol_set{"x", "y"});
+                REQUIRE(oss.str() == "{x}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{2, 0}, symbol_set{"x", "y"});
+                REQUIRE(oss.str() == "{x}^{2}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{2, 0, 1}, symbol_set{"x", "y", "z"});
+                REQUIRE(oss.str() == "{x}^{2}{z}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{1, 2, 3}, symbol_set{"x", "y", "z"});
+                REQUIRE(oss.str() == "{x}{y}^{2}{z}^{3}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{0, 0, 1}, symbol_set{"x", "y", "z"});
+                REQUIRE(oss.str() == "{z}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{0, 0, 4}, symbol_set{"x", "y", "z"});
+                REQUIRE(oss.str() == "{z}^{4}");
+                oss.str("");
+
+                key_tex_stream_insert(oss, pm_t{0, 0, 0}, symbol_set{"x", "y", "z"});
+                REQUIRE(oss.str().empty());
+                oss.str("");
+
+                if constexpr (is_signed_v<int_t>) {
+                    key_tex_stream_insert(oss, pm_t{-1}, symbol_set{"x"});
+                    REQUIRE(oss.str() == "\\frac{1}{{x}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{-1, -2}, symbol_set{"x", "y"});
+                    REQUIRE(oss.str() == "\\frac{1}{{x}{y}^{2}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{0, -2}, symbol_set{"x", "y"});
+                    REQUIRE(oss.str() == "\\frac{1}{{y}^{2}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{-1, 0}, symbol_set{"x", "y"});
+                    REQUIRE(oss.str() == "\\frac{1}{{x}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{-1, -2, -3}, symbol_set{"x", "y", "z"});
+                    REQUIRE(oss.str() == "\\frac{1}{{x}{y}^{2}{z}^{3}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{1, -2, -3}, symbol_set{"x", "y", "z"});
+                    REQUIRE(oss.str() == "\\frac{{x}}{{y}^{2}{z}^{3}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{2, -2, -3}, symbol_set{"x", "y", "z"});
+                    REQUIRE(oss.str() == "\\frac{{x}^{2}}{{y}^{2}{z}^{3}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{2, -2, 3}, symbol_set{"x", "y", "z"});
+                    REQUIRE(oss.str() == "\\frac{{x}^{2}{z}^{3}}{{y}^{2}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{-2, -2, 3}, symbol_set{"x", "y", "z"});
+                    REQUIRE(oss.str() == "\\frac{{z}^{3}}{{x}^{2}{y}^{2}}");
+                    oss.str("");
+
+                    key_tex_stream_insert(oss, pm_t{-2, 0, 0}, symbol_set{"x", "y", "z"});
+                    REQUIRE(oss.str() == "\\frac{1}{{x}^{2}}");
+                    oss.str("");
                 }
             }
         });

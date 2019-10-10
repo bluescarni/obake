@@ -21,6 +21,8 @@
 
 #include <boost/container/small_vector.hpp>
 
+#include <mp++/integer.hpp>
+
 #include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
@@ -336,6 +338,78 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBi
         // It means that all variables have zero
         // exponent, thus we print only "1".
         os << '1';
+    }
+}
+
+// Implementation of tex stream insertion.
+// NOTE: requires that d is compatible with s.
+template <typename T, unsigned NBits>
+inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBits> &d, const symbol_set &s)
+{
+    assert(polynomials::key_is_compatible(d, s));
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto &c = d._container();
+    auto s_it = s.cbegin();
+    const auto s_end = s.cend();
+
+    // Use separate streams for numerator and denominator
+    // (the denominator is used only in case of negative powers).
+    ::std::ostringstream oss_num, oss_den, *cur_oss;
+
+    T tmp;
+    // Go through a multiprecision integer for the stream
+    // insertion. This allows us not to care about potential
+    // overflow conditions when manipulating the exponents
+    // below.
+    ::mppp::integer<1> tmp_mp;
+    for (const auto &n : c) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && s_it != s_end; ++j, ++s_it) {
+            // Extract the current exponent into
+            // tmp_mp.
+            ku >> tmp;
+            tmp_mp = tmp;
+
+            const auto sgn = tmp_mp.sgn();
+            if (sgn != 0) {
+                // Non-zero exponent, we will write something.
+                if (sgn == 1) {
+                    // Positive exponent, we will write
+                    // to the numerator stream.
+                    cur_oss = &oss_num;
+                } else {
+                    // Negative exponent: take the absolute value
+                    // and write to the denominator stream.
+                    tmp_mp.neg();
+                    cur_oss = &oss_den;
+                }
+
+                // Print the symbol name.
+                *cur_oss << '{' << *s_it << '}';
+
+                // Raise to power, if the exponent is not one.
+                if (!tmp_mp.is_one()) {
+                    *cur_oss << "^{" << tmp_mp << '}';
+                }
+            }
+        }
+    }
+
+    const auto num_str = oss_num.str(), den_str = oss_den.str();
+
+    if (!num_str.empty() && !den_str.empty()) {
+        // We have both negative and positive exponents,
+        // print them both in a fraction.
+        os << "\\frac{" << num_str << "}{" << den_str << '}';
+    } else if (!num_str.empty() && den_str.empty()) {
+        // Only positive exponents.
+        os << num_str;
+    } else if (num_str.empty() && !den_str.empty()) {
+        // Only negative exponents, display them as 1/something.
+        os << "\\frac{1}{" << den_str << '}';
     }
 }
 
