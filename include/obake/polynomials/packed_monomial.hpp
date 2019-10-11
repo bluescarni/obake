@@ -486,9 +486,6 @@ template <typename R1, typename R2,
         return true;
     }
 
-    // Fetch the delta bit width from the size.
-    const auto nbits = ::obake::detail::k_packing_size_to_bits<value_type>(s_size);
-
     // Prepare the limits vectors.
     auto [limits1, limits2] = [s_size]() {
         if constexpr (is_signed_v<value_type>) {
@@ -565,6 +562,10 @@ template <typename R1, typename R2,
 
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
+
+    // Fetch the delta bit width from the size.
+    const auto nbits = ::obake::detail::k_packing_size_to_bits<value_type>(s_size);
+
     if constexpr (is_signed_v<value_type>) {
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
