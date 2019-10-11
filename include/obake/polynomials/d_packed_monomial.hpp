@@ -465,6 +465,27 @@ inline d_packed_monomial<T, NBits> key_merge_symbols(const d_packed_monomial<T, 
     return d_packed_monomial<T, NBits>(tmp_v);
 }
 
+// Implementation of monomial_mul().
+// NOTE: requires a, b and out to be compatible with ss.
+template <typename T, unsigned NBits>
+inline void monomial_mul(d_packed_monomial<T, NBits> &out, const d_packed_monomial<T, NBits> &a,
+                         const d_packed_monomial<T, NBits> &b, [[maybe_unused]] const symbol_set &ss)
+{
+    // Verify the inputs.
+    assert(polynomials::key_is_compatible(a, ss));
+    assert(polynomials::key_is_compatible(b, ss));
+    assert(polynomials::key_is_compatible(out, ss));
+
+    // NOTE: check whether using pointers + restrict helps here
+    // (in which case we'd have to add the requirement to monomial_mul()
+    // that out must be distinct from a/b).
+    ::std::transform(a._container().cbegin(), a._container().cend(), b._container().cbegin(), out._container().begin(),
+                     [](const T &x, const T &y) { return x + y; });
+
+    // Verify the output as well.
+    assert(polynomials::key_is_compatible(out, ss));
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
