@@ -335,7 +335,7 @@ inline ::std::size_t poly_mul_impl_estimate_average_term_size(const ::std::vecto
     constexpr auto ntrials = 10u;
 
     // Temporary monomial used for term-by-term multiplications.
-    ret_key_t tmp_key;
+    ret_key_t tmp_key(ss);
 
     // Create the distributions.
     ::std::uniform_int_distribution<decltype(v1.size())> dist1(0, v1.size() - 1u);
@@ -561,7 +561,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                 ::mppp::integer<1> acc_y;
 
                 // Temporary object for monomial multiplications.
-                key_type tmp_key;
+                key_type tmp_key(ss);
 
                 for (auto idx1 : vidx1_copy) {
                     // Get the upper limit for indexing in vidx2.
@@ -1038,7 +1038,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             auto vptr2 = v2.data();
 
             // Temporary variable used in monomial multiplication.
-            ret_key_t tmp_key;
+            ret_key_t tmp_key(ss);
 
             for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
                 // Get a reference to the current table in retval.
@@ -1378,7 +1378,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
     try {
         // Temporary variable used in monomial multiplication.
-        ret_key_t tmp_key;
+        ret_key_t tmp_key(ss);
 
         const auto v1_size = v1.size();
         for (decltype(v1.size()) i = 0; i < v1_size; ++i) {
