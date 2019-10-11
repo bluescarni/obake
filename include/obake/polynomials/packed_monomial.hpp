@@ -481,8 +481,7 @@ template <typename R1, typename R2,
     const auto e2 = ::obake::end(::std::forward<R2>(r2));
 
     if (b1 == e1 || b2 == e2) {
-        // If either range is empty, there will be no
-        // overflow, just return true;
+        // If either range is empty, there will be no overflow.
         return true;
     }
 
