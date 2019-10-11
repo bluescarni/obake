@@ -79,7 +79,7 @@ namespace obake
 // - constructor from symbol_set generates unitary key
 //   compatible with the input symbol set (this is used, for
 //   instance, in series' generic constructor from a lower rank
-//   series).
+//   series, and when preparing an output value for monomial_mul()).
 template <typename T>
 using is_key = ::std::conjunction<is_semi_regular<T>, is_constructible<T, const symbol_set &>,
                                   is_hashable<::std::add_lvalue_reference_t<const T>>,

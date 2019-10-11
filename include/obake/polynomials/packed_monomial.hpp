@@ -404,6 +404,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
 }
 
 // Implementation of monomial_mul().
+// NOTE: requires a, b and out to be compatible with ss.
 template <typename T>
 constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a, const packed_monomial<T> &b,
                             [[maybe_unused]] const symbol_set &ss)
@@ -411,6 +412,7 @@ constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a
     // Verify the inputs.
     assert(polynomials::key_is_compatible(a, ss));
     assert(polynomials::key_is_compatible(b, ss));
+    assert(polynomials::key_is_compatible(out, ss));
 
     out._set_value(a.get_value() + b.get_value());
 
