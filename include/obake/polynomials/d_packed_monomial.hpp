@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <boost/container/small_vector.hpp>
 
@@ -412,6 +413,56 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
         // Only negative exponents, display them as 1/something.
         os << "\\frac{1}{" << den_str << '}';
     }
+}
+
+// Implementation of symbols merging.
+// NOTE: requires that m is compatible with s, and ins_map consistent with s.
+template <typename T, unsigned NBits>
+inline d_packed_monomial<T, NBits> key_merge_symbols(const d_packed_monomial<T, NBits> &d,
+                                                     const symbol_idx_map<symbol_set> &ins_map, const symbol_set &s)
+{
+    assert(polynomials::key_is_compatible(d, s));
+    // The last element of the insertion map must be at most s.size(), which means that there
+    // are symbols to be appended at the end.
+    assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto &c = d._container();
+    symbol_idx idx = 0;
+    const auto s_size = s.size();
+    auto map_it = ins_map.begin();
+    const auto map_end = ins_map.end();
+    T tmp;
+    ::std::vector<T> tmp_v;
+    for (const auto &n : c) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+            if (map_it != map_end && map_it->first == idx) {
+                // We reached an index at which we need to
+                // insert new elements. Insert as many
+                // zeroes as necessary in the temporary vector.
+                tmp_v.insert(tmp_v.end(), ::obake::safe_cast<decltype(tmp_v.size())>(map_it->second.size()), T(0));
+                // Move to the next element in the map.
+                ++map_it;
+            }
+
+            // Add the existing element to tmp_v.
+            ku >> tmp;
+            tmp_v.push_back(tmp);
+        }
+    }
+
+    assert(idx == s_size);
+
+    // We could still have symbols which need to be appended at the end.
+    if (map_it != map_end) {
+        tmp_v.insert(tmp_v.end(), ::obake::safe_cast<decltype(tmp_v.size())>(map_it->second.size()), T(0));
+        assert(map_it + 1 == map_end);
+    }
+
+    return d_packed_monomial<T, NBits>(tmp_v);
 }
 
 } // namespace polynomials

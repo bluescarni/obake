@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <initializer_list>
 #include <random>
 #include <tuple>
 #include <type_traits>
@@ -14,8 +15,10 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
+#include <obake/key/key_merge_symbols.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
@@ -91,6 +94,67 @@ TEST_CASE("homomorphic_hash_test")
 
                     // Do the hashing, check the sum.
                     REQUIRE(hash(pm1) + hash(pm2) == hash(pm3));
+                }
+            }
+        });
+    });
+}
+
+TEST_CASE("key_merge_symbols_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_symbols_mergeable_key_v<pm_t>);
+            REQUIRE(is_symbols_mergeable_key_v<pm_t &>);
+            REQUIRE(is_symbols_mergeable_key_v<pm_t &&>);
+            REQUIRE(is_symbols_mergeable_key_v<const pm_t &>);
+
+            if constexpr (bw >= 6u) {
+                REQUIRE(key_merge_symbols(pm_t{}, symbol_idx_map<symbol_set>{}, symbol_set{}) == pm_t{});
+                REQUIRE(key_merge_symbols(pm_t{}, symbol_idx_map<symbol_set>{{0, {"x"}}}, symbol_set{}) == pm_t{0});
+                REQUIRE(key_merge_symbols(pm_t{1}, symbol_idx_map<symbol_set>{}, symbol_set{"x"}) == pm_t{1});
+                REQUIRE(key_merge_symbols(pm_t{1}, symbol_idx_map<symbol_set>{{0, {"y"}}}, symbol_set{"x"})
+                        == pm_t{0, 1});
+                REQUIRE(key_merge_symbols(pm_t{1}, symbol_idx_map<symbol_set>{{1, {"y"}}}, symbol_set{"x"})
+                        == pm_t{1, 0});
+                REQUIRE(key_merge_symbols(pm_t{1, 2, 3},
+                                          symbol_idx_map<symbol_set>{{0, {"a", "b"}}, {1, {"c"}}, {3, {"d", "e"}}},
+                                          symbol_set{"x", "y", "z"})
+                        == pm_t{0, 0, 1, 0, 2, 3, 0, 0});
+                REQUIRE(key_merge_symbols(pm_t{1, 2, 3}, symbol_idx_map<symbol_set>{{3, {"d", "e"}}},
+                                          symbol_set{"x", "y", "z"})
+                        == pm_t{1, 2, 3, 0, 0});
+                REQUIRE(key_merge_symbols(pm_t{1, 2, 3}, symbol_idx_map<symbol_set>{{0, {"d", "e"}}},
+                                          symbol_set{"x", "y", "z"})
+                        == pm_t{0, 0, 1, 2, 3});
+                REQUIRE(key_merge_symbols(pm_t{1, 2, 3}, symbol_idx_map<symbol_set>{{1, {"d", "e"}}},
+                                          symbol_set{"x", "y", "z"})
+                        == pm_t{1, 0, 0, 2, 3});
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(key_merge_symbols(pm_t{-1}, symbol_idx_map<symbol_set>{}, symbol_set{"x"}) == pm_t{-1});
+                    REQUIRE(key_merge_symbols(pm_t{-1}, symbol_idx_map<symbol_set>{{0, {"y"}}}, symbol_set{"x"})
+                            == pm_t{0, -1});
+                    REQUIRE(key_merge_symbols(pm_t{-1}, symbol_idx_map<symbol_set>{{1, {"y"}}}, symbol_set{"x"})
+                            == pm_t{-1, 0});
+                    REQUIRE(key_merge_symbols(pm_t{-1, -2, -3},
+                                              symbol_idx_map<symbol_set>{{0, {"a", "b"}}, {1, {"c"}}, {3, {"d", "e"}}},
+                                              symbol_set{"x", "y", "z"})
+                            == pm_t{0, 0, -1, 0, -2, -3, 0, 0});
+                    REQUIRE(key_merge_symbols(pm_t{-1, -2, -3}, symbol_idx_map<symbol_set>{{3, {"d", "e"}}},
+                                              symbol_set{"x", "y", "z"})
+                            == pm_t{-1, -2, -3, 0, 0});
+                    REQUIRE(key_merge_symbols(pm_t{-1, -2, -3}, symbol_idx_map<symbol_set>{{0, {"d", "e"}}},
+                                              symbol_set{"x", "y", "z"})
+                            == pm_t{0, 0, -1, -2, -3});
+                    REQUIRE(key_merge_symbols(pm_t{-1, -2, -3}, symbol_idx_map<symbol_set>{{1, {"d", "e"}}},
+                                              symbol_set{"x", "y", "z"})
+                            == pm_t{-1, 0, 0, -2, -3});
                 }
             }
         });
