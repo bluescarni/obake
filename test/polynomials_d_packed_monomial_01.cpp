@@ -68,7 +68,7 @@ TEST_CASE("homomorphic_hash_test")
                           && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>
 #endif
             ) {
-                using idist_t = std::uniform_int_distribution<int_t>;
+                using idist_t = std::uniform_int_distribution<detail::make_dependent_t<int_t, decltype(b)>>;
                 using param_t = typename idist_t::param_type;
                 idist_t dist;
 
