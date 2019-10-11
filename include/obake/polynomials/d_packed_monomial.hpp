@@ -26,6 +26,7 @@
 #include <mp++/integer.hpp>
 
 #include <obake/config.hpp>
+#include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/k_packing.hpp>
@@ -70,6 +71,9 @@ template <typename T, unsigned NBits,
         class d_packed_monomial
 {
 public:
+    // Alias for NBits.
+    static constexpr unsigned nbits = NBits;
+
     // The number of exponents to be packed into each T instance.
     static constexpr unsigned psize = static_cast<unsigned>(::obake::detail::limits_digits<T>) / NBits;
 
@@ -434,6 +438,11 @@ inline d_packed_monomial<T, NBits> key_merge_symbols(const d_packed_monomial<T, 
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
     T tmp;
+    // NOTE: store the merged monomial in a temporary vector and then pack it
+    // at the end.
+    // NOTE: perhaps we could use a small_vector here with a static size
+    // equal to psize, for the case in which everything fits in a single
+    // packed value.
     ::std::vector<T> tmp_v;
     for (const auto &n : c) {
         k_unpacker<T> ku(n, psize);
@@ -484,6 +493,202 @@ inline void monomial_mul(d_packed_monomial<T, NBits> &out, const d_packed_monomi
 
     // Verify the output as well.
     assert(polynomials::key_is_compatible(out, ss));
+}
+
+namespace detail
+{
+
+// Small helper to detect if 2 types
+// are the same d_packed_monomial type.
+template <typename, typename>
+struct same_d_packed_monomial : ::std::false_type {
+};
+
+template <typename T, unsigned NBits>
+struct same_d_packed_monomial<d_packed_monomial<T, NBits>, d_packed_monomial<T, NBits>> : ::std::true_type {
+};
+
+template <typename T, typename U>
+inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::value;
+
+} // namespace detail
+
+// Monomial overflow checking.
+// NOTE: this assumes that all the monomials in the 2 ranges
+// are compatible with ss.
+// NOTE: this can be parallelised. We need:
+// - a good heuristic (should not be too difficult given
+//   the constraints on d_packed_monomial),
+// - the random-access iterator concept.
+#if defined(OBAKE_HAVE_CONCEPTS)
+template <typename R1, typename R2>
+requires InputRange<R1> &&InputRange<R2> &&
+    detail::same_d_packed_monomial_v<remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+                                     remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
+#else
+template <typename R1, typename R2,
+          ::std::enable_if_t<
+              ::std::conjunction_v<is_input_range<R1>, is_input_range<R2>,
+                                   detail::same_d_packed_monomial<
+                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>>,
+              int> = 0>
+#endif
+    inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+{
+    using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
+    using value_type = typename pm_t::value_type;
+    using int_t = ::mppp::integer<1>;
+
+    const auto s_size = ss.size();
+
+    if (s_size == 0u) {
+        // If the monomials have zero variables,
+        // there cannot be overflow.
+        return true;
+    }
+
+    // Get out the begin/end iterators.
+    auto b1 = ::obake::begin(::std::forward<R1>(r1));
+    const auto e1 = ::obake::end(::std::forward<R1>(r1));
+    auto b2 = ::obake::begin(::std::forward<R2>(r2));
+    const auto e2 = ::obake::end(::std::forward<R2>(r2));
+
+    if (b1 == e1 || b2 == e2) {
+        // If either range is empty, there will be no overflow.
+        return true;
+    }
+
+    // Prepare the limits vectors.
+    auto [limits1, limits2] = [s_size]() {
+        if constexpr (is_signed_v<value_type>) {
+            ::std::vector<::std::pair<value_type, value_type>> minmax1, minmax2;
+            minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));
+            minmax2.reserve(static_cast<decltype(minmax2.size())>(s_size));
+
+            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2));
+        } else {
+            ::std::vector<value_type> max1, max2;
+            max1.reserve(static_cast<decltype(max1.size())>(s_size));
+            max2.reserve(static_cast<decltype(max2.size())>(s_size));
+
+            return ::std::make_tuple(::std::move(max1), ::std::move(max2));
+        }
+    }();
+
+    // Fetch the packed size.
+    constexpr auto psize = pm_t::psize;
+
+    // Init with the first elements of the ranges.
+    {
+        // NOTE: if the iterators return copies
+        // of the monomials, rather than references,
+        // capturing them via const
+        // ref will extend their lifetimes.
+        const auto &init1 = *b1;
+        const auto &init2 = *b2;
+
+        assert(polynomials::key_is_compatible(init1, ss));
+        assert(polynomials::key_is_compatible(init2, ss));
+
+        const auto &c1 = init1._container();
+        const auto &c2 = init2._container();
+        assert(c1.size() == c2.size());
+
+        symbol_idx idx = 0;
+        value_type tmp1, tmp2;
+
+        for (decltype(c1.size()) i = 0; i < c1.size(); ++i) {
+            k_unpacker<value_type> ku1(c1[i], psize), ku2(c2[i], psize);
+
+            for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+                ku1 >> tmp1;
+                ku2 >> tmp2;
+
+                if constexpr (is_signed_v<value_type>) {
+                    limits1.emplace_back(tmp1, tmp1);
+                    limits2.emplace_back(tmp2, tmp2);
+                } else {
+                    limits1.emplace_back(tmp1);
+                    limits2.emplace_back(tmp2);
+                }
+            }
+        }
+    }
+
+    // Helper to examine the rest of the ranges.
+    auto update_minmax = [&ss, s_size](auto b, auto e, auto &limits) {
+        ::obake::detail::ignore(ss);
+
+        for (++b; b != e; ++b) {
+            const auto &cur = *b;
+
+            assert(polynomials::key_is_compatible(cur, ss));
+
+            symbol_idx idx = 0;
+            value_type tmp;
+            for (const auto &n : cur._container()) {
+                k_unpacker<value_type> ku(n, psize);
+
+                for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+                    ku >> tmp;
+
+                    if constexpr (is_signed_v<value_type>) {
+                        limits[idx].first = ::std::min(limits[idx].first, tmp);
+                        limits[idx].second = ::std::max(limits[idx].second, tmp);
+                    } else {
+                        limits[idx] = ::std::max(limits[idx], tmp);
+                    }
+                }
+            }
+        }
+    };
+
+    // Examine the rest of the ranges.
+    update_minmax(b1, e1, limits1);
+    update_minmax(b2, e2, limits2);
+
+    // Fetch the nbits value for pm_t.
+    constexpr auto nbits = pm_t::nbits;
+
+    // Now add the limits via interval arithmetics
+    // and check for overflow. Use mppp::integer for the check.
+    if constexpr (is_signed_v<value_type>) {
+        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+            const auto add_min = int_t{limits1[i].first} + limits2[i].first;
+            const auto add_max = int_t{limits1[i].second} + limits2[i].second;
+
+            // NOTE: need to special-case s_size == 1, in which case
+            // the component limits are the full numerical range of the type.
+            const auto lim_min
+                = s_size == 1u ? ::obake::detail::limits_min<value_type>
+                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[0];
+            const auto lim_max
+                = s_size == 1u ? ::obake::detail::limits_max<value_type>
+                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[1];
+
+            // NOTE: an overflow condition will likely result in an exception
+            // or some other error handling. Optimise for the non-overflow case.
+            if (obake_unlikely(add_min < lim_min || add_max > lim_max)) {
+                return false;
+            }
+        }
+    } else {
+        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+            const auto add_max = int_t{limits1[i]} + limits2[i];
+
+            // NOTE: like above, special-case s_size == 1.
+            const auto lim_max
+                = s_size == 1u ? ::obake::detail::limits_max<value_type>
+                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+
+            if (obake_unlikely(add_max > lim_max)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 } // namespace polynomials

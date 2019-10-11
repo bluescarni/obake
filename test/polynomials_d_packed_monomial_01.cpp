@@ -7,9 +7,11 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <initializer_list>
+#include <list>
 #include <random>
 #include <tuple>
 #include <type_traits>
+#include <vector>
 
 #include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
@@ -19,6 +21,7 @@
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
+#include <obake/polynomials/monomial_range_overflow_check.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -194,6 +197,49 @@ TEST_CASE("monomial_mul_test")
                 monomial_mul(a, b, c, symbol_set{"x", "y", "z"});
                 REQUIRE(a == pm_t{5, 7, 9});
             }
+        });
+    });
+}
+
+TEST_CASE("range_overflow_check_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto bs) {
+            constexpr auto bw = decltype(bs)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            // Check the type trait.
+            REQUIRE(are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, std::vector<pm_t>>);
+            REQUIRE(are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, std::list<pm_t>>);
+            REQUIRE(are_overflow_testable_monomial_ranges_v<std::list<pm_t>, std::vector<pm_t>>);
+
+            REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, void>);
+            REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<pm_t>>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+            REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::vector<pm_t>>);
+            REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::list<pm_t>>);
+            REQUIRE(OverflowTestableMonomialRanges<std::list<pm_t>, std::vector<pm_t>>);
+
+            REQUIRE(!OverflowTestableMonomialRanges<std::vector<pm_t>, void>);
+            REQUIRE(!OverflowTestableMonomialRanges<void, std::vector<pm_t>>);
+#endif
+
+            std::vector<pm_t> v1, v2;
+            symbol_set ss;
+
+            // Empty symbol set.
+            REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+
+            // Both empty ranges.
+            ss = symbol_set{"x", "y", "z"};
+            REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+
+            // Empty second range.
+            v1.emplace_back(pm_t{1, 0, 1});
+            REQUIRE(monomial_range_overflow_check(v1, v2, ss));
         });
     });
 }
