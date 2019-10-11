@@ -534,42 +534,31 @@ template <typename R1, typename R2,
         }
     }
 
+    // Helper to examine the rest of the ranges.
+    auto update_minmax = [&ss, s_size](auto b, auto e, auto &limits) {
+        ::obake::detail::ignore(ss);
+
+        for (++b; b != e; ++b) {
+            const auto &cur = *b;
+
+            assert(polynomials::key_is_compatible(cur, ss));
+
+            k_unpacker<value_type> ku(cur.get_value(), s_size);
+            value_type tmp;
+            for (decltype(limits.size()) i = 0; i < s_size; ++i) {
+                ku >> tmp;
+                if constexpr (is_signed_v<value_type>) {
+                    limits[i].first = ::std::min(limits[i].first, tmp);
+                    limits[i].second = ::std::max(limits[i].second, tmp);
+                } else {
+                    limits[i] = ::std::max(limits[i], tmp);
+                }
+            }
+        }
+    };
     // Examine the rest of the ranges.
-    for (++b1; b1 != e1; ++b1) {
-        const auto &cur = *b1;
-
-        assert(polynomials::key_is_compatible(cur, ss));
-
-        k_unpacker<value_type> ku(cur.get_value(), s_size);
-        value_type tmp;
-        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
-            ku >> tmp;
-            if constexpr (is_signed_v<value_type>) {
-                limits1[i].first = ::std::min(limits1[i].first, tmp);
-                limits1[i].second = ::std::max(limits1[i].second, tmp);
-            } else {
-                limits1[i] = ::std::max(limits1[i], tmp);
-            }
-        }
-    }
-
-    for (++b2; b2 != e2; ++b2) {
-        const auto &cur = *b2;
-
-        assert(polynomials::key_is_compatible(cur, ss));
-
-        k_unpacker<value_type> ku(cur.get_value(), s_size);
-        value_type tmp;
-        for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
-            ku >> tmp;
-            if constexpr (is_signed_v<value_type>) {
-                limits2[i].first = ::std::min(limits2[i].first, tmp);
-                limits2[i].second = ::std::max(limits2[i].second, tmp);
-            } else {
-                limits2[i] = ::std::max(limits2[i], tmp);
-            }
-        }
-    }
+    update_minmax(b1, e1, limits1);
+    update_minmax(b2, e2, limits2);
 
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
