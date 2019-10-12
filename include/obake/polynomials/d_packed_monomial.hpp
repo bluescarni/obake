@@ -28,10 +28,14 @@
 #include <obake/config.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
+#include <obake/detail/mppp_utils.hpp>
 #include <obake/detail/to_string.hpp>
+#include <obake/exceptions.hpp>
 #include <obake/k_packing.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/math/safe_convert.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
+#include <obake/polynomials/monomial_pow.hpp>
 #include <obake/ranges.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -123,8 +127,8 @@ public:
 
             // This will be executed only at the last iteration
             // of the for loop, and it will zero pad
-            // the last element of the container if n does not
-            // divide exactly psize.
+            // the last element of the container if psize does not
+            // divide exactly n.
             for (; j < psize; ++j) {
                 kp << T(0);
             }
@@ -760,6 +764,81 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
     assert(si_it == si_it_end);
 
     return static_cast<T>(retval);
+}
+
+// Monomial exponentiation.
+// NOTE: this assumes that d is compatible with ss.
+template <typename T, unsigned NBits, typename U,
+          ::std::enable_if_t<::std::disjunction_v<::obake::detail::is_mppp_integer<U>,
+                                                  is_safely_convertible<const U &, ::mppp::integer<1> &>>,
+                             int> = 0>
+inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits> &d, const U &n, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+
+    // NOTE: exp will be a const ref if n is already
+    // an mppp integer, a new value otherwise.
+    decltype(auto) exp = [&n]() -> decltype(auto) {
+        if constexpr (::obake::detail::is_mppp_integer_v<U>) {
+            return n;
+        } else {
+            ::mppp::integer<1> ret;
+
+            if (obake_unlikely(!::obake::safe_convert(ret, n))) {
+                if constexpr (is_stream_insertable_v<const U &>) {
+                    // Provide better error message if U is ostreamable.
+                    ::std::ostringstream oss;
+                    static_cast<::std::ostream &>(oss) << n;
+                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent ("
+                                                             + oss.str()
+                                                             + ") cannot be converted into an integral value");
+                } else {
+                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
+                                                         "cannot be converted into an integral value");
+                }
+            }
+
+            return ret;
+        }
+    }();
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto s_size = ss.size();
+
+    // Prepare the return value.
+    const auto &c_in = d._container();
+    d_packed_monomial<T, NBits> retval;
+    auto &c_out = retval._container();
+    c_out.reserve(c_in.size());
+
+    // Unpack, multiply in arbitrary-precision arithmetic, re-pack.
+    T tmp;
+    symbol_idx idx = 0;
+    remove_cvref_t<decltype(exp)> tmp_int;
+    for (const auto &n : c_in) {
+        k_unpacker<T> ku(n, psize);
+        k_packer<T> kp(psize);
+
+        auto j = 0u;
+        for (; j < psize && idx < s_size; ++j, ++idx) {
+            ku >> tmp;
+            tmp_int = tmp;
+            tmp_int *= exp;
+            kp << static_cast<T>(tmp_int);
+        }
+
+        // NOTE: this loop will be executed only at the
+        // last n, and only if psize does not divide
+        // exactly s_size.
+        for (; j < psize; ++j) {
+            kp << T(0);
+        }
+
+        c_out.push_back(kp.get());
+    }
+
+    return retval;
 }
 
 } // namespace polynomials
