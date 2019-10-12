@@ -697,6 +697,71 @@ template <typename R1, typename R2,
     return true;
 }
 
+// Implementation of key_degree().
+// NOTE: this assumes that d is compatible with ss.
+template <typename T, unsigned NBits>
+inline T key_degree(const d_packed_monomial<T, NBits> &d, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto s_size = ss.size();
+
+    symbol_idx idx = 0;
+    T tmp;
+    // NOTE: do the computation in multiprecision,
+    // convert back to T at the end.
+    ::mppp::integer<1> retval;
+    for (const auto &n : d._container()) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+            ku >> tmp;
+            retval += tmp;
+        }
+    }
+
+    return static_cast<T>(retval);
+}
+
+// Implementation of key_p_degree().
+// NOTE: this assumes that d and si are compatible with ss.
+template <typename T, unsigned NBits>
+inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set &si, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+    assert(si.empty() || *(si.end() - 1) < ss.size());
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto s_size = ss.size();
+
+    symbol_idx idx = 0;
+    T tmp;
+    auto si_it = si.begin();
+    const auto si_it_end = si.end();
+    // NOTE: do the computation in multiprecision,
+    // convert back to T at the end.
+    ::mppp::integer<1> retval;
+    for (const auto &n : d._container()) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && idx < s_size && si_it != si_it_end; ++j, ++idx) {
+            ku >> tmp;
+
+            if (idx == *si_it) {
+                retval += tmp;
+                ++si_it;
+            }
+        }
+    }
+
+    assert(si_it == si_it_end);
+
+    return static_cast<T>(retval);
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.

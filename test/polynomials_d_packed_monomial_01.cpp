@@ -18,7 +18,9 @@
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
 #include <obake/k_packing.hpp>
+#include <obake/key/key_degree.hpp>
 #include <obake/key/key_merge_symbols.hpp>
+#include <obake/key/key_p_degree.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
@@ -345,6 +347,103 @@ TEST_CASE("range_overflow_check_test")
                     }
                 }
             }
+        });
+    });
+}
+
+TEST_CASE("degree_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto bs) {
+            constexpr auto bw = decltype(bs)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            if constexpr (bw >= 6u) {
+                REQUIRE(key_degree(pm_t{}, symbol_set{}) == int_t(0));
+                REQUIRE(key_degree(pm_t{1}, symbol_set{"x"}) == int_t(1));
+                REQUIRE(key_degree(pm_t{4}, symbol_set{"x"}) == int_t(4));
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(key_degree(pm_t{-1}, symbol_set{"x"}) == int_t(-1));
+                    REQUIRE(key_degree(pm_t{-4}, symbol_set{"x"}) == int_t(-4));
+                }
+
+                REQUIRE(key_degree(pm_t{1, 2}, symbol_set{"x", "y"}) == int_t(3));
+                REQUIRE(key_degree(pm_t{2, 3}, symbol_set{"x", "y"}) == int_t(5));
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(key_degree(pm_t{-1, 2}, symbol_set{"x", "y"}) == int_t(1));
+                    REQUIRE(key_degree(pm_t{-2, 5}, symbol_set{"x", "y"}) == int_t(3));
+                }
+            }
+
+            REQUIRE(is_key_with_degree_v<pm_t>);
+            REQUIRE(is_key_with_degree_v<pm_t &>);
+            REQUIRE(is_key_with_degree_v<const pm_t &>);
+            REQUIRE(is_key_with_degree_v<pm_t &&>);
+        });
+    });
+}
+
+TEST_CASE("p_degree_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto bs) {
+            constexpr auto bw = decltype(bs)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            if constexpr (bw >= 6u) {
+                REQUIRE(key_p_degree(pm_t{}, symbol_idx_set{}, symbol_set{}) == int_t(0));
+                REQUIRE(key_p_degree(pm_t{1}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(1));
+                REQUIRE(key_p_degree(pm_t{1}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+                REQUIRE(key_p_degree(pm_t{12}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(12));
+                REQUIRE(key_p_degree(pm_t{12}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(key_p_degree(pm_t{-1}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(-1));
+                    REQUIRE(key_p_degree(pm_t{-1}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+                    REQUIRE(key_p_degree(pm_t{-12}, symbol_idx_set{0}, symbol_set{"x"}) == int_t(-12));
+                    REQUIRE(key_p_degree(pm_t{-12}, symbol_idx_set{}, symbol_set{"x"}) == int_t(0));
+                }
+
+                REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(3));
+                REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(1));
+                REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(2));
+                REQUIRE(key_p_degree(pm_t{1, 2}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+                REQUIRE(key_p_degree(pm_t{12, 3}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(15));
+                REQUIRE(key_p_degree(pm_t{12, 3}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(12));
+                REQUIRE(key_p_degree(pm_t{12, 3}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(3));
+                REQUIRE(key_p_degree(pm_t{12, 3}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0, 1, 2}, symbol_set{"x", "y", "z"}) == int_t(6));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{}, symbol_set{"x", "y", "z"}) == int_t(0));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0}, symbol_set{"x", "y", "z"}) == int_t(1));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{1}, symbol_set{"x", "y", "z"}) == int_t(2));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{2}, symbol_set{"x", "y", "z"}) == int_t(3));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0, 1}, symbol_set{"x", "y", "z"}) == int_t(3));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{1, 2}, symbol_set{"x", "y", "z"}) == int_t(5));
+                REQUIRE(key_p_degree(pm_t{1, 2, 3}, symbol_idx_set{0, 2}, symbol_set{"x", "y", "z"}) == int_t(4));
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(1));
+                    REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(-1));
+                    REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(2));
+                    REQUIRE(key_p_degree(pm_t{-1, 2}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+                    REQUIRE(key_p_degree(pm_t{-12, 5}, symbol_idx_set{0, 1}, symbol_set{"x", "y"}) == int_t(-7));
+                    REQUIRE(key_p_degree(pm_t{-12, 5}, symbol_idx_set{0}, symbol_set{"x", "y"}) == int_t(-12));
+                    REQUIRE(key_p_degree(pm_t{-12, 5}, symbol_idx_set{1}, symbol_set{"x", "y"}) == int_t(5));
+                    REQUIRE(key_p_degree(pm_t{-12, 5}, symbol_idx_set{}, symbol_set{"x", "y"}) == int_t(0));
+                }
+            }
+
+            REQUIRE(is_key_with_p_degree_v<pm_t>);
+            REQUIRE(is_key_with_p_degree_v<pm_t &>);
+            REQUIRE(is_key_with_p_degree_v<const pm_t &>);
+            REQUIRE(is_key_with_p_degree_v<pm_t &&>);
         });
     });
 }
