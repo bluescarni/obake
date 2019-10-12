@@ -389,7 +389,9 @@ struct poly_mul_impl_pair_transform {
 // This function will:
 // - estimate the size of the product of two input polynomials,
 // - compute the total number of term-by-term multiplications that will
-//   be performed in the computation of the polynomial product.
+//   be performed in the computation of the polynomial product
+//   (which could be different from the product of the sizes of the
+//   factors due to truncation).
 // S1 and S2 are the types of the polyomials, x and y the polynomials
 // represented as vectors of terms. The extra arguments represent
 // the truncation limits.
@@ -550,6 +552,9 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                     local_set ls;
                     ls.reserve(::obake::safe_cast<decltype(ls.size())>(vidx1.size()));
 
+                    // Temporary object for monomial multiplications.
+                    key_type tmp_key(ss);
+
                     for (auto i = range.begin(); i != range.end(); ++i) {
                         // Init a random engine for this trial, mixing compile
                         // time randomness with the current trial index.
@@ -565,9 +570,6 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                         // that participate in the multiplication. It is used only in case
                         // there are no collisions at the end of the loop below.
                         ::mppp::integer<1> acc_y;
-
-                        // Temporary object for monomial multiplications.
-                        key_type tmp_key(ss);
 
                         for (auto idx1 : vidx1_copy) {
                             // Get the upper limit for indexing in vidx2.
