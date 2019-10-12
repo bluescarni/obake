@@ -617,7 +617,12 @@ template <typename R1, typename R2,
     }
 
     // Helper to examine the rest of the ranges.
-    auto update_minmax = [&ss, s_size](auto b, auto e, auto &limits) {
+    auto update_minmax = [&ss, s_size
+#if !defined(_MSC_VER) || defined(__clang__)
+                          ,
+                          psize
+#endif
+    ](auto b, auto e, auto &limits) {
         ::obake::detail::ignore(ss);
 
         for (++b; b != e; ++b) {
