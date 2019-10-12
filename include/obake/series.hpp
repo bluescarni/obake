@@ -843,6 +843,9 @@ public:
         }
     }
 
+    // NOTE: for segmented series, we could actually clear()
+    // the tables in parallel so that the most expensive part
+    // of the destruction process is faster.
     ~series()
     {
 #if !defined(NDEBUG)
