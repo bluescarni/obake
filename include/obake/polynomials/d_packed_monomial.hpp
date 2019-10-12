@@ -618,7 +618,7 @@ template <typename R1, typename R2,
 
     // Helper to examine the rest of the ranges.
     auto update_minmax = [&ss, s_size
-#if !defined(_MSC_VER) || defined(__clang__)
+#if defined(_MSC_VER) && !defined(__clang__)
                           ,
                           psize
 #endif
@@ -658,34 +658,35 @@ template <typename R1, typename R2,
 
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
-    if constexpr (is_signed_v<value_type>) {
-        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+    for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+        if constexpr (is_signed_v<value_type>) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
 
-            // NOTE: need to special-case s_size == 1, in which case
+            // NOTE: need to special-case nbits == bit width, in which case
             // the component limits are the full numerical range of the type.
             const auto lim_min
-                = s_size == 1u ? ::obake::detail::limits_min<value_type>
-                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[0];
+                = nbits == static_cast<unsigned>(::obake::detail::limits_digits<value_type>)
+                      ? ::obake::detail::limits_min<value_type>
+                      : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i % psize))[0];
             const auto lim_max
-                = s_size == 1u ? ::obake::detail::limits_max<value_type>
-                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[1];
+                = nbits == static_cast<unsigned>(::obake::detail::limits_digits<value_type>)
+                      ? ::obake::detail::limits_max<value_type>
+                      : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i % psize))[1];
 
             // NOTE: an overflow condition will likely result in an exception
             // or some other error handling. Optimise for the non-overflow case.
             if (obake_unlikely(add_min < lim_min || add_max > lim_max)) {
                 return false;
             }
-        }
-    } else {
-        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
+        } else {
             const auto add_max = int_t{limits1[i]} + limits2[i];
 
-            // NOTE: like above, special-case s_size == 1.
+            // NOTE: like above, special-case nbits == bit width.
             const auto lim_max
-                = s_size == 1u ? ::obake::detail::limits_max<value_type>
-                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
+                = nbits == static_cast<unsigned>(::obake::detail::limits_digits<value_type>)
+                      ? ::obake::detail::limits_max<value_type>
+                      : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i % psize));
 
             if (obake_unlikely(add_max > lim_max)) {
                 return false;

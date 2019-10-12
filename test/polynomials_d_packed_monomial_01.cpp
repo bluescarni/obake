@@ -17,6 +17,7 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
+#include <obake/k_packing.hpp>
 #include <obake/key/key_merge_symbols.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
@@ -240,6 +241,110 @@ TEST_CASE("range_overflow_check_test")
             // Empty second range.
             v1.emplace_back(pm_t{1, 0, 1});
             REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+
+            if constexpr (bw >= 6u) {
+                if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
+                    // Special-casing for maximal packing.
+                    v1.clear();
+                    v2.clear();
+                    ss = symbol_set{"x", "y", "z"};
+
+                    v1.emplace_back(pm_t{1, 2, 3});
+                    v2.emplace_back(pm_t{2, 4, 5});
+                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+                    v1.emplace_back(pm_t{4, 6, 8});
+                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+                    v1.emplace_back(pm_t{2, 7, 16});
+                    v1.emplace_back(pm_t{2, 4, 9});
+                    v1.emplace_back(pm_t{0, 0, 2});
+                    v2.emplace_back(pm_t{2, 0, 5});
+                    v2.emplace_back(pm_t{1, 0, 64});
+                    v2.emplace_back(pm_t{0, 0, 0});
+                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+
+                    if constexpr (is_signed_v<int_t>) {
+                        v1.emplace_back(pm_t{-2, -4, 6});
+                        v1.emplace_back(pm_t{2, 5, -9});
+                        v1.emplace_back(pm_t{0, 4, -5});
+                        v2.emplace_back(pm_t{-2, 4, 5});
+                        v2.emplace_back(pm_t{1, -67, -6});
+                        v2.emplace_back(pm_t{0, 1, 1});
+                        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+                    }
+
+                    // Overflow check.
+                    if constexpr (is_signed_v<int_t>) {
+                        v1.emplace_back(pm_t{int_t(1), int_t(2), detail::limits_min<int_t>});
+                        REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                        v1.pop_back();
+
+                        v1.emplace_back(pm_t{detail::limits_max<int_t>, int_t(6), int_t(7)});
+                        REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                        v1.pop_back();
+                    } else {
+                        v1.emplace_back(pm_t{detail::limits_max<int_t>, int_t(1), int_t(2)});
+                        REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                    }
+                } else {
+                    // Simple tests.
+                    v2.emplace_back(pm_t{1, 2, 3});
+                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+                    v1.emplace_back(pm_t{4, 5, 6});
+                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+                    v1.emplace_back(pm_t{2, 1, 3});
+                    v1.emplace_back(pm_t{2, 1, 7});
+                    v1.emplace_back(pm_t{0, 1, 0});
+                    v2.emplace_back(pm_t{2, 0, 3});
+                    v2.emplace_back(pm_t{1, 1, 1});
+                    v2.emplace_back(pm_t{0, 4, 1});
+                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+
+                    if constexpr (is_signed_v<int_t>) {
+                        // Negatives as well.
+                        v1.emplace_back(pm_t{-2, 1, 3});
+                        v1.emplace_back(pm_t{2, 1, -7});
+                        v1.emplace_back(pm_t{0, -1, 0});
+                        v2.emplace_back(pm_t{-2, 0, 3});
+                        v2.emplace_back(pm_t{1, -1, -1});
+                        v2.emplace_back(pm_t{0, -4, 1});
+                        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+                    }
+
+                    // Check overflow now.
+                    {
+                        // Get the limits of the component at index 1.
+                        const auto &lims = detail::k_packing_get_climits<int_t>(bw, 1);
+                        if constexpr (is_signed_v<int_t>) {
+                            v1.emplace_back(pm_t{int_t(0), lims[0], int_t(4)});
+                            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                            v1.pop_back();
+
+                            v1.emplace_back(pm_t{int_t(0), lims[1], int_t(4)});
+                            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                            v1.pop_back();
+                        } else {
+                            v1.emplace_back(pm_t{int_t(0), lims, int_t(4)});
+                            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                        }
+                    }
+                    {
+                        // Get the limits of the component at index 0.
+                        const auto &lims = detail::k_packing_get_climits<int_t>(bw, 0);
+                        if constexpr (is_signed_v<int_t>) {
+                            v1.emplace_back(pm_t{lims[0], int_t(0), int_t(4)});
+                            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                            v1.pop_back();
+
+                            v1.emplace_back(pm_t{lims[1], int_t(0), int_t(4)});
+                            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                            v1.pop_back();
+                        } else {
+                            v1.emplace_back(pm_t{lims, int_t(0), int_t(4)});
+                            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+                        }
+                    }
+                }
+            }
         });
     });
 }
