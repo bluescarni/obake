@@ -816,8 +816,8 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
     T tmp;
     symbol_idx idx = 0;
     remove_cvref_t<decltype(exp)> tmp_int;
-    for (const auto &n : c_in) {
-        k_unpacker<T> ku(n, psize);
+    for (const auto &np : c_in) {
+        k_unpacker<T> ku(np, psize);
         k_packer<T> kp(psize);
 
         auto j = 0u;
@@ -829,7 +829,7 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
         }
 
         // NOTE: this loop will be executed only at the
-        // last n, and only if psize does not divide
+        // last np, and only if psize does not divide
         // exactly s_size.
         for (; j < psize; ++j) {
             kp << T(0);
