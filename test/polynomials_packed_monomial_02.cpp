@@ -10,10 +10,14 @@
 #include <sstream>
 #include <tuple>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+
 #include <obake/config.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/key/key_tex_stream_insert.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -126,6 +130,54 @@ TEST_CASE("key_stream_insert_test")
             key_tex_stream_insert(oss, pm_t{-2, 0, 0}, symbol_set{"x", "y", "z"});
             REQUIRE(oss.str() == "\\frac{1}{{x}^{2}}");
             oss.str("");
+        }
+    });
+}
+
+TEST_CASE("s11n_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+        using pm_t = packed_monomial<int_t>;
+
+        REQUIRE(boost::serialization::tracking_level<pm_t>::value == boost::serialization::track_never);
+
+        std::stringstream ss;
+        pm_t tmp;
+
+        {
+            boost::archive::binary_oarchive oarchive(ss);
+            oarchive << pm_t{1, 2, 3};
+        }
+        {
+            boost::archive::binary_iarchive iarchive(ss);
+            iarchive >> tmp;
+        }
+        REQUIRE(tmp == pm_t{1, 2, 3});
+        ss.str("");
+
+        {
+            boost::archive::binary_oarchive oarchive(ss);
+            oarchive << pm_t{};
+        }
+        {
+            boost::archive::binary_iarchive iarchive(ss);
+            iarchive >> tmp;
+        }
+        REQUIRE(tmp == pm_t{});
+        ss.str("");
+
+        if constexpr (is_signed_v<int_t>) {
+            {
+                boost::archive::binary_oarchive oarchive(ss);
+                oarchive << pm_t{-1, 2, -3};
+            }
+            {
+                boost::archive::binary_iarchive iarchive(ss);
+                iarchive >> tmp;
+            }
+            REQUIRE(tmp == pm_t{-1, 2, -3});
+            ss.str("");
         }
     });
 }

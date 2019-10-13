@@ -36,6 +36,7 @@
 #include <obake/math/safe_convert.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/ranges.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -52,6 +53,8 @@ template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
 #endif
 class packed_monomial
 {
+    friend class ::boost::serialization::access;
+
 public:
     // Alias for T.
     using value_type = T;
@@ -153,6 +156,14 @@ public:
     constexpr void _set_value(const T &n)
     {
         m_value = n;
+    }
+
+private:
+    // Serialisation.
+    template <class Archive>
+    void serialize(Archive &ar, unsigned)
+    {
+        ar &m_value;
     }
 
 private:
@@ -1009,5 +1020,15 @@ template <typename T>
 inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
 
 } // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for packed_monomial.
+template <typename T>
+struct tracking_level<::obake::packed_monomial<T>> : ::obake::detail::s11n_no_tracking<::obake::packed_monomial<T>> {
+};
+
+} // namespace boost::serialization
 
 #endif
