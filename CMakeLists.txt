@@ -218,6 +218,7 @@ target_link_libraries(obake PUBLIC
     absl::flat_hash_set
     absl::hash
     Boost::boost
+    Boost::serialization
     TBB::tbb
 )
 if(OBAKE_WITH_LIBBACKTRACE)
