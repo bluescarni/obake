@@ -1048,6 +1048,58 @@ inline void key_trim_identify(::std::vector<int> &v, const d_packed_monomial<T, 
     }
 }
 
+// Eliminate from d the exponents at the indices
+// specifed by si.
+// NOTE: this requires that d is compatible with ss,
+// and that si is consistent with ss.
+template <typename T, unsigned NBits>
+inline d_packed_monomial<T, NBits> key_trim(const d_packed_monomial<T, NBits> &d, const symbol_idx_set &si,
+                                            const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+    // NOTE: si cannot be larger than ss, and its last element must be smaller
+    // than the size of ss.
+    assert(si.size() <= ss.size() && (si.empty() || *(si.cend() - 1) < ss.size()));
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto s_size = ss.size();
+
+    // NOTE: store the trimmed monomial in a temporary vector and then pack it
+    // at the end.
+    // NOTE: perhaps we could use a small_vector here with a static size
+    // equal to psize, for the case in which everything fits in a single
+    // packed value.
+    // NOTE: here we also know that the output number of exponents is
+    // s_size - si.size(), thus we can probably pre-allocate storage
+    // in tmp_v and/or the output monomial.
+    ::std::vector<T> tmp_v;
+
+    symbol_idx idx = 0;
+    T tmp;
+    auto si_it = si.cbegin();
+    const auto si_end = si.cend();
+    for (const auto &n : d._container()) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+            ku >> tmp;
+
+            if (si_it != si_end && *si_it == idx) {
+                // The current exponent must be trimmed. Don't
+                // add it to tmp_v, and move to the next item in the trim set.
+                ++si_it;
+            } else {
+                // The current exponent must be kept.
+                tmp_v.push_back(tmp);
+            }
+        }
+    }
+    assert(si_it == si_end);
+
+    return d_packed_monomial<T, NBits>(tmp_v);
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
