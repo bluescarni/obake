@@ -638,7 +638,7 @@ namespace detail
 
 // Helpers for the detection of the typedefs in std::iterator_traits.
 // Use a macro (yuck) to reduce typing.
-#define OBAKE_DECLARE_IT_TRAITS_TYPE(type)                                                                           \
+#define OBAKE_DECLARE_IT_TRAITS_TYPE(type)                                                                             \
     template <typename T>                                                                                              \
     using it_traits_##type = typename ::std::iterator_traits<T>::type;
 
@@ -991,6 +991,22 @@ template <typename T>
 OBAKE_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
 
 #endif
+
+namespace detail
+{
+
+// A small utility to make a type dependent on
+// another one. This is sometimes useful
+// in if-constexpr contexts (e.g., see use in the tests).
+template <typename T, typename>
+struct make_dependent {
+    using type = T;
+};
+
+template <typename T, typename U>
+using make_dependent_t = typename make_dependent<T, U>::type;
+
+} // namespace detail
 
 } // namespace obake
 
