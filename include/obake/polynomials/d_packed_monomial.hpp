@@ -1100,6 +1100,71 @@ inline d_packed_monomial<T, NBits> key_trim(const d_packed_monomial<T, NBits> &d
     return d_packed_monomial<T, NBits>(tmp_v);
 }
 
+// Monomial differentiation.
+// NOTE: this requires that d is compatible with ss,
+// and idx is within ss.
+template <typename T, unsigned NBits>
+inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_monomial<T, NBits> &d,
+                                                                 const symbol_idx &idx, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+    assert(idx < ss.size());
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto s_size = ss.size();
+
+    // Init the return value.
+    const auto &in_c = d._container();
+    d_packed_monomial<T, NBits> out_dpm;
+    auto &out_c = out_dpm._container();
+    out_c.reserve(in_c.size());
+
+    symbol_idx i = 0;
+    T tmp, ret_exp(0);
+    for (const auto &n : in_c) {
+        k_unpacker<T> ku(n, psize);
+        k_packer<T> kp(psize);
+
+        auto j = 0u;
+        for (; j < psize && i < s_size; ++j, ++i) {
+            ku >> tmp;
+
+            if (i == idx && tmp != T(0)) {
+                // NOTE: the exponent of the differentiation variable
+                // is not zero. Take the derivative.
+                // NOTE: if the exponent is zero, ret_exp will remain to
+                // its initial value (0) and the output monomial
+                // will be the same as p.
+                if (obake_unlikely(tmp == ::obake::detail::limits_min<T>)) {
+                    obake_throw(::std::overflow_error,
+                                "Overflow detected while computing the derivative of a dynamic packed monomial: the "
+                                "exponent of "
+                                "the variable with respect to which the differentiation is being taken ('"
+                                    + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too small ("
+                                    + ::obake::detail::to_string(tmp)
+                                    + "), and taking the derivative would generate a negative overflow");
+                }
+                ret_exp = tmp--;
+            }
+
+            kp << tmp;
+        }
+
+        // This will be executed only at the last iteration
+        // of the for loop, and it will zero pad
+        // the last element of the container if psize does not
+        // divide exactly s_size.
+        for (; j < psize; ++j) {
+            kp << T(0);
+        }
+
+        out_c.push_back(kp.get());
+    }
+
+    return ::std::make_pair(ret_exp, ::std::move(out_dpm));
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
