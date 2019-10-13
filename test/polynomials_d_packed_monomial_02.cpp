@@ -11,6 +11,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
@@ -20,6 +21,7 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/key/key_evaluate.hpp>
+#include <obake/key/key_trim_identify.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/symbols.hpp>
@@ -196,6 +198,69 @@ TEST_CASE("monomial_subs_test")
                     REQUIRE(monomial_subs(pm_t{-2, 3}, symbol_idx_map<double>{{0, 3.5}}, symbol_set{"x", "y"})
                             == std::make_pair(std::pow(3.5, -2.), pm_t{0, 3}));
                 }
+            }
+        });
+    });
+}
+
+TEST_CASE("key_trim_identify_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(is_trim_identifiable_key_v<pm_t>);
+            REQUIRE(is_trim_identifiable_key_v<pm_t &>);
+            REQUIRE(is_trim_identifiable_key_v<const pm_t &>);
+            REQUIRE(is_trim_identifiable_key_v<const pm_t>);
+
+            if constexpr (bw >= 6u) {
+                std::vector<int> v;
+                key_trim_identify(v, pm_t{}, symbol_set{});
+                REQUIRE(v.empty());
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{1, 2, 3}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{0, 0, 0});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{0, 2, 3}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{1, 0, 0});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{1, 0, 3}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{0, 1, 0});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{1, 2, 0}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{0, 0, 1});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{0, 2, 0}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{1, 0, 1});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{0, 0, 3}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{1, 1, 0});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{1, 0, 0}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{0, 1, 1});
+                v.clear();
+
+                v.resize(3, 1);
+                key_trim_identify(v, pm_t{0, 0, 0}, symbol_set{"x", "y", "z"});
+                REQUIRE(v == std::vector<int>{1, 1, 1});
+                v.clear();
             }
         });
     });
