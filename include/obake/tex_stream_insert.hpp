@@ -57,7 +57,7 @@ inline constexpr auto tex_stream_insert = not_implemented;
 namespace detail
 {
 
-#if defined(MPPP_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
 
 // Implementation for 128-bit integers.
 OBAKE_DLL_PUBLIC void tex_stream_insert(::std::ostream &, const __int128_t &);
