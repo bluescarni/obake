@@ -841,6 +841,18 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
     return retval;
 }
 
+// Specialise byte_size().
+// NOTE: currently there does not seem to be
+// a way to ask boost::small_vector whether
+// dynamic or static storage is being used.
+// Thus, this function will slightly overestimate
+// the actual byte size of d.
+template <typename T, unsigned NBits>
+inline ::std::size_t byte_size(const d_packed_monomial<T, NBits> &d)
+{
+    return sizeof(d) + d._container().capacity() * sizeof(T);
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
