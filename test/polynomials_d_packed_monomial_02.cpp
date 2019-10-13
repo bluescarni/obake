@@ -10,6 +10,7 @@
 #include <initializer_list>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
@@ -20,6 +21,7 @@
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/key/key_evaluate.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
+#include <obake/polynomials/monomial_subs.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -124,6 +126,76 @@ TEST_CASE("key_evaluate_test")
                 REQUIRE(
                     std::is_same_v<mppp::rational<1>,
                                    decltype(key_evaluate(pm_t{}, symbol_idx_map<mppp::rational<1>>{}, symbol_set{}))>);
+            }
+        });
+    });
+}
+
+TEST_CASE("monomial_subs_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(!is_substitutable_monomial_v<pm_t, void>);
+            REQUIRE(!is_substitutable_monomial_v<pm_t, int>);
+            REQUIRE(is_substitutable_monomial_v<pm_t, mppp::integer<1>>);
+            REQUIRE(is_substitutable_monomial_v<pm_t &, mppp::integer<1>>);
+            REQUIRE(is_substitutable_monomial_v<const pm_t &, mppp::integer<1>>);
+            REQUIRE(is_substitutable_monomial_v<const pm_t, mppp::integer<1>>);
+            REQUIRE(!is_substitutable_monomial_v<const pm_t, mppp::integer<1> &>);
+
+            REQUIRE(std::is_same_v<std::pair<mppp::integer<1>, pm_t>,
+                                   decltype(monomial_subs(pm_t{}, symbol_idx_map<mppp::integer<1>>{}, symbol_set{}))>);
+            REQUIRE(std::is_same_v<std::pair<double, pm_t>,
+                                   decltype(monomial_subs(pm_t{}, symbol_idx_map<double>{}, symbol_set{}))>);
+
+            if constexpr (bw >= 6u) {
+                REQUIRE(monomial_subs(pm_t{}, symbol_idx_map<mppp::integer<1>>{}, symbol_set{})
+                        == std::make_pair(mppp::integer<1>{1}, pm_t{}));
+                REQUIRE(monomial_subs(pm_t{1, 2, 3}, symbol_idx_map<mppp::integer<1>>{}, symbol_set{"x", "y", "z"})
+                        == std::make_pair(mppp::integer<1>{1}, pm_t{1, 2, 3}));
+                REQUIRE(monomial_subs(pm_t{1, 2, 3}, symbol_idx_map<mppp::integer<1>>{{0, mppp::integer<1>{3}}},
+                                      symbol_set{"x", "y", "z"})
+                        == std::make_pair(mppp::integer<1>{3}, pm_t{0, 2, 3}));
+                REQUIRE(monomial_subs(pm_t{1, 2, 3}, symbol_idx_map<mppp::integer<1>>{{1, mppp::integer<1>{3}}},
+                                      symbol_set{"x", "y", "z"})
+                        == std::make_pair(mppp::integer<1>{9}, pm_t{1, 0, 3}));
+                REQUIRE(monomial_subs(pm_t{1, 2, 3}, symbol_idx_map<mppp::integer<1>>{{2, mppp::integer<1>{3}}},
+                                      symbol_set{"x", "y", "z"})
+                        == std::make_pair(mppp::integer<1>{27}, pm_t{1, 2, 0}));
+                REQUIRE(
+                    monomial_subs(pm_t{1, 2, 3},
+                                  symbol_idx_map<mppp::integer<1>>{{0, mppp::integer<1>{3}}, {1, mppp::integer<1>{-2}}},
+                                  symbol_set{"x", "y", "z"})
+                    == std::make_pair(mppp::integer<1>{12}, pm_t{0, 0, 3}));
+                REQUIRE(
+                    monomial_subs(pm_t{1, 2, 3},
+                                  symbol_idx_map<mppp::integer<1>>{{0, mppp::integer<1>{3}}, {2, mppp::integer<1>{-2}}},
+                                  symbol_set{"x", "y", "z"})
+                    == std::make_pair(mppp::integer<1>{-24}, pm_t{0, 2, 0}));
+                REQUIRE(
+                    monomial_subs(pm_t{1, 2, 3},
+                                  symbol_idx_map<mppp::integer<1>>{{1, mppp::integer<1>{3}}, {2, mppp::integer<1>{-2}}},
+                                  symbol_set{"x", "y", "z"})
+                    == std::make_pair(mppp::integer<1>{-72}, pm_t{1, 0, 0}));
+                REQUIRE(monomial_subs(pm_t{1, 2, 3},
+                                      symbol_idx_map<mppp::integer<1>>{{0, mppp::integer<1>{-3}},
+                                                                       {1, mppp::integer<1>{4}},
+                                                                       {2, mppp::integer<1>{-5}}},
+                                      symbol_set{"x", "y", "z"})
+                        == std::make_pair(mppp::integer<1>{6000}, pm_t{0, 0, 0}));
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(
+                        monomial_subs(pm_t{-2, 3}, symbol_idx_map<double>{{0, 3.5}, {1, -4.6}}, symbol_set{"x", "y"})
+                        == std::make_pair(std::pow(3.5, -2.) * std::pow(-4.6, 3), pm_t{0, 0}));
+                    REQUIRE(monomial_subs(pm_t{-2, 3}, symbol_idx_map<double>{{0, 3.5}}, symbol_set{"x", "y"})
+                            == std::make_pair(std::pow(3.5, -2.), pm_t{0, 3}));
+                }
             }
         });
     });

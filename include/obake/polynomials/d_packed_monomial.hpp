@@ -930,6 +930,94 @@ inline detail::dpm_key_evaluate_ret_t<T, U> key_evaluate(const d_packed_monomial
     return retval;
 }
 
+namespace detail
+{
+
+// NOTE: the metaprogramming for the monomial_subs() implementation for d_packed_monomial
+// is identical to the key_evaluate() implementation.
+
+// Shortcuts.
+template <typename T, typename U>
+inline constexpr auto dpm_monomial_subs_algorithm = detail::dpm_key_evaluate_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int dpm_monomial_subs_algo = dpm_key_evaluate_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using dpm_monomial_subs_ret_t = typename decltype(dpm_key_evaluate_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+// Substitution of symbols in a dynamic packed monomial.
+// NOTE: this requires that d is compatible with ss,
+// and that sm is consistent with ss.
+template <typename T, unsigned NBits, typename U,
+          ::std::enable_if_t<detail::dpm_monomial_subs_algo<T, U> != 0, int> = 0>
+inline ::std::pair<detail::dpm_monomial_subs_ret_t<T, U>, d_packed_monomial<T, NBits>>
+monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+    // sm must not be larger than ss, and the last element
+    // of sm must have an index smaller than the size of ss.
+    assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first < ss.size()));
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    const auto s_size = ss.size();
+
+    // Init the return values.
+    const auto &in_c = d._container();
+    d_packed_monomial<T, NBits> out_dpm;
+    auto &out_c = out_dpm._container();
+    out_c.reserve(in_c.size());
+    detail::dpm_monomial_subs_ret_t<T, U> retval(1);
+
+    symbol_idx idx = 0;
+    auto sm_it = sm.begin();
+    const auto sm_end = sm.end();
+    T tmp;
+    for (const auto &n : in_c) {
+        k_unpacker<T> ku(n, psize);
+        k_packer<T> kp(psize);
+
+        auto j = 0u;
+        for (; j < psize && idx < s_size; ++j, ++idx) {
+            ku >> tmp;
+
+            if (sm_it != sm_end && sm_it->first == idx) {
+                // The current exponent is in the subs map,
+                // accumulate the result of the substitution.
+                retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
+
+                // Set the exponent to zero in the output
+                // monomial.
+                kp << T(0);
+
+                // Move to the next item in the map.
+                ++sm_it;
+            } else {
+                // Either the current exponent is not in the subs map,
+                // or we already reached the end of the map.
+                // Just copy the original exponent into the output monomial.
+                kp << tmp;
+            }
+        }
+
+        // This will be executed only at the last iteration
+        // of the for loop, and it will zero pad
+        // the last element of the container if psize does not
+        // divide exactly s_size.
+        for (; j < psize; ++j) {
+            kp << T(0);
+        }
+
+        out_c.push_back(kp.get());
+    }
+    assert(sm_it == sm_end);
+
+    return std::make_pair(::std::move(retval), ::std::move(out_dpm));
+}
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
