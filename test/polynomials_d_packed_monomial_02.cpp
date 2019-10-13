@@ -27,6 +27,7 @@
 #include <obake/key/key_trim_identify.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_diff.hpp>
+#include <obake/polynomials/monomial_integrate.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -361,6 +362,82 @@ TEST_CASE("monomial_diff_test")
                                 + detail::to_string(detail::limits_min<int_t>)
                                 + "), and taking the derivative would generate a negative overflow");
                     }
+                }
+            }
+        });
+    });
+}
+
+TEST_CASE("monomial_integrate_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            if constexpr (bw >= 6u) {
+                REQUIRE(is_integrable_monomial_v<pm_t>);
+                REQUIRE(is_integrable_monomial_v<pm_t &>);
+                REQUIRE(is_integrable_monomial_v<const pm_t &>);
+                REQUIRE(is_integrable_monomial_v<const pm_t>);
+                REQUIRE(std::is_same_v<decltype(monomial_integrate(pm_t{}, 0, symbol_set{})), std::pair<int_t, pm_t>>);
+
+                REQUIRE(monomial_integrate(pm_t{0}, 0, symbol_set{"x"}) == std::make_pair(int_t(1), pm_t{1}));
+                REQUIRE(monomial_integrate(pm_t{1}, 0, symbol_set{"x"}) == std::make_pair(int_t(2), pm_t{2}));
+                REQUIRE(monomial_integrate(pm_t{2}, 0, symbol_set{"x"}) == std::make_pair(int_t(3), pm_t{3}));
+                REQUIRE(monomial_integrate(pm_t{3}, 0, symbol_set{"x"}) == std::make_pair(int_t(4), pm_t{4}));
+
+                REQUIRE(monomial_integrate(pm_t{0, 0}, 0, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(1), pm_t{1, 0}));
+                REQUIRE(monomial_integrate(pm_t{0, 1}, 0, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(1), pm_t{1, 1}));
+                REQUIRE(monomial_integrate(pm_t{0, 0}, 1, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(1), pm_t{0, 1}));
+                REQUIRE(monomial_integrate(pm_t{1, 0}, 1, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(1), pm_t{1, 1}));
+                REQUIRE(monomial_integrate(pm_t{2, 1}, 0, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(3), pm_t{3, 1}));
+                REQUIRE(monomial_integrate(pm_t{3, 1}, 0, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(4), pm_t{4, 1}));
+                REQUIRE(monomial_integrate(pm_t{3, 2}, 1, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(3), pm_t{3, 3}));
+                REQUIRE(monomial_integrate(pm_t{3, 3}, 1, symbol_set{"x", "y"})
+                        == std::make_pair(int_t(4), pm_t{3, 4}));
+
+                REQUIRE(monomial_integrate(pm_t{1, 2, 3}, 0, symbol_set{"x", "y", "z"})
+                        == std::make_pair(int_t(2), pm_t{2, 2, 3}));
+                REQUIRE(monomial_integrate(pm_t{1, 2, 3}, 1, symbol_set{"x", "y", "z"})
+                        == std::make_pair(int_t(3), pm_t{1, 3, 3}));
+                REQUIRE(monomial_integrate(pm_t{1, 2, 3}, 2, symbol_set{"x", "y", "z"})
+                        == std::make_pair(int_t(4), pm_t{1, 2, 4}));
+
+                // Overflow checking.
+                if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
+                    OBAKE_REQUIRES_THROWS_CONTAINS(
+                        monomial_integrate(pm_t{detail::limits_max<int_t>}, 0, symbol_set{"x"}), std::overflow_error,
+                        "Overflow detected while computing the integral of a dynamic packed monomial: the exponent of "
+                        "the integration variable ('x') is too large ("
+                            + detail::to_string(detail::limits_max<int_t>)
+                            + "), and the computation would generate a positive overflow");
+                }
+
+                if constexpr (is_signed_v<int_t>) {
+                    REQUIRE(monomial_integrate(pm_t{-2}, 0, symbol_set{"x"}) == std::make_pair(int_t(-1), pm_t{-1}));
+                    REQUIRE(monomial_integrate(pm_t{-3}, 0, symbol_set{"x"}) == std::make_pair(int_t(-2), pm_t{-2}));
+
+                    REQUIRE(monomial_integrate(pm_t{-2, -1}, 0, symbol_set{"x", "y"})
+                            == std::make_pair(int_t(-1), pm_t{-1, -1}));
+                    REQUIRE(monomial_integrate(pm_t{-3, -1}, 0, symbol_set{"x", "y"})
+                            == std::make_pair(int_t(-2), pm_t{-2, -1}));
+                    REQUIRE(monomial_integrate(pm_t{-3, -3}, 1, symbol_set{"x", "y"})
+                            == std::make_pair(int_t(-2), pm_t{-3, -2}));
+
+                    OBAKE_REQUIRES_THROWS_CONTAINS(monomial_integrate(pm_t{-1}, 0, symbol_set{"x"}), std::domain_error,
+                                                   "Cannot integrate a dynamic packed monomial: the exponent of the "
+                                                   "integration variable ('x') is -1, and the "
+                                                   "integration would generate a logarithmic term");
                 }
             }
         });
