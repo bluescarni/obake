@@ -221,8 +221,8 @@ template <typename T>
 using is_returnable = ::std::disjunction<
     ::std::is_same<::std::remove_cv_t<T>, void>,
     ::std::conjunction<::std::is_destructible<T>,
-                       ::std::disjunction<::std::is_constructible<T, std::add_lvalue_reference_t<T>>,
-                                          ::std::is_constructible<T, std::add_rvalue_reference_t<T>>>>>;
+                       ::std::disjunction<::std::is_constructible<T, ::std::add_lvalue_reference_t<T>>,
+                                          ::std::is_constructible<T, ::std::add_rvalue_reference_t<T>>>>>;
 
 template <typename T>
 inline constexpr bool is_returnable_v = is_returnable<T>::value;

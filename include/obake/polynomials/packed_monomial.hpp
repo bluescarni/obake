@@ -850,7 +850,7 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
     }
     assert(sm_it == sm_end);
 
-    return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
+    return ::std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
 }
 
 // Identify non-trimmable exponents in p.

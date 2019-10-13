@@ -1015,7 +1015,7 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
     }
     assert(sm_it == sm_end);
 
-    return std::make_pair(::std::move(retval), ::std::move(out_dpm));
+    return ::std::make_pair(::std::move(retval), ::std::move(out_dpm));
 }
 
 // Identify non-trimmable exponents in d.
