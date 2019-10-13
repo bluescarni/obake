@@ -30,8 +30,10 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/mppp_utils.hpp>
 #include <obake/detail/to_string.hpp>
+#include <obake/detail/type_c.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/k_packing.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
@@ -851,6 +853,81 @@ template <typename T, unsigned NBits>
 inline ::std::size_t byte_size(const d_packed_monomial<T, NBits> &d)
 {
     return sizeof(d) + d._container().capacity() * sizeof(T);
+}
+
+namespace detail
+{
+
+// Metaprogramming for the key_evaluate() implementation for d_packed_monomial.
+template <typename T, typename U>
+constexpr auto dpm_key_evaluate_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    // Test exponentiability via const lvalue refs.
+    if constexpr (is_exponentiable_v<::std::add_lvalue_reference_t<const U>, ::std::add_lvalue_reference_t<const T>>) {
+        using ret_t = ::obake::detail::pow_t<const U &, const T &>;
+
+        // We will need to construct the return value from 1,
+        // multiply it in-place and then return it.
+        // NOTE: require also a semi-regular type,
+        // it's just easier to reason about.
+        if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, int>,
+                                           // NOTE: we will be multiplying an
+                                           // lvalue by an rvalue.
+                                           is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                                           is_semi_regular<ret_t>, is_returnable<ret_t>>) {
+            return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
+        } else {
+            return failure;
+        }
+    } else {
+        return failure;
+    }
+}
+
+// Shortcuts.
+template <typename T, typename U>
+inline constexpr auto dpm_key_evaluate_algorithm = detail::dpm_key_evaluate_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int dpm_key_evaluate_algo = dpm_key_evaluate_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using dpm_key_evaluate_ret_t = typename decltype(dpm_key_evaluate_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+// Evaluation of a dynamic packed monomial.
+// NOTE: this requires that d is compatible with ss,
+// and that sm is consistent with ss.
+template <typename T, unsigned NBits, typename U, ::std::enable_if_t<detail::dpm_key_evaluate_algo<T, U> != 0, int> = 0>
+inline detail::dpm_key_evaluate_ret_t<T, U> key_evaluate(const d_packed_monomial<T, NBits> &d,
+                                                         const symbol_idx_map<U> &sm, const symbol_set &ss)
+{
+    assert(polynomials::key_is_compatible(d, ss));
+    // sm and ss must have the same size, and the last element
+    // of sm must have an index equal to the last index of ss.
+    assert(sm.size() == ss.size() && (sm.empty() || (sm.cend() - 1)->first == ss.size() - 1u));
+
+    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
+
+    // Init the return value.
+    detail::dpm_key_evaluate_ret_t<T, U> retval(1);
+    T tmp;
+    auto sm_it = sm.begin();
+    const auto sm_end = sm.end();
+    // Accumulate the result.
+    for (const auto &n : d._container()) {
+        k_unpacker<T> ku(n, psize);
+
+        for (auto j = 0u; j < psize && sm_it != sm_end; ++j, ++sm_it) {
+            ku >> tmp;
+            retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
+        }
+    }
+
+    return retval;
 }
 
 } // namespace polynomials
