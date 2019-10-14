@@ -18,9 +18,12 @@
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
+#include <boost/serialization/split_free.hpp>
+#include <boost/serialization/string.hpp>
 
 #include <obake/detail/visibility.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/s11n.hpp>
 
 namespace obake
 {
@@ -139,5 +142,49 @@ inline symbol_idx_map<T> sm_intersect_idx(const symbol_map<T> &m, const symbol_s
 } // namespace detail
 
 } // namespace obake
+
+// Serialisation for symbol_set.
+namespace boost::serialization
+{
+
+template <class Archive>
+inline void save(Archive &ar, const ::obake::symbol_set &ss, unsigned)
+{
+    ar << ss.size();
+
+    for (const auto &n : ss) {
+        ar << n;
+    }
+}
+
+template <class Archive>
+inline void load(Archive &ar, ::obake::symbol_set &ss, unsigned)
+{
+    // Fetch the size.
+    decltype(ss.size()) size;
+    ar >> size;
+
+    // Extract the underlying sequence from ss
+    // and prepare its size.
+    auto seq(ss.extract_sequence());
+    seq.resize(size);
+
+    // Fetch the symbol names from the archive.
+    for (auto &n : seq) {
+        ar >> n;
+    }
+
+    // Move the sequence back into ss.
+    ss.adopt_sequence(::boost::container::ordered_unique_range_t{}, ::std::move(seq));
+}
+
+// Disable tracking for symbol_set.
+template <>
+struct tracking_level<::obake::symbol_set> : ::obake::detail::s11n_no_tracking<::obake::symbol_set> {
+};
+
+} // namespace boost::serialization
+
+BOOST_SERIALIZATION_SPLIT_FREE(::obake::symbol_set)
 
 #endif

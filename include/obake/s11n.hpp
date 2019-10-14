@@ -52,6 +52,7 @@ namespace obake::detail
 {
 
 // Small helper to disable tracking for a type T.
+// NOTE: this is taken verbatim from the boost serialization macros.
 template <typename T>
 struct s11n_no_tracking {
     using tag = ::boost::mpl::integral_c_tag;
