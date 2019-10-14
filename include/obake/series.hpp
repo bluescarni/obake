@@ -1352,6 +1352,7 @@ private:
         for (const auto &tab : m_s_table) {
             ar << tab.size();
 
+            // Save separately key and coefficient.
             for (const auto &t : tab) {
                 ar << t.first;
                 ar << t.second;
@@ -1361,15 +1362,21 @@ private:
     template <class Archive>
     void load(Archive &ar, unsigned)
     {
+        // Empty out this before doing anything.
         clear();
 
         try {
+            // Recover the segmented size.
             unsigned log2_size;
             ar >> log2_size;
             set_n_segments(log2_size);
 
+            // Recover the symbol set.
             ar >> m_symbol_set;
 
+            // Iterate over the tables, reading in
+            // the keys/coefficients sequentially
+            // and inserting them.
             K tmp_k;
             C tmp_c;
             for (auto &tab : m_s_table) {
@@ -1381,7 +1388,7 @@ private:
                     ar >> tmp_k;
                     ar >> tmp_c;
 
-                    // NOTE: disable all checks, as we assume that:
+                    // NOTE: don't need any checking, as we assume that:
                     // - the original table had no zeroes,
                     // - the original table had no incompatible keys,
                     // - the original table did not overflow the max size,
@@ -1391,6 +1398,8 @@ private:
                     // order different from the original one due to abseil's salting,
                     // but the number of terms in a specific table will be the same
                     // because the first level hash is not salted.
+                    // NOTE: this is essentially identical to a straight emplace_back()
+                    // on the table, just with some added assertions.
                     detail::series_add_term_table<true, detail::sat_check_zero::off, detail::sat_check_compat_key::off,
                                                   detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
                         *this, tab,

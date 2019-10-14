@@ -21,6 +21,9 @@ TEST_CASE("s11n_test")
 #if defined(OBAKE_HAVE_GCC_INT128)
     // Test serialisation for the 128-bit integral types.
     {
+        static_assert(boost::serialization::tracking_level<__uint128_t>::value == boost::serialization::track_never);
+        static_assert(boost::serialization::tracking_level<__int128_t>::value == boost::serialization::track_never);
+
         std::stringstream ss;
         __uint128_t out;
 
