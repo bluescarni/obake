@@ -40,9 +40,9 @@
 #include <obake/byte_size.hpp>
 #include <obake/config.hpp>
 #include <obake/detail/abseil.hpp>
-#include <obake/detail/container_it_diff_check.hpp>
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
+#include <obake/detail/it_diff_check.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
@@ -160,6 +160,11 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
         // Create and add a new term.
+        // NOTE: at least for some monomial types (e.g., packed monomial),
+        // we will be computing the iterator difference when constructing from
+        // a range. Make sure we can safely represent the size of tmp via
+        // iterator difference.
+        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
         retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
 
         return retval;
