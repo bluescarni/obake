@@ -22,6 +22,8 @@
 #include <vector>
 
 #include <boost/container/small_vector.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/split_member.hpp>
 
 #include <mp++/integer.hpp>
 
@@ -37,8 +39,8 @@
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
-#include <obake/polynomials/monomial_pow.hpp>
 #include <obake/ranges.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -76,6 +78,8 @@ template <typename T, unsigned NBits,
 #endif
         class d_packed_monomial
 {
+    friend class ::boost::serialization::access;
+
 public:
     // Alias for NBits.
     static constexpr unsigned nbits = NBits;
@@ -215,6 +219,30 @@ public:
     {
         return m_container;
     }
+
+private:
+    // Serialisation.
+    template <class Archive>
+    void save(Archive &ar, unsigned) const
+    {
+        ar << m_container.size();
+
+        for (const auto &n : m_container) {
+            ar << n;
+        }
+    }
+    template <class Archive>
+    void load(Archive &ar, unsigned)
+    {
+        decltype(m_container.size()) size;
+        ar >> size;
+        m_container.resize(size);
+
+        for (auto &n : m_container) {
+            ar >> n;
+        }
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 private:
     container_t m_container;
@@ -1015,7 +1043,7 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
     }
     assert(sm_it == sm_end);
 
-    return std::make_pair(::std::move(retval), ::std::move(out_dpm));
+    return ::std::make_pair(::std::move(retval), ::std::move(out_dpm));
 }
 
 // Identify non-trimmable exponents in d.
@@ -1250,5 +1278,16 @@ template <typename T, unsigned NBits>
 inline constexpr bool monomial_hash_is_homomorphic<d_packed_monomial<T, NBits>> = true;
 
 } // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for d_packed_monomial.
+template <typename T, unsigned NBits>
+struct tracking_level<::obake::d_packed_monomial<T, NBits>>
+    : ::obake::detail::s11n_no_tracking<::obake::d_packed_monomial<T, NBits>> {
+};
+
+} // namespace boost::serialization
 
 #endif

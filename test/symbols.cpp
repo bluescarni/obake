@@ -7,8 +7,13 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <initializer_list>
+#include <sstream>
 #include <tuple>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 
 #include "catch.hpp"
@@ -171,4 +176,45 @@ TEST_CASE("sm_intersect_idx_test")
              == symbol_idx_map<int>{{1, 3}}));
     REQUIRE((detail::sm_intersect_idx(map_t{{"c", 1}, {"e", 2}, {"g", 3}}, symbol_set{"c", "e", "g"})
              == symbol_idx_map<int>{{0, 1}, {1, 2}, {2, 3}}));
+}
+
+TEST_CASE("ss_s11n_test")
+{
+    REQUIRE(boost::serialization::tracking_level<symbol_set>::value == boost::serialization::track_never);
+
+    std::stringstream ss;
+    symbol_set tmp;
+
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << symbol_set{};
+    }
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> tmp;
+    }
+    REQUIRE(tmp.empty());
+    ss.str("");
+
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << symbol_set{"x", "y", "z"};
+    }
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> tmp;
+    }
+    REQUIRE(tmp == symbol_set{"x", "y", "z"});
+    ss.str("");
+
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << symbol_set{"y", "z", "x"};
+    }
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> tmp;
+    }
+    REQUIRE(tmp == symbol_set{"x", "y", "z"});
+    ss.str("");
 }

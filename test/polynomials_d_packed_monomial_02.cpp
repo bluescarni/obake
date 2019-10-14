@@ -8,11 +8,15 @@
 
 #include <cmath>
 #include <initializer_list>
+#include <sstream>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
@@ -29,6 +33,7 @@
 #include <obake/polynomials/monomial_diff.hpp>
 #include <obake/polynomials/monomial_integrate.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -438,6 +443,60 @@ TEST_CASE("monomial_integrate_test")
                                                    "Cannot integrate a dynamic packed monomial: the exponent of the "
                                                    "integration variable ('x') is -1, and the "
                                                    "integration would generate a logarithmic term");
+                }
+            }
+        });
+    });
+}
+
+TEST_CASE("s11n_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_monomial<int_t, bw>;
+
+            REQUIRE(boost::serialization::tracking_level<pm_t>::value == boost::serialization::track_never);
+
+            if constexpr (bw >= 6u) {
+                std::stringstream ss;
+                pm_t tmp;
+
+                {
+                    boost::archive::binary_oarchive oarchive(ss);
+                    oarchive << pm_t{1, 2, 3};
+                }
+                {
+                    boost::archive::binary_iarchive iarchive(ss);
+                    iarchive >> tmp;
+                }
+                REQUIRE(tmp == pm_t{1, 2, 3});
+                ss.str("");
+
+                {
+                    boost::archive::binary_oarchive oarchive(ss);
+                    oarchive << pm_t{};
+                }
+                {
+                    boost::archive::binary_iarchive iarchive(ss);
+                    iarchive >> tmp;
+                }
+                REQUIRE(tmp == pm_t{});
+                ss.str("");
+
+                if constexpr (is_signed_v<int_t>) {
+                    {
+                        boost::archive::binary_oarchive oarchive(ss);
+                        oarchive << pm_t{-1, 2, -3};
+                    }
+                    {
+                        boost::archive::binary_iarchive iarchive(ss);
+                        iarchive >> tmp;
+                    }
+                    REQUIRE(tmp == pm_t{-1, 2, -3});
+                    ss.str("");
                 }
             }
         });

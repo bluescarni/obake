@@ -203,7 +203,7 @@ TEST_CASE("cf_stream_insert_test")
 #endif
 }
 
-#if defined(MPPP_HAVE_GCC_INT128)
+#if defined(OBAKE_HAVE_GCC_INT128)
 
 TEST_CASE("cf_stream_insert_int128_test")
 {

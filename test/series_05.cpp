@@ -10,6 +10,8 @@
 #include <utility>
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
@@ -19,6 +21,7 @@
 #include <obake/math/pow.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/tex_stream_insert.hpp>
 #include <obake/type_traits.hpp>
@@ -228,4 +231,59 @@ TEST_CASE("series_add_symbols_test")
     REQUIRE(is_detected_v<add_symbols_t, p1_t>);
     REQUIRE(is_detected_v<add_symbols_t, p1_t &>);
     REQUIRE(is_detected_v<add_symbols_t, const p1_t &>);
+}
+
+TEST_CASE("series_s11n_test")
+{
+    using pm_t = packed_monomial<int>;
+    using p1_t = polynomial<pm_t, double>;
+
+    REQUIRE(boost::serialization::tracking_level<p1_t>::value == boost::serialization::track_never);
+
+    std::stringstream ss;
+    p1_t tmp;
+
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << p1_t{};
+    }
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> tmp;
+    }
+    REQUIRE(tmp.empty());
+    ss.str("");
+
+    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << obake::pow(x - 2 * y + 3 * z, 4);
+    }
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> tmp;
+    }
+    REQUIRE(tmp == obake::pow(x - 2 * y + 3 * z, 4));
+    ss.str("");
+
+    p1_t tmp2;
+    // Check with segmentation as well.
+    tmp2.set_symbol_set(symbol_set{"x", "y", "z"});
+    tmp2.set_n_segments(3);
+    tmp2.add_term(pm_t{1, 0, 0}, 1);
+    tmp2.add_term(pm_t{0, 2, 0}, 2);
+    tmp2.add_term(pm_t{0, 0, 3}, 3);
+
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << tmp2;
+    }
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> tmp;
+    }
+    REQUIRE(tmp == tmp2);
+    REQUIRE(tmp.get_s_size() == 3);
+    ss.str("");
 }
