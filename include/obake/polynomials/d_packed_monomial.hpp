@@ -39,7 +39,6 @@
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
-#include <obake/polynomials/monomial_pow.hpp>
 #include <obake/ranges.hpp>
 #include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
