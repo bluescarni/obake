@@ -9,16 +9,13 @@
 #ifndef OBAKE_S11N_HPP
 #define OBAKE_S11N_HPP
 
-#include <cstdint>
-
 #include <boost/config.hpp>
 #include <boost/mpl/equal_to.hpp>
 #include <boost/mpl/greater.hpp>
 #include <boost/mpl/int.hpp>
 #include <boost/mpl/integral_c.hpp>
-#include <boost/serialization/access.hpp>
+#include <boost/serialization/binary_object.hpp>
 #include <boost/serialization/serialization.hpp>
-#include <boost/serialization/split_free.hpp>
 #include <boost/serialization/tracking.hpp>
 #include <boost/static_assert.hpp>
 
@@ -31,40 +28,15 @@ namespace boost::serialization
 {
 
 template <class Archive>
-inline void save(Archive &ar, const __uint128_t &n, unsigned)
+inline void serialize(Archive &ar, __uint128_t &n, unsigned)
 {
-    // NOTE: save first the lower and then the upper limb.
-    ar << static_cast<::std::uint64_t>(n);
-    ar << static_cast<::std::uint64_t>(n >> 64);
+    ar &serialization::make_binary_object(&n, sizeof(n));
 }
 
 template <class Archive>
-inline void load(Archive &ar, __uint128_t &n, unsigned)
+inline void serialize(Archive &ar, __int128_t &n, unsigned)
 {
-    ::std::uint64_t tmp;
-
-    // Load the lower limb.
-    ar >> tmp;
-    n = tmp;
-
-    // Load the upper limb, add it.
-    ar >> tmp;
-    n += static_cast<__uint128_t>(tmp) << 64;
-}
-
-// For __int128_t, just delegate to the unsigned counterpart.
-template <class Archive>
-inline void save(Archive &ar, const __int128_t &n, unsigned)
-{
-    ar << static_cast<__uint128_t>(n);
-}
-
-template <class Archive>
-inline void load(Archive &ar, __int128_t &n, unsigned)
-{
-    __uint128_t tmp;
-    ar >> tmp;
-    n = static_cast<__int128_t>(tmp);
+    ar &serialization::make_binary_object(&n, sizeof(n));
 }
 
 // Ensure that 128-bit integers are considered primitive types,
@@ -73,9 +45,6 @@ BOOST_STATIC_ASSERT((mpl::equal_to<implementation_level<__uint128_t>, mpl::int_<
 BOOST_STATIC_ASSERT((mpl::equal_to<implementation_level<__int128_t>, mpl::int_<primitive_type>>::value));
 
 } // namespace boost::serialization
-
-BOOST_SERIALIZATION_SPLIT_FREE(__uint128_t)
-BOOST_SERIALIZATION_SPLIT_FREE(__int128_t)
 
 #endif
 

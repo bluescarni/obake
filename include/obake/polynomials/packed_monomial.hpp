@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include <boost/serialization/access.hpp>
+
 #include <mp++/integer.hpp>
 
 #include <obake/config.hpp>
