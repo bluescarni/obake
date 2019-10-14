@@ -1706,19 +1706,15 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             // - V must be lt-comparable to the type of their sum via const lrefs.
             using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
-            if constexpr (::std::conjunction_v<
-                              // NOTE: verify deg_add_t, before using it below.
-                              is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
-                              ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
-                              ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
-                              // NOTE: in the implementation functions, we always compare
-                              // an lvalue ref to the limit V to an rvalue resulting
-                              // from adding the degrees of one term from each series.
-                              is_less_than_comparable<::std::add_lvalue_reference_t<const V>, deg_add_t>>) {
-                return 1;
-            } else {
-                return 0;
-            }
+            return static_cast<int>(::std::conjunction_v<
+                                    // NOTE: verify deg_add_t, before using it below.
+                                    is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
+                                    ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
+                                    ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
+                                    // NOTE: in the implementation functions, we always compare
+                                    // an lvalue ref to the limit V to an rvalue resulting
+                                    // from adding the degrees of one term from each series.
+                                    is_less_than_comparable<::std::add_lvalue_reference_t<const V>, deg_add_t>>);
         } else {
             return 0;
         }
