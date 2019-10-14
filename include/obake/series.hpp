@@ -27,6 +27,8 @@
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/split_member.hpp>
 
 #include <mp++/integer.hpp>
 
@@ -67,6 +69,7 @@
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/math/trim.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/tex_stream_insert.hpp>
 #include <obake/type_name.hpp>
@@ -267,7 +270,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
     // Cache a reference to the symbol set.
-    const auto &ss = s.get_symbol_set();
+    [[maybe_unused]] const auto &ss = s.get_symbol_set();
 
     if constexpr (CheckTableSize == sat_check_table_size::on) {
         // LCOV_EXCL_START
@@ -650,6 +653,8 @@ template <typename K, typename C, typename Tag, typename>
 #endif
 class series
 {
+    friend class ::boost::serialization::access;
+
 public:
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
     using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
@@ -1335,6 +1340,72 @@ public:
     {
         return series::find_impl(*this, k);
     }
+
+private:
+    // Serialisation.
+    template <class Archive>
+    void save(Archive &ar, unsigned) const
+    {
+        ar << m_log2_size;
+        ar << m_symbol_set;
+
+        for (const auto &tab : m_s_table) {
+            ar << tab.size();
+
+            for (const auto &t : tab) {
+                ar << t.first;
+                ar << t.second;
+            }
+        }
+    }
+    template <class Archive>
+    void load(Archive &ar, unsigned)
+    {
+        clear();
+
+        try {
+            unsigned log2_size;
+            ar >> log2_size;
+            set_n_segments(log2_size);
+
+            ar >> m_symbol_set;
+
+            K tmp_k;
+            C tmp_c;
+            for (auto &tab : m_s_table) {
+                decltype(tab.size()) size;
+                ar >> size;
+                tab.reserve(size);
+
+                for (decltype(tab.size()) i = 0; i < size; ++i) {
+                    ar >> tmp_k;
+                    ar >> tmp_c;
+
+                    // NOTE: disable all checks, as we assume that:
+                    // - the original table had no zeroes,
+                    // - the original table had no incompatible keys,
+                    // - the original table did not overflow the max size,
+                    // - the original table had only unique keys.
+                    // Note that deserialisation of a series that was saved
+                    // in a previous program execution will result in a term
+                    // order different from the original one due to abseil's salting,
+                    // but the number of terms in a specific table will be the same
+                    // because the first level hash is not salted.
+                    detail::series_add_term_table<true, detail::sat_check_zero::off, detail::sat_check_compat_key::off,
+                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                        *this, tab,
+                        // NOTE: pass as const, so that we are sure the copy constructors
+                        // will be used.
+                        ::std::as_const(tmp_k), ::std::as_const(tmp_c));
+                }
+            }
+        } catch (...) {
+            // Avoid inconsistent state in case of exceptions.
+            clear();
+            throw;
+        }
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 private:
     s_table_type m_s_table;
@@ -3765,5 +3836,15 @@ inline constexpr auto add_symbols = [](auto &&s, const symbol_set &ss)
 #endif
 
 } // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for series.
+template <typename K, typename C, typename Tag>
+struct tracking_level<::obake::series<K, C, Tag>> : ::obake::detail::s11n_no_tracking<::obake::series<K, C, Tag>> {
+};
+
+} // namespace boost::serialization
 
 #endif
