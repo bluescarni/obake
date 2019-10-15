@@ -1341,6 +1341,33 @@ public:
         return series::find_impl(*this, k);
     }
 
+    // Return a bunch of statistics
+    // about the hash table(s) in string
+    // format.
+    ::std::string table_stats() const
+    {
+        ::std::ostringstream oss;
+
+        const auto s = size();
+        const auto ntables = m_s_table.size();
+
+        oss << "Total number of terms             : " << s << '\n';
+        oss << "Total number of tables            : " << ntables << '\n';
+
+        if (s != 0u) {
+            oss << "Average terms per table           : " << static_cast<double>(s) / static_cast<double>(ntables)
+                << '\n';
+            const auto [it_min, it_max] = ::std::minmax_element(
+                m_s_table.cbegin(), m_s_table.cend(),
+                [](const table_type &t1, const table_type &t2) { return t1.size() < t2.size(); });
+            oss << "Min/max terms per table           : " << it_min->size() << '/' << it_max->size() << '\n';
+        }
+
+        oss << "Total size in bytes               : " << ::obake::byte_size(*this) << '\n';
+
+        return oss.str();
+    }
+
 private:
     // Serialisation.
     template <class Archive>
