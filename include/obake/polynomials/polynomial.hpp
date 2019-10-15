@@ -40,9 +40,9 @@
 #include <obake/byte_size.hpp>
 #include <obake/config.hpp>
 #include <obake/detail/abseil.hpp>
-#include <obake/detail/container_it_diff_check.hpp>
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
+#include <obake/detail/it_diff_check.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
@@ -160,6 +160,11 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
         // Create and add a new term.
+        // NOTE: at least for some monomial types (e.g., packed monomial),
+        // we will be computing the iterator difference when constructing from
+        // a range. Make sure we can safely represent the size of tmp via
+        // iterator difference.
+        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
         retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
 
         return retval;
@@ -598,11 +603,10 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                                     // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
                                     const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
                                                                        [&d1](const auto &mdeg, const auto &d2) {
-                                                                           // NOTE: cache as a const value,
-                                                                           // so that the comparison below
-                                                                           // uses const qualified values.
-                                                                           const auto d_add(d1 + d2);
-                                                                           return mdeg < d_add;
+                                                                           // NOTE: we require below
+                                                                           // comparability between const lvalue limit
+                                                                           // and rvalue of the sum of the degrees.
+                                                                           return mdeg < d1 + d2;
                                                                        });
 
                                     // We checked when constructing v2_deg that its iterator
@@ -697,11 +701,10 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                             // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
                             const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
                                                                [&d1](const auto &mdeg, const auto &d2) {
-                                                                   // NOTE: cache as a const value,
-                                                                   // so that the comparison below
-                                                                   // uses const qualified values.
-                                                                   const auto d_add(d1 + d2);
-                                                                   return mdeg < d_add;
+                                                                   // NOTE: we require below
+                                                                   // comparability between const lvalue limit
+                                                                   // and rvalue of the sum of the degrees.
+                                                                   return mdeg < d1 + d2;
                                                                });
 
                             // Accumulate in cur how many terms in y would be multiplied
@@ -1062,11 +1065,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
                                                    vd2.cbegin() + static_cast<it_diff_t>(r2.second), max_deg,
                                                    [&d_i](const auto &mdeg, const auto &d_j) {
-                                                       // NOTE: cache as a const value,
-                                                       // so that the comparison below
-                                                       // uses const qualified values.
-                                                       const auto d_add(d_i + d_j);
-                                                       return mdeg < d_add;
+                                                       // NOTE: we require below
+                                                       // comparability between const lvalue limit
+                                                       // and rvalue of the sum of the degrees.
+                                                       return mdeg < d_i + d_j;
                                                    });
 
                 // Turn the iterator into an index and return it.
@@ -1437,11 +1439,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // that d_i + d_j > max_deg.
                 const auto it
                     = ::std::upper_bound(vd2.cbegin(), vd2.cend(), max_deg, [&d_i](const auto &mdeg, const auto &d_j) {
-                          // NOTE: cache as a const value,
-                          // so that the comparison below
-                          // uses const qualified values.
-                          const auto d_add(d_i + d_j);
-                          return mdeg < d_add;
+                          // NOTE: we require below
+                          // comparability between const lvalue limit
+                          // and rvalue of the sum of the degrees.
+                          return mdeg < d_i + d_j;
                       });
 
                 // Turn the iterator into an index and return it.
@@ -1705,17 +1706,15 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             // - V must be lt-comparable to the type of their sum via const lrefs.
             using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
-            if constexpr (::std::conjunction_v<
-                              // NOTE: verify deg_add_t, before using it below.
-                              is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
-                              ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
-                              ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
-                              is_less_than_comparable<::std::add_lvalue_reference_t<const V>,
-                                                      ::std::add_lvalue_reference_t<const deg_add_t>>>) {
-                return 1;
-            } else {
-                return 0;
-            }
+            return static_cast<int>(::std::conjunction_v<
+                                    // NOTE: verify deg_add_t, before using it below.
+                                    is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
+                                    ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
+                                    ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
+                                    // NOTE: in the implementation functions, we always compare
+                                    // an lvalue ref to the limit V to an rvalue resulting
+                                    // from adding the degrees of one term from each series.
+                                    is_less_than_comparable<::std::add_lvalue_reference_t<const V>, deg_add_t>>);
         } else {
             return 0;
         }
