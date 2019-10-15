@@ -16,6 +16,9 @@
 using namespace obake;
 using namespace obake_benchmark;
 
+// Test taken from:
+// http://groups.google.com/group/sage-devel/browse_thread/thread/f5b976c979a3b784/1263afcc6f9d09da
+// Meant to test sparse multiplication where series have very different sizes.
 int main()
 {
     using p_type = polynomial<packed_monomial<unsigned long long>, double>;

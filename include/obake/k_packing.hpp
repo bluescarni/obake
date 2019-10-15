@@ -119,13 +119,7 @@ constexpr auto k_packing_compute_deltas()
             // set to 1. This ensures that the generated deltas don't vary
             // too much, while still retaining some randomness in the lower bits.
             const auto hi = T(3) << (cur_nbits - 2u);
-            // NOTE: ensure that the number will be odd. This helps avoiding
-            // power-of-2 commensurabilities when we use the packed value
-            // as a hash in a table with power-of-2 sizes.
-            // NOTE: perhaps it would be even better to look for a prime
-            // number, keep it in mind for the future.
-            const auto lo
-                = static_cast<T>((rnd >> (static_cast<unsigned>(limits_digits<uint_t>) - cur_nbits + 2u)) | uint_t(1));
+            const auto lo = static_cast<T>(rnd >> (static_cast<unsigned>(limits_digits<uint_t>) - cur_nbits + 2u));
 
             retval[i][j] = hi + lo;
         }
