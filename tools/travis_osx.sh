@@ -24,17 +24,6 @@ export PATH="$deps_dir/bin:$PATH"
 export CXX=clang++
 export CC=clang
 
-# git clone https://github.com/abseil/abseil-cpp.git
-# cd abseil-cpp
-# git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
-# mkdir build
-# cd build
-# cmake ../ -DCMAKE_BUILD_TYPE=${OBAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_CXX_STANDARD=17
-# make install -j2 VERBOSE=1
-# cd ..
-# cd ..
-# rm -fr abseil-cpp
-
 cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=${OBAKE_BUILD_TYPE} -DOBAKE_BUILD_TESTS=yes
 make -j2 VERBOSE=1
 make install
