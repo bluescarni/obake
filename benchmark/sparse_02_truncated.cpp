@@ -10,7 +10,6 @@
 
 #include <mp++/integer.hpp>
 
-#include <obake/byte_size.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
@@ -43,8 +42,5 @@ int main()
         ret = truncated_mul(f, g, 300);
     }
 
-    std::cout << "Total number of terms             : " << ret.size() << '\n';
-    std::cout << "Total number of tables            : " << ret._get_s_table().size() << '\n';
-    std::cout << "Number of terms in the first table: " << ret._get_s_table()[0].size() << '\n';
-    std::cout << "Total size in bytes               : " << byte_size(ret) << '\n';
+    std::cout << ret.table_stats() << '\n';
 }

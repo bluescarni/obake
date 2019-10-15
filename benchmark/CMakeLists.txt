@@ -13,6 +13,7 @@ function(ADD_OBAKE_BENCHMARK arg1)
 endfunction()
 
 ADD_OBAKE_BENCHMARK(dense_01)
+ADD_OBAKE_BENCHMARK(rectangular_01)
 ADD_OBAKE_BENCHMARK(sparse_01)
 ADD_OBAKE_BENCHMARK(sparse_02)
 ADD_OBAKE_BENCHMARK(sparse_02_truncated)
