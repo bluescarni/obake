@@ -17,10 +17,17 @@ using namespace obake;
 using namespace obake_benchmark;
 
 // A performance test for truncated polynomial multiplication, in the spirit of automatic differentiation.
-// Compute:
-// (1+x1+x2+x3+x4+x5+x6+x7+x8+x9+x10)**10 * (1-x1-x2-x3-x4-x5-x6-x7-x8-x9-x10)**10
+// Compute
+//
+// (1+a1+a2+a3+a4+a5+a6+a7+a8+a9+a10)**10 * (1-a1-a2-a3-a4-a5-a6-a7-a8-a9-a10)**10
+//
+// where
+//
+// a_i = 1 + x_i
+//
 // truncated to the total degree of 10.
 
+// Small helper to compute the truncated power to the n.
 template <typename T>
 auto truncated_pow(const T &x, unsigned n, unsigned limit)
 {
@@ -43,10 +50,10 @@ int main()
         p += 1;
     }
 
-    const auto &[x1, x2, x3, x4, x5, x6, x7, x8, x9, x10] = polys;
+    const auto &[a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = polys;
 
-    auto f = truncated_pow(1 + x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9 + x10, 10, 10);
-    auto g = truncated_pow(1 - x1 - x2 - x3 - x4 - x5 - x6 - x7 - x8 - x9 - x10, 10, 10);
+    auto f = truncated_pow(1 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10, 10, 10);
+    auto g = truncated_pow(1 - a1 - a2 - a3 - a4 - a5 - a6 - a7 - a8 - a9 - a10, 10, 10);
 
     p_type h;
     {
