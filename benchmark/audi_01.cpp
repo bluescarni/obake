@@ -63,9 +63,5 @@ int main()
 
     std::cout << h.table_stats() << '\n';
 
-    for (const auto &tab : h._get_s_table()) {
-        std::cout << tab.size() << '\n';
-    }
-
     return 0;
 }
