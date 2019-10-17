@@ -21,6 +21,7 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -280,9 +281,13 @@ constexpr auto poly_mul_algorithm_impl()
             using ret_cf_t = detected_t<::obake::detail::mul_t, const cf1_t &, const cf2_t &>;
 
             if constexpr (::std::conjunction_v<
+                              // NOTE: this will also check that switching around the
+                              // operands produces the same result. This is necessary
+                              // because we might need to switch the arguments
+                              // in the top level poly multiplication function.
+                              // NOTE: this also ensures that ret_cf_t is detected.
+                              is_multipliable<const cf1_t &, const cf2_t &>,
                               // If ret_cf_t a coefficient type?
-                              // NOTE: this checks ensures that ret_cf_t is detected,
-                              // because nonesuch is not a coefficient type.
                               is_cf<ret_cf_t>,
                               // We may need to merge new symbols into the original key type.
                               // NOTE: the key types of T and U must be identical at the moment,
@@ -787,9 +792,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Estimate the total number of terms, and compute the total number
     // of term-by-term multiplications.
-    const auto [est_nterms, tot_n_mults] = v1.size() >= v2.size()
-                                               ? detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...)
-                                               : detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...);
+    // NOTE: switch the operands around as poly_mul_estimate_product_size()
+    // requires the largest series first.
+    const auto [est_nterms, tot_n_mults] = detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...);
 
     // Estimate the average term size.
     const auto avg_term_size = detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss);
@@ -852,10 +857,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
-    // as pairs of indices into v1/v2)
-    // of size nsegs. The index at which each range is stored
-    // is the index of the bucket that the terms corresponding
-    // to that range would occupy in a segmented table
+    // as pairs of indices into v1/v2) paired to indices
+    // representing the bucket that the range
+    // would occupy in a segmented table
     // with 2**log2_nsegs segments.
     auto compute_vseg = [nsegs, log2_nsegs](const auto &v) {
         // Ensure that the size of v is representable by
@@ -864,21 +868,24 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::obake::detail::container_it_diff_check(v);
 
         using idx_t = decltype(v.size());
-        ::std::vector<::std::pair<idx_t, idx_t>> vseg;
-        vseg.resize(::obake::safe_cast<decltype(vseg.size())>(nsegs));
+        ::std::vector<::std::tuple<idx_t, idx_t, s_size_t>> vseg;
+        // NOTE: the max possible size of vseg is the number of segments.
+        vseg.reserve(::obake::safe_cast<decltype(vseg.size())>(nsegs));
 
-        idx_t idx = 0;
         const auto v_begin = v.begin(), v_end = v.end();
-        auto it = v_begin;
-        for (s_size_t i = 0; i < nsegs; ++i) {
-            vseg[i].first = idx;
-            it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &b_idx, const auto &p) {
-                const auto h = ::obake::hash(p.first);
-                return b_idx < h % (s_size_t(1) << log2_nsegs);
-            });
+        for (auto it = v_begin; it != v_end;) {
+            // Get the bucket index of the current term.
+            const auto cur_b_idx = static_cast<s_size_t>(::obake::hash(it->first) % (s_size_t(1) << log2_nsegs));
+            // Look for the first term whose bucket index is greater than cur_b_idx.
+            const auto range_end
+                = ::std::upper_bound(it, v_end, cur_b_idx, [log2_nsegs](const auto &b_idx, const auto &p) {
+                      return b_idx < ::obake::hash(p.first) % (s_size_t(1) << log2_nsegs);
+                  });
+            // Add the range to vseg.
             // NOTE: the overflow check was done earlier.
-            idx = static_cast<idx_t>(it - v_begin);
-            vseg[i].second = idx;
+            vseg.emplace_back(static_cast<idx_t>(it - v_begin), static_cast<idx_t>(range_end - v_begin), cur_b_idx);
+            // Update 'it'.
+            it = range_end;
         }
 
         return vseg;
@@ -889,39 +896,38 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 #if !defined(NDEBUG)
     {
         // Check the segmentations in debug mode.
-        assert(vseg1.size() == nsegs);
-        assert(vseg2.size() == nsegs);
+        assert(vseg1.size() <= nsegs);
+        assert(vseg2.size() <= nsegs);
 
-        decltype(v1.size()) counter1 = 0;
-        decltype(v2.size()) counter2 = 0;
+        auto verify_seg = [log2_nsegs](const auto &vs, const auto &v) {
+            // Counter for the number of terms represented in the
+            // segmentation vector.
+            decltype(v.size()) counter = 0;
 
-        auto verify_seg = [log2_nsegs](const auto &v, s_size_t bucket_idx, const auto &range, auto &counter) {
-            for (auto idx = range.first; idx != range.second; ++idx) {
-                const auto h = ::obake::hash(v[idx].first);
-                assert(h % (s_size_t(1) << log2_nsegs) == bucket_idx);
-                ++counter;
+            for (const auto &t : vs) {
+                const auto &[start, end, b_idx] = t;
+                assert(end <= v.size());
+                assert(start < end);
+                counter += end - start;
+
+                // Check that all elements in the range
+                // hash to the correct bucket index.
+                for (auto idx = start; idx < end; ++idx) {
+                    assert(::obake::hash(v[idx].first) % (s_size_t(1) << log2_nsegs) == b_idx);
+                }
             }
+
+            assert(counter == v.size());
         };
 
-        for (s_size_t i = 0; i < nsegs; ++i) {
-            if (i) {
-                // Ensure the current range begins
-                // where the previous range ends.
-                assert(vseg1[i].first == vseg1[i - 1u].second);
-                assert(vseg2[i].first == vseg2[i - 1u].second);
-            }
-            verify_seg(v1, i, vseg1[i], counter1);
-            verify_seg(v2, i, vseg2[i], counter2);
-        }
-
-        assert(counter1 == v1.size());
-        assert(counter2 == v2.size());
+        verify_seg(vseg1, v1);
+        verify_seg(vseg2, v2);
     }
 #endif
 
     // Functor to compute the end index in the
     // inner multiplication loops below, given
-    // an index into the first series and an index
+    // an index into the first series and a segmentation
     // range into the second series. In non-truncated
     // mode, this functor will always return the end
     // of the range, otherwise the returned
@@ -931,9 +937,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         if constexpr (sizeof...(args) == 0u) {
             ::obake::detail::ignore(ss, v1, v2, vseg1, vseg2);
 
-            return [](const auto &, const auto &r2) { return r2.second; };
+            return [](const auto &, const auto &r2) { return ::std::get<1>(r2); };
         } else {
-            // Helper that, given a list of ranges vseg into v, will:
+            // Helper that, given a list of segmentation ranges vseg into v, will:
             //
             // - create and return a vector vd
             //   containing the total/partial degrees of all the
@@ -993,7 +999,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
                 // type we are using const lrefs.
                 for (const auto &r : vseg) {
-                    ::std::sort(vidx.data() + r.first, vidx.data() + r.second,
+                    ::std::sort(vidx.data() + ::std::get<0>(r), vidx.data() + ::std::get<1>(r),
                                 [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
                                     return vdc[idx1] < vdc[idx2];
                                 });
@@ -1014,8 +1020,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
                 for (const auto &r : vseg) {
-                    const auto &idx_begin = r.first;
-                    const auto &idx_end = r.second;
+                    const auto &idx_begin = ::std::get<0>(r);
+                    const auto &idx_end = ::std::get<1>(r);
 
                     // NOTE: add constness to vd in order to ensure that
                     // the degrees are compared via const refs.
@@ -1062,8 +1068,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // NOTE: we checked above that the static cast
                 // to the it diff type is safe.
                 using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
-                const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
-                                                   vd2.cbegin() + static_cast<it_diff_t>(r2.second), max_deg,
+                const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(::std::get<0>(r2)),
+                                                   vd2.cbegin() + static_cast<it_diff_t>(::std::get<1>(r2)), max_deg,
                                                    [&d_i](const auto &mdeg, const auto &d_j) {
                                                        // NOTE: we require below
                                                        // comparability between const lvalue limit
@@ -1087,143 +1093,334 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     ::std::atomic<unsigned long long> n_mults(0);
 #endif
 
-    try {
-        // Parallel iteration over the number of buckets of the
-        // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs,
-                                                                       &retval, &ss, mts = retval._get_max_table_size(),
-                                                                       &compute_end_idx2
+    // The parallel multiplication functor for the sparse case.
+    auto sparse_par_functor = [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
+                               mts = retval._get_max_table_size(), &compute_end_idx2
 #if !defined(NDEBUG)
-                                                                       ,
-                                                                       &n_mults
+                               ,
+                               &n_mults
 #endif
-        ](const auto &range) {
-            // Cache the pointers to the terms data.
-            // NOTE: doing it here rather than in the lambda
-            // capture seems to help performance on GCC.
-            auto vptr1 = v1.data();
-            auto vptr2 = v2.data();
+    ](const auto &range) {
+        // Cache the pointers to the terms data.
+        // NOTE: doing it here rather than in the lambda
+        // capture seems to help performance on GCC.
+        auto vptr1 = v1.data();
+        auto vptr2 = v2.data();
 
-            // Temporary variable used in monomial multiplication.
-            ret_key_t tmp_key(ss);
+        // Temporary variable used in monomial multiplication.
+        ret_key_t tmp_key(ss);
 
-            for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
-                // Get a reference to the current table in retval.
-                auto &table = retval._get_s_table()[seg_idx];
+        // Cache begin/end interators into vseg2.
+        const auto vseg2_begin = vseg2.begin(), vseg2_end = vseg2.end();
 
-                // The objective here is to perform all term-by-term multiplications
-                // whose results end up in the current table (i.e., the table in retval
-                // at index seg_idx). Due to homomorphic hashing, we know that,
-                // given two indices i and j in vseg1 and vseg2,
-                // the terms generated by the multiplication of the
-                // ranges vseg1[i] and vseg2[j] end up at the bucket
-                // (i + j) % nsegs in retval. Thus, we need to select
-                // all i, j pairs such that (i + j) % nsegs == seg_idx.
-                for (s_size_t i = 0; i < nsegs; ++i) {
-                    const auto j = seg_idx >= i ? (seg_idx - i) : ((s_size_t(1) << log2_nsegs) - i + seg_idx);
-                    assert(j < vseg2.size());
+        for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
+            // Get a reference to the current table in retval.
+            auto &table = retval._get_s_table()[seg_idx];
 
-                    // Fetch the corresponding ranges.
-                    const auto r1 = vseg1[i];
-                    const auto r2 = vseg2[j];
+            // The iterator in vseg2 that we will use
+            // as the end point in the binary search below.
+            // Initially, it is just the end of vseg2
+            // (so that all of vseg2 is searched).
+            auto end_search = vseg2_end;
 
-                    // The O(N**2) multiplication loop over the ranges.
-                    const auto idx_end1 = r1.second;
-                    for (auto idx1 = r1.first; idx1 != idx_end1; ++idx1) {
-                        const auto &[k1, c1] = *(vptr1 + idx1);
+            // The wrap around flag (see below).
+            bool wrap_around = false;
 
-                        // Compute the end index in the second range
-                        // for the current value of idx1.
-                        const auto idx_end2 = compute_end_idx2(idx1, r2);
+            for (const auto &r1 : vseg1) {
+                // Unpack in local variables.
+                const auto [r1_start, r1_end, bi1] = r1;
 
-                        // In the truncated case, check if the end index
-                        // coincides with the begin index. In such a case,
-                        // we can skip all the remaining indices in r1 because
-                        // none of them will ever generate a term which respects
-                        // the truncation limits (both r1 and r2 are sorted
-                        // according to the degree).
-                        if (sizeof...(Args) > 0u && idx_end2 == r2.first) {
-                            break;
-                        }
+                // The first time that bi1 is > seg_idx
+                // we have a wrap-around. This means that:
+                // - the search range in vseg2 will be reset
+                //   to [vseg2_begin, vseg2_end),
+                // - the bucket idx we need to look for
+                //   in vseg2 is not seg_idx any more, but
+                //   seg_idx + nsegs.
+                // E.g., if seg_idx is 4, bi1 is 5 and nsegs
+                // is 8, then there is no bucket index bi2 in
+                // vseg2 such that 5 + bi2 = 4, but there might
+                // be a bi2 such that 5 + bi2 = 4 + 8.
+                if (!wrap_around && bi1 > seg_idx) {
+                    wrap_around = true;
+                    end_search = vseg2_end;
+                }
 
-                        const auto end2 = vptr2 + idx_end2;
-                        for (auto ptr2 = vptr2 + r2.first; ptr2 != end2; ++ptr2) {
-                            const auto &[k2, c2] = *ptr2;
+                // Compute the target idx: this is seg_idx in case we
+                // have not wrapped around yet, otherwise seg_idx + nsegs
+                // (so that tgt_idx % nsegs == seg_idx).
+                // NOTE: the guarantee on get_max_s_size() ensures that
+                // we can always compute seg_idx + nsegs without overflow.
+                const auto tgt_idx = wrap_around ? (seg_idx + nsegs) : seg_idx;
 
-                            // Do the monomial multiplication.
-                            ::obake::monomial_mul(tmp_key, k1, k2, ss);
+                // Locate a range in vseg2 such that the bucket idx of that range + bi1
+                // is equal to tgt_idx.
+                const auto it = ::std::lower_bound(
+                    vseg2_begin, end_search, tgt_idx,
+                    [bi1_ = bi1](const auto &t, const auto &b_idx) { return ::std::get<2>(t) + bi1_ < b_idx; });
 
-                            // Check that the result ends up in the correct bucket.
-                            assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
+                if (it == end_search || ::std::get<2>(*it) + bi1 != tgt_idx) {
+                    // There is no range in vseg2 such that its multiplication
+                    // by the current range in vseg1 results in terms which
+                    // end up at the bucket index seg_idx in the destination
+                    // segmented table. Move to the next range in vseg1.
+                    continue;
+                }
+                // Update the end point of the binary search. We know that
+                // the next vseg1 range will bump up bi1 at least by one, thus,
+                // in the next binary search, we know that anything we may find
+                // must be *before* it.
+                end_search = it;
 
-                            // Attempt the insertion.
-                            // NOTE: this will attempt to insert a term with a default-constructed
-                            // coefficient. This is wasteful, it would be better to directly
-                            // construct the coefficient product only if the insertion actually
-                            // takes place (using a lazy multiplication approach).
-                            // Unfortunately, abseil's hash map is not exception safe,
-                            // and if the lazy multiplication throws, the table will be left
-                            // in an inconsistent state. See:
-                            // https://github.com/abseil/abseil-cpp/issues/388
-                            // See the commit
-                            // 3e334f560d5844f5f2d8face05aa58be21649ff8
-                            // for an implementation of the lazy multiplication approach.
-                            // If they fix the exception safety issue, we can re-enable the
-                            // lazy approach.
-                            // NOTE: the coefficient concept demands default constructibility,
-                            // thus we can always emplace without arguments for the coefficient.
-                            const auto res = table.try_emplace(tmp_key);
+                // Unpack in local variables.
+                const auto &r2 = *it;
+                const auto [r2_start, r2_end, bi2] = r2;
 
-                            // NOTE: optimise with likely/unlikely here?
-                            if (res.second) {
-                                // NOTE: coefficients are guaranteed to be move-assignable.
-                                res.first->second = c1 * c2;
+                // The O(N**2) multiplication loop over the ranges.
+                for (auto idx1 = r1_start; idx1 != r1_end; ++idx1) {
+                    const auto &[k1, c1] = *(vptr1 + idx1);
+
+                    // Compute the end index in the second range
+                    // for the current value of idx1.
+                    const auto idx_end2 = compute_end_idx2(idx1, r2);
+
+                    // In the truncated case, check if the end index
+                    // coincides with the begin index. In such a case,
+                    // we can skip all the remaining indices in r1 because
+                    // none of them will ever generate a term which respects
+                    // the truncation limits (both r1 and r2 are sorted
+                    // according to the degree).
+                    if (sizeof...(Args) > 0u && idx_end2 == r2_start) {
+                        break;
+                    }
+
+                    const auto end2 = vptr2 + idx_end2;
+                    for (auto ptr2 = vptr2 + r2_start; ptr2 != end2; ++ptr2) {
+                        const auto &[k2, c2] = *ptr2;
+
+                        // Do the monomial multiplication.
+                        ::obake::monomial_mul(tmp_key, k1, k2, ss);
+
+                        // Check that the result ends up in the correct bucket.
+                        assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
+
+                        // Attempt the insertion.
+                        // NOTE: this will attempt to insert a term with a default-constructed
+                        // coefficient. This is wasteful, it would be better to directly
+                        // construct the coefficient product only if the insertion actually
+                        // takes place (using a lazy multiplication approach).
+                        // Unfortunately, abseil's hash map is not exception safe,
+                        // and if the lazy multiplication throws, the table will be left
+                        // in an inconsistent state. See:
+                        // https://github.com/abseil/abseil-cpp/issues/388
+                        // See the commit
+                        // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                        // for an implementation of the lazy multiplication approach.
+                        // If they fix the exception safety issue, we can re-enable the
+                        // lazy approach.
+                        // NOTE: the coefficient concept demands default constructibility,
+                        // thus we can always emplace without arguments for the coefficient.
+                        const auto res = table.try_emplace(tmp_key);
+
+                        // NOTE: optimise with likely/unlikely here?
+                        if (res.second) {
+                            // NOTE: coefficients are guaranteed to be move-assignable.
+                            res.first->second = c1 * c2;
+                        } else {
+                            // The insertion failed, a term with the same monomial
+                            // exists already. Accumulate c1*c2 into the
+                            // existing coefficient.
+                            // NOTE: do it with fma3(), if possible.
+                            if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
+                                ::obake::fma3(res.first->second, c1, c2);
                             } else {
-                                // The insertion failed, a term with the same monomial
-                                // exists already. Accumulate c1*c2 into the
-                                // existing coefficient.
-                                // NOTE: do it with fma3(), if possible.
-                                if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
-                                    ::obake::fma3(res.first->second, c1, c2);
-                                } else {
-                                    res.first->second += c1 * c2;
-                                }
+                                res.first->second += c1 * c2;
                             }
+                        }
 
 #if !defined(NDEBUG)
-                            ++n_mults;
+                        ++n_mults;
 #endif
-                        }
                     }
                 }
-
-                // Locate and erase terms with zero coefficients
-                // in the current table.
-                const auto it_f = table.end();
-                for (auto it = table.begin(); it != it_f;) {
-                    // NOTE: abseil's flat_hash_map returns void on erase(),
-                    // thus we need to increase 'it' before possibly erasing.
-                    // erase() does not cause rehash and thus will not invalidate
-                    // any other iterator apart from the one being erased.
-                    if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
-                        table.erase(it++);
-                    } else {
-                        ++it;
-                    }
-                }
-
-                // LCOV_EXCL_START
-                // Check the table size against the max allowed size.
-                if (obake_unlikely(table.size() > mts)) {
-                    obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
-                                                       "polynomials resulted in a table whose size ("
-                                                           + ::obake::detail::to_string(table.size())
-                                                           + ") is larger than the maximum allowed value ("
-                                                           + ::obake::detail::to_string(mts) + ")");
-                }
-                // LCOV_EXCL_STOP
             }
-        });
+
+            // Locate and erase terms with zero coefficients
+            // in the current table.
+            const auto it_f = table.end();
+            for (auto it = table.begin(); it != it_f;) {
+                // NOTE: abseil's flat_hash_map returns void on erase(),
+                // thus we need to increase 'it' before possibly erasing.
+                // erase() does not cause rehash and thus will not invalidate
+                // any other iterator apart from the one being erased.
+                if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
+                    table.erase(it++);
+                } else {
+                    ++it;
+                }
+            }
+
+            // LCOV_EXCL_START
+            // Check the table size against the max allowed size.
+            if (obake_unlikely(table.size() > mts)) {
+                obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
+                                                   "polynomials resulted in a table whose size ("
+                                                       + ::obake::detail::to_string(table.size())
+                                                       + ") is larger than the maximum allowed value ("
+                                                       + ::obake::detail::to_string(mts) + ")");
+            }
+            // LCOV_EXCL_STOP
+        }
+    };
+
+    // The parallel multiplication functor for the dense case.
+    auto dense_par_functor = [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs, &retval, &ss,
+                              mts = retval._get_max_table_size(), &compute_end_idx2
+#if !defined(NDEBUG)
+                              ,
+                              &n_mults
+#endif
+    ](const auto &range) {
+        // Cache the pointers to the terms data.
+        // NOTE: doing it here rather than in the lambda
+        // capture seems to help performance on GCC.
+        auto vptr1 = v1.data();
+        auto vptr2 = v2.data();
+
+        // Temporary variable used in monomial multiplication.
+        ret_key_t tmp_key(ss);
+
+        for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
+            // Get a reference to the current table in retval.
+            auto &table = retval._get_s_table()[seg_idx];
+
+            // The objective here is to perform all term-by-term multiplications
+            // whose results end up in the current table (i.e., the table in retval
+            // at index seg_idx). Due to homomorphic hashing, we know that,
+            // given two indices i and j in vseg1 and vseg2,
+            // the terms generated by the multiplication of the
+            // ranges vseg1[i] and vseg2[j] end up at the bucket
+            // (i + j) % nsegs in retval. Thus, we need to select
+            // all i, j pairs such that (i + j) % nsegs == seg_idx.
+            for (s_size_t i = 0; i < nsegs; ++i) {
+                const auto j = seg_idx >= i ? (seg_idx - i) : (nsegs - i + seg_idx);
+                assert(j < vseg2.size());
+
+                // Fetch the corresponding ranges.
+                const auto [r1_start, r1_end, bi1] = vseg1[i];
+                const auto &r2 = vseg2[j];
+                const auto [r2_start, r2_end, bi2] = r2;
+
+                // NOTE: in the dense case, the bucket
+                // indices must be equal to i/j.
+                assert(bi1 == i);
+                assert(bi2 == j);
+                ::obake::detail::ignore(bi1);
+                ::obake::detail::ignore(bi2);
+
+                // The O(N**2) multiplication loop over the ranges.
+                for (auto idx1 = r1_start; idx1 != r1_end; ++idx1) {
+                    const auto &[k1, c1] = *(vptr1 + idx1);
+
+                    // Compute the end index in the second range
+                    // for the current value of idx1.
+                    const auto idx_end2 = compute_end_idx2(idx1, r2);
+
+                    // In the truncated case, check if the end index
+                    // coincides with the begin index. In such a case,
+                    // we can skip all the remaining indices in r1 because
+                    // none of them will ever generate a term which respects
+                    // the truncation limits (both r1 and r2 are sorted
+                    // according to the degree).
+                    if (sizeof...(Args) > 0u && idx_end2 == r2_start) {
+                        break;
+                    }
+
+                    const auto end2 = vptr2 + idx_end2;
+                    for (auto ptr2 = vptr2 + r2_start; ptr2 != end2; ++ptr2) {
+                        const auto &[k2, c2] = *ptr2;
+
+                        // Do the monomial multiplication.
+                        ::obake::monomial_mul(tmp_key, k1, k2, ss);
+
+                        // Check that the result ends up in the correct bucket.
+                        assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
+
+                        // Attempt the insertion.
+                        // NOTE: this will attempt to insert a term with a default-constructed
+                        // coefficient. This is wasteful, it would be better to directly
+                        // construct the coefficient product only if the insertion actually
+                        // takes place (using a lazy multiplication approach).
+                        // Unfortunately, abseil's hash map is not exception safe,
+                        // and if the lazy multiplication throws, the table will be left
+                        // in an inconsistent state. See:
+                        // https://github.com/abseil/abseil-cpp/issues/388
+                        // See the commit
+                        // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                        // for an implementation of the lazy multiplication approach.
+                        // If they fix the exception safety issue, we can re-enable the
+                        // lazy approach.
+                        // NOTE: the coefficient concept demands default constructibility,
+                        // thus we can always emplace without arguments for the coefficient.
+                        const auto res = table.try_emplace(tmp_key);
+
+                        // NOTE: optimise with likely/unlikely here?
+                        if (res.second) {
+                            // NOTE: coefficients are guaranteed to be move-assignable.
+                            res.first->second = c1 * c2;
+                        } else {
+                            // The insertion failed, a term with the same monomial
+                            // exists already. Accumulate c1*c2 into the
+                            // existing coefficient.
+                            // NOTE: do it with fma3(), if possible.
+                            if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
+                                ::obake::fma3(res.first->second, c1, c2);
+                            } else {
+                                res.first->second += c1 * c2;
+                            }
+                        }
+
+#if !defined(NDEBUG)
+                        ++n_mults;
+#endif
+                    }
+                }
+            }
+
+            // Locate and erase terms with zero coefficients
+            // in the current table.
+            const auto it_f = table.end();
+            for (auto it = table.begin(); it != it_f;) {
+                // NOTE: abseil's flat_hash_map returns void on erase(),
+                // thus we need to increase 'it' before possibly erasing.
+                // erase() does not cause rehash and thus will not invalidate
+                // any other iterator apart from the one being erased.
+                if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
+                    table.erase(it++);
+                } else {
+                    ++it;
+                }
+            }
+
+            // LCOV_EXCL_START
+            // Check the table size against the max allowed size.
+            if (obake_unlikely(table.size() > mts)) {
+                obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
+                                                   "polynomials resulted in a table whose size ("
+                                                       + ::obake::detail::to_string(table.size())
+                                                       + ") is larger than the maximum allowed value ("
+                                                       + ::obake::detail::to_string(mts) + ")");
+            }
+            // LCOV_EXCL_STOP
+        }
+    };
+
+    try {
+        if (vseg1.size() == nsegs && vseg2.size() == nsegs) {
+            ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), dense_par_functor);
+        } else {
+            ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), sparse_par_functor);
+        }
 
 #if !defined(NDEBUG)
         // Verify the number of term multiplications we performed,
@@ -1233,8 +1430,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                    == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
         }
 #endif
-    } catch (...) {
         // LCOV_EXCL_START
+    } catch (...) {
         // In case of exceptions, clear retval before
         // rethrowing to ensure a known sane state.
         retval.clear();
@@ -1583,23 +1780,14 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
     return retval;
 }
 
-// Top level function for poly multiplication.
+// Top level function for poly multiplication. Requires that
+// x is not longer than y.
 // NOTE: future improvements:
 // - better heuristic for choosing between simple and mt,
 //   based on the byte size of the operands. This should also
 //   allow to use more reliably parallel primitives (e.g.,
 //   parallel sort) in the implementation;
-// - the vseg vectors are currently represented in a dense fashion
-//   (i.e., their sizes are equal to the number of segments in the
-//   output series), but probably they should really be represented
-//   in a sparse fashion. For instance, in a highly rectangular
-//   multiplication, e.g., 1000000 x 16, the 16 terms in the second series
-//   will sparsely fill the output table, and most of the ranges
-//   in vseg2 will be empty. This creates unnecessary overhead
-//   in the multiplication loop. Perhaps we could also have 2 cases,
-//   dense and sparse vsegs depending on the smallest ratio between the number
-//   of terms in each series wrt the number of segments in the product?
-// - Parallelisation of overflow checking (see in packed_monomial for instance);
+// - parallelisation of overflow checking (see in packed_monomial for instance);
 // - parallelisation in the degree computation, and avoid doing it multiple
 //   times in the implementation functions. Perhaps we should have a helper
 //   in series.hpp to create the vector of degrees for a series (both parallel
@@ -1607,6 +1795,9 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
+    // Check the precondition.
+    assert(x.size() <= y.size());
+
     if (x.get_symbol_set() == y.get_symbol_set()) {
         return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y), args...);
     } else {
@@ -1661,12 +1852,24 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
     }
 }
 
+// Helper to ensure that poly_mul_impl() is called with the
+// shorter poly first, switching around the arguments if necessary.
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_impl_switch(T &&x, U &&y, const Args &... args)
+{
+    if (x.size() <= y.size()) {
+        return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), args...);
+    } else {
+        return detail::poly_mul_impl(::std::forward<U>(y), ::std::forward<T>(x), args...);
+    }
+}
+
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
 {
-    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 namespace detail
@@ -1707,10 +1910,14 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
             return static_cast<int>(::std::conjunction_v<
-                                    // NOTE: verify deg_add_t, before using it below.
-                                    is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
-                                    ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
-                                    ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
+                                    // NOTE: this will ensure that switching around
+                                    // the degree operands still works and produces the same
+                                    // type. This is necessary because in the poly moltiplication
+                                    // function we might end up swapping the operands.
+                                    // NOTE: this will also verify that deg_add_t is present.
+                                    is_addable<const deg1_t &, const deg2_t &>, ::std::is_copy_constructible<deg1_t>,
+                                    ::std::is_copy_constructible<deg2_t>, ::std::is_move_constructible<deg1_t>,
+                                    ::std::is_move_constructible<deg2_t>,
                                     // NOTE: in the implementation functions, we always compare
                                     // an lvalue ref to the limit V to an rvalue resulting
                                     // from adding the degrees of one term from each series.
@@ -1738,14 +1945,14 @@ template <typename T, typename U, typename V,
           ::std::enable_if_t<detail::poly_mul_truncated_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
 {
-    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
+    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
 }
 
 template <typename T, typename U, typename V,
           ::std::enable_if_t<detail::poly_mul_truncated_p_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
 {
-    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
+    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
 }
 
 namespace detail
