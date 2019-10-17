@@ -1150,7 +1150,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // have not wrapped around yet, otherwise seg_idx + nsegs
                 // (so that tgt_idx % nsegs == seg_idx).
                 // NOTE: the guarantee on get_max_s_size() ensures that
-                // we can always comput seg_idx + nsegs without overflow.
+                // we can always compute seg_idx + nsegs without overflow.
                 const auto tgt_idx = wrap_around ? (seg_idx + nsegs) : seg_idx;
 
                 // Locate a range in vseg2 such that the bucket idx of that range + bi1
