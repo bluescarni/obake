@@ -1389,7 +1389,7 @@ private:
     template <class Archive>
     void load(Archive &ar, unsigned)
     {
-        // Empty out this before doing anything.
+        // Empty out before doing anything.
         clear();
 
         try {
@@ -1435,11 +1435,13 @@ private:
                         ::std::as_const(tmp_k), ::std::as_const(tmp_c));
                 }
             }
+            // LCOV_EXCL_START
         } catch (...) {
             // Avoid inconsistent state in case of exceptions.
             clear();
             throw;
         }
+        // LCOV_EXCL_STOP
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 
