@@ -11,7 +11,6 @@
 
 #include <iostream>
 
-#include <obake/byte_size.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
 #include "simple_timer.hpp"
@@ -39,10 +38,7 @@ inline auto dense_benchmark(int n)
         ret = f * g;
     }
 
-    std::cout << "Total number of terms             : " << ret.size() << '\n';
-    std::cout << "Total number of tables            : " << ret._get_s_table().size() << '\n';
-    std::cout << "Number of terms in the first table: " << ret._get_s_table()[0].size() << '\n';
-    std::cout << "Total size in bytes               : " << byte_size(ret) << '\n';
+    std::cout << ret.table_stats() << '\n';
 
     return ret;
 }

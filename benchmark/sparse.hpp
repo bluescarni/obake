@@ -9,10 +9,8 @@
 #ifndef OBAKE_BENCHMARK_SPARSE_HPP
 #define OBAKE_BENCHMARK_SPARSE_HPP
 
-#include <algorithm>
 #include <iostream>
 
-#include <obake/byte_size.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
 #include "simple_timer.hpp"
@@ -43,14 +41,7 @@ inline auto sparse_benchmark(int n)
         ret = f * g;
     }
 
-    std::cout << "Total number of terms             : " << ret.size() << '\n';
-    std::cout << "Total number of tables            : " << ret._get_s_table().size() << '\n';
-    std::cout << "Average terms per table           : "
-              << static_cast<double>(ret.size()) / static_cast<double>(ret._get_s_table().size()) << '\n';
-    auto [it_min, it_max] = std::minmax_element(ret._get_s_table().cbegin(), ret._get_s_table().cend(),
-                                                [](const auto &t1, const auto &t2) { return t1.size() < t2.size(); });
-    std::cout << "Min/max terms per table           : " << it_min->size() << '/' << it_max->size() << '\n';
-    std::cout << "Total size in bytes               : " << byte_size(ret) << '\n';
+    std::cout << ret.table_stats() << '\n';
 
     return ret;
 }

@@ -287,3 +287,15 @@ TEST_CASE("series_s11n_test")
     REQUIRE(tmp.get_s_size() == 3);
     ss.str("");
 }
+
+TEST_CASE("series_table_stats_test")
+{
+    using pm_t = packed_monomial<int>;
+    using p1_t = polynomial<pm_t, double>;
+
+    REQUIRE(!boost::contains(p1_t{}.table_stats(), "Average terms per table"));
+
+    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+    REQUIRE(boost::contains(obake::pow(x + y + z, 5).table_stats(), "Average terms per table"));
+}
