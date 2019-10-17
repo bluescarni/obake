@@ -1126,22 +1126,21 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             bool wrap_around = false;
 
             for (const auto &r1 : vseg1) {
-                // Get the bucket index for the current
-                // segmentation range in the first poly.
-                const auto i = ::std::get<2>(r1);
+                // Unpack in local variables.
+                const auto [r1_start, r1_end, bi1] = r1;
 
-                // The first time that i is > seg_idx
+                // The first time that bi1 is > seg_idx
                 // we have a wrap-around. This means that:
                 // - the search range in vseg2 will be reset
                 //   to [vseg2_begin, vseg2_end),
                 // - the bucket idx we need to look for
                 //   in vseg2 is not seg_idx any more, but
                 //   seg_idx + nsegs.
-                // E.g., if seg_idx is 4, i is 5 and nsegs
-                // is 8, then there is no bucket index j in
-                // vseg2 such that 5 + j = 4, but there might
-                // be a j such that 5 + j = 4 + 8.
-                if (!wrap_around && i > seg_idx) {
+                // E.g., if seg_idx is 4, bi1 is 5 and nsegs
+                // is 8, then there is no bucket index bi2 in
+                // vseg2 such that 5 + bi2 = 4, but there might
+                // be a bi2 such that 5 + bi2 = 4 + 8.
+                if (!wrap_around && bi1 > seg_idx) {
                     wrap_around = true;
                     end_search = vseg2_end;
                 }
@@ -1153,14 +1152,14 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // we can always comput seg_idx + nsegs without overflow.
                 const auto tgt_idx = wrap_around ? (seg_idx + nsegs) : seg_idx;
 
-                // Locate a range in vseg2 such that the bucket idx of that range + i
+                // Locate a range in vseg2 such that the bucket idx of that range + bi1
                 // is equal to tgt_idx.
                 const auto it
-                    = ::std::lower_bound(vseg2_begin, end_search, tgt_idx, [i](const auto &t, const auto &b_idx) {
-                          return ::std::get<2>(t) + i < b_idx;
+                    = ::std::lower_bound(vseg2_begin, end_search, tgt_idx, [bi1](const auto &t, const auto &b_idx) {
+                          return ::std::get<2>(t) + bi1 < b_idx;
                       });
 
-                if (it == end_search || ::std::get<2>(*it) + i != tgt_idx) {
+                if (it == end_search || ::std::get<2>(*it) + bi1 != tgt_idx) {
                     // There is no range in vseg2 such that its multiplication
                     // by the current range in vseg1 results in terms which
                     // end up at the bucket index seg_idx in the destination
@@ -1168,16 +1167,17 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     continue;
                 }
                 // Update the end point of the binary search. We know that
-                // the next vseg1 range will bump up i at least by one, thus,
+                // the next vseg1 range will bump up bi1 at least by one, thus,
                 // in the next binary search, we know that anything we may find
                 // must be *before* it.
                 end_search = it;
 
+                // Unpack in local variables.
                 const auto &r2 = *it;
+                const auto [r2_start, r2_end, bi2] = r2;
 
                 // The O(N**2) multiplication loop over the ranges.
-                const auto idx_end1 = ::std::get<1>(r1);
-                for (auto idx1 = ::std::get<0>(r1); idx1 != idx_end1; ++idx1) {
+                for (auto idx1 = r1_start; idx1 != r1_end; ++idx1) {
                     const auto &[k1, c1] = *(vptr1 + idx1);
 
                     // Compute the end index in the second range
@@ -1190,12 +1190,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     // none of them will ever generate a term which respects
                     // the truncation limits (both r1 and r2 are sorted
                     // according to the degree).
-                    if (sizeof...(Args) > 0u && idx_end2 == ::std::get<0>(r2)) {
+                    if (sizeof...(Args) > 0u && idx_end2 == r2_start) {
                         break;
                     }
 
                     const auto end2 = vptr2 + idx_end2;
-                    for (auto ptr2 = vptr2 + ::std::get<0>(r2); ptr2 != end2; ++ptr2) {
+                    for (auto ptr2 = vptr2 + r2_start; ptr2 != end2; ++ptr2) {
                         const auto &[k2, c2] = *ptr2;
 
                         // Do the monomial multiplication.
