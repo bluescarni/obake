@@ -228,3 +228,25 @@ TEST_CASE("polynomial_truncate_degree_large")
 
     REQUIRE(truncate_degree(cmp, 50) == tcmp);
 }
+
+// A test for excercising rectangular multi-threaded multiplication.
+TEST_CASE("polynomial_hm_mt_rectangular_large")
+{
+    using pm_t = packed_monomial<long long>;
+    using poly_t = polynomial<pm_t, mppp::integer<1>>;
+
+    auto [x, y, z, t, u] = make_polynomials<poly_t>(symbol_set{"x", "y", "z", "t", "u"}, "x", "y", "z", "t", "u");
+
+    auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
+    const auto tmp_f(f);
+
+    poly_t tmp;
+    tmp.set_symbol_set(symbol_set{"x", "y", "z", "t", "u"});
+
+    for (int i = 1; i < 20; ++i) {
+        polynomials::detail::poly_mul_impl_mt_hm(tmp, tmp_f, f);
+        f = tmp;
+        tmp = poly_t{};
+        tmp.set_symbol_set(symbol_set{"x", "y", "z", "t", "u"});
+    }
+}

@@ -233,6 +233,8 @@ TEST_CASE("series_add_symbols_test")
     REQUIRE(is_detected_v<add_symbols_t, const p1_t &>);
 }
 
+#if !defined(_MSC_VER) || defined(__clang__)
+
 TEST_CASE("series_s11n_test")
 {
     using pm_t = packed_monomial<int>;
@@ -299,3 +301,5 @@ TEST_CASE("series_table_stats_test")
 
     REQUIRE(boost::contains(obake::pow(x + y + z, 5).table_stats(), "Average terms per table"));
 }
+
+#endif
