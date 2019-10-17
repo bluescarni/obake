@@ -873,19 +873,54 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         vseg.reserve(::obake::safe_cast<decltype(vseg.size())>(nsegs));
 
         const auto v_begin = v.begin(), v_end = v.end();
-        for (auto it = v_begin; it != v_end;) {
-            // Get the bucket index of the current term.
-            const auto cur_b_idx = static_cast<s_size_t>(::obake::hash(it->first) % (s_size_t(1) << log2_nsegs));
-            // Look for the first term whose bucket index is greater than cur_b_idx.
-            const auto range_end
-                = ::std::upper_bound(it, v_end, cur_b_idx, [log2_nsegs](const auto &b_idx, const auto &p) {
-                      return b_idx < ::obake::hash(p.first) % (s_size_t(1) << log2_nsegs);
-                  });
-            // Add the range to vseg.
-            // NOTE: the overflow check was done earlier.
-            vseg.emplace_back(static_cast<idx_t>(it - v_begin), static_cast<idx_t>(range_end - v_begin), cur_b_idx);
-            // Update 'it'.
-            it = range_end;
+
+        // NOTE: if the number of terms in v is small enough,
+        // compute a sparse representation of vseg (meaning that
+        // the number of segmentation ranges will be less than
+        // nsegs and all the ranges will be non-empty). Otherwise,
+        // compute a dense representation, where the number
+        // of ranges is equal to nsegs and empty ranges might
+        // be present. We will later run different parallel
+        // functors depending on whether we are in the sparse
+        // or dense case.
+        // NOTE: the idea here is that we want to run
+        // the sparse functor only in highly sparse cases,
+        // because otherwise the more complicated logic
+        // of the sparse functor carries a measurable performance
+        // penalty in the "mostly-dense" cases.
+        if (v.size() < nsegs / 2u) {
+            for (auto it = v_begin; it != v_end;) {
+                // Get the bucket index of the current term.
+                const auto cur_b_idx = static_cast<s_size_t>(::obake::hash(it->first) % (s_size_t(1) << log2_nsegs));
+                // Look for the first term whose bucket index is greater than cur_b_idx.
+                const auto range_end
+                    = ::std::upper_bound(it, v_end, cur_b_idx, [log2_nsegs](const auto &b_idx, const auto &p) {
+                          return b_idx < ::obake::hash(p.first) % (s_size_t(1) << log2_nsegs);
+                      });
+                // NOTE: because we are in the sparse representation case,
+                // range_end cannot be equal to it.
+                assert(range_end != it);
+                // Add the range to vseg.
+                // NOTE: the overflow check was done earlier.
+                vseg.emplace_back(static_cast<idx_t>(it - v_begin), static_cast<idx_t>(range_end - v_begin), cur_b_idx);
+                // Update 'it'.
+                it = range_end;
+            }
+        } else {
+            idx_t idx = 0;
+            auto it = v_begin;
+            for (s_size_t i = 0; i < nsegs; ++i) {
+                // Look for the first term whose bucket index is greater than i.
+                // NOTE: this might result in 'it' not changing, in which case
+                // the segmentation range will be empty.
+                it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &b_idx, const auto &p) {
+                    return b_idx < ::obake::hash(p.first) % (s_size_t(1) << log2_nsegs);
+                });
+                const auto old_idx = idx;
+                // NOTE: the overflow check was done earlier.
+                idx = static_cast<idx_t>(it - v_begin);
+                vseg.emplace_back(old_idx, idx, i);
+            }
         }
 
         return vseg;
@@ -899,7 +934,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         assert(vseg1.size() <= nsegs);
         assert(vseg2.size() <= nsegs);
 
-        auto verify_seg = [log2_nsegs](const auto &vs, const auto &v) {
+        auto verify_seg = [log2_nsegs, nsegs](const auto &vs, const auto &v) {
             // Counter for the number of terms represented in the
             // segmentation vector.
             decltype(v.size()) counter = 0;
@@ -907,7 +942,14 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             for (const auto &t : vs) {
                 const auto &[start, end, b_idx] = t;
                 assert(end <= v.size());
-                assert(start < end);
+                // NOTE: different check depending
+                // on whether we are in the sparse or
+                // dense case.
+                if (vs.size() < nsegs) {
+                    assert(start < end);
+                } else {
+                    assert(start <= end);
+                }
                 counter += end - start;
 
                 // Check that all elements in the range
@@ -1417,8 +1459,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     try {
         if (vseg1.size() == nsegs && vseg2.size() == nsegs) {
+            // Both vseg1 and vseg2 are represented in dense
+            // form, run the dense functor.
             ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), dense_par_functor);
         } else {
+            // At least one of vseg1/vseg2 are represented
+            // in sparse form, run the sparse functor.
             ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), sparse_par_functor);
         }
 
