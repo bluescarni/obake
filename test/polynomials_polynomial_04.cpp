@@ -229,7 +229,7 @@ TEST_CASE("polynomial_truncate_degree_large")
     REQUIRE(truncate_degree(cmp, 50) == tcmp);
 }
 
-// A test for excercising rectangular multi-threaded multiplication.
+// A test for exercising rectangular multi-threaded multiplication.
 TEST_CASE("polynomial_hm_mt_rectangular_large")
 {
     using pm_t = packed_monomial<long long>;
@@ -249,4 +249,6 @@ TEST_CASE("polynomial_hm_mt_rectangular_large")
         tmp = poly_t{};
         tmp.set_symbol_set(symbol_set{"x", "y", "z", "t", "u"});
     }
+
+    REQUIRE(f.size() == 53130u);
 }
