@@ -940,7 +940,7 @@ public:
     // NOTE: the guarantee that we can
     // always shift a s_size_type by this
     // value is important and needs to be
-    // documents.
+    // documented.
     static unsigned get_max_s_size()
     {
         return max_log2_size;
