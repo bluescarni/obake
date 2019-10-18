@@ -909,6 +909,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 it = range_end;
             }
         } else {
+            // NOTE: the segmentation in dense form may be
+            // parallelised easily if needed.
             idx_t idx = 0;
             auto it = v_begin;
             for (s_size_t i = 0; i < nsegs; ++i) {
