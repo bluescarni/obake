@@ -1,0 +1,396 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation &mdash; obake 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Changelog" href="changelog.html" />
+    <link rel="prev" title="obake" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> obake
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-from-source">Installation from source</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#compiler-and-platform-specific-notes">Compiler and platform specific notes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#building-the-documentation">Building the documentation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">obake</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Installation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/install.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="installation">
+<span id="id1"></span><h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="requirements">
+<span id="id2"></span><h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>Currently, obake has the following mandatory dependencies:</p>
+<ul class="simple">
+<li><p>the <a class="reference external" href="https://bluescarni.github.io/mppp/">mp++</a> multiprecision library (at least version 0.17),</p></li>
+<li><p>the <a class="reference external" href="https://www.boost.org/">Boost</a> C++ libraries (at least verion 1.65),</p></li>
+<li><p>the <a class="reference external" href="https://abseil.io/">Abseil</a> C++ libraries,</p></li>
+<li><p>the <a class="reference external" href="https://github.com/intel/tbb">Intel TBB</a> library.</p></li>
+</ul>
+<p>obake also depends on other libraries for optional features:</p>
+<ul class="simple">
+<li><p>on some operating systems, obake can use <a class="reference external" href="https://github.com/ianlancetaylor/libbacktrace">libbacktrace</a>
+to improve the quality of the stack traces.</p></li>
+</ul>
+</div>
+<div class="section" id="installation-from-source">
+<span id="id3"></span><h2>Installation from source<a class="headerlink" href="#installation-from-source" title="Permalink to this headline">¶</a></h2>
+<p>obake is written in <a class="reference external" href="https://en.wikipedia.org/wiki/C%2B%2B17">C++17</a>,
+and thus it requires a fairly recent compiler with
+robust support for modern C++ idioms. The following compilers are regularly
+tested in obake’s continuous integration setup:</p>
+<ul class="simple">
+<li><p>GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),</p></li>
+<li><p>Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),</p></li>
+<li><p>Visual Studio 2019 on Windows,</p></li>
+<li><p>Clang + Visual Studio 2015 on Windows
+(via the <code class="docutils literal notranslate"><span class="pre">clang-cl</span></code> driver),</p></li>
+<li><p>Xcode 10.2 on OSX.</p></li>
+</ul>
+<p>See also the
+<a class="reference internal" href="#platform-specific-notes"><span class="std std-ref">compiler and platform specific notes</span></a>.</p>
+<p>In order to install obake from source, <a class="reference external" href="https://cmake.org/">CMake</a> is
+required (at least version 3.3). After downloading and unpacking obake’s
+source code, go to obake’s
+source tree, create a <code class="docutils literal notranslate"><span class="pre">build</span></code> directory and <code class="docutils literal notranslate"><span class="pre">cd</span></code> into it. E.g.,
+on a Unix-like system:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> <span class="nb">cd</span> /path/to/obake
+<span class="gp">$</span> mkdir build
+<span class="gp">$</span> <span class="nb">cd</span> build
+</pre></div>
+</div>
+<p>Next, we will invoke <code class="docutils literal notranslate"><span class="pre">cmake</span></code> to configure the build. The following options
+are currently recognised by obake’s build system:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">OBAKE_WITH_LIBBACKTRACE</span></code>: use the <a class="reference external" href="https://github.com/ianlancetaylor/libbacktrace">libbacktrace</a>
+library to improve the quality of the stack traces in Unix-like
+environments. On some Linux
+distributions, such as Ubuntu, libbacktrace is built into the GCC
+compiler; otherwise, it can be
+installed as a standalone library. Note that libbacktrace currently does not
+work on Windows (unless MinGW is being used as a compiler) and OSX.
+Defaults to <code class="docutils literal notranslate"><span class="pre">OFF</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OBAKE_BUILD_TESTS</span></code>: build the test suite. Defaults to <code class="docutils literal notranslate"><span class="pre">OFF</span></code>.</p></li>
+</ul>
+<p>Additionally, there are various useful CMake variables you can set, such as:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE_BUILD_TYPE</span></code>: the build type (<code class="docutils literal notranslate"><span class="pre">Release</span></code>, <code class="docutils literal notranslate"><span class="pre">Debug</span></code>, etc.),
+defaults to <code class="docutils literal notranslate"><span class="pre">Release</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE_INSTALL_PREFIX</span></code>: the path into which obake will be installed
+(e.g., this defaults to <code class="docutils literal notranslate"><span class="pre">/usr/local</span></code> on Unix-like platforms).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE_PREFIX_PATH</span></code>: additional paths that will be searched by CMake
+when looking for dependencies.</p></li>
+</ul>
+<p>Please consult <a class="reference external" href="https://cmake.org/cmake/help/latest/">CMake’s documentation</a>
+for more details about CMake’s variables and options.</p>
+<p>A typical CMake invocation for obake may look something like this:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake ../ -DOBAKE_BUILD_TESTS<span class="o">=</span>ON -DCMAKE_INSTALL_PREFIX<span class="o">=</span>~/.local
+</pre></div>
+</div>
+<p>That is, we build the test suite and we
+will be installing obake into our home directory into the <code class="docutils literal notranslate"><span class="pre">.local</span></code>
+subdirectory. If CMake runs without errors, we can then proceed to actually
+building obake:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake --build .
+</pre></div>
+</div>
+<p>This command will build the obake library and, if requested, the test suite.
+Next, we can install obake with the command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake  --build . --target install
+</pre></div>
+</div>
+<p>This command will install the obake library and header files to
+the directory tree indicated by the <code class="docutils literal notranslate"><span class="pre">CMAKE_INSTALL_PREFIX</span></code> variable.</p>
+<p>If enabled, the test suite can be executed with the command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake  --build . --target <span class="nb">test</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>On Windows, in order to execute the test suite you have to ensure that the
+<code class="docutils literal notranslate"><span class="pre">PATH</span></code> variable includes the directory that contains the obake
+DLL (otherwise the tests will fail to run).</p>
+</div>
+<div class="section" id="troubleshooting">
+<h3>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h3>
+<p>By far, the most common problem when compiling obake is the detection
+of the dependencies.</p>
+<p>On Linux systems, generally speaking, the best way of installing the
+dependencies is through the distribution’s package manager
+(e.g., <code class="docutils literal notranslate"><span class="pre">apt-get</span></code> on Ubuntu).
+For those dependencies not available from the system’s package
+manager (e.g., mp++, libbacktrace, etc.), the best course of action
+is to install them by hand in the user’s home directory under the
+<code class="docutils literal notranslate"><span class="pre">.local</span></code> subdirectory, and then set the CMake variable
+<code class="docutils literal notranslate"><span class="pre">CMAKE_PREFIX_PATH</span></code> to <code class="docutils literal notranslate"><span class="pre">~/.local</span></code>. This should be enough for
+obake’s build system to successfully locate the dependencies in most
+cases.</p>
+<p>On Windows and OSX, the dependencies are best handled with a 3rd party
+package manager, such as <a class="reference external" href="https://docs.conda.io/en/latest/">Conda</a>
+(for both OSX and Windows) or <a class="reference external" href="https://brew.sh/">Homebrew</a> (only
+for OSX). When using 3rd party package managers, it might be necessary
+to set the <code class="docutils literal notranslate"><span class="pre">CMAKE_PREFIX_PATH</span></code> variable to the root path of the
+package manager’s install tree in order
+for obake’s build system to correctly locate the dependencies.</p>
+</div>
+<div class="section" id="compiler-and-platform-specific-notes">
+<span id="platform-specific-notes"></span><h3>Compiler and platform specific notes<a class="headerlink" href="#compiler-and-platform-specific-notes" title="Permalink to this headline">¶</a></h3>
+<p>Visual Studio:</p>
+<ul class="simple">
+<li><p>Due to various compiler issues, only MSVC 2019 is currently able
+to compile obake.</p></li>
+<li><p>It is possible to use <code class="docutils literal notranslate"><span class="pre">clang-cl</span></code> to compile obake
+with earlier versions of MSVC (2017 and 2015). This means
+that Clang will be used as a C/C++ compiler, while the
+C++ standard library will be the one supplied with MSVC. Be
+aware that the C++ library from MSVC 2015 is not
+fully C++17-compliant, and as a result
+certain features in obake will be disabled when using
+MSVC 2015 (these occurrences are detailed in the API
+documentation).</p></li>
+<li><p>When using Visual Studio, the obake library is compiled
+with the <code class="docutils literal notranslate"><span class="pre">NOMINMAX</span></code> and <code class="docutils literal notranslate"><span class="pre">WIN32_LEAN_AND_MEAN</span></code> definitions,
+and, if supported, with the <code class="docutils literal notranslate"><span class="pre">/permissive-</span></code> compiler flag.</p></li>
+</ul>
+<p>GCC:</p>
+<ul class="simple">
+<li><p>Due to a compiler bug, when using GCC 7 obake’s customisation points
+do not have any <code class="docutils literal notranslate"><span class="pre">noexcept</span></code> specifier.</p></li>
+</ul>
+<p>Clang:</p>
+<ul class="simple">
+<li><p>Due to a compiler bug, Clang 8.0.0 may fail to compile obake’s
+test suite with debugging information. The issue appears to have been
+rectified in Clang 8.0.1.</p></li>
+</ul>
+<p>OSX:</p>
+<ul class="simple">
+<li><p>On OSX, only the most recent versions of Xcode (i.e., Xcode 9 or later)
+are capable of compiling obake.
+As an alternative to Xcode, one can install a more modern compiler toolchain
+using package managers such as <a class="reference external" href="https://docs.conda.io/en/latest/">Conda</a> or
+<a class="reference external" href="https://brew.sh/">Homebrew</a>.</p></li>
+</ul>
+</div>
+<div class="section" id="building-the-documentation">
+<h3>Building the documentation<a class="headerlink" href="#building-the-documentation" title="Permalink to this headline">¶</a></h3>
+<p>obake’s documentation is built with a tool called <a class="reference external" href="https://www.sphinx-doc.org/">Sphinx</a>,
+and it uses a <a class="reference external" href="https://sphinx-rtd-theme.readthedocs.io/en/stable/">custom theme</a>.
+Sphinx can typically be installed from a variety of package managers,
+while the custom theme can easily be installed with <code class="docutils literal notranslate"><span class="pre">pip</span></code>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> pip install --user sphinx_rtd_theme
+</pre></div>
+</div>
+<p>Before attempting to build the documentation, you must ensure
+to run CMake from the <code class="docutils literal notranslate"><span class="pre">build</span></code> directory at least once
+(see the <a class="reference internal" href="#installation-from-source"><span class="std std-ref">source installation instructions</span></a>):</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake ../
+</pre></div>
+</div>
+<p>Running CMake is necessary to generate the configuration files required
+to build the documentation.</p>
+<p>After having run CMake, you can move to the <code class="docutils literal notranslate"><span class="pre">doc</span></code> directory and proceed
+to build the documentation. Executing the command</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> make html
+</pre></div>
+</div>
+<p>will produce the documentation in HTML format. The documentation will be
+generated in the <code class="docutils literal notranslate"><span class="pre">doc/_build</span></code> directory.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="obake" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Francesco Biscani
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
