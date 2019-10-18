@@ -20,13 +20,10 @@ obake also depends on other libraries for optional features:
 * on some operating systems, obake can use `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   to improve the quality of the stack traces.
 
-Installing obake
-----------------
-
 .. _installation_from_source:
 
 Installation from source
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 obake is written in `C++17 <https://en.wikipedia.org/wiki/C%2B%2B17>`_,
 and thus it requires a fairly recent compiler with
@@ -118,7 +115,7 @@ If enabled, the test suite can be executed with the command:
    DLL (otherwise the tests will fail to run).
 
 Troubleshooting
-"""""""""""""""
+^^^^^^^^^^^^^^^
 
 By far, the most common problem when compiling obake is the detection
 of the dependencies.
@@ -145,7 +142,7 @@ for obake's build system to correctly locate the dependencies.
 .. _platform_specific_notes:
 
 Compiler and platform specific notes
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Visual Studio:
 
@@ -184,7 +181,7 @@ OSX:
   `Homebrew <https://brew.sh/>`_.
 
 Building the documentation
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 obake's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/>`_,
 and it uses a `custom theme <https://sphinx-rtd-theme.readthedocs.io/en/stable/>`_.
