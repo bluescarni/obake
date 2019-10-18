@@ -10,3 +10,12 @@
 > preternatural creatures in Japanese folklore.
 > Literally, the terms mean a thing that changes, referring to a state of transformation
 > or shapeshifting.
+
+obake is a C++17 library for the symbolic manipulation of sparse polynomials
+and other closely-related mathematical objects (e.g., truncated power
+series, Poisson series, etc.). obake is the successor of the
+[piranha](https://github.com/bluescarni/piranha) project.
+
+> :warning: obake is currently under heavy development, and the
+> only documentation available at this time are the comments
+> in the source code.
