@@ -35,6 +35,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_invoke.h>
 #include <tbb/parallel_reduce.h>
+#include <tbb/parallel_sort.h>
 
 #include <mp++/integer.hpp>
 
@@ -320,6 +321,8 @@ template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
 // Helper to estimate the average term size (in bytes) in a poly multiplication.
+// NOTE: should this also be made proportional to the number
+// of estimated term-by-term multiplications?
 template <typename RetCf, typename T1, typename T2>
 inline ::std::size_t poly_mul_impl_estimate_average_term_size(const ::std::vector<T1> &v1, const ::std::vector<T2> &v2,
                                                               const symbol_set &ss)
@@ -509,8 +512,68 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
         return ret;
     }();
 
+    // Determine the total number of term-by-term multiplications
+    // that will be performed in the poly multiplication.
+    auto tot_n_mults = [&vidx1, &vidx2, &degree_data, &args...]() {
+        if constexpr (sizeof...(Args) == 0u) {
+            // In the untruncated case, the total number of term-by-term
+            // multiplications to be performed is simply the product
+            // of the series sizes.
+            ::obake::detail::ignore(degree_data, args...);
+
+            return ::mppp::integer<1>(vidx1.size()) * vidx2.size();
+        } else {
+            // In the truncated case, we need to take into account
+            // the truncation limit term by term.
+            ::obake::detail::ignore(vidx2);
+
+            // Fetch the truncation limit.
+            const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
+
+            return ::tbb::parallel_reduce(
+                ::tbb::blocked_range<decltype(vidx1.cbegin())>(vidx1.cbegin(), vidx1.cend()), ::mppp::integer<1>{},
+                [&max_deg, &degree_data](const auto &range, ::mppp::integer<1> cur) {
+                    // NOTE: vidx1 is unsorted, vidx2 is sorted according
+                    // to the degree.
+
+                    // Get the degree data for x and y.
+                    const auto &[v1_deg, v2_deg] = degree_data;
+
+                    for (auto idx1 : range) {
+                        // Fetch the degree of the current term in x.
+                        const auto &d1 = v1_deg[idx1];
+
+                        // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
+                        const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
+                                                           [&d1](const auto &mdeg, const auto &d2) {
+                                                               // NOTE: we require below
+                                                               // comparability between const lvalue limit
+                                                               // and rvalue of the sum of the degrees.
+                                                               return mdeg < d1 + d2;
+                                                           });
+
+                        // Accumulate in cur how many terms in y would be multiplied
+                        // by the current term in x.
+                        // NOTE: we checked when constructing v2_deg that its iterator
+                        // diff type can represent the total size.
+                        cur += it - v2_deg.cbegin();
+                    }
+
+                    return cur;
+                },
+                [](const auto &a, const auto &b) { return a + b; });
+        }
+    }();
+
     // Parameters for the random trials.
-    const auto ntrials = 20u;
+    // NOTE: the idea here is that the larger the
+    // multiplication, the larger the number of trials we can
+    // do. Doing more trials also helps stabilizing
+    // the estimation. The constant is inferred from
+    // testing on the usual benchmarks.
+    // NOTE: put a floor of 5 trials, which also ensures
+    // that ntrials is never estimated to 0.
+    const auto ntrials = ::std::max(5u, ::boost::numeric_cast<unsigned>(5e-8 * tot_n_mults));
     // NOTE: we further divide by 2 below, so that the
     // multiplier is actually 3/2.
     const auto multiplier = 3u;
@@ -518,188 +581,79 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     // NOTE: workaround for a GCC 7 issue.
     using vidx2_size_t = typename ::std::vector<decltype(y.size())>::size_type;
 
-    // Compute in parallel the size estimation and the
-    // total number of term-by-term multiplications.
-    ::mppp::integer<1> c_est, tot_n_mults;
+    // Run the trials.
+    // NOTE: ideally, we would like to select without repetition random term-by-term
+    // multiplications. This could be done by mapping the two sizes of v1 and v2
+    // into a single integer N (k-packing style), and then using a linear congruential
+    // generator with period N which guarantees that there are no repetitions within
+    // that period. See:
+    // https://stackoverflow.com/questions/9755538/how-do-i-create-a-list-of-random-numbers-without-duplicates/53646842
+    // https://en.wikipedia.org/wiki/Linear_congruential_generator
+    // (see the SO answer a bit down the page).
+    // However, I don't know how this would work when truncation is involved.
+    // The current approach is to shuffle v1 and then pick randomly into v2.
+    // This result in a choice of index in v1 without repetitions, but the
+    // random picking in v2 could have repetitions, so it's not precisely
+    // equivalent to having truly random term-by-term multiplications.
+    auto c_est = ::tbb::parallel_reduce(
+        ::tbb::blocked_range<unsigned>(0, ntrials), ::mppp::integer<1>{},
+        [multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range, ::mppp::integer<1> cur) {
+            // Make a local copy of vidx1.
+            auto vidx1_copy(vidx1);
 
-    ::tbb::parallel_invoke(
-        [&c_est,
-#if defined(_MSC_VER) && !defined(__clang__)
-         ntrials,
-#endif
-         multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...]() {
-            // Run the trials.
-            // NOTE: ideally, we would like to select without repetition random term-by-term
-            // multiplications. This could be done by mapping the two sizes of v1 and v2
-            // into a single integer N (k-packing style), and then using a linear congruential
-            // generator with period N which guarantees that there are no repetitions within
-            // that period. See:
-            // https://stackoverflow.com/questions/9755538/how-do-i-create-a-list-of-random-numbers-without-duplicates/53646842
-            // https://en.wikipedia.org/wiki/Linear_congruential_generator
-            // (see the SO answer a bit down the page).
-            // However, I don't know how this would work when truncation is involved.
-            // The current approach is to shuffle v1 and then pick randomly into v2.
-            // This result in a choice of index in v1 without repetitions, but the
-            // random picking in v2 could have repetitions, so it's not precisely
-            // equivalent to having truly random term-by-term multiplications.
-            c_est = ::tbb::parallel_reduce(
-                ::tbb::blocked_range<unsigned>(0, ntrials), ::mppp::integer<1>{},
-                [multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range,
-                                                                                  ::mppp::integer<1> cur) {
-                    // Make a local copy of vidx1.
-                    auto vidx1_copy(vidx1);
+            // Prepare a distribution for randomly indexing into vidx2.
+            using dist_type = ::std::uniform_int_distribution<vidx2_size_t>;
+            using dist_param_type = typename dist_type::param_type;
+            dist_type idist;
 
-                    // Prepare a distribution for randomly indexing into vidx2.
-                    using dist_type = ::std::uniform_int_distribution<vidx2_size_t>;
-                    using dist_param_type = typename dist_type::param_type;
-                    dist_type idist;
+            // Init the hash set we will be using for the trials.
+            // NOTE: use exactly the same hasher/comparer as in series.hpp, so that
+            // we are sure we are being consistent wrt type requirements, etc.
+            using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
+                                                    ::obake::detail::series_key_comparer>;
+            local_set ls;
+            ls.reserve(::obake::safe_cast<decltype(ls.size())>(vidx1.size()));
 
-                    // Init the hash set we will be using for the trials.
-                    // NOTE: use exactly the same hasher/comparer as in series.hpp, so that
-                    // we are sure we are being consistent wrt type requirements, etc.
-                    using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
-                                                            ::obake::detail::series_key_comparer>;
-                    local_set ls;
-                    ls.reserve(::obake::safe_cast<decltype(ls.size())>(vidx1.size()));
+            // Temporary object for monomial multiplications.
+            key_type tmp_key(ss);
 
-                    // Temporary object for monomial multiplications.
-                    key_type tmp_key(ss);
+            for (auto i = range.begin(); i != range.end(); ++i) {
+                // Init a random engine for this trial, mixing compile
+                // time randomness with the current trial index.
+                constexpr ::std::uint64_t s1 = 14295768699618639914ull;
+                constexpr ::std::uint64_t s2 = 12042842946850383048ull;
+                ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(i + s1),
+                                                       static_cast<::std::uint64_t>(i + s2)};
 
-                    for (auto i = range.begin(); i != range.end(); ++i) {
-                        // Init a random engine for this trial, mixing compile
-                        // time randomness with the current trial index.
-                        constexpr ::std::uint64_t s1 = 14295768699618639914ull;
-                        constexpr ::std::uint64_t s2 = 12042842946850383048ull;
-                        ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(i + s1),
-                                                               static_cast<::std::uint64_t>(i + s2)};
+                // Shuffle the indices into the first series.
+                ::std::shuffle(vidx1_copy.begin(), vidx1_copy.end(), rng);
 
-                        // Shuffle the indices into the first series.
-                        ::std::shuffle(vidx1_copy.begin(), vidx1_copy.end(), rng);
+                // This will be used to determine the average number of terms in y
+                // that participate in the multiplication. It is used only in case
+                // there are no collisions at the end of the loop below.
+                ::mppp::integer<1> acc_y;
 
-                        // This will be used to determine the average number of terms in y
-                        // that participate in the multiplication. It is used only in case
-                        // there are no collisions at the end of the loop below.
-                        ::mppp::integer<1> acc_y;
+                for (auto idx1 : vidx1_copy) {
+                    // Get the upper limit for indexing in vidx2.
+                    // NOTE: this will be an index into a vector of indices.
+                    const auto limit = [&degree_data, idx1, &vidx2, &args...]() {
+                        if constexpr (sizeof...(args) == 0u) {
+                            // Untruncated case, just return the size of vidx2.
+                            ::obake::detail::ignore(degree_data, idx1);
 
-                        for (auto idx1 : vidx1_copy) {
-                            // Get the upper limit for indexing in vidx2.
-                            // NOTE: this will be an index into a vector of indices.
-                            const auto limit = [&degree_data, idx1, &vidx2, &args...]() {
-                                if constexpr (sizeof...(args) == 0u) {
-                                    // Untruncated case, just return the size of vidx2.
-                                    ::obake::detail::ignore(degree_data, idx1);
-
-                                    return vidx2.size();
-                                } else {
-                                    // Truncated case: determine the first index
-                                    // into vidx2 which does not satisfy the truncation
-                                    // limit.
-                                    ::obake::detail::ignore(vidx2);
-
-                                    // Fetch the truncation limit.
-                                    const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
-
-                                    // Get the degree data for x and y.
-                                    const auto &[v1_deg, v2_deg] = degree_data;
-
-                                    // Fetch the degree of the current term in x.
-                                    const auto &d1 = v1_deg[idx1];
-
-                                    // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
-                                    const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
-                                                                       [&d1](const auto &mdeg, const auto &d2) {
-                                                                           // NOTE: we require below
-                                                                           // comparability between const lvalue limit
-                                                                           // and rvalue of the sum of the degrees.
-                                                                           return mdeg < d1 + d2;
-                                                                       });
-
-                                    // We checked when constructing v2_deg that its iterator
-                                    // diff type can represent the total size. Because
-                                    // the sizes of vidx2 and v2_deg are the same, the static cast
-                                    // is also safe.
-                                    return static_cast<vidx2_size_t>(it - v2_deg.cbegin());
-                                }
-                            }();
-
-                            if (limit == 0u) {
-                                // The upper limit is 0, we cannot multiply by any
-                                // term in y without violating the truncation constraint.
-                                continue;
-                            }
-
-                            // Keep track of how many terms in y would be multiplied
-                            // by the current term in x in the full multiplication.
-                            acc_y += limit;
-
-                            // Pick a random index in s2 within the limit.
-                            const auto idx2 = vidx2[idist(rng, dist_param_type(0u, limit - 1u))];
-
-                            // Try to do the multiplication.
-                            ::obake::monomial_mul(tmp_key, x[idx1].first, y[idx2].first, ss);
-
-                            // Try the insertion into the local set.
-                            const auto ret = ls.insert(tmp_key);
-                            if (!ret.second) {
-                                // The key already exists, break out.
-                                break;
-                            }
-                        }
-
-                        // Determine how many unique terms were generated
-                        // in the loop above.
-                        const auto count = ls.size();
-
-                        if (count == vidx1_copy.size()) {
-                            // We generated as many unique terms as
-                            // the number of terms in x. This means that
-                            // we will estimate a perfect sparsity. In untruncated
-                            // multiplication, this means nx * ny, in a truncated
-                            // multiplication is less than that (depending on
-                            // how many terms were skipped due to the truncation
-                            // limits).
-                            cur += acc_y;
+                            return vidx2.size();
                         } else {
-                            // We detected a duplicate term, use the
-                            // quadratic estimate.
-                            cur += (::mppp::integer<1>{multiplier} * count * count) >> 1;
-                        }
+                            // Truncated case: determine the first index
+                            // into vidx2 which does not satisfy the truncation
+                            // limit.
+                            ::obake::detail::ignore(vidx2);
 
-                        // Clear up the local set for the next iteration.
-                        ls.clear();
-                    }
+                            // Fetch the truncation limit.
+                            const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
 
-                    // Return the accumulated estimate.
-                    return cur;
-                },
-                [](const auto &a, const auto &b) { return a + b; });
-        },
-        [&tot_n_mults, &vidx1, &vidx2, &degree_data, &args...]() {
-            if constexpr (sizeof...(Args) == 0u) {
-                // In the untruncated case, the total number of term-by-term
-                // multiplications to be performed is simply the product
-                // of the series sizes.
-                ::obake::detail::ignore(degree_data, args...);
+                            // Get the degree data for x and y.
+                            const auto &[v1_deg, v2_deg] = degree_data;
 
-                tot_n_mults = ::mppp::integer<1>(vidx1.size()) * vidx2.size();
-            } else {
-                // In the truncated case, we need to take into account
-                // the truncation limit term by term.
-                ::obake::detail::ignore(vidx2);
-
-                // Fetch the truncation limit.
-                const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
-
-                tot_n_mults = ::tbb::parallel_reduce(
-                    ::tbb::blocked_range<decltype(vidx1.cbegin())>(vidx1.cbegin(), vidx1.cend()), ::mppp::integer<1>{},
-                    [&max_deg, &degree_data](const auto &range, ::mppp::integer<1> cur) {
-                        // NOTE: vidx1 is unsorted, vidx2 is sorted according
-                        // to the degree.
-
-                        // Get the degree data for x and y.
-                        const auto &[v1_deg, v2_deg] = degree_data;
-
-                        for (auto idx1 : range) {
                             // Fetch the degree of the current term in x.
                             const auto &d1 = v1_deg[idx1];
 
@@ -712,20 +666,68 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                                                                    return mdeg < d1 + d2;
                                                                });
 
-                            // Accumulate in cur how many terms in y would be multiplied
-                            // by the current term in x.
-                            // NOTE: we checked when constructing v2_deg that its iterator
-                            // diff type can represent the total size.
-                            cur += it - v2_deg.cbegin();
+                            // We checked when constructing v2_deg that its iterator
+                            // diff type can represent the total size. Because
+                            // the sizes of vidx2 and v2_deg are the same, the static cast
+                            // is also safe.
+                            return static_cast<vidx2_size_t>(it - v2_deg.cbegin());
                         }
+                    }();
 
-                        return cur;
-                    },
-                    [](const auto &a, const auto &b) { return a + b; });
+                    if (limit == 0u) {
+                        // The upper limit is 0, we cannot multiply by any
+                        // term in y without violating the truncation constraint.
+                        continue;
+                    }
+
+                    // Keep track of how many terms in y would be multiplied
+                    // by the current term in x in the full multiplication.
+                    acc_y += limit;
+
+                    // Pick a random index in s2 within the limit.
+                    const auto idx2 = vidx2[idist(rng, dist_param_type(0u, limit - 1u))];
+
+                    // Try to do the multiplication.
+                    ::obake::monomial_mul(tmp_key, x[idx1].first, y[idx2].first, ss);
+
+                    // Try the insertion into the local set.
+                    const auto ret = ls.insert(tmp_key);
+                    if (!ret.second) {
+                        // The key already exists, break out.
+                        break;
+                    }
+                }
+
+                // Determine how many unique terms were generated
+                // in the loop above.
+                const auto count = ls.size();
+
+                if (count == vidx1_copy.size()) {
+                    // We generated as many unique terms as
+                    // the number of terms in x. This means that
+                    // we will estimate a perfect sparsity. In untruncated
+                    // multiplication, this means nx * ny, in a truncated
+                    // multiplication is less than that (depending on
+                    // how many terms were skipped due to the truncation
+                    // limits).
+                    cur += acc_y;
+                } else {
+                    // We detected a duplicate term, use the
+                    // quadratic estimate.
+                    cur += (::mppp::integer<1>{multiplier} * count * count) >> 1;
+                }
+
+                // Clear up the local set for the next iteration.
+                ls.clear();
             }
-        });
+
+            // Return the accumulated estimate.
+            return cur;
+        },
+        [](const auto &a, const auto &b) { return a + b; });
 
     // Return the average of the estimates (but don't return zero).
+    // NOTE: ntrials is guaranteed to be nonzero from above.
     auto ret = c_est / ntrials;
     if (ret.is_zero()) {
         return ::std::make_tuple(::mppp::integer<1>{1}, ::std::move(tot_n_mults));
@@ -748,6 +750,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
+    assert(x.size() <= y.size());
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
     assert(retval.empty());
@@ -844,16 +847,15 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // 2**log2_nsegs. That is, sort them according to the bucket
     // they would occupy in a segmented table with 2**log2_nsegs
     // segments.
-    // NOTE: there are parallelisation opportunities here: parallel sort,
-    // computation of the segmentation in parallel, etc. Need to profile first.
     auto t_sorter = [log2_nsegs](const auto &p1, const auto &p2) {
         const auto h1 = ::obake::hash(p1.first);
         const auto h2 = ::obake::hash(p2.first);
 
         return h1 % (s_size_t(1) << log2_nsegs) < h2 % (s_size_t(1) << log2_nsegs);
     };
-    ::std::sort(v1.begin(), v1.end(), t_sorter);
-    ::std::sort(v2.begin(), v2.end(), t_sorter);
+    // Sort concurrently and in parallel v1 and v2.
+    ::tbb::parallel_invoke([&v1, t_sorter]() { ::tbb::parallel_sort(v1.begin(), v1.end(), t_sorter); },
+                           [&v2, t_sorter]() { ::tbb::parallel_sort(v2.begin(), v2.end(), t_sorter); });
 
     // Compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
@@ -925,8 +927,12 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
         return vseg;
     };
-    const auto vseg1 = compute_vseg(v1);
-    const auto vseg2 = compute_vseg(v2);
+
+    // Compute the two segmentations concurrently.
+    decltype(compute_vseg(v1)) vseg1;
+    decltype(compute_vseg(v2)) vseg2;
+    ::tbb::parallel_invoke([&v1, &vseg1, compute_vseg]() { vseg1 = compute_vseg(v1); },
+                           [&v2, &vseg2, compute_vseg]() { vseg2 = compute_vseg(v2); });
 
 #if !defined(NDEBUG)
     {
@@ -1040,12 +1046,14 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Sort indirectly each range from vseg according to the degree.
                 // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
                 // type we are using const lrefs.
-                for (const auto &r : vseg) {
-                    ::std::sort(vidx.data() + ::std::get<0>(r), vidx.data() + ::std::get<1>(r),
-                                [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
-                                    return vdc[idx1] < vdc[idx2];
-                                });
-                }
+                ::tbb::parallel_for(
+                    ::tbb::blocked_range<decltype(vseg.cbegin())>(vseg.cbegin(), vseg.cend()),
+                    [&vidx, &vdc = ::std::as_const(vd)](const auto &range) {
+                        for (const auto &r : range) {
+                            ::std::sort(vidx.data() + ::std::get<0>(r), vidx.data() + ::std::get<1>(r),
+                                        [&vdc](const auto &idx1, const auto &idx2) { return vdc[idx1] < vdc[idx2]; });
+                        }
+                    });
 
                 // Apply the sorting to vd and v. Ensure we don't run
                 // into overflows during the permutated access.
@@ -1094,8 +1102,17 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 return vd;
             };
 
+            // Run the sorter concurrently
+            // for v1 and v2.
             using ::obake::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+            decltype(sorter(v1, type_c<T>{}, vseg1)) vd1_;
+            decltype(sorter(v2, type_c<U>{}, vseg2)) vd2_;
+            ::tbb::parallel_invoke([&vd1_, &v1, &vseg1, sorter]() { vd1_ = sorter(v1, type_c<T>{}, vseg1); },
+                                   [&vd2_, &v2, &vseg2, sorter]() { vd2_ = sorter(v2, type_c<U>{}, vseg2); });
+
+            // Create and return the functor. vd1_ and vd2_ will be moved
+            // into the closure as vd1 and vd2.
+            return [vd1 = ::std::move(vd1_), vd2 = ::std::move(vd2_),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
@@ -1516,6 +1533,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
+    assert(x.size() <= y.size());
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
     assert(retval.empty());
@@ -1777,12 +1795,15 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 }
 
 // Implementation of poly multiplication with identical symbol sets.
+// Requires that x is not longer than y.
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
     using ret_key_t = series_key_t<ret_t>;
 
+    // Check the preconditions.
+    assert(x.size() <= y.size());
     assert(x.get_symbol_set() == y.get_symbol_set());
 
     // Init the return value.
@@ -1794,26 +1815,28 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
         return retval;
     }
 
-    if constexpr (::std::conjunction_v<is_homomorphically_hashable_monomial<ret_key_t>,
-                                       // Need also to be able to measure the byte size
-                                       // of the key/cf of ret_t, via const lvalue references.
-                                       // NOTE: perhaps this is too much of a hard requirement,
-                                       // and we can make this optional (if not supported,
-                                       // fix the nsegs to something like twice the cores).
-                                       is_size_measurable<const ret_key_t &>,
-                                       is_size_measurable<const series_cf_t<ret_t> &>>) {
+    if constexpr (::std::conjunction_v<
+                      is_homomorphically_hashable_monomial<ret_key_t>,
+                      // Need also to be able to measure the byte size
+                      // of x, y, and the key/cf of ret_t, via const lvalue references.
+                      // NOTE: perhaps this is too much of a hard requirement,
+                      // and we can make this optional (if not supported,
+                      // fix the nsegs to something like twice the cores).
+                      is_size_measurable<const remove_cvref_t<T> &>, is_size_measurable<const remove_cvref_t<U> &>,
+                      is_size_measurable<const ret_key_t &>, is_size_measurable<const series_cf_t<ret_t> &>>) {
         // Homomorphic hashing is available, we can run
         // the multi-threaded implementation.
-        // NOTE: perhaps the heuristic here can be improved
-        // by taking into account the byte sizes of x/y?
-        if (x.size() < 1000u / y.size() || ::obake::detail::hc() == 1u) {
-            // If the operands are "small" (less than N
-            // term-by-term mults), or we just have 1 core
-            // available, just run the simple
-            // implementation.
+
+        // Establish the max byte size of the input series.
+        const auto max_bs = ::std::max(::obake::byte_size(::std::as_const(x)), ::obake::byte_size(::std::as_const(y)));
+
+        if (max_bs < 30000ul || ::obake::detail::hc() == 1u) {
+            // Run the simple implementation if the maximum operand size
+            // is less than a threshold value, or if we have
+            // just 1 core.
             detail::poly_mul_impl_simple(retval, x, y, args...);
         } else {
-            // "Large" operands and multiple cores available,
+            // Large operand size and multiple cores available,
             // run the MT implementation.
             detail::poly_mul_impl_mt_hm(retval, x, y, args...);
         }
@@ -1829,10 +1852,8 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 // Top level function for poly multiplication. Requires that
 // x is not longer than y.
 // NOTE: future improvements:
-// - better heuristic for choosing between simple and mt,
-//   based on the byte size of the operands. This should also
-//   allow to use more reliably parallel primitives (e.g.,
-//   parallel sort) in the implementation;
+// - make the ntrials for the estimation of the average term size
+//   dependent on the number of term-by-term multiplications (need data for that);
 // - parallelisation of overflow checking (see in packed_monomial for instance);
 // - parallelisation in the degree computation, and avoid doing it multiple
 //   times in the implementation functions. Perhaps we should have a helper
