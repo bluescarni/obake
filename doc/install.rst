@@ -38,7 +38,7 @@ tested in obake's continuous integration setup:
 * Visual Studio 2019 on Windows,
 * Clang + Visual Studio 2015 on Windows
   (via the ``clang-cl`` driver),
-* Clang 4 and Xcode 10.2 on OSX.
+* Xcode 10.2 on OSX.
 
 See also the
 :ref:`compiler and platform specific notes <platform_specific_notes>`.
@@ -187,13 +187,13 @@ Building the documentation
 """"""""""""""""""""""""""
 
 obake's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/>`_,
-and it uses a `custom theme <https://github.com/myyasuda/sphinx_materialdesign_theme>`_.
+and it uses a `custom theme <https://sphinx-rtd-theme.readthedocs.io/en/stable/>`_.
 Sphinx can typically be installed from a variety of package managers,
 while the custom theme can easily be installed with ``pip``:
 
 .. code-block:: console
 
-   $ pip install --user sphinx_materialdesign_theme
+   $ pip install --user sphinx_rtd_theme
 
 Before attempting to build the documentation, you must ensure
 to run CMake from the ``build`` directory at least once
