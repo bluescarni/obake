@@ -1,7 +1,0 @@
-if (NOT TARGET obake::dl)
-    add_library(obake::dl INTERFACE IMPORTED)
-    if(CMAKE_DL_LIBS)
-        message(STATUS "The obake::dl imported target will link to the following libraries: ${CMAKE_DL_LIBS}")
-        set_target_properties(obake::dl PROPERTIES INTERFACE_LINK_LIBRARIES ${CMAKE_DL_LIBS})
-    endif()
-endif()
