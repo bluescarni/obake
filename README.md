@@ -15,3 +15,7 @@ obake is a C++17 library for the symbolic manipulation of sparse polynomials
 and other closely-related mathematical objects (e.g., truncated power
 series, Poisson series, etc.). obake is the successor of the
 [piranha](https://github.com/bluescarni/piranha) project.
+
+obake is under active development. Preliminary documentation
+(including installation instructions) is available
+[here](https://bluescarni.github.io/obake).
