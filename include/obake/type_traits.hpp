@@ -449,6 +449,56 @@ OBAKE_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
 namespace detail
 {
 
+template <typename T>
+using predec_t = decltype(--::std::declval<T>());
+
+}
+
+// Pre-decrementable type-trait.
+template <typename T>
+using is_pre_decrementable = is_detected<detail::predec_t, T>;
+
+template <typename T>
+inline constexpr bool is_pre_decrementable_v = is_pre_decrementable<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL PreDecrementable = requires(T &&x)
+{
+    --::std::forward<T>(x);
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T>
+using postdec_t = decltype(::std::declval<T>()--);
+
+}
+
+// Post-decrementable type-trait.
+template <typename T>
+using is_post_decrementable = is_detected<detail::postdec_t, T>;
+
+template <typename T>
+inline constexpr bool is_post_decrementable_v = is_post_decrementable<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL PostDecrementable = requires(T &&x)
+{
+    ::std::forward<T>(x)--;
+};
+
+#endif
+
+namespace detail
+{
+
 template <typename T, typename U>
 using mul_t = decltype(::std::declval<T>() * ::std::declval<U>());
 

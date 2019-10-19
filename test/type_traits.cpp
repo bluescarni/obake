@@ -565,6 +565,40 @@ TEST_CASE("is_post_incrementable")
 #endif
 }
 
+TEST_CASE("is_pre_decrementable")
+{
+    REQUIRE(!is_pre_decrementable_v<void>);
+    REQUIRE(is_pre_decrementable_v<int &>);
+    REQUIRE(!is_pre_decrementable_v<const int &>);
+    REQUIRE(!is_pre_decrementable_v<int &&>);
+    REQUIRE(!is_pre_decrementable_v<std::string &>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!PreDecrementable<void>);
+    REQUIRE(PreDecrementable<int &>);
+    REQUIRE(!PreDecrementable<const int &>);
+    REQUIRE(!PreDecrementable<int &&>);
+    REQUIRE(!PreDecrementable<std::string &>);
+#endif
+}
+
+TEST_CASE("is_post_decrementable")
+{
+    REQUIRE(!is_post_decrementable_v<void>);
+    REQUIRE(is_post_decrementable_v<int &>);
+    REQUIRE(!is_post_decrementable_v<const int &>);
+    REQUIRE(!is_post_decrementable_v<int &&>);
+    REQUIRE(!is_post_decrementable_v<std::string &>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!PostDecrementable<void>);
+    REQUIRE(PostDecrementable<int &>);
+    REQUIRE(!PostDecrementable<const int &>);
+    REQUIRE(!PostDecrementable<int &&>);
+    REQUIRE(!PostDecrementable<std::string &>);
+#endif
+}
+
 // Boilerplate to test the arrow op type trait.
 struct arrow01 {
     int *operator->();
