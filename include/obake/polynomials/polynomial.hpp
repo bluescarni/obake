@@ -1786,8 +1786,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
         // NOTE: no need to check the table size, as retval
         // is not segmented.
-    } catch (...) {
         // LCOV_EXCL_START
+    } catch (...) {
         // retval may now contain zero coefficients.
         // Make sure to clear it before rethrowing.
         tab.clear();

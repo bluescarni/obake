@@ -16,8 +16,6 @@ manipulation of sparse multivariate polynomials and other
 closely-related symbolic objects (such as truncated power
 series, Poisson series, etc.).
 
-.. _getting_started:
-
 .. toctree::
    :maxdepth: 1
 
