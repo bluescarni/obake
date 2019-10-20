@@ -4,11 +4,17 @@ Changelog
 0.2 (unreleased)
 ----------------
 
+New
+~~~
+
+- Add concepts/type traits for the detection
+  of bidirectional and random access iterators
+  (`#77 <https://github.com/bluescarni/obake/pull/77>`__).
+
 Fix
 ~~~
 
-- Fix compiler warning about unused
-  variable in lambda capture
+- Remove an unused variable in a lambda capture
   (`#75 <https://github.com/bluescarni/obake/pull/75>`__).
 
 0.1 (18-10-2019)

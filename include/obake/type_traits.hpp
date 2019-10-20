@@ -1172,6 +1172,8 @@ using is_random_access_iterator = ::std::conjunction<
     // r += n must be defined and return T &.
     // NOTE: difference type is present, we check it in the
     // iterator requirements.
+    // NOTE: as usual, check against an lvalue reference for n.
+    // We'll do the same below as well.
     ::std::is_same<::std::add_lvalue_reference_t<T>,
                    detected_t<detail::compound_add_t, ::std::add_lvalue_reference_t<T>,
                               ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
