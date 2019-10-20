@@ -10,6 +10,8 @@
 #include <initializer_list>
 #include <iterator>
 #include <list>
+#include <set>
+#include <unordered_set>
 #include <vector>
 
 #include <obake/ranges.hpp>
@@ -152,6 +154,28 @@ TEST_CASE("ranges_test")
     REQUIRE(!obake::is_range_v<ns::norange03>);
     REQUIRE(!obake::is_range_v<ns::norange03 &>);
     REQUIRE(!obake::is_range_v<const ns::norange03 &>);
+    REQUIRE(obake::is_bidirectional_range_v<std::vector<int>>);
+    REQUIRE(obake::is_bidirectional_range_v<std::vector<int> &>);
+    REQUIRE(obake::is_bidirectional_range_v<const std::vector<int> &>);
+    REQUIRE(obake::is_bidirectional_range_v<const std::vector<int>>);
+    REQUIRE(obake::is_bidirectional_range_v<std::list<int>>);
+    REQUIRE(obake::is_bidirectional_range_v<int(&)[3]>);
+    REQUIRE(!obake::is_bidirectional_range_v<ns::range04>);
+    REQUIRE(!obake::is_bidirectional_range_v<ns::range04 &>);
+    REQUIRE(!obake::is_bidirectional_range_v<const ns::range04 &>);
+    REQUIRE(!obake::is_bidirectional_range_v<const ns::range04>);
+    REQUIRE(obake::is_random_access_range_v<std::vector<int>>);
+    REQUIRE(!obake::is_random_access_range_v<std::list<int>>);
+    REQUIRE(obake::is_random_access_range_v<std::vector<int> &>);
+    REQUIRE(obake::is_random_access_range_v<const std::vector<int> &>);
+    REQUIRE(obake::is_random_access_range_v<const std::vector<int>>);
+    REQUIRE(obake::is_random_access_range_v<int(&)[3]>);
+    REQUIRE(!obake::is_random_access_range_v<ns::range04>);
+    REQUIRE(!obake::is_random_access_range_v<ns::range04 &>);
+    REQUIRE(!obake::is_random_access_range_v<const ns::range04 &>);
+    REQUIRE(!obake::is_random_access_range_v<const ns::range04>);
+    REQUIRE(!obake::is_random_access_range_v<std::set<int>>);
+    REQUIRE(!obake::is_random_access_range_v<std::unordered_set<int>>);
 
 #if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!obake::Range<void>);
@@ -212,6 +236,28 @@ TEST_CASE("ranges_test")
     REQUIRE(!obake::Range<ns::norange03>);
     REQUIRE(!obake::Range<ns::norange03 &>);
     REQUIRE(!obake::Range<const ns::norange03 &>);
+    REQUIRE(obake::BidirectionalRange<std::vector<int>>);
+    REQUIRE(obake::BidirectionalRange<std::list<int>>);
+    REQUIRE(obake::BidirectionalRange<std::vector<int> &>);
+    REQUIRE(obake::BidirectionalRange<const std::vector<int> &>);
+    REQUIRE(obake::BidirectionalRange<const std::vector<int>>);
+    REQUIRE(obake::BidirectionalRange<int(&)[3]>);
+    REQUIRE(!obake::BidirectionalRange<ns::range04>);
+    REQUIRE(!obake::BidirectionalRange<ns::range04 &>);
+    REQUIRE(!obake::BidirectionalRange<const ns::range04 &>);
+    REQUIRE(!obake::BidirectionalRange<const ns::range04>);
+    REQUIRE(obake::RandomAccessRange<std::vector<int>>);
+    REQUIRE(!obake::RandomAccessRange<std::list<int>>);
+    REQUIRE(obake::RandomAccessRange<std::vector<int> &>);
+    REQUIRE(obake::RandomAccessRange<const std::vector<int> &>);
+    REQUIRE(obake::RandomAccessRange<const std::vector<int>>);
+    REQUIRE(obake::RandomAccessRange<int(&)[3]>);
+    REQUIRE(!obake::RandomAccessRange<ns::range04>);
+    REQUIRE(!obake::RandomAccessRange<ns::range04 &>);
+    REQUIRE(!obake::RandomAccessRange<const ns::range04 &>);
+    REQUIRE(!obake::RandomAccessRange<const ns::range04>);
+    REQUIRE(!obake::RandomAccessRange<std::set<int>>);
+    REQUIRE(!obake::RandomAccessRange<std::unordered_set<int>>);
 #endif
 
     // A couple of runtime tests.
