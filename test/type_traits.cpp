@@ -1187,8 +1187,6 @@ TEST_CASE("iterators")
     REQUIRE(is_bidirectional_iterator_v<std::vector<int>::const_iterator>);
     REQUIRE(!is_bidirectional_iterator_v<std::vector<int>::iterator &>);
     REQUIRE(!is_bidirectional_iterator_v<std::istream_iterator<char>>);
-    REQUIRE((!is_bidirectional_iterator_v<std::unordered_map<int, int>::iterator>));
-    REQUIRE((is_bidirectional_iterator_v<std::map<int, int>::iterator>));
 
 #if defined(OBAKE_HAVE_CONCEPTS)
     // Just a few concept checks, as currently the concepts
