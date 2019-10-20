@@ -1022,6 +1022,44 @@ OBAKE_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
 namespace detail
 {
 
+// *it-- expression, used in the detection
+// of bidirectional iterators.
+template <typename T>
+using it_dec_deref_t = decltype(*::std::declval<T>()--);
+
+} // namespace detail
+
+template <typename T>
+using is_bidirectional_iterator = ::std::conjunction<
+    // Must be a forward iterator.
+    // NOTE: the pointer or class requirement is already in the forward iterator.
+    is_forward_iterator<T>,
+    // Lvalue must be pre-decrementable, returning
+    // lvalue reference to T.
+    ::std::is_same<detected_t<detail::predec_t, ::std::add_lvalue_reference_t<T>>, ::std::add_lvalue_reference_t<T>>,
+    // Lvalue must be post-decrementable, returning
+    // something which is convertible to const T &.
+    ::std::is_convertible<detected_t<detail::postdec_t, ::std::add_lvalue_reference_t<T>>,
+                          ::std::add_lvalue_reference_t<const T>>,
+    // *r-- returns it_traits::reference.
+    ::std::is_same<detected_t<detail::it_dec_deref_t, ::std::add_lvalue_reference_t<T>>,
+                   detected_t<detail::it_traits_reference, T>>,
+    // Category check.
+    ::std::is_base_of<::std::bidirectional_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>;
+
+template <typename T>
+inline constexpr bool is_bidirectional_iterator_v = is_bidirectional_iterator<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL BidirectionalIterator = is_bidirectional_iterator_v<T>;
+
+#endif
+
+namespace detail
+{
+
 template <typename T>
 using stream_insertion_t = decltype(::std::declval<::std::ostream &>() << ::std::declval<T>());
 

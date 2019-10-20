@@ -18,6 +18,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #if defined(OBAKE_HAVE_STRING_VIEW)
@@ -1177,6 +1178,18 @@ TEST_CASE("iterators")
     REQUIRE((is_output_iterator_v<std::list<int>::iterator, int &>));
     REQUIRE((!is_output_iterator_v<std::list<int>::const_iterator, int &>));
 
+    // Bidirectional iterator.
+    REQUIRE(!is_bidirectional_iterator_v<void>);
+    REQUIRE(!is_bidirectional_iterator_v<iter14>);
+    REQUIRE(is_bidirectional_iterator_v<int *>);
+    REQUIRE(is_bidirectional_iterator_v<const int *>);
+    REQUIRE(is_bidirectional_iterator_v<std::vector<int>::iterator>);
+    REQUIRE(is_bidirectional_iterator_v<std::vector<int>::const_iterator>);
+    REQUIRE(!is_bidirectional_iterator_v<std::vector<int>::iterator &>);
+    REQUIRE(!is_bidirectional_iterator_v<std::istream_iterator<char>>);
+    REQUIRE((!is_bidirectional_iterator_v<std::unordered_map<int, int>::iterator>));
+    REQUIRE((is_bidirectional_iterator_v<std::map<int, int>::iterator>));
+
 #if defined(OBAKE_HAVE_CONCEPTS)
     // Just a few concept checks, as currently the concepts
     // are based on the type traits.
@@ -1193,6 +1206,7 @@ TEST_CASE("iterators")
     REQUIRE((!OutputIterator<double, void>));
     REQUIRE((OutputIterator<int *, int &>));
     REQUIRE((!OutputIterator<int *, std::string &>));
+    REQUIRE(BidirectionalIterator<int *>);
 #endif
 }
 
