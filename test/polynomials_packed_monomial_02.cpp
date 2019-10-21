@@ -218,7 +218,7 @@ TEST_CASE("mt_overflow_check_test")
                 std::list<pm_t> l1;
                 std::uniform_int_distribution<int_t> idist;
                 std::vector<int_t> tmp(vs);
-                for (auto i = 0u; i < 10000u; ++i) {
+                for (auto i = 0u; i < 6000u; ++i) {
                     for (auto j = 0u; j < vs; ++j) {
                         // Get the limits of the component at index j.
                         const auto &lims = detail::k_packing_get_climits<int_t>(nbits, j);
