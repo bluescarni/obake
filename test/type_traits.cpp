@@ -18,6 +18,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #if defined(OBAKE_HAVE_STRING_VIEW)
@@ -531,6 +532,165 @@ TEST_CASE("is_less_than_comparable")
 #endif
 }
 
+struct nongt_0 {
+};
+
+struct nongt_1 {
+    friend void operator>(const nongt_1 &, const nongt_1 &) {}
+};
+
+struct gt_0 {
+    friend int operator>(const gt_0 &, const gt_0 &)
+    {
+        return 1;
+    }
+    friend int operator>(const gt_0 &, const nongt_0 &)
+    {
+        return 1;
+    }
+};
+
+TEST_CASE("is_greater_than_comparable")
+{
+    REQUIRE(!is_greater_than_comparable_v<void>);
+    REQUIRE(!is_greater_than_comparable_v<void, void>);
+    REQUIRE(!is_greater_than_comparable_v<int, void>);
+    REQUIRE(!is_greater_than_comparable_v<void, int>);
+    REQUIRE(is_greater_than_comparable_v<int>);
+    REQUIRE(is_greater_than_comparable_v<int, int>);
+    REQUIRE(is_greater_than_comparable_v<int, long>);
+    REQUIRE(is_greater_than_comparable_v<std::string, std::string>);
+    REQUIRE(!is_greater_than_comparable_v<std::string, int>);
+    REQUIRE(!is_greater_than_comparable_v<int, std::string>);
+    REQUIRE(!is_greater_than_comparable_v<nongt_0>);
+    REQUIRE(!is_greater_than_comparable_v<nongt_1>);
+    REQUIRE(is_greater_than_comparable_v<gt_0>);
+    REQUIRE(!is_greater_than_comparable_v<gt_0, nongt_0>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!GreaterThanComparable<void>);
+    REQUIRE(!GreaterThanComparable<void, void>);
+    REQUIRE(!GreaterThanComparable<int, void>);
+    REQUIRE(!GreaterThanComparable<void, int>);
+    REQUIRE(GreaterThanComparable<int>);
+    REQUIRE(GreaterThanComparable<int, int>);
+    REQUIRE(GreaterThanComparable<int, long>);
+    REQUIRE(GreaterThanComparable<std::string, std::string>);
+    REQUIRE(!GreaterThanComparable<std::string, int>);
+    REQUIRE(!GreaterThanComparable<int, std::string>);
+    REQUIRE(!GreaterThanComparable<nongt_0>);
+    REQUIRE(!GreaterThanComparable<nongt_1>);
+    REQUIRE(GreaterThanComparable<gt_0>);
+    REQUIRE(!GreaterThanComparable<gt_0, nongt_0>);
+#endif
+}
+
+struct nonlte_0 {
+};
+
+struct nonlte_1 {
+    friend void operator<=(const nonlte_1 &, const nonlte_1 &) {}
+};
+
+struct lte_0 {
+    friend int operator<=(const lte_0 &, const lte_0 &)
+    {
+        return 1;
+    }
+    friend int operator<=(const lte_0 &, const nonlte_0 &)
+    {
+        return 1;
+    }
+};
+
+TEST_CASE("is_lte_comparable")
+{
+    REQUIRE(!is_lte_comparable_v<void>);
+    REQUIRE(!is_lte_comparable_v<void, void>);
+    REQUIRE(!is_lte_comparable_v<int, void>);
+    REQUIRE(!is_lte_comparable_v<void, int>);
+    REQUIRE(is_lte_comparable_v<int>);
+    REQUIRE(is_lte_comparable_v<int, int>);
+    REQUIRE(is_lte_comparable_v<int, long>);
+    REQUIRE(is_lte_comparable_v<std::string, std::string>);
+    REQUIRE(!is_lte_comparable_v<std::string, int>);
+    REQUIRE(!is_lte_comparable_v<int, std::string>);
+    REQUIRE(!is_lte_comparable_v<nonlte_0>);
+    REQUIRE(!is_lte_comparable_v<nonlte_1>);
+    REQUIRE(is_lte_comparable_v<lte_0>);
+    REQUIRE(!is_lte_comparable_v<lte_0, nonlte_0>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!LTEComparable<void>);
+    REQUIRE(!LTEComparable<void, void>);
+    REQUIRE(!LTEComparable<int, void>);
+    REQUIRE(!LTEComparable<void, int>);
+    REQUIRE(LTEComparable<int>);
+    REQUIRE(LTEComparable<int, int>);
+    REQUIRE(LTEComparable<int, long>);
+    REQUIRE(LTEComparable<std::string, std::string>);
+    REQUIRE(!LTEComparable<std::string, int>);
+    REQUIRE(!LTEComparable<int, std::string>);
+    REQUIRE(!LTEComparable<nonlte_0>);
+    REQUIRE(!LTEComparable<nonlte_1>);
+    REQUIRE(LTEComparable<lte_0>);
+    REQUIRE(!LTEComparable<lte_0, nonlte_0>);
+#endif
+}
+
+struct nongte_0 {
+};
+
+struct nongte_1 {
+    friend void operator>=(const nongte_1 &, const nongte_1 &) {}
+};
+
+struct gte_0 {
+    friend int operator>=(const gte_0 &, const gte_0 &)
+    {
+        return 1;
+    }
+    friend int operator>=(const gte_0 &, const nongte_0 &)
+    {
+        return 1;
+    }
+};
+
+TEST_CASE("is_gte_comparable")
+{
+    REQUIRE(!is_gte_comparable_v<void>);
+    REQUIRE(!is_gte_comparable_v<void, void>);
+    REQUIRE(!is_gte_comparable_v<int, void>);
+    REQUIRE(!is_gte_comparable_v<void, int>);
+    REQUIRE(is_gte_comparable_v<int>);
+    REQUIRE(is_gte_comparable_v<int, int>);
+    REQUIRE(is_gte_comparable_v<int, long>);
+    REQUIRE(is_gte_comparable_v<std::string, std::string>);
+    REQUIRE(!is_gte_comparable_v<std::string, int>);
+    REQUIRE(!is_gte_comparable_v<int, std::string>);
+    REQUIRE(!is_gte_comparable_v<nongte_0>);
+    REQUIRE(!is_gte_comparable_v<nongte_1>);
+    REQUIRE(is_gte_comparable_v<gte_0>);
+    REQUIRE(!is_gte_comparable_v<gte_0, nongte_0>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!GTEComparable<void>);
+    REQUIRE(!GTEComparable<void, void>);
+    REQUIRE(!GTEComparable<int, void>);
+    REQUIRE(!GTEComparable<void, int>);
+    REQUIRE(GTEComparable<int>);
+    REQUIRE(GTEComparable<int, int>);
+    REQUIRE(GTEComparable<int, long>);
+    REQUIRE(GTEComparable<std::string, std::string>);
+    REQUIRE(!GTEComparable<std::string, int>);
+    REQUIRE(!GTEComparable<int, std::string>);
+    REQUIRE(!GTEComparable<nongte_0>);
+    REQUIRE(!GTEComparable<nongte_1>);
+    REQUIRE(GTEComparable<gte_0>);
+    REQUIRE(!GTEComparable<gte_0, nongte_0>);
+#endif
+}
+
 TEST_CASE("is_pre_incrementable")
 {
     REQUIRE(!is_pre_incrementable_v<void>);
@@ -562,6 +722,40 @@ TEST_CASE("is_post_incrementable")
     REQUIRE(!PostIncrementable<const int &>);
     REQUIRE(!PostIncrementable<int &&>);
     REQUIRE(!PostIncrementable<std::string &>);
+#endif
+}
+
+TEST_CASE("is_pre_decrementable")
+{
+    REQUIRE(!is_pre_decrementable_v<void>);
+    REQUIRE(is_pre_decrementable_v<int &>);
+    REQUIRE(!is_pre_decrementable_v<const int &>);
+    REQUIRE(!is_pre_decrementable_v<int &&>);
+    REQUIRE(!is_pre_decrementable_v<std::string &>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!PreDecrementable<void>);
+    REQUIRE(PreDecrementable<int &>);
+    REQUIRE(!PreDecrementable<const int &>);
+    REQUIRE(!PreDecrementable<int &&>);
+    REQUIRE(!PreDecrementable<std::string &>);
+#endif
+}
+
+TEST_CASE("is_post_decrementable")
+{
+    REQUIRE(!is_post_decrementable_v<void>);
+    REQUIRE(is_post_decrementable_v<int &>);
+    REQUIRE(!is_post_decrementable_v<const int &>);
+    REQUIRE(!is_post_decrementable_v<int &&>);
+    REQUIRE(!is_post_decrementable_v<std::string &>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(!PostDecrementable<void>);
+    REQUIRE(PostDecrementable<int &>);
+    REQUIRE(!PostDecrementable<const int &>);
+    REQUIRE(!PostDecrementable<int &&>);
+    REQUIRE(!PostDecrementable<std::string &>);
 #endif
 }
 
@@ -1143,6 +1337,29 @@ TEST_CASE("iterators")
     REQUIRE((is_output_iterator_v<std::list<int>::iterator, int &>));
     REQUIRE((!is_output_iterator_v<std::list<int>::const_iterator, int &>));
 
+    // Bidirectional iterator.
+    REQUIRE(!is_bidirectional_iterator_v<void>);
+    REQUIRE(!is_bidirectional_iterator_v<iter14>);
+    REQUIRE(is_bidirectional_iterator_v<int *>);
+    REQUIRE(is_bidirectional_iterator_v<const int *>);
+    REQUIRE(is_bidirectional_iterator_v<std::vector<int>::iterator>);
+    REQUIRE(is_bidirectional_iterator_v<std::vector<int>::const_iterator>);
+    REQUIRE(!is_bidirectional_iterator_v<std::vector<int>::iterator &>);
+    REQUIRE(!is_bidirectional_iterator_v<std::istream_iterator<char>>);
+
+    // Random access iterator.
+    REQUIRE(!is_random_access_iterator_v<void>);
+    REQUIRE(!is_random_access_iterator_v<iter14>);
+    REQUIRE(is_random_access_iterator_v<int *>);
+    REQUIRE(is_random_access_iterator_v<const int *>);
+    REQUIRE(is_random_access_iterator_v<std::vector<int>::iterator>);
+    REQUIRE(is_random_access_iterator_v<std::vector<int>::const_iterator>);
+    REQUIRE(!is_random_access_iterator_v<std::vector<int>::iterator &>);
+    REQUIRE(!is_random_access_iterator_v<std::istream_iterator<char>>);
+    REQUIRE((!is_random_access_iterator_v<std::list<int>::const_iterator>));
+    REQUIRE((!is_random_access_iterator_v<std::map<int, int>::const_iterator>));
+    REQUIRE((!is_random_access_iterator_v<std::unordered_map<int, int>::const_iterator>));
+
 #if defined(OBAKE_HAVE_CONCEPTS)
     // Just a few concept checks, as currently the concepts
     // are based on the type traits.
@@ -1159,6 +1376,11 @@ TEST_CASE("iterators")
     REQUIRE((!OutputIterator<double, void>));
     REQUIRE((OutputIterator<int *, int &>));
     REQUIRE((!OutputIterator<int *, std::string &>));
+    REQUIRE(BidirectionalIterator<int *>);
+    REQUIRE(!BidirectionalIterator<void>);
+    REQUIRE(RandomAccessIterator<int *>);
+    REQUIRE(!RandomAccessIterator<const void>);
+    REQUIRE(!RandomAccessIterator<std::unordered_map<int, int>::const_iterator>);
 #endif
 }
 
