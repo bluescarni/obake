@@ -9,6 +9,7 @@ New
 
 - Add concepts/type traits for the detection
   of bidirectional and random access iterators
+  and ranges
   (`#77 <https://github.com/bluescarni/obake/pull/77>`__).
 
 Fix
