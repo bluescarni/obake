@@ -35,7 +35,7 @@ tested in obake's continuous integration setup:
 * Visual Studio 2019 on Windows,
 * Clang + Visual Studio 2015 on Windows
   (via the ``clang-cl`` driver),
-* Xcode 10.2 on OSX.
+* Clang 9 on OSX.
 
 See also the
 :ref:`compiler and platform specific notes <platform_specific_notes>`.
