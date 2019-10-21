@@ -25,6 +25,10 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_invoke.h>
+#include <tbb/parallel_reduce.h>
+
 #include <mp++/integer.hpp>
 
 #include <obake/config.hpp>
@@ -613,7 +617,7 @@ template <typename R1, typename R2,
     // Fetch the packed size.
     constexpr auto psize = pm_t::psize;
 
-    // Init with the first elements of the ranges.
+    // Init the limits vectors with the first elements of the ranges.
     {
         // NOTE: if the iterators return copies
         // of the monomials, rather than references,
@@ -650,42 +654,129 @@ template <typename R1, typename R2,
         }
     }
 
-    // Helper to examine the rest of the ranges.
-    auto update_minmax = [&ss, s_size
+    // Serial implementation.
+    auto serial_impl = [&ss, s_size, b1, e1, &l1 = limits1, b2, e2, &l2 = limits2
 #if defined(_MSC_VER) && !defined(__clang__)
-                          ,
-                          psize
+                        ,
+                        psize
 #endif
-    ](auto b, auto e, auto &limits) {
-        ::obake::detail::ignore(ss);
+    ]() {
+        // Helper to examine the rest of the ranges.
+        auto update_minmax = [&ss, s_size
+#if defined(_MSC_VER) && !defined(__clang__)
+                              ,
+                              psize
+#endif
+        ](auto b, auto e, auto &limits) {
+            ::obake::detail::ignore(ss);
 
-        for (++b; b != e; ++b) {
-            const auto &cur = *b;
+            for (++b; b != e; ++b) {
+                const auto &cur = *b;
 
-            assert(polynomials::key_is_compatible(cur, ss));
+                assert(polynomials::key_is_compatible(cur, ss));
 
-            symbol_idx idx = 0;
-            value_type tmp;
-            for (const auto &n : cur._container()) {
-                k_unpacker<value_type> ku(n, psize);
+                symbol_idx idx = 0;
+                value_type tmp;
+                for (const auto &n : cur._container()) {
+                    k_unpacker<value_type> ku(n, psize);
 
-                for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
-                    ku >> tmp;
+                    for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+                        ku >> tmp;
 
-                    if constexpr (is_signed_v<value_type>) {
-                        limits[idx].first = ::std::min(limits[idx].first, tmp);
-                        limits[idx].second = ::std::max(limits[idx].second, tmp);
-                    } else {
-                        limits[idx] = ::std::max(limits[idx], tmp);
+                        if constexpr (is_signed_v<value_type>) {
+                            limits[idx].first = ::std::min(limits[idx].first, tmp);
+                            limits[idx].second = ::std::max(limits[idx].second, tmp);
+                        } else {
+                            limits[idx] = ::std::max(limits[idx], tmp);
+                        }
                     }
                 }
             }
-        }
+        };
+        // Examine the rest of the ranges.
+        update_minmax(b1, e1, l1);
+        update_minmax(b2, e2, l2);
     };
 
-    // Examine the rest of the ranges.
-    update_minmax(b1, e1, limits1);
-    update_minmax(b2, e2, limits2);
+    if constexpr (::std::conjunction_v<is_random_access_iterator<decltype(b1)>,
+                                       is_random_access_iterator<decltype(b2)>>) {
+        // If both ranges are random-access, we have the option of running a parallel
+        // overflow check.
+        const auto size1 = ::std::distance(b1, e1);
+        const auto size2 = ::std::distance(b2, e2);
+
+        // NOTE: run the parallel implementation only if
+        // at least one of the sizes is large enough.
+        if (size1 > 5000 || size2 > 5000) {
+            auto par_functor = [&ss, s_size
+#if defined(_MSC_VER) && !defined(__clang__)
+                                ,
+                                psize
+#endif
+            ](auto b, auto e, const auto &limits) {
+                return ::tbb::parallel_reduce(
+                    // NOTE: the ranges are guaranteed to be non-empty,
+                    // thus b + 1 is always well-defined.
+                    ::tbb::blocked_range<decltype(b)>(b + 1, e), limits,
+                    [&ss, s_size
+#if defined(_MSC_VER) && !defined(__clang__)
+                     ,
+                     psize
+#endif
+                ](const auto &range, auto cur) {
+                        ::obake::detail::ignore(ss);
+
+                        for (const auto &m : range) {
+                            assert(polynomials::key_is_compatible(m, ss));
+
+                            symbol_idx idx = 0;
+                            value_type tmp;
+                            for (const auto &n : m._container()) {
+                                k_unpacker<value_type> ku(n, psize);
+
+                                for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+                                    ku >> tmp;
+
+                                    if constexpr (is_signed_v<value_type>) {
+                                        cur[idx].first = ::std::min(cur[idx].first, tmp);
+                                        cur[idx].second = ::std::max(cur[idx].second, tmp);
+                                    } else {
+                                        cur[idx] = ::std::max(cur[idx], tmp);
+                                    }
+                                }
+                            }
+                        }
+
+                        return cur;
+                    },
+                    [s_size](const auto &l1, const auto &l2) {
+                        assert(l1.size() == s_size);
+                        assert(l2.size() == s_size);
+
+                        remove_cvref_t<decltype(l1)> ret;
+                        ret.reserve(s_size);
+
+                        for (auto i = 0u; i < s_size; ++i) {
+                            if constexpr (is_signed_v<value_type>) {
+                                ret.emplace_back(::std::min(l1[i].first, l2[i].first),
+                                                 ::std::max(l1[i].second, l2[i].second));
+                            } else {
+                                ret.emplace_back(::std::max(l1[i], l2[i]));
+                            }
+                        }
+
+                        return ret;
+                    });
+            };
+
+            ::tbb::parallel_invoke([par_functor, b1, e1, &l1 = limits1]() { l1 = par_functor(b1, e1, l1); },
+                                   [par_functor, b2, e2, &l2 = limits2]() { l2 = par_functor(b2, e2, l2); });
+        } else {
+            serial_impl();
+        }
+    } else {
+        serial_impl();
+    }
 
     // Fetch the nbits value for pm_t.
     constexpr auto nbits = pm_t::nbits;
