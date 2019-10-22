@@ -8,8 +8,6 @@
 
 #include <cmath>
 #include <initializer_list>
-#include <list>
-#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
@@ -28,14 +26,12 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
-#include <obake/k_packing.hpp>
 #include <obake/key/key_evaluate.hpp>
 #include <obake/key/key_trim.hpp>
 #include <obake/key/key_trim_identify.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/monomial_diff.hpp>
 #include <obake/polynomials/monomial_integrate.hpp>
-#include <obake/polynomials/monomial_range_overflow_check.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
@@ -43,8 +39,6 @@
 
 #include "catch.hpp"
 #include "test_utils.hpp"
-
-static std::mt19937 rng;
 
 using namespace obake;
 
@@ -505,104 +499,6 @@ TEST_CASE("s11n_test")
                     ss.str("");
                 }
             }
-        });
-    });
-}
-
-// A test for exercising the multi-threaded monomial
-// overflow check.
-TEST_CASE("mt_overflow_check_test")
-{
-    detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
-
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
-#if defined(OBAKE_HAVE_GCC_INT128)
-            if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>) {
-#endif
-                constexpr auto bw = decltype(b)::value;
-
-                using pm_t = d_packed_monomial<int_t, bw>;
-                [[maybe_unused]] constexpr auto psize = pm_t::psize;
-
-                for (auto vs : {3u, 4u, 5u, 6u}) {
-                    symbol_set ss;
-                    for (auto j = 0u; j < vs; ++j) {
-                        ss.insert(ss.end(), "x_" + detail::to_string(j));
-                    }
-
-                    // Randomly generate a bunch of monomials with
-                    // exponents within the limits for the given vector size.
-                    std::vector<pm_t> v1;
-                    std::list<pm_t> l1;
-                    std::uniform_int_distribution<int_t> idist;
-                    std::vector<int_t> tmp(vs);
-                    for (auto i = 0u; i < 6000u; ++i) {
-                        for (auto j = 0u; j < vs; ++j) {
-                            if constexpr (bw == detail::limits_digits<int_t>) {
-                                tmp[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
-                                                        detail::limits_min<int_t>, detail::limits_max<int_t>});
-                            } else {
-                                const auto &lims = detail::k_packing_get_climits<int_t>(bw, j % psize);
-                                if constexpr (is_signed_v<int_t>) {
-                                    tmp[j] = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{
-                                                            lims[0], lims[1]});
-                                } else {
-                                    tmp[j] = idist(
-                                        rng, typename std::uniform_int_distribution<int_t>::param_type{int_t(0), lims});
-                                }
-                                v1.emplace_back(tmp);
-                                l1.emplace_back(tmp);
-                            }
-                        }
-                    }
-                    // Create a range containing a single
-                    // unitary monomial. This will never
-                    // overflow when multiplied by v1/l1.
-                    std::vector<pm_t> v2(1, pm_t(ss));
-
-                    REQUIRE(monomial_range_overflow_check(v1, v2, ss));
-                    REQUIRE(monomial_range_overflow_check(v2, v1, ss));
-                    REQUIRE(monomial_range_overflow_check(l1, v2, ss));
-                    REQUIRE(monomial_range_overflow_check(v2, l1, ss));
-
-                    // Add monomials with maximal exponents.
-                    for (auto j = 0u; j < vs; ++j) {
-                        if constexpr (bw == detail::limits_digits<int_t>) {
-                            tmp[j] = detail::limits_max<int_t>;
-                        } else {
-                            const auto &lims = detail::k_packing_get_climits<int_t>(bw, j % psize);
-                            if constexpr (is_signed_v<int_t>) {
-                                tmp[j] = lims[1];
-                            } else {
-                                tmp[j] = lims;
-                            }
-                        }
-                    }
-                    v2[0] = pm_t(tmp);
-                    for (auto j = 0u; j < vs; ++j) {
-                        if constexpr (bw == detail::limits_digits<int_t>) {
-                            tmp[j] = detail::limits_max<int_t>;
-                        } else {
-                            const auto &lims = detail::k_packing_get_climits<int_t>(bw, j % psize);
-                            if constexpr (is_signed_v<int_t>) {
-                                tmp[j] = lims[1];
-                            } else {
-                                tmp[j] = lims;
-                            }
-                        }
-                    }
-                    v1.emplace_back(tmp);
-                    l1.emplace_back(tmp);
-
-                    REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
-                    REQUIRE(!monomial_range_overflow_check(l1, v2, ss));
-                    REQUIRE(!monomial_range_overflow_check(v2, v1, ss));
-                    REQUIRE(!monomial_range_overflow_check(v2, l1, ss));
-                }
-#if defined(OBAKE_HAVE_GCC_INT128)
-            }
-#endif
         });
     });
 }
