@@ -233,18 +233,17 @@ TEST_CASE("mt_overflow_check_test")
                         l1.emplace_back(tmp);
                     }
                 }
-                std::vector<pm_t> v2(1, pm_t{});
+                // Create a range containing a single
+                // unitary monomial. This will never
+                // overflow when multiplied by v1/l1.
+                std::vector<pm_t> v2(1, pm_t{ss});
 
                 REQUIRE(monomial_range_overflow_check(v1, v2, ss));
                 REQUIRE(monomial_range_overflow_check(v2, v1, ss));
                 REQUIRE(monomial_range_overflow_check(l1, v2, ss));
                 REQUIRE(monomial_range_overflow_check(v2, l1, ss));
-                REQUIRE(!monomial_range_overflow_check(v1, v1, ss));
-                REQUIRE(!monomial_range_overflow_check(l1, v1, ss));
-                REQUIRE(!monomial_range_overflow_check(v1, l1, ss));
 
-                // Create a range consisting of a single monomial
-                // with maximal exponents.
+                // Add monomials with maximal exponents.
                 for (auto j = 0u; j < vs; ++j) {
                     const auto &lims = detail::k_packing_get_climits<int_t>(nbits, j);
                     if constexpr (is_signed_v<int_t>) {
@@ -254,6 +253,16 @@ TEST_CASE("mt_overflow_check_test")
                     }
                 }
                 v2[0] = pm_t(tmp);
+                for (auto j = 0u; j < vs; ++j) {
+                    const auto &lims = detail::k_packing_get_climits<int_t>(nbits, j);
+                    if constexpr (is_signed_v<int_t>) {
+                        tmp[j] = lims[1];
+                    } else {
+                        tmp[j] = lims;
+                    }
+                }
+                v1.emplace_back(tmp);
+                l1.emplace_back(tmp);
 
                 REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
                 REQUIRE(!monomial_range_overflow_check(l1, v2, ss));
