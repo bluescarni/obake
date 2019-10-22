@@ -554,10 +554,10 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // Monomial overflow checking.
 // NOTE: this assumes that all the monomials in the 2 ranges
 // are compatible with ss.
-// NOTE: this can be parallelised. We need:
-// - a good heuristic (should not be too difficult given
-//   the constraints on d_packed_monomial),
-// - the random-access iterator concept.
+// NOTE: this will check both that the components
+// of the product are within the k_packing limits,
+// and that the degrees of the product monomials
+// are all computable without overflows.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
 requires InputRange<R1> &&InputRange<R2> &&
@@ -597,27 +597,37 @@ template <typename R1, typename R2,
         return true;
     }
 
-    // Prepare the limits vectors.
-    auto [limits1, limits2] = [s_size]() {
+    // Prepare the component limits and the degree limits
+    // for each range.
+    // For signed integrals, the component limits are vectors
+    // of min/max pairs for each exponent, and the degree limits
+    // are pairs of min/max degree represented as multiprecision
+    // integers.
+    // For unsigned integrals, the component limits are vectors
+    // of max exponents, and the degree limits are max degrees
+    // represented as multiprecision integers.
+    auto [limits1, limits2, dlimits1, dlimits2] = [s_size]() {
         if constexpr (is_signed_v<value_type>) {
             ::std::vector<::std::pair<value_type, value_type>> minmax1, minmax2;
             minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));
             minmax2.reserve(static_cast<decltype(minmax2.size())>(s_size));
 
-            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2));
+            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2),
+                                     ::std::make_pair(::mppp::integer<1>{}, ::mppp::integer<1>{}),
+                                     ::std::make_pair(::mppp::integer<1>{}, ::mppp::integer<1>{}));
         } else {
             ::std::vector<value_type> max1, max2;
             max1.reserve(static_cast<decltype(max1.size())>(s_size));
             max2.reserve(static_cast<decltype(max2.size())>(s_size));
 
-            return ::std::make_tuple(::std::move(max1), ::std::move(max2));
+            return ::std::make_tuple(::std::move(max1), ::std::move(max2), ::mppp::integer<1>{}, ::mppp::integer<1>{});
         }
     }();
 
     // Fetch the packed size.
     constexpr auto psize = pm_t::psize;
 
-    // Init the limits vectors with the first elements of the ranges.
+    // Init the limits with the first elements of the ranges.
     {
         // NOTE: if the iterators return copies
         // of the monomials, rather than references,
@@ -646,16 +656,27 @@ template <typename R1, typename R2,
                 if constexpr (is_signed_v<value_type>) {
                     limits1.emplace_back(tmp1, tmp1);
                     limits2.emplace_back(tmp2, tmp2);
+
+                    // Accumulate the min/max degrees
+                    // (initially inited to the same values).
+                    dlimits1.first += tmp1;
+                    dlimits1.second += tmp1;
+                    dlimits2.first += tmp2;
+                    dlimits2.second += tmp2;
                 } else {
                     limits1.emplace_back(tmp1);
                     limits2.emplace_back(tmp2);
+
+                    // Accumulate the max degrees.
+                    dlimits1 += tmp1;
+                    dlimits2 += tmp2;
                 }
             }
         }
     }
 
     // Serial implementation.
-    auto serial_impl = [&ss, s_size, b1, e1, &l1 = limits1, b2, e2, &l2 = limits2
+    auto serial_impl = [&ss, s_size, b1, e1, &l1 = limits1, &dl1 = dlimits1, b2, e2, &l2 = limits2, &dl2 = dlimits2
 #if defined(_MSC_VER) && !defined(__clang__)
                         ,
                         psize
@@ -667,7 +688,7 @@ template <typename R1, typename R2,
                               ,
                               psize
 #endif
-        ](auto b, auto e, auto &limits) {
+        ](auto b, auto e, auto &limits, auto &dl) {
             ::obake::detail::ignore(ss);
 
             for (++b; b != e; ++b) {
@@ -679,9 +700,12 @@ template <typename R1, typename R2,
                 value_type tmp;
                 for (const auto &n : cur._container()) {
                     k_unpacker<value_type> ku(n, psize);
+                    ::mppp::integer<1> deg;
 
                     for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                         ku >> tmp;
+                        // Accumulate the degree.
+                        deg += tmp;
 
                         if constexpr (is_signed_v<value_type>) {
                             limits[idx].first = ::std::min(limits[idx].first, tmp);
@@ -690,12 +714,21 @@ template <typename R1, typename R2,
                             limits[idx] = ::std::max(limits[idx], tmp);
                         }
                     }
+
+                    if constexpr (is_signed_v<value_type>) {
+                        // Update the min/max degrees.
+                        dl.first = ::std::min(dl.first, deg);
+                        dl.second = ::std::max(dl.second, deg);
+                    } else {
+                        // Update the max degree.
+                        dl = ::std::max(dl, deg);
+                    }
                 }
             }
         };
         // Examine the rest of the ranges.
-        update_minmax(b1, e1, l1);
-        update_minmax(b2, e2, l2);
+        update_minmax(b1, e1, l1, dl1);
+        update_minmax(b2, e2, l2, dl2);
     };
 
     if constexpr (::std::conjunction_v<is_random_access_iterator<decltype(b1)>,
@@ -713,11 +746,11 @@ template <typename R1, typename R2,
                                 ,
                                 psize
 #endif
-            ](auto b, auto e, const auto &limits) {
+            ](auto b, auto e, const auto &limits, const auto &dl) {
                 return ::tbb::parallel_reduce(
                     // NOTE: the ranges are guaranteed to be non-empty,
                     // thus b + 1 is always well-defined.
-                    ::tbb::blocked_range<decltype(b)>(b + 1, e), limits,
+                    ::tbb::blocked_range<decltype(b)>(b + 1, e), ::std::make_pair(limits, dl),
                     [&ss, s_size
 #if defined(_MSC_VER) && !defined(__clang__)
                      ,
@@ -733,16 +766,28 @@ template <typename R1, typename R2,
                             value_type tmp;
                             for (const auto &n : m._container()) {
                                 k_unpacker<value_type> ku(n, psize);
+                                ::mppp::integer<1> deg;
 
                                 for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                                     ku >> tmp;
+                                    // Accumulate the degree.
+                                    deg += tmp;
 
                                     if constexpr (is_signed_v<value_type>) {
-                                        cur[idx].first = ::std::min(cur[idx].first, tmp);
-                                        cur[idx].second = ::std::max(cur[idx].second, tmp);
+                                        cur.first[idx].first = ::std::min(cur.first[idx].first, tmp);
+                                        cur.first[idx].second = ::std::max(cur.first[idx].second, tmp);
                                     } else {
-                                        cur[idx] = ::std::max(cur[idx], tmp);
+                                        cur.first[idx] = ::std::max(cur.first[idx], tmp);
                                     }
+                                }
+
+                                if constexpr (is_signed_v<value_type>) {
+                                    // Update the min/max degrees.
+                                    cur.second.first = ::std::min(cur.second.first, deg);
+                                    cur.second.second = ::std::max(cur.second.second, deg);
+                                } else {
+                                    // Update the max degree.
+                                    cur.second = ::std::max(cur.second, deg);
                                 }
                             }
                         }
@@ -750,27 +795,45 @@ template <typename R1, typename R2,
                         return cur;
                     },
                     [s_size](const auto &l1, const auto &l2) {
-                        assert(l1.size() == s_size);
-                        assert(l2.size() == s_size);
+                        assert(l1.first.size() == s_size);
+                        assert(l2.first.size() == s_size);
 
                         remove_cvref_t<decltype(l1)> ret;
-                        ret.reserve(s_size);
+                        ret.first.reserve(s_size);
 
                         for (auto i = 0u; i < s_size; ++i) {
                             if constexpr (is_signed_v<value_type>) {
-                                ret.emplace_back(::std::min(l1[i].first, l2[i].first),
-                                                 ::std::max(l1[i].second, l2[i].second));
+                                ret.first.emplace_back(::std::min(l1.first[i].first, l2.first[i].first),
+                                                       ::std::max(l1.first[i].second, l2.first[i].second));
                             } else {
-                                ret.emplace_back(::std::max(l1[i], l2[i]));
+                                ret.first.emplace_back(::std::max(l1.first[i], l2.first[i]));
                             }
+                        }
+
+                        if constexpr (is_signed_v<value_type>) {
+                            // Compute the min/max degrees.
+                            ret.second.first = ::std::min(l1.second.first, l2.second.first);
+                            ret.second.second = ::std::max(l1.second.second, l2.second.second);
+                        } else {
+                            // Compute the max degree.
+                            ret.second = ::std::max(l1.second, l2.second);
                         }
 
                         return ret;
                     });
             };
 
-            ::tbb::parallel_invoke([par_functor, b1, e1, &l1 = limits1]() { l1 = par_functor(b1, e1, l1); },
-                                   [par_functor, b2, e2, &l2 = limits2]() { l2 = par_functor(b2, e2, l2); });
+            ::tbb::parallel_invoke(
+                [par_functor, b1, e1, &l1 = limits1, &dl1 = dlimits1]() {
+                    auto ret = par_functor(b1, e1, l1, dl1);
+                    l1 = ::std::move(ret.first);
+                    dl1 = ::std::move(ret.second);
+                },
+                [par_functor, b2, e2, &l2 = limits2, &dl2 = dlimits2]() {
+                    auto ret = par_functor(b2, e2, l2, dl2);
+                    l2 = ::std::move(ret.first);
+                    dl2 = ::std::move(ret.second);
+                });
         } else {
             serial_impl();
         }
@@ -781,7 +844,7 @@ template <typename R1, typename R2,
     // Fetch the nbits value for pm_t.
     constexpr auto nbits = pm_t::nbits;
 
-    // Now add the limits via interval arithmetics
+    // Now add the component limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
     for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
         if constexpr (is_signed_v<value_type>) {
@@ -816,6 +879,24 @@ template <typename R1, typename R2,
             if (obake_unlikely(add_max > lim_max)) {
                 return false;
             }
+        }
+    }
+
+    // Do the same check for the degrees.
+    if constexpr (is_signed_v<value_type>) {
+        const auto deg_min = dlimits1.first + dlimits2.first;
+        const auto deg_max = dlimits1.second + dlimits2.second;
+
+        if (obake_unlikely(
+                deg_min
+                    < ::obake::detail::limits_min<value_type> || deg_max > ::obake::detail::limits_max<value_type>)) {
+            return false;
+        }
+    } else {
+        const auto deg_max = dlimits1 + dlimits2;
+
+        if (obake_unlikely(deg_max > ::obake::detail::limits_max<value_type>)) {
+            return false;
         }
     }
 

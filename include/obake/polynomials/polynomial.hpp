@@ -1856,7 +1856,6 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 // NOTE: future improvements:
 // - make the ntrials for the estimation of the average term size
 //   dependent on the number of term-by-term multiplications (need data for that);
-// - parallelisation of overflow checking (see in packed_monomial for instance);
 // - parallelisation in the degree computation, and avoid doing it multiple
 //   times in the implementation functions. Perhaps we should have a helper
 //   in series.hpp to create the vector of degrees for a series (both parallel
