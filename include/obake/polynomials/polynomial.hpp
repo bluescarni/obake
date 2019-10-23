@@ -1851,11 +1851,14 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 // x is not longer than y.
 // NOTE: future improvements:
 // - make the ntrials for the estimation of the average term size
-//   dependent on the number of term-by-term multiplications (need data for that);
-// - parallelisation in the degree computation, and avoid doing it multiple
-//   times in the implementation functions. Perhaps we should have a helper
-//   in series.hpp to create the vector of degrees for a series (both parallel
-//   and serial fashions)?
+//   dependent on the number of term-by-term multiplications (need data for that).
+// NOTE: the multithreaded implementation still computes
+// the degrees of the terms of the input series twice. This
+// could be reduced at the price of changing a bit the code structure
+// and at the cost of additional indirect sorting (because we
+// would be computing the degree vectors at the beginning and then
+// we would need to sort them for segmentation purposes). It's not
+// clear to me if this is worth it at this time.
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
