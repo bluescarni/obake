@@ -1604,28 +1604,20 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 auto vd = [&v, &ss, &args...]() {
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
-
                         ::obake::detail::ignore(args...);
 
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                        // NOTE: in the make_degree_vector() helper we need
+                        // to compute the size of v via iterator differences.
+                        ::obake::detail::container_it_diff_check(v);
+
+                        return customisation::internal::make_degree_vector<s_t>(v.cbegin(), v.cend(), ss, false);
                     } else {
-                        // Partial degree.
-                        using d_impl = customisation::internal::series_default_p_degree_impl;
+                        // NOTE: in the make_p_degree_vector() helper we need
+                        // to compute the size of v via iterator differences.
+                        ::obake::detail::container_it_diff_check(v);
 
-                        // Fetch the list of symbols from the arguments and turn it into a
-                        // set of indices.
-                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
-
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
-
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                        return customisation::internal::make_p_degree_vector<s_t>(
+                            v.cbegin(), v.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), false);
                     }
                 }();
 
