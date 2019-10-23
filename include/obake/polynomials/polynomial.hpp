@@ -435,41 +435,51 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     auto degree_data = [&x, &y, &ss, &args...]() {
         if constexpr (sizeof...(args) == 0u) {
             // No truncation.
-            ::obake::detail::ignore(x, y, ss);
+            ::obake::detail::ignore(x, y, ss, args...);
 
             return ::std::make_tuple();
         } else if constexpr (sizeof...(args) == 1u) {
             // Total degree truncation.
             ::obake::detail::ignore(args...);
 
-            using d_impl = customisation::internal::series_default_degree_impl;
-            using deg1_t = decltype(d_impl::d_extractor<S1>{&ss}(x[0]));
-            using deg2_t = decltype(d_impl::d_extractor<S2>{&ss}(y[0]));
+            // In the make_degree_vector() helpers, we need to compute
+            // the sizes of x/y via iterator differences.
+            ::obake::detail::container_it_diff_check(x);
+            ::obake::detail::container_it_diff_check(y);
 
-            return ::std::make_tuple(
-                ::std::vector<deg1_t>(::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<S1>{&ss}),
-                                      ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<S1>{&ss})),
-                ::std::vector<deg2_t>(::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<S2>{&ss}),
-                                      ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<S2>{&ss})));
+            decltype(customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true)) ret1;
+            decltype(customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true)) ret2;
+
+            ::tbb::parallel_invoke(
+                [&ret1, &x, &ss]() {
+                    ret1 = customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true);
+                },
+                [&ret2, &y, &ss]() {
+                    ret2 = customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true);
+                });
+
+            return ::std::make_tuple(::std::move(ret1), ::std::move(ret2));
         } else {
             // Partial degree truncation.
-            using d_impl = customisation::internal::series_default_p_degree_impl;
 
-            // Fetch the list of symbols from the arguments and turn it into a
-            // set of indices.
+            // In the make_p_degree_vector() helpers, we need to compute
+            // the sizes of x/y via iterator differences.
+            ::obake::detail::container_it_diff_check(x);
+            ::obake::detail::container_it_diff_check(y);
+
             const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-            const auto si = ::obake::detail::ss_intersect_idx(s, ss);
+            decltype(customisation::internal::make_p_degree_vector<S1>(x.cbegin(), x.cend(), ss, s, true)) ret1;
+            decltype(customisation::internal::make_p_degree_vector<S2>(y.cbegin(), y.cend(), ss, s, true)) ret2;
 
-            using deg1_t = decltype(d_impl::d_extractor<S1>{&s, &si, &ss}(x[0]));
-            using deg2_t = decltype(d_impl::d_extractor<S2>{&s, &si, &ss}(y[0]));
+            ::tbb::parallel_invoke(
+                [&ret1, &x, &ss, &s]() {
+                    ret1 = customisation::internal::make_p_degree_vector<S1>(x.cbegin(), x.cend(), ss, s, true);
+                },
+                [&ret2, &y, &ss, &s]() {
+                    ret2 = customisation::internal::make_p_degree_vector<S2>(y.cbegin(), y.cend(), ss, s, true);
+                });
 
-            return ::std::make_tuple(
-                ::std::vector<deg1_t>(
-                    ::boost::make_transform_iterator(x.cbegin(), d_impl::d_extractor<S1>{&s, &si, &ss}),
-                    ::boost::make_transform_iterator(x.cend(), d_impl::d_extractor<S1>{&s, &si, &ss})),
-                ::std::vector<deg2_t>(
-                    ::boost::make_transform_iterator(y.cbegin(), d_impl::d_extractor<S2>{&s, &si, &ss}),
-                    ::boost::make_transform_iterator(y.cend(), d_impl::d_extractor<S2>{&s, &si, &ss})));
+            return ::std::make_tuple(::std::move(ret1), ::std::move(ret2));
         }
     }();
 
@@ -480,37 +490,40 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
         ::std::iota(ret.begin(), ret.end(), decltype(v.size())(0));
         return ret;
     };
-    const auto vidx1 = make_idx_vector(x);
-    const auto vidx2 = [&make_idx_vector, &y, &degree_data]() {
-        auto ret = make_idx_vector(y);
 
-        // In truncated multiplication, order
-        // the indices into y according to the degree of
-        // the terms, and sort the vector of
-        // degrees as well.
-        if constexpr (sizeof...(Args) > 0u) {
-            auto &v2_deg = ::std::get<1>(degree_data);
+    ::std::vector<decltype(x.size())> vidx1;
+    ::std::vector<decltype(y.size())> vidx2;
 
-            ::std::sort(ret.begin(), ret.end(), [&v2_deg](const auto &idx1, const auto &idx2) {
-                return ::std::as_const(v2_deg)[idx1] < ::std::as_const(v2_deg)[idx2];
-            });
+    ::tbb::parallel_invoke([&vidx1, &x, make_idx_vector]() { vidx1 = make_idx_vector(x); },
+                           [&vidx2, &y, make_idx_vector, &degree_data]() {
+                               vidx2 = make_idx_vector(y);
 
-            // Apply the permutation to v2_deg.
-            ::obake::detail::container_it_diff_check(v2_deg);
-            v2_deg = ::std::remove_reference_t<decltype(v2_deg)>(
-                ::boost::make_permutation_iterator(v2_deg.cbegin(), ret.cbegin()),
-                ::boost::make_permutation_iterator(v2_deg.cend(), ret.cend()));
+                               // In truncated multiplication, order
+                               // the indices into y according to the degree of
+                               // the terms, and sort the vector of
+                               // degrees as well.
+                               if constexpr (sizeof...(Args) > 0u) {
+                                   auto &v2_deg = ::std::get<1>(degree_data);
 
-            // Verify the sorting in debug mode.
-            assert(::std::is_sorted(v2_deg.cbegin(), v2_deg.cend()));
-        } else {
-            // Nothing to do in untruncated multiplication,
-            // we will just return the iota.
-            ::obake::detail::ignore(y, degree_data);
-        }
+                                   ::tbb::parallel_sort(
+                                       vidx2.begin(), vidx2.end(), [&v2_deg](const auto &idx1, const auto &idx2) {
+                                           return ::std::as_const(v2_deg)[idx1] < ::std::as_const(v2_deg)[idx2];
+                                       });
 
-        return ret;
-    }();
+                                   // Apply the permutation to v2_deg.
+                                   ::obake::detail::container_it_diff_check(v2_deg);
+                                   v2_deg = ::std::remove_reference_t<decltype(v2_deg)>(
+                                       ::boost::make_permutation_iterator(v2_deg.cbegin(), vidx2.cbegin()),
+                                       ::boost::make_permutation_iterator(v2_deg.cend(), vidx2.cend()));
+
+                                   // Verify the sorting in debug mode.
+                                   assert(::std::is_sorted(v2_deg.cbegin(), v2_deg.cend()));
+                               } else {
+                                   // Nothing to do in untruncated multiplication,
+                                   // vidx2 will be just a iota.
+                                   ::obake::detail::ignore(y, degree_data);
+                               }
+                           });
 
     // Determine the total number of term-by-term multiplications
     // that will be performed in the poly multiplication.
@@ -800,6 +813,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     const auto [est_nterms, tot_n_mults] = detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...);
 
     // Estimate the average term size.
+    // NOTE: once poly_mul_impl_estimate_average_term_size() becomes more computationally intensive,
+    // we can do it in parallel with poly_mul_estimate_product_size().
     const auto avg_term_size = detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss);
 
     // Compute the estimated sparsity.
@@ -1007,30 +1022,19 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                 // Compute the vector of degrees.
                 auto vd = [&v, &ss, &args...]() {
+                    // NOTE: in the make_(p_)degree_vector() helpers we need
+                    // to compute the size of v via iterator differences.
+                    ::obake::detail::container_it_diff_check(v);
+
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
-
                         ::obake::detail::ignore(args...);
 
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                        return customisation::internal::make_degree_vector<s_t>(v.cbegin(), v.cend(), ss, true);
                     } else {
                         // Partial degree.
-                        using d_impl = customisation::internal::series_default_p_degree_impl;
-
-                        // Fetch the list of symbols from the arguments and turn it into a
-                        // set of indices.
-                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
-
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
-
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                        return customisation::internal::make_p_degree_vector<s_t>(
+                            v.cbegin(), v.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
                     }
                 }();
 
