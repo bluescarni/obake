@@ -851,9 +851,6 @@ public:
         }
     }
 
-    // NOTE: for segmented series, we could actually clear()
-    // the tables in parallel so that the most expensive part
-    // of the destruction process is faster.
     ~series()
     {
 #if !defined(NDEBUG)
@@ -898,6 +895,16 @@ public:
             }
         }
 #endif
+
+        if (m_s_table.size() > 1u) {
+            // Clear the tables in parallel if there's more than 1.
+            ::tbb::parallel_for(::tbb::blocked_range<decltype(m_s_table.begin())>(m_s_table.begin(), m_s_table.end()),
+                                [](const auto &range) {
+                                    for (auto &t : range) {
+                                        t.clear();
+                                    }
+                                });
+        }
     }
 
     // Member function implementation of the swap primitive.
