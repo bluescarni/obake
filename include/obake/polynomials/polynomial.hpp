@@ -511,8 +511,9 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                                    auto &v2_deg = ::std::get<1>(degree_data);
 
                                    ::tbb::parallel_sort(
-                                       vidx2.begin(), vidx2.end(), [&v2_deg](const auto &idx1, const auto &idx2) {
-                                           return ::std::as_const(v2_deg)[idx1] < ::std::as_const(v2_deg)[idx2];
+                                       vidx2.begin(), vidx2.end(),
+                                       [&cv2_deg = ::std::as_const(v2_deg)](const auto &idx1, const auto &idx2) {
+                                           return cv2_deg[idx1] < cv2_deg[idx2];
                                        });
 
                                    // Apply the permutation to v2_deg.

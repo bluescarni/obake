@@ -3424,7 +3424,7 @@ inline auto make_degree_vector(It begin, It end, const symbol_set &ss, bool para
 {
     static_assert(is_random_access_iterator_v<It>);
 
-    using d_impl = internal::series_default_degree_impl;
+    using d_impl = series_default_degree_impl;
     using deg_t = decltype(d_impl::d_extractor<T>{&ss}(*begin));
 
     // Build the degree extractor.
@@ -3434,12 +3434,11 @@ inline auto make_degree_vector(It begin, It end, const symbol_set &ss, bool para
         ::std::vector<deg_t> retval;
         // NOTE: we require deg_t to be a semi-regular type,
         // thus it is def-constructible.
-        retval.resize(::obake::safe_cast<decltype(retval.size())>(::std::distance(begin, end)));
+        retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
 
         ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
             for (auto it = range.begin(); it != range.end(); ++it) {
-                const auto idx = static_cast<decltype(retval.size())>(it - begin);
-                retval[idx] = d_ex(*it);
+                retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
             }
         });
 
@@ -3565,7 +3564,7 @@ inline auto make_p_degree_vector(It begin, It end, const symbol_set &ss, const s
 {
     static_assert(is_random_access_iterator_v<It>);
 
-    using d_impl = internal::series_default_p_degree_impl;
+    using d_impl = series_default_p_degree_impl;
 
     // Turn the list of symbols into a set of indices.
     const auto si = detail::ss_intersect_idx(s, ss);
@@ -3579,12 +3578,11 @@ inline auto make_p_degree_vector(It begin, It end, const symbol_set &ss, const s
         ::std::vector<deg_t> retval;
         // NOTE: we require deg_t to be a semi-regular type,
         // thus it is def-constructible.
-        retval.resize(::obake::safe_cast<decltype(retval.size())>(::std::distance(begin, end)));
+        retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
 
         ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
             for (auto it = range.begin(); it != range.end(); ++it) {
-                const auto idx = static_cast<decltype(retval.size())>(it - begin);
-                retval[idx] = d_ex(*it);
+                retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
             }
         });
 
