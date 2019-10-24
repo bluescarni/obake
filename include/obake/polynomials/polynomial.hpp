@@ -948,17 +948,173 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         return vseg;
     };
 
-    // Do the sorting and the segmentation computation concurrently.
+    // Helper that, given a segmentation vseg into a vector of terms
+    // v, will:
+    //
+    // - create and return a vector vd
+    //   containing the total/partial degrees of all the
+    //   terms in v, with the degrees within each vseg range sorted
+    //   in ascending order,
+    // - sort v according to vd.
+    //
+    // v will be one of v1/v2, t is a type_c instance
+    // containing either T or U.
+    auto seg_sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
+        if constexpr (sizeof...(args) == 0u) {
+            // Non-truncated case: seg_sorter will be a no-op.
+            ::obake::detail::ignore(v, t, vseg, ss, args...);
+        } else {
+            // Truncated case.
+
+            // NOTE: we will be using the machinery from the default implementation
+            // of degree() for series, so that we can re-use the concept checking bits
+            // as well.
+            using s_t = typename decltype(t)::type;
+
+            // Compute the vector of degrees.
+            auto vd = [&v, &ss, &args...]() {
+                // NOTE: in the make_(p_)degree_vector() helpers we need
+                // to compute the size of v via iterator differences.
+                ::obake::detail::container_it_diff_check(v);
+
+                if constexpr (sizeof...(args) == 1u) {
+                    // Total degree.
+                    ::obake::detail::ignore(args...);
+
+                    return customisation::internal::make_degree_vector<s_t>(v.cbegin(), v.cend(), ss, true);
+                } else {
+                    // Partial degree.
+                    static_assert(sizeof...(args) == 2u);
+
+                    return customisation::internal::make_p_degree_vector<s_t>(
+                        v.cbegin(), v.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
+                }
+            }();
+
+            // Ensure that the size of vd is representable by the
+            // diff type of its iterators. We'll need to do some
+            // iterator arithmetics below.
+            // NOTE: cast to const as we will use cbegin/cend below.
+            ::obake::detail::container_it_diff_check(::std::as_const(vd));
+
+            // Create a vector of indices into vd.
+            ::std::vector<decltype(vd.size())> vidx;
+            vidx.resize(::obake::safe_cast<decltype(vidx.size())>(vd.size()));
+            ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
+
+            // Sort indirectly each range from vseg according to the degree.
+            // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
+            // type we are using const lrefs.
+            ::tbb::parallel_for(
+                ::tbb::blocked_range<decltype(vseg.cbegin())>(vseg.cbegin(), vseg.cend()),
+                [&vidx, &vdc = ::std::as_const(vd)](const auto &range) {
+                    for (const auto &r : range) {
+                        // NOTE: note sure if it is worth to run
+                        // a parallel sort here.
+                        ::std::sort(vidx.data() + ::std::get<0>(r), vidx.data() + ::std::get<1>(r),
+                                    [&vdc](const auto &idx1, const auto &idx2) { return vdc[idx1] < vdc[idx2]; });
+                    }
+                });
+
+            // Apply the sorting to vd and v. Ensure we don't run
+            // into overflows during the permutated access.
+            ::obake::detail::container_it_diff_check(vd);
+            // NOTE: use cbegin/cend on vd to ensure the copy ctor of
+            // the degree type is being called.
+            vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.cbegin()),
+                              ::boost::make_permutation_iterator(vd.cend(), vidx.cend()));
+            ::obake::detail::container_it_diff_check(v);
+            v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.cbegin(), vidx.cbegin()),
+                                                       ::boost::make_permutation_iterator(v.cend(), vidx.cend()));
+
+#if !defined(NDEBUG)
+            // Check the results in debug mode.
+            for (const auto &r : vseg) {
+                const auto &idx_begin = ::std::get<0>(r);
+                const auto &idx_end = ::std::get<1>(r);
+
+                // NOTE: add constness to vd in order to ensure that
+                // the degrees are compared via const refs.
+                assert(::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
+
+                if constexpr (sizeof...(args) == 1u) {
+                    using d_impl = customisation::internal::series_default_degree_impl;
+
+                    assert(::std::equal(
+                        vd.data() + idx_begin, vd.data() + idx_end,
+                        ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
+                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                } else {
+                    using d_impl = customisation::internal::series_default_p_degree_impl;
+
+                    const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
+                    const auto si = ::obake::detail::ss_intersect_idx(s, ss);
+
+                    assert(::std::equal(
+                        vd.data() + idx_begin, vd.data() + idx_end,
+                        ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                        [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
+                }
+            }
+#endif
+
+            // Return the vector of degrees.
+            return vd;
+        }
+    };
+
+    // Prepare the variables to hold the segmentations
+    // and the degrees of the terms, if we are in a
+    // truncated multiplication.
     decltype(compute_vseg(v1)) vseg1;
     decltype(compute_vseg(v2)) vseg2;
+    auto degree_data = [&v1, &v2, &ss, &args...]() {
+        if constexpr (sizeof...(Args) == 0u) {
+            // Untruncated case, return an empty tuple.
+            ::obake::detail::ignore(v1, v2, ss, args...);
+
+            return ::std::make_tuple();
+        } else if constexpr (sizeof...(Args) == 1u) {
+            // Total truncation.
+            ::obake::detail::ignore(args...);
+
+            return ::std::make_tuple(
+                decltype(customisation::internal::make_degree_vector<T>(v1.cbegin(), v1.cend(), ss, true)){},
+                decltype(customisation::internal::make_degree_vector<U>(v2.cbegin(), v2.cend(), ss, true)){});
+        } else {
+            // Partial truncation.
+            return ::std::make_tuple(
+                decltype(customisation::internal::make_p_degree_vector<T>(
+                    v1.cbegin(), v1.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){},
+                decltype(customisation::internal::make_p_degree_vector<U>(
+                    v2.cbegin(), v2.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){});
+        }
+    }();
+
+    // For both x and y, concurrently:
+    // - sort v1/v2 according to the segmentation order,
+    // - compute the segmentation ranges,
+    // - compute the degrees of the terms and sort according
+    //   to the degree within each segment (only for truncated
+    //   multiplication).
     ::tbb::parallel_invoke(
-        [&v1, t_sorter, &vseg1, compute_vseg]() {
+        [&v1, t_sorter, &vseg1, compute_vseg, &degree_data, seg_sorter]() {
             ::tbb::parallel_sort(v1.begin(), v1.end(), t_sorter);
             vseg1 = compute_vseg(v1);
+            if constexpr (sizeof...(Args) > 0u) {
+                ::std::get<0>(degree_data) = seg_sorter(v1, ::obake::detail::type_c<T>{}, vseg1);
+            } else {
+                ::obake::detail::ignore(degree_data, seg_sorter);
+            }
         },
-        [&v2, t_sorter, &vseg2, compute_vseg]() {
+        [&v2, t_sorter, &vseg2, compute_vseg, &degree_data, seg_sorter]() {
             ::tbb::parallel_sort(v2.begin(), v2.end(), t_sorter);
             vseg2 = compute_vseg(v2);
+            if constexpr (sizeof...(Args) > 0u) {
+                ::std::get<1>(degree_data) = seg_sorter(v2, ::obake::detail::type_c<U>{}, vseg2);
+            } else {
+                ::obake::detail::ignore(degree_data, seg_sorter);
+            }
         });
 
 #if !defined(NDEBUG)
@@ -1008,127 +1164,15 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // of the range, otherwise the returned
     // value will ensure that the truncation limits
     // are respected.
-    auto compute_end_idx2 = [&ss, &v1, &v2, &vseg1, &vseg2, &args...]() {
-        if constexpr (sizeof...(args) == 0u) {
-            ::obake::detail::ignore(ss, v1, v2, vseg1, vseg2);
+    auto compute_end_idx2 = [&degree_data, &args...]() {
+        if constexpr (sizeof...(Args) == 0u) {
+            ::obake::detail::ignore(degree_data, args...);
 
             return [](const auto &, const auto &r2) { return ::std::get<1>(r2); };
         } else {
-            // Helper that, given a list of segmentation ranges vseg into v, will:
-            //
-            // - create and return a vector vd
-            //   containing the total/partial degrees of all the
-            //   terms in v, with the degrees within each vseg range sorted
-            //   in ascending order,
-            // - sort v according to vd.
-            //
-            // v will be one of v1/v2, t is a type_c instance
-            // containing either T or U.
-            auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
-                // NOTE: we will be using the machinery from the default implementation
-                // of degree() for series, so that we can re-use the concept checking bits
-                // as well.
-                using s_t = typename decltype(t)::type;
-
-                // Compute the vector of degrees.
-                auto vd = [&v, &ss, &args...]() {
-                    // NOTE: in the make_(p_)degree_vector() helpers we need
-                    // to compute the size of v via iterator differences.
-                    ::obake::detail::container_it_diff_check(v);
-
-                    if constexpr (sizeof...(args) == 1u) {
-                        // Total degree.
-                        ::obake::detail::ignore(args...);
-
-                        return customisation::internal::make_degree_vector<s_t>(v.cbegin(), v.cend(), ss, true);
-                    } else {
-                        // Partial degree.
-                        return customisation::internal::make_p_degree_vector<s_t>(
-                            v.cbegin(), v.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
-                    }
-                }();
-
-                // Ensure that the size of vd is representable by the
-                // diff type of its iterators. We'll need to do some
-                // iterator arithmetics below.
-                // NOTE: cast to const as we will use cbegin/cend below.
-                ::obake::detail::container_it_diff_check(::std::as_const(vd));
-
-                // Create a vector of indices into vd.
-                ::std::vector<decltype(vd.size())> vidx;
-                vidx.resize(::obake::safe_cast<decltype(vidx.size())>(vd.size()));
-                ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
-
-                // Sort indirectly each range from vseg according to the degree.
-                // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
-                // type we are using const lrefs.
-                ::tbb::parallel_for(
-                    ::tbb::blocked_range<decltype(vseg.cbegin())>(vseg.cbegin(), vseg.cend()),
-                    [&vidx, &vdc = ::std::as_const(vd)](const auto &range) {
-                        for (const auto &r : range) {
-                            ::std::sort(vidx.data() + ::std::get<0>(r), vidx.data() + ::std::get<1>(r),
-                                        [&vdc](const auto &idx1, const auto &idx2) { return vdc[idx1] < vdc[idx2]; });
-                        }
-                    });
-
-                // Apply the sorting to vd and v. Ensure we don't run
-                // into overflows during the permutated access.
-                ::obake::detail::container_it_diff_check(vd);
-                // NOTE: use cbegin/cend on vd to ensure the copy ctor of
-                // the degree type is being called.
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.cbegin()),
-                                  ::boost::make_permutation_iterator(vd.cend(), vidx.cend()));
-                ::obake::detail::container_it_diff_check(v);
-                v = ::std::remove_reference_t<decltype(v)>(
-                    ::boost::make_permutation_iterator(v.cbegin(), vidx.cbegin()),
-                    ::boost::make_permutation_iterator(v.cend(), vidx.cend()));
-
-#if !defined(NDEBUG)
-                // Check the results in debug mode.
-                for (const auto &r : vseg) {
-                    const auto &idx_begin = ::std::get<0>(r);
-                    const auto &idx_end = ::std::get<1>(r);
-
-                    // NOTE: add constness to vd in order to ensure that
-                    // the degrees are compared via const refs.
-                    assert(
-                        ::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
-
-                    if constexpr (sizeof...(args) == 1u) {
-                        using d_impl = customisation::internal::series_default_degree_impl;
-
-                        assert(::std::equal(
-                            vd.data() + idx_begin, vd.data() + idx_end,
-                            ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&ss}),
-                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
-                    } else {
-                        using d_impl = customisation::internal::series_default_p_degree_impl;
-
-                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
-
-                        assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
-                                            ::boost::make_transform_iterator(v.data() + idx_begin,
-                                                                             d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                                            [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
-                    }
-                }
-#endif
-
-                return vd;
-            };
-
-            // Run the sorter concurrently
-            // for v1 and v2.
-            using ::obake::detail::type_c;
-            decltype(sorter(v1, type_c<T>{}, vseg1)) vd1_;
-            decltype(sorter(v2, type_c<U>{}, vseg2)) vd2_;
-            ::tbb::parallel_invoke([&vd1_, &v1, &vseg1, sorter]() { vd1_ = sorter(v1, type_c<T>{}, vseg1); },
-                                   [&vd2_, &v2, &vseg2, sorter]() { vd2_ = sorter(v2, type_c<U>{}, vseg2); });
-
-            // Create and return the functor. vd1_ and vd2_ will be moved
-            // into the closure as vd1 and vd2.
-            return [vd1 = ::std::move(vd1_), vd2 = ::std::move(vd2_),
+            // Create and return the functor. The degree data
+            // for the two series will be moved in as vd1 and vd2.
+            return [vd1 = ::std::move(::std::get<0>(degree_data)), vd2 = ::std::move(::std::get<1>(degree_data)),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
