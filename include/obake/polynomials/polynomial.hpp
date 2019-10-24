@@ -864,7 +864,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // Cache the actual number of segments.
     const auto nsegs = s_size_t(1) << log2_nsegs;
 
-    // Sort the input terms according to the hash value modulo
+    // Helper to sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
     // they would occupy in a segmented table with 2**log2_nsegs
     // segments.
@@ -874,11 +874,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
         return h1 % (s_size_t(1) << log2_nsegs) < h2 % (s_size_t(1) << log2_nsegs);
     };
-    // Sort concurrently and in parallel v1 and v2.
-    ::tbb::parallel_invoke([&v1, t_sorter]() { ::tbb::parallel_sort(v1.begin(), v1.end(), t_sorter); },
-                           [&v2, t_sorter]() { ::tbb::parallel_sort(v2.begin(), v2.end(), t_sorter); });
 
-    // Compute the segmentation for the input series.
+    // Helper to compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
     // as pairs of indices into v1/v2) paired to indices
     // representing the bucket that the range
@@ -951,11 +948,18 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         return vseg;
     };
 
-    // Compute the two segmentations concurrently.
+    // Do the sorting and the segmentation computation concurrently.
     decltype(compute_vseg(v1)) vseg1;
     decltype(compute_vseg(v2)) vseg2;
-    ::tbb::parallel_invoke([&v1, &vseg1, compute_vseg]() { vseg1 = compute_vseg(v1); },
-                           [&v2, &vseg2, compute_vseg]() { vseg2 = compute_vseg(v2); });
+    ::tbb::parallel_invoke(
+        [&v1, t_sorter, &vseg1, compute_vseg]() {
+            ::tbb::parallel_sort(v1.begin(), v1.end(), t_sorter);
+            vseg1 = compute_vseg(v1);
+        },
+        [&v2, t_sorter, &vseg2, compute_vseg]() {
+            ::tbb::parallel_sort(v2.begin(), v2.end(), t_sorter);
+            vseg2 = compute_vseg(v2);
+        });
 
 #if !defined(NDEBUG)
     {
