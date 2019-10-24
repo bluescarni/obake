@@ -7,6 +7,11 @@ Changelog
 New
 ~~~
 
+- Various performance improvements for polynomial
+  multiplication
+  (`#78 <https://github.com/bluescarni/obake/pull/78>`__,
+  `#79 <https://github.com/bluescarni/obake/pull/79>`__).
+
 - Add concepts/type traits for the detection
   of bidirectional and random access iterators
   and ranges
