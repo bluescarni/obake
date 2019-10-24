@@ -1068,15 +1068,23 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // truncated multiplication.
     decltype(compute_vseg(v1)) vseg1;
     decltype(compute_vseg(v2)) vseg2;
-    auto degree_data = [&v1, &v2, &ss, &args...]() {
+    auto degree_data = [
+#if defined(_MSC_VER) && !defined(__clang__)
+                           &v1, &v2, &ss, &args...
+#endif
+    ]() {
         if constexpr (sizeof...(Args) == 0u) {
             // Untruncated case, return an empty tuple.
+#if defined(_MSC_VER) && !defined(__clang__)
             ::obake::detail::ignore(v1, v2, ss, args...);
+#endif
 
             return ::std::make_tuple();
         } else if constexpr (sizeof...(Args) == 1u) {
             // Total truncation.
+#if defined(_MSC_VER) && !defined(__clang__)
             ::obake::detail::ignore(args...);
+#endif
 
             return ::std::make_tuple(
                 decltype(customisation::internal::make_degree_vector<T>(v1.cbegin(), v1.cend(), ss, true)){},
