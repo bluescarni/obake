@@ -408,8 +408,13 @@ struct poly_mul_impl_pair_transform {
 // S1 and S2 are the types of the polyomials, x and y the polynomials
 // represented as vectors of terms. The extra arguments represent
 // the truncation limits.
-// Requires x and y not empty, x not shorter than y. The returned
+// Requires x and y not empty, y not shorter than x. The returned
 // value is guaranteed to be nonzero.
+// NOTE: by imposing that x is the shorter series, we are able to
+// greatly reduce the estimation overhead for highly rectangular
+// multiplications. The downside is that we overestimate the final
+// series size quite a bit. Not sure how we could proceed to
+// improve the situation.
 template <typename S1, typename S2, typename T1, typename T2, typename... Args>
 inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::std::vector<T2> &y, const symbol_set &ss,
                                            const Args &... args)
@@ -417,7 +422,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     // Preconditions.
     assert(!x.empty());
     assert(!y.empty());
-    assert(x.size() >= y.size());
+    assert(x.size() <= y.size());
     static_assert(sizeof...(args) <= 2u);
 
     // Make sure that the input types are consistent.
@@ -808,9 +813,9 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
     // Estimate the total number of terms, and compute the total number
     // of term-by-term multiplications.
-    // NOTE: switch the operands around as poly_mul_estimate_product_size()
-    // requires the largest series first.
-    const auto [est_nterms, tot_n_mults] = detail::poly_mul_estimate_product_size<U, T>(v2, v1, ss, args...);
+    // NOTE: poly_mul_estimate_product_size() requires the shorter series first,
+    // which is ensured by the preconditions of this function.
+    const auto [est_nterms, tot_n_mults] = detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...);
 
     // Estimate the average term size.
     // NOTE: once poly_mul_impl_estimate_average_term_size() becomes more computationally intensive,
@@ -1852,13 +1857,20 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 // NOTE: future improvements:
 // - make the ntrials for the estimation of the average term size
 //   dependent on the number of term-by-term multiplications (need data for that).
-// NOTE: the multithreaded implementation still computes
-// the degrees of the terms of the input series twice. This
-// could be reduced at the price of changing a bit the code structure
-// and at the cost of additional indirect sorting (because we
-// would be computing the degree vectors at the beginning and then
-// we would need to sort them for segmentation purposes). It's not
-// clear to me if this is worth it at this time.
+// NOTE: performance considerations:
+// - the multithreaded implementation still computes
+//   the degrees of the terms of the input series twice. This
+//   could be reduced at the price of changing a bit the code structure
+//   and at the cost of additional indirect sorting (because we
+//   would be computing the degree vectors at the beginning and then
+//   we would need to sort them for segmentation purposes). It's not
+//   clear to me if this is worth it at this time, need to profile;
+// - in highly rectangular multiplications, quite a bit of time
+//   is spent copying the larger operand into a vector of terms.
+//   Perhaps this could be parallelised for segmented series?
+// - in highly rectangular multiplications, the series size
+//   estimation is quite poor (see comments on top of the
+//   function). Not sure what we could do about it.
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
