@@ -233,7 +233,7 @@ namespace detail
 // Small helper to create a vector of indices
 // into the input vector v, in parallel using TBB.
 template <typename V>
-inline auto par_make_idx_vector(const V &v)
+inline auto poly_mul_impl_par_make_idx_vector(const V &v)
 {
     // NOTE: we could use here a custom allocator
     // that does default initialisation, instead of
@@ -248,6 +248,39 @@ inline auto par_make_idx_vector(const V &v)
     });
 
     return ret;
+}
+
+// Helper to prepare the variables that will hold the degree
+// data used during polynomial multiplication. In untruncated
+// multiplication, an empty tuple will be returned, otherwise
+// a tuple of 2 vectors containing the (partial) degrees of the terms
+// in the input series will be returned. The degrees
+// are computed using the facilities in series.hpp.
+// The input series are of types T and U, while the terms
+// of the series are stored in the input vectors v1 and v2.
+template <typename T, typename U, typename V1, typename V2, typename... Args>
+inline auto poly_mul_impl_prepare_degree_data([[maybe_unused]] const V1 &v1, [[maybe_unused]] const V2 &v2,
+                                              [[maybe_unused]] const symbol_set &ss,
+                                              [[maybe_unused]] const Args &... args)
+{
+    if constexpr (sizeof...(Args) == 0u) {
+        // Untruncated case, return an empty tuple.
+        return ::std::make_tuple();
+    } else if constexpr (sizeof...(Args) == 1u) {
+        // Total truncation.
+        return ::std::make_tuple(
+            // NOTE: the invocation here uses parallel mode, but it does not really
+            // matter as the return type does not change wrt serial mode.
+            decltype(customisation::internal::make_degree_vector<T>(v1.cbegin(), v1.cend(), ss, true)){},
+            decltype(customisation::internal::make_degree_vector<U>(v2.cbegin(), v2.cend(), ss, true)){});
+    } else {
+        // Partial truncation.
+        return ::std::make_tuple(
+            decltype(customisation::internal::make_p_degree_vector<T>(
+                v1.cbegin(), v1.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){},
+            decltype(customisation::internal::make_p_degree_vector<U>(
+                v2.cbegin(), v2.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){});
+    }
 }
 
 // Small helper to extract a const reference to
@@ -454,40 +487,11 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     static_assert(::std::is_same_v<series_cf_t<S2>, typename T2::second_type>);
 
     // Prepare the variable to hold the degree data.
-    auto degree_data = [
-#if defined(_MSC_VER) && !defined(__clang__)
-                           &x, &y, &ss, &args...
-#endif
-    ]() {
-        if constexpr (sizeof...(Args) == 0u) {
-            // Untruncated case, return an empty tuple.
-#if defined(_MSC_VER) && !defined(__clang__)
-            ::obake::detail::ignore(x, y, ss, args...);
-#endif
-
-            return ::std::make_tuple();
-        } else if constexpr (sizeof...(Args) == 1u) {
-            // Total truncation.
-#if defined(_MSC_VER) && !defined(__clang__)
-            ::obake::detail::ignore(args...);
-#endif
-
-            return ::std::make_tuple(
-                decltype(customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true)){},
-                decltype(customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true)){});
-        } else {
-            // Partial truncation.
-            return ::std::make_tuple(
-                decltype(customisation::internal::make_p_degree_vector<S1>(
-                    x.cbegin(), x.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){},
-                decltype(customisation::internal::make_p_degree_vector<S2>(
-                    y.cbegin(), y.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){});
-        }
-    }();
+    auto degree_data = detail::poly_mul_impl_prepare_degree_data<S1, S2>(x, y, ss, args...);
 
     // Prepare vectors of indices into x/y.
-    decltype(detail::par_make_idx_vector(x)) vidx1;
-    decltype(detail::par_make_idx_vector(y)) vidx2;
+    decltype(detail::poly_mul_impl_par_make_idx_vector(x)) vidx1;
+    decltype(detail::poly_mul_impl_par_make_idx_vector(y)) vidx2;
 
     // Concurrently create the degree data for x and y, and fill
     // in the vidx1/vidx2 vectors.
@@ -511,7 +515,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                 ::obake::detail::ignore(ss, degree_data, args...);
             }
 
-            vidx1 = detail::par_make_idx_vector(x);
+            vidx1 = detail::poly_mul_impl_par_make_idx_vector(x);
         },
         [&vidx2, &y, &ss, &degree_data, &args...]() {
             if constexpr (sizeof...(args) == 1u) {
@@ -532,7 +536,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
                 ::obake::detail::ignore(ss, degree_data, args...);
             }
 
-            vidx2 = detail::par_make_idx_vector(y);
+            vidx2 = detail::poly_mul_impl_par_make_idx_vector(y);
 
             // In truncated multiplication, order
             // the indices into y according to the degree of
@@ -1024,7 +1028,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             ::obake::detail::container_it_diff_check(::std::as_const(vd));
 
             // Create a vector of indices into vd.
-            auto vidx = detail::par_make_idx_vector(vd);
+            auto vidx = detail::poly_mul_impl_par_make_idx_vector(vd);
 
             // Sort indirectly each range from vseg according to the degree.
             // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
@@ -1092,36 +1096,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // truncated multiplication.
     decltype(compute_vseg(v1)) vseg1;
     decltype(compute_vseg(v2)) vseg2;
-    auto degree_data = [
-#if defined(_MSC_VER) && !defined(__clang__)
-                           &v1, &v2, &ss, &args...
-#endif
-    ]() {
-        if constexpr (sizeof...(Args) == 0u) {
-            // Untruncated case, return an empty tuple.
-#if defined(_MSC_VER) && !defined(__clang__)
-            ::obake::detail::ignore(v1, v2, ss, args...);
-#endif
-
-            return ::std::make_tuple();
-        } else if constexpr (sizeof...(Args) == 1u) {
-            // Total truncation.
-#if defined(_MSC_VER) && !defined(__clang__)
-            ::obake::detail::ignore(args...);
-#endif
-
-            return ::std::make_tuple(
-                decltype(customisation::internal::make_degree_vector<T>(v1.cbegin(), v1.cend(), ss, true)){},
-                decltype(customisation::internal::make_degree_vector<U>(v2.cbegin(), v2.cend(), ss, true)){});
-        } else {
-            // Partial truncation.
-            return ::std::make_tuple(
-                decltype(customisation::internal::make_p_degree_vector<T>(
-                    v1.cbegin(), v1.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){},
-                decltype(customisation::internal::make_p_degree_vector<U>(
-                    v2.cbegin(), v2.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){});
-        }
-    }();
+    auto degree_data = detail::poly_mul_impl_prepare_degree_data<T, U>(v1, v2, ss, args...);
 
     // For both x and y, concurrently:
     // - sort v1/v2 according to the segmentation order,
