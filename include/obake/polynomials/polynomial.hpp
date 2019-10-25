@@ -230,6 +230,26 @@ namespace polynomials
 namespace detail
 {
 
+// Small helper to create a vector of indices
+// into the input vector v, in parallel using TBB.
+template <typename V>
+inline auto par_make_idx_vector(const V &v)
+{
+    // NOTE: we could use here a custom allocator
+    // that does default initialisation, instead of
+    // value initialisation.
+    ::std::vector<decltype(v.size())> ret;
+    ret.resize(::obake::safe_cast<decltype(ret.size())>(v.size()));
+
+    ::tbb::parallel_for(::tbb::blocked_range<decltype(v.size())>(0, v.size()), [&ret](const auto &range) {
+        for (auto i = range.begin(); i != range.end(); ++i) {
+            ret[i] = i;
+        }
+    });
+
+    return ret;
+}
+
 // Small helper to extract a const reference to
 // a term's key (that is, the first element of the
 // input pair p).
@@ -433,103 +453,109 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     static_assert(::std::is_same_v<series_cf_t<S1>, typename T1::second_type>);
     static_assert(::std::is_same_v<series_cf_t<S2>, typename T2::second_type>);
 
-    // Create the degree data. In untruncated multiplication,
-    // this will just be an empty tuple, otherwise it will
-    // be a pair containing the (partial) degree of the terms
-    // of x and y in the original order.
-    auto degree_data = [&x, &y, &ss, &args...]() {
-        if constexpr (sizeof...(args) == 0u) {
-            // No truncation.
+    // Prepare the variable to hold the degree data.
+    auto degree_data = [
+#if defined(_MSC_VER) && !defined(__clang__)
+                           &x, &y, &ss, &args...
+#endif
+    ]() {
+        if constexpr (sizeof...(Args) == 0u) {
+            // Untruncated case, return an empty tuple.
+#if defined(_MSC_VER) && !defined(__clang__)
             ::obake::detail::ignore(x, y, ss, args...);
+#endif
 
             return ::std::make_tuple();
-        } else if constexpr (sizeof...(args) == 1u) {
-            // Total degree truncation.
+        } else if constexpr (sizeof...(Args) == 1u) {
+            // Total truncation.
+#if defined(_MSC_VER) && !defined(__clang__)
             ::obake::detail::ignore(args...);
+#endif
 
-            // In the make_degree_vector() helpers, we need to compute
-            // the sizes of x/y via iterator differences.
-            ::obake::detail::container_it_diff_check(x);
-            ::obake::detail::container_it_diff_check(y);
-
-            decltype(customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true)) ret1;
-            decltype(customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true)) ret2;
-
-            ::tbb::parallel_invoke(
-                [&ret1, &x, &ss]() {
-                    ret1 = customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true);
-                },
-                [&ret2, &y, &ss]() {
-                    ret2 = customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true);
-                });
-
-            return ::std::make_tuple(::std::move(ret1), ::std::move(ret2));
+            return ::std::make_tuple(
+                decltype(customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true)){},
+                decltype(customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true)){});
         } else {
-            // Partial degree truncation.
-
-            // In the make_p_degree_vector() helpers, we need to compute
-            // the sizes of x/y via iterator differences.
-            ::obake::detail::container_it_diff_check(x);
-            ::obake::detail::container_it_diff_check(y);
-
-            const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-            decltype(customisation::internal::make_p_degree_vector<S1>(x.cbegin(), x.cend(), ss, s, true)) ret1;
-            decltype(customisation::internal::make_p_degree_vector<S2>(y.cbegin(), y.cend(), ss, s, true)) ret2;
-
-            ::tbb::parallel_invoke(
-                [&ret1, &x, &ss, &s]() {
-                    ret1 = customisation::internal::make_p_degree_vector<S1>(x.cbegin(), x.cend(), ss, s, true);
-                },
-                [&ret2, &y, &ss, &s]() {
-                    ret2 = customisation::internal::make_p_degree_vector<S2>(y.cbegin(), y.cend(), ss, s, true);
-                });
-
-            return ::std::make_tuple(::std::move(ret1), ::std::move(ret2));
+            // Partial truncation.
+            return ::std::make_tuple(
+                decltype(customisation::internal::make_p_degree_vector<S1>(
+                    x.cbegin(), x.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){},
+                decltype(customisation::internal::make_p_degree_vector<S2>(
+                    y.cbegin(), y.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){});
         }
     }();
 
-    // Create vectors of indices into x and y.
-    auto make_idx_vector = [](const auto &v) {
-        ::std::vector<decltype(v.size())> ret;
-        ret.resize(::obake::safe_cast<decltype(ret.size())>(v.size()));
-        ::std::iota(ret.begin(), ret.end(), decltype(v.size())(0));
-        return ret;
-    };
+    // Prepare vectors of indices into x/y.
+    decltype(detail::par_make_idx_vector(x)) vidx1;
+    decltype(detail::par_make_idx_vector(y)) vidx2;
 
-    ::std::vector<decltype(x.size())> vidx1;
-    ::std::vector<decltype(y.size())> vidx2;
+    // Concurrently create the degree data for x and y, and fill
+    // in the vidx1/vidx2 vectors.
+    ::tbb::parallel_invoke(
+        [&vidx1, &x, &ss, &degree_data, &args...]() {
+            if constexpr (sizeof...(args) == 1u) {
+                // Total degree truncation.
+                ::obake::detail::ignore(args...);
 
-    ::tbb::parallel_invoke([&vidx1, &x, make_idx_vector]() { vidx1 = make_idx_vector(x); },
-                           [&vidx2, &y, make_idx_vector, &degree_data]() {
-                               vidx2 = make_idx_vector(y);
+                ::obake::detail::container_it_diff_check(x);
 
-                               // In truncated multiplication, order
-                               // the indices into y according to the degree of
-                               // the terms, and sort the vector of
-                               // degrees as well.
-                               if constexpr (sizeof...(Args) > 0u) {
-                                   auto &v2_deg = ::std::get<1>(degree_data);
+                ::std::get<0>(degree_data)
+                    = customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true);
+            } else if constexpr (sizeof...(args) == 2u) {
+                // Partial degree truncation.
+                ::obake::detail::container_it_diff_check(x);
 
-                                   ::tbb::parallel_sort(
-                                       vidx2.begin(), vidx2.end(),
-                                       [&cv2_deg = ::std::as_const(v2_deg)](const auto &idx1, const auto &idx2) {
-                                           return cv2_deg[idx1] < cv2_deg[idx2];
-                                       });
+                ::std::get<0>(degree_data) = customisation::internal::make_p_degree_vector<S1>(
+                    x.cbegin(), x.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
+            } else {
+                ::obake::detail::ignore(ss, degree_data, args...);
+            }
 
-                                   // Apply the permutation to v2_deg.
-                                   ::obake::detail::container_it_diff_check(v2_deg);
-                                   v2_deg = ::std::remove_reference_t<decltype(v2_deg)>(
-                                       ::boost::make_permutation_iterator(v2_deg.cbegin(), vidx2.cbegin()),
-                                       ::boost::make_permutation_iterator(v2_deg.cend(), vidx2.cend()));
+            vidx1 = detail::par_make_idx_vector(x);
+        },
+        [&vidx2, &y, &ss, &degree_data, &args...]() {
+            if constexpr (sizeof...(args) == 1u) {
+                // Total degree truncation.
+                ::obake::detail::ignore(args...);
 
-                                   // Verify the sorting in debug mode.
-                                   assert(::std::is_sorted(v2_deg.cbegin(), v2_deg.cend()));
-                               } else {
-                                   // Nothing to do in untruncated multiplication,
-                                   // vidx2 will be just a iota.
-                                   ::obake::detail::ignore(y, degree_data);
-                               }
-                           });
+                ::obake::detail::container_it_diff_check(y);
+
+                ::std::get<1>(degree_data)
+                    = customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true);
+            } else if constexpr (sizeof...(args) == 2u) {
+                // Partial degree truncation.
+                ::obake::detail::container_it_diff_check(y);
+
+                ::std::get<1>(degree_data) = customisation::internal::make_p_degree_vector<S2>(
+                    y.cbegin(), y.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
+            } else {
+                ::obake::detail::ignore(ss, degree_data, args...);
+            }
+
+            vidx2 = detail::par_make_idx_vector(y);
+
+            // In truncated multiplication, order
+            // the indices into y according to the degree of
+            // the terms, and sort the vector of
+            // degrees as well.
+            if constexpr (sizeof...(args) > 0u) {
+                auto &v2_deg = ::std::get<1>(degree_data);
+
+                ::tbb::parallel_sort(vidx2.begin(), vidx2.end(),
+                                     [&cv2_deg = ::std::as_const(v2_deg)](const auto &idx1, const auto &idx2) {
+                                         return cv2_deg[idx1] < cv2_deg[idx2];
+                                     });
+
+                // Apply the permutation to v2_deg.
+                ::obake::detail::container_it_diff_check(v2_deg);
+                v2_deg = ::std::remove_reference_t<decltype(v2_deg)>(
+                    ::boost::make_permutation_iterator(v2_deg.cbegin(), vidx2.cbegin()),
+                    ::boost::make_permutation_iterator(v2_deg.cend(), vidx2.cend()));
+
+                // Verify the sorting in debug mode.
+                assert(::std::is_sorted(v2_deg.cbegin(), v2_deg.cend()));
+            }
+        });
 
     // Determine the total number of term-by-term multiplications
     // that will be performed in the poly multiplication.
@@ -998,9 +1024,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             ::obake::detail::container_it_diff_check(::std::as_const(vd));
 
             // Create a vector of indices into vd.
-            ::std::vector<decltype(vd.size())> vidx;
-            vidx.resize(::obake::safe_cast<decltype(vidx.size())>(vd.size()));
-            ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
+            auto vidx = detail::par_make_idx_vector(vd);
 
             // Sort indirectly each range from vseg according to the degree.
             // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
