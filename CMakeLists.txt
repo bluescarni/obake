@@ -164,8 +164,8 @@ endif()
 # TBB.
 find_package(TBB REQUIRED)
 
-# Depend on DbgEng on MSVC, for the stack trace support.
-if(YACMA_COMPILER_IS_MSVC)
+# Depend on DbgEng on WIN32, for the stack trace support.
+if(WIN32)
     find_package(DbgEng REQUIRED)
 endif()
 
@@ -230,8 +230,8 @@ else()
     target_link_libraries(obake PUBLIC obake::dl)
 endif()
 
-# Link to DbgEng on MSVC.
-if(YACMA_COMPILER_IS_MSVC)
+# Link to DbgEng on Windows.
+if(WIN32)
     target_link_libraries(obake PUBLIC DbgEng::DbgEng)
 endif()
 
