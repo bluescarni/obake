@@ -1951,7 +1951,12 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 //   Perhaps this could be parallelised for segmented series?
 // - in highly rectangular multiplications, the series size
 //   estimation is quite poor (see comments on top of the
-//   function). Not sure what we could do about it.
+//   function). Not sure what we could do about it;
+// - when constructing vectors of indices, or when building
+//   vectors of degrees, we could improve performance by using
+//   a default-constructing allocator, in order to avoid zeroing
+//   out data which we will be overwriting anyway;
+// - perhaps vector permutations could be done in parallel?
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
