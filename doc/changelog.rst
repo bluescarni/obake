@@ -20,6 +20,9 @@ New
 Fix
 ~~~
 
+- Fix for the compilation of the obake library with MinGW
+  (`#80 <https://github.com/bluescarni/obake/pull/80>`__).
+
 - Remove an unused variable in a lambda capture
   (`#75 <https://github.com/bluescarni/obake/pull/75>`__).
 
