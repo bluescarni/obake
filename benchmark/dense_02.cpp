@@ -17,5 +17,5 @@ using namespace obake_benchmark;
 
 int main()
 {
-    dense_benchmark_4_vars<packed_monomial<unsigned long>, mppp::integer<2>>(30);
+    dense_benchmark_5_vars<packed_monomial<unsigned long>, mppp::integer<1>>(14);
 }

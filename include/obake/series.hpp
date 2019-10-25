@@ -30,6 +30,9 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
+
 #include <mp++/integer.hpp>
 
 #include <obake/byte_size.hpp>
@@ -848,9 +851,6 @@ public:
         }
     }
 
-    // NOTE: for segmented series, we could actually clear()
-    // the tables in parallel so that the most expensive part
-    // of the destruction process is faster.
     ~series()
     {
 #if !defined(NDEBUG)
@@ -895,6 +895,16 @@ public:
             }
         }
 #endif
+
+        if (m_s_table.size() > 1u) {
+            // Clear the tables in parallel if there's more than 1.
+            ::tbb::parallel_for(::tbb::blocked_range<decltype(m_s_table.begin())>(m_s_table.begin(), m_s_table.end()),
+                                [](const auto &range) {
+                                    for (auto &t : range) {
+                                        t.clear();
+                                    }
+                                });
+        }
     }
 
     // Member function implementation of the swap primitive.
@@ -3403,6 +3413,42 @@ inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::a
 #endif
     = series_default_degree_impl{};
 
+// Helper to construct a vector of total degrees
+// from a range of terms using the series_default_degree_impl
+// machinery. T is the series type which the terms
+// in the range refer to. The 'parallel' flag establishes
+// if the construction of the vector of degrees should
+// be done in a parallel fashion. 'It' must be a random-access iterator.
+template <typename T, typename It>
+inline auto make_degree_vector(It begin, It end, const symbol_set &ss, bool parallel)
+{
+    static_assert(is_random_access_iterator_v<It>);
+
+    using d_impl = series_default_degree_impl;
+    using deg_t = decltype(d_impl::d_extractor<T>{&ss}(*begin));
+
+    // Build the degree extractor.
+    const auto d_ex = d_impl::d_extractor<T>{&ss};
+
+    if (parallel) {
+        ::std::vector<deg_t> retval;
+        // NOTE: we require deg_t to be a semi-regular type,
+        // thus it is def-constructible.
+        retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
+
+        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+            for (auto it = range.begin(); it != range.end(); ++it) {
+                retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
+            }
+        });
+
+        return retval;
+    } else {
+        return ::std::vector<deg_t>(::boost::make_transform_iterator(begin, d_ex),
+                                    ::boost::make_transform_iterator(end, d_ex));
+    }
+}
+
 } // namespace customisation::internal
 
 // Customise obake::p_degree() for series types.
@@ -3506,6 +3552,46 @@ template <typename T>
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
 #endif
     = series_default_p_degree_impl{};
+
+// Helper to construct a vector of partial degrees
+// from a range of terms using the series_default_p_degree_impl
+// machinery. T is the series type which the terms
+// in the range refer to. The 'parallel' flag establishes
+// if the construction of the vector of degrees should
+// be done in a parallel fashion. 'It' must be a random-access iterator.
+template <typename T, typename It>
+inline auto make_p_degree_vector(It begin, It end, const symbol_set &ss, const symbol_set &s, bool parallel)
+{
+    static_assert(is_random_access_iterator_v<It>);
+
+    using d_impl = series_default_p_degree_impl;
+
+    // Turn the list of symbols into a set of indices.
+    const auto si = detail::ss_intersect_idx(s, ss);
+
+    using deg_t = decltype(d_impl::d_extractor<T>{&s, &si, &ss}(*begin));
+
+    // Build the degree extractor.
+    const auto d_ex = d_impl::d_extractor<T>{&s, &si, &ss};
+
+    if (parallel) {
+        ::std::vector<deg_t> retval;
+        // NOTE: we require deg_t to be a semi-regular type,
+        // thus it is def-constructible.
+        retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
+
+        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+            for (auto it = range.begin(); it != range.end(); ++it) {
+                retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
+            }
+        });
+
+        return retval;
+    } else {
+        return ::std::vector<deg_t>(::boost::make_transform_iterator(begin, d_ex),
+                                    ::boost::make_transform_iterator(end, d_ex));
+    }
+}
 
 } // namespace customisation::internal
 
