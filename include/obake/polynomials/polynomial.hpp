@@ -1889,9 +1889,9 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
         // Establish the max byte size of the input series.
         const auto max_bs = ::std::max(::obake::byte_size(::std::as_const(x)), ::obake::byte_size(::std::as_const(y)));
 
-        if (x.size() == 1u || max_bs < 30000ul || ::obake::detail::hc() == 1u) {
+        if ((x.size() == 1u && y.size() == 1u) || max_bs < 30000ul || ::obake::detail::hc() == 1u) {
             // Run the simple implementation if either:
-            // - the smaller polynomial has 1 term, or
+            // - both polys have only 1 term, or
             // - the maximum operand size is less than a threshold value, or
             // - we have just 1 core.
             detail::poly_mul_impl_simple(retval, x, y, args...);
