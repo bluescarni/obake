@@ -1889,14 +1889,14 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
         // Establish the max byte size of the input series.
         const auto max_bs = ::std::max(::obake::byte_size(::std::as_const(x)), ::obake::byte_size(::std::as_const(y)));
 
-        if (max_bs < 30000ul || ::obake::detail::hc() == 1u) {
-            // Run the simple implementation if the maximum operand size
-            // is less than a threshold value, or if we have
-            // just 1 core.
+        if ((x.size() == 1u && y.size() == 1u) || max_bs < 30000ul || ::obake::detail::hc() == 1u) {
+            // Run the simple implementation if either:
+            // - both polys have only 1 term, or
+            // - the maximum operand size is less than a threshold value, or
+            // - we have just 1 core.
             detail::poly_mul_impl_simple(retval, x, y, args...);
         } else {
-            // Large operand size and multiple cores available,
-            // run the MT implementation.
+            // Otherwise, run the MT implementation.
             detail::poly_mul_impl_mt_hm(retval, x, y, args...);
         }
     } else {
@@ -2592,7 +2592,7 @@ constexpr auto poly_integrate_algorithm_impl()
                 using ret_t = detected_t<::obake::detail::mul_t, quot_t, const rT &>;
 
                 if constexpr (::std::conjunction_v<
-                                  //  Ensure quot_t is detected, as we use it in the definition of ret_t.
+                                  // Ensure quot_t is detected, as we use it in the definition of ret_t.
                                   is_detected<::obake::detail::div_t, const cf_t &, key_int_t>,
                                   // The return type must be accumulable.
                                   // NOTE: this condition also checks that ret_t is detected,
