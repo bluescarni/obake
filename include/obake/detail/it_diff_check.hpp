@@ -14,6 +14,7 @@
 
 #include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
+#include <obake/detail/to_string.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
