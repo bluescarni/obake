@@ -11,5 +11,6 @@
 // having to re-define the same catch options in
 // every test file).
 #define CATCH_CONFIG_FAST_COMPILE
+#define CATCH_CONFIG_NO_CPP17_BYTE
 
 #include "catch_impl.hpp"
