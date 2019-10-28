@@ -135,14 +135,6 @@ public:
                 kp << ::obake::safe_cast<T>(*it);
             }
 
-            // This will be executed only at the last iteration
-            // of the for loop, and it will zero pad
-            // the last element of the container if psize does not
-            // divide exactly n.
-            for (; j < psize; ++j) {
-                kp << T(0);
-            }
-
             out = kp.get();
         }
     }
@@ -159,10 +151,6 @@ private:
             auto j = 0u;
             for (; j < psize && b != e; ++j, ++b) {
                 kp << ::obake::safe_cast<T>(*b);
-            }
-
-            for (; j < psize; ++j) {
-                kp << T(0);
             }
 
             m_container.push_back(kp.get());
@@ -1030,13 +1018,6 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
             kp << static_cast<T>(tmp_int);
         }
 
-        // NOTE: this loop will be executed only at the
-        // last np, and only if psize does not divide
-        // exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
-        }
-
         c_out.push_back(kp.get());
     }
 
@@ -1203,14 +1184,6 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
             }
         }
 
-        // This will be executed only at the last iteration
-        // of the for loop, and it will zero pad
-        // the last element of the container if psize does not
-        // divide exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
-        }
-
         out_c.push_back(kp.get());
     }
     assert(sm_it == sm_end);
@@ -1351,14 +1324,6 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_
             kp << tmp;
         }
 
-        // This will be executed only at the last iteration
-        // of the for loop, and it will zero pad
-        // the last element of the container if psize does not
-        // divide exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
-        }
-
         out_c.push_back(kp.get());
     }
 
@@ -1421,14 +1386,6 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_pa
             }
 
             kp << tmp;
-        }
-
-        // This will be executed only at the last iteration
-        // of the for loop, and it will zero pad
-        // the last element of the container if psize does not
-        // divide exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
         }
 
         out_c.push_back(kp.get());
