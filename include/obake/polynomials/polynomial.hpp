@@ -1301,6 +1301,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                       // Unpack in local variables.
                       const auto &r2 = *it;
                       const auto [r2_start, r2_end, bi2] = r2;
+                      ::obake::detail::ignore(r2_end, bi2);
 
                       // The O(N**2) multiplication loop over the ranges.
                       for (auto idx1 = r1_start; idx1 != r1_end; ++idx1) {
@@ -1436,6 +1437,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                       const auto [r1_start, r1_end, bi1] = vseg1[i];
                       const auto &r2 = vseg2[j];
                       const auto [r2_start, r2_end, bi2] = r2;
+                      ::obake::detail::ignore(r2_end);
 
                       // NOTE: in the dense case, the bucket
                       // indices must be equal to i/j.
