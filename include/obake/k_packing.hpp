@@ -470,13 +470,9 @@ public:
     // Fetch the encoded value.
     constexpr const T &get() const
     {
-        if (obake_unlikely(m_index < m_size)) {
-            obake_throw(::std::out_of_range, "Cannot fetch the packed value from this Kronecker packer: the number of "
-                                             "values pushed to the packer ("
-                                                 + detail::to_string(m_index)
-                                                 + ") is less than the size used for construction ("
-                                                 + detail::to_string(m_size) + ")");
-        }
+        // NOTE: if we pushed fewer values than m_size,
+        // this will be equivalent to having pushed
+        // zeroes for the missing values.
         return m_value;
     }
 

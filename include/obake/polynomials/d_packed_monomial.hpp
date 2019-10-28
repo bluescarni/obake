@@ -130,17 +130,8 @@ public:
 
             // Keep packing until we get to psize or we have
             // exhausted the input values.
-            auto j = 0u;
-            for (; j < psize && counter < n; ++j, ++counter, ++it) {
+            for (auto j = 0u; j < psize && counter < n; ++j, ++counter, ++it) {
                 kp << ::obake::safe_cast<T>(*it);
-            }
-
-            // This will be executed only at the last iteration
-            // of the for loop, and it will zero pad
-            // the last element of the container if psize does not
-            // divide exactly n.
-            for (; j < psize; ++j) {
-                kp << T(0);
             }
 
             out = kp.get();
@@ -156,13 +147,8 @@ private:
         while (b != e) {
             k_packer<T> kp(psize);
 
-            auto j = 0u;
-            for (; j < psize && b != e; ++j, ++b) {
+            for (auto j = 0u; j < psize && b != e; ++j, ++b) {
                 kp << ::obake::safe_cast<T>(*b);
-            }
-
-            for (; j < psize; ++j) {
-                kp << T(0);
             }
 
             m_container.push_back(kp.get());
@@ -1022,19 +1008,11 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
         k_unpacker<T> ku(np, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
             tmp_int = tmp;
             tmp_int *= exp;
             kp << static_cast<T>(tmp_int);
-        }
-
-        // NOTE: this loop will be executed only at the
-        // last np, and only if psize does not divide
-        // exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
         }
 
         c_out.push_back(kp.get());
@@ -1180,8 +1158,7 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
         k_unpacker<T> ku(n, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
 
             if (sm_it != sm_end && sm_it->first == idx) {
@@ -1201,14 +1178,6 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
                 // Just copy the original exponent into the output monomial.
                 kp << tmp;
             }
-        }
-
-        // This will be executed only at the last iteration
-        // of the for loop, and it will zero pad
-        // the last element of the container if psize does not
-        // divide exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
         }
 
         out_c.push_back(kp.get());
@@ -1326,8 +1295,7 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_
         k_unpacker<T> ku(n, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && i < s_size; ++j, ++i) {
+        for (auto j = 0u; j < psize && i < s_size; ++j, ++i) {
             ku >> tmp;
 
             if (i == idx && tmp != T(0)) {
@@ -1349,14 +1317,6 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_
             }
 
             kp << tmp;
-        }
-
-        // This will be executed only at the last iteration
-        // of the for loop, and it will zero pad
-        // the last element of the container if psize does not
-        // divide exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
         }
 
         out_c.push_back(kp.get());
@@ -1391,8 +1351,7 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_pa
         k_unpacker<T> ku(n, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && i < s_size; ++j, ++i) {
+        for (auto j = 0u; j < psize && i < s_size; ++j, ++i) {
             ku >> tmp;
 
             if (i == idx) {
@@ -1421,14 +1380,6 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_pa
             }
 
             kp << tmp;
-        }
-
-        // This will be executed only at the last iteration
-        // of the for loop, and it will zero pad
-        // the last element of the container if psize does not
-        // divide exactly s_size.
-        for (; j < psize; ++j) {
-            kp << T(0);
         }
 
         out_c.push_back(kp.get());
