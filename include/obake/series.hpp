@@ -693,7 +693,8 @@ public:
     }
     // NOTE: the generic construction algorithm must be well-documented,
     // as we rely on its behaviour in a variety of places (e.g., when constructing
-    // series from scalars).
+    // series from scalars - see for instance the default series pow()
+    // implementation).
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
@@ -1505,6 +1506,53 @@ constexpr auto series_default_pow_algorithm_impl()
             return failure;
         }
     }
+}
+
+// Helper to compare series with identical symbol sets.
+// Two series are considered equal if they have the same
+// number of terms and if for each term in one series
+// an equal term exists in the other series (term equality
+// is tested by comparing both the coefficient and the key).
+template <typename T, typename U>
+inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
+{
+    assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+
+    // If the series have different sizes,
+    // they cannot be equal.
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    // Cache the end iterator of rhs.
+    const auto rhs_end = rhs.end();
+    // NOTE: this can be parallelised and
+    // improved performance-wise by having specialised
+    // codepaths for single table layout, same
+    // n segments, etc. Keep it in mind for
+    // future optimisations.
+    for (const auto &t : lhs) {
+        // NOTE: old clang does not like structured
+        // bindings in the for loop.
+        const auto &k = t.first;
+        const auto &c = t.second;
+
+        const auto it = rhs.find(k);
+        if (it == rhs_end || c != it->second) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Helper to determine if two series are identical.
+// They are if the symbol sets are equal and if the series
+// compare equal according to series_cmp_identical_ss().
+template <typename S>
+inline bool series_are_identical(const S &s1, const S &s2)
+{
+    return s1.get_symbol_set() == s2.get_symbol_set() && internal::series_cmp_identical_ss(s1, s2);
 }
 
 // Default implementation of series exponentiation.
@@ -3081,41 +3129,8 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
     if constexpr (algo == 3) {
         // Two series with equal rank, same key/tag, possibly
         // different coefficient type.
-
-        // Helper to compare series with identical symbol sets.
-        auto cmp_identical_ss = [](const auto &lhs, const auto &rhs) {
-            assert(lhs.get_symbol_set() == rhs.get_symbol_set());
-
-            // If the series have different sizes,
-            // they cannot be equal.
-            if (lhs.size() != rhs.size()) {
-                return false;
-            }
-
-            // Cache the end iterator of rhs.
-            const auto rhs_end = rhs.end();
-            // NOTE: this can be parallelised and
-            // improved performance-wise by having specialised
-            // codepaths for single table layout, same
-            // n segments, etc. Keep it in mind for
-            // future optimisations.
-            for (const auto &t : lhs) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                const auto &k = t.first;
-                const auto &c = t.second;
-
-                const auto it = rhs.find(k);
-                if (it == rhs_end || c != it->second) {
-                    return false;
-                }
-            }
-
-            return true;
-        };
-
         if (x.get_symbol_set() == y.get_symbol_set()) {
-            return cmp_identical_ss(x, y);
+            return customisation::internal::series_cmp_identical_ss(x, y);
         } else {
             // Merge the symbol sets.
             const auto &[merged_ss, ins_map_x, ins_map_y]
@@ -3141,7 +3156,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     b.set_symbol_set(merged_ss);
                     detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                    return cmp_identical_ss(x, b);
+                    return customisation::internal::series_cmp_identical_ss(x, b);
                 }
                 case 2u: {
                     // y already has the correct symbol
@@ -3150,7 +3165,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     a.set_symbol_set(merged_ss);
                     detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                    return cmp_identical_ss(a, y);
+                    return customisation::internal::series_cmp_identical_ss(a, y);
                 }
             }
 
@@ -3162,7 +3177,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
             detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-            return cmp_identical_ss(a, b);
+            return customisation::internal::series_cmp_identical_ss(a, b);
         }
     } else {
         // Helper to compare series of different rank
