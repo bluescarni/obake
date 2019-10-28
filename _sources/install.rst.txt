@@ -212,3 +212,29 @@ to build the documentation. Executing the command
 
 will produce the documentation in HTML format. The documentation will be
 generated in the ``doc/_build`` directory.
+
+Packages
+--------
+
+Conda
+^^^^^
+
+obake is available in the `conda <https://conda.io/en/latest/>`__ package manager from the
+`conda-forge <https://conda-forge.org/>`__ channel. Two
+packages are available:
+
+* `obake <https://anaconda.org/conda-forge/obake>`__, which contains the obake shared library,
+* `obake-devel <https://anaconda.org/conda-forge/obake-devel>`__,
+  which contains the obake headers and the
+  CMake support files.
+
+In order to install obake via conda, you just need
+to add ``conda-forge`` to the channels:
+
+.. code-block:: console
+
+   $ conda config --add channels conda-forge
+   $ conda install obake obake-devel
+
+Please refer to the `conda documentation <https://conda.io/en/latest/>`__ for instructions on how to setup and manage
+your conda installation.

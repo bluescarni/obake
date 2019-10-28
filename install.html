@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installation &mdash; obake 0.2 documentation</title>
+  <title>Installation &mdash; obake 0.3 documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.2
+                0.3
               </div>
             
           
@@ -91,6 +91,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#compiler-and-platform-specific-notes">Compiler and platform specific notes</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#building-the-documentation">Building the documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#packages">Packages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id7">Conda</a></li>
 </ul>
 </li>
 </ul>
@@ -340,6 +344,29 @@ to build the documentation. Executing the command</p>
 </div>
 <p>will produce the documentation in HTML format. The documentation will be
 generated in the <code class="docutils literal notranslate"><span class="pre">doc/_build</span></code> directory.</p>
+</div>
+</div>
+<div class="section" id="packages">
+<h2>Packages<a class="headerlink" href="#packages" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h3>Conda<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>obake is available in the <a class="reference external" href="https://conda.io/en/latest/">conda</a> package manager from the
+<a class="reference external" href="https://conda-forge.org/">conda-forge</a> channel. Two
+packages are available:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://anaconda.org/conda-forge/obake">obake</a>, which contains the obake shared library,</p></li>
+<li><p><a class="reference external" href="https://anaconda.org/conda-forge/obake-devel">obake-devel</a>,
+which contains the obake headers and the
+CMake support files.</p></li>
+</ul>
+<p>In order to install obake via conda, you just need
+to add <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> to the channels:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> conda config --add channels conda-forge
+<span class="gp">$</span> conda install obake obake-devel
+</pre></div>
+</div>
+<p>Please refer to the <a class="reference external" href="https://conda.io/en/latest/">conda documentation</a> for instructions on how to setup and manage
+your conda installation.</p>
 </div>
 </div>
 </div>
