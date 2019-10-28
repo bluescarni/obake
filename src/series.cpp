@@ -6,11 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <functional>
+#include <mutex>
 #include <string>
+#include <tuple>
 
 #include <obake/series.hpp>
 
-namespace obake::detail
+namespace obake
+{
+namespace detail
 {
 
 // Implementation of the default streaming for a single term.
@@ -50,4 +55,18 @@ void series_stream_single_term(::std::string &ret, ::std::string &str_cf, const 
     }
 }
 
-} // namespace obake::detail
+} // namespace detail
+
+namespace customisation::internal
+{
+
+::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map()
+{
+    static series_pow_map_t retval;
+    static ::std::mutex mutex;
+    return ::std::make_tuple(::std::ref(retval), ::std::ref(mutex));
+}
+
+} // namespace customisation::internal
+
+} // namespace obake

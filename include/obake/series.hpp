@@ -12,16 +12,23 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <iterator>
+#include <mutex>
 #include <numeric>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <boost/any.hpp>
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
@@ -1546,13 +1553,67 @@ inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
     return true;
 }
 
-// Helper to determine if two series are identical.
+// Helper to determine if two series of the same type are identical.
 // They are if the symbol sets are equal and if the series
 // compare equal according to series_cmp_identical_ss().
 template <typename S>
 inline bool series_are_identical(const S &s1, const S &s2)
 {
     return s1.get_symbol_set() == s2.get_symbol_set() && internal::series_cmp_identical_ss(s1, s2);
+}
+
+// TODO: internal docs, changed requirements, extra requirements.
+// TODO: check use of const references etc, locking.
+using series_te_pow_map_t = ::std::unordered_map<::boost::any, ::std::vector<::boost::any>,
+                                                 ::std::function<::std::size_t(const ::boost::any &)>,
+                                                 ::std::function<bool(const ::boost::any &, const ::boost::any &)>>;
+
+using series_pow_map_t = ::std::unordered_map<::std::type_index, series_te_pow_map_t>;
+
+OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map();
+
+template <typename Ret, typename Base>
+inline auto series_pow_from_cache(const Base &base, unsigned n)
+{
+    auto [map, mutex] = internal::get_series_pow_map();
+    ::std::type_index t_idx(typeid(Base));
+
+    struct hasher {
+        ::std::size_t operator()(const ::boost::any &x) const
+        {
+            ::std::size_t retval = 0;
+
+            for (const auto &t : ::boost::any_cast<const Base &>(x)) {
+                retval += detail::series_key_hasher{}(t.first);
+            }
+
+            return retval;
+        }
+    };
+
+    struct comparer {
+        bool operator()(const ::boost::any &x, const ::boost::any &y) const
+        {
+            return internal::series_are_identical(::boost::any_cast<const Base &>(x),
+                                                  ::boost::any_cast<const Base &>(y));
+        }
+    };
+
+    ::std::lock_guard lock(mutex);
+
+    auto it = map.try_emplace(t_idx, 0, hasher{}, comparer{}).first->second.try_emplace(base).first;
+    const auto &b = ::boost::any_cast<const Base &>(it->first);
+    auto &v = it->second;
+
+    if (v.empty()) {
+        v.emplace_back(Ret(1));
+    }
+
+    while (v.size() <= n) {
+        v.emplace_back(::boost::any_cast<const Ret &>(v.back()) * b);
+    }
+
+    return ::boost::any_cast<const Ret &>(v[static_cast<decltype(v.size())>(n)]);
 }
 
 // Default implementation of series exponentiation.
@@ -1645,6 +1706,9 @@ struct series_default_pow_impl {
                                                          + n.to_string() + ") is negative");
             }
 
+            return internal::series_pow_from_cache<ret_t<T &&, U &&>>(b, static_cast<unsigned>(n));
+
+#if 0
             // NOTE: constructability from 1 is ensured by the
             // constructability of the coefficient type from int.
             ret_t<T &&, U &&> retval(1);
@@ -1655,6 +1719,7 @@ struct series_default_pow_impl {
             // NOTE: returnability is guaranteed because
             // the return type is a series.
             return retval;
+#endif
         } else {
             obake_throw(::std::invalid_argument,
                         "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
