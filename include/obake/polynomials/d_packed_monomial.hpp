@@ -130,8 +130,7 @@ public:
 
             // Keep packing until we get to psize or we have
             // exhausted the input values.
-            auto j = 0u;
-            for (; j < psize && counter < n; ++j, ++counter, ++it) {
+            for (auto j = 0u; j < psize && counter < n; ++j, ++counter, ++it) {
                 kp << ::obake::safe_cast<T>(*it);
             }
 
@@ -148,8 +147,7 @@ private:
         while (b != e) {
             k_packer<T> kp(psize);
 
-            auto j = 0u;
-            for (; j < psize && b != e; ++j, ++b) {
+            for (auto j = 0u; j < psize && b != e; ++j, ++b) {
                 kp << ::obake::safe_cast<T>(*b);
             }
 
@@ -1010,8 +1008,7 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
         k_unpacker<T> ku(np, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
             tmp_int = tmp;
             tmp_int *= exp;
@@ -1161,8 +1158,7 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
         k_unpacker<T> ku(n, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
 
             if (sm_it != sm_end && sm_it->first == idx) {
@@ -1299,8 +1295,7 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_
         k_unpacker<T> ku(n, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && i < s_size; ++j, ++i) {
+        for (auto j = 0u; j < psize && i < s_size; ++j, ++i) {
             ku >> tmp;
 
             if (i == idx && tmp != T(0)) {
@@ -1356,8 +1351,7 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_pa
         k_unpacker<T> ku(n, psize);
         k_packer<T> kp(psize);
 
-        auto j = 0u;
-        for (; j < psize && i < s_size; ++j, ++i) {
+        for (auto j = 0u; j < psize && i < s_size; ++j, ++i) {
             ku >> tmp;
 
             if (i == idx) {
