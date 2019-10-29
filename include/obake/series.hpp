@@ -12,16 +12,23 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <iterator>
+#include <mutex>
 #include <numeric>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <boost/any.hpp>
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
@@ -43,7 +50,6 @@
 #include <obake/detail/fcast.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
-#include <obake/detail/mppp_utils.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -693,7 +699,8 @@ public:
     }
     // NOTE: the generic construction algorithm must be well-documented,
     // as we rely on its behaviour in a variety of places (e.g., when constructing
-    // series from scalars).
+    // series from scalars - see for instance the default series pow()
+    // implementation).
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
@@ -1507,6 +1514,161 @@ constexpr auto series_default_pow_algorithm_impl()
     }
 }
 
+// Helper to compare series with identical symbol sets.
+// Two series are considered equal if they have the same
+// number of terms and if for each term in one series
+// an equal term exists in the other series (term equality
+// is tested by comparing both the coefficient and the key).
+template <typename T, typename U>
+inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
+{
+    assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+
+    // If the series have different sizes,
+    // they cannot be equal.
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    // Cache the end iterator of rhs.
+    const auto rhs_end = rhs.end();
+    // NOTE: this can be parallelised and
+    // improved performance-wise by having specialised
+    // codepaths for single table layout, same
+    // n segments, etc. Keep it in mind for
+    // future optimisations.
+    for (const auto &t : lhs) {
+        // NOTE: old clang does not like structured
+        // bindings in the for loop.
+        const auto &k = t.first;
+        const auto &c = t.second;
+
+        const auto it = rhs.find(k);
+        if (it == rhs_end || c != it->second) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Helper to determine if two series of the same type are identical.
+// They are if the symbol sets are equal and if the series
+// compare equal according to series_cmp_identical_ss().
+template <typename S>
+inline bool series_are_identical(const S &s1, const S &s2)
+{
+    return s1.get_symbol_set() == s2.get_symbol_set() && internal::series_cmp_identical_ss(s1, s2);
+}
+
+// The series pow cache for a specific series type.
+// It maps a series instance x to a vector of natural
+// powers of x. Everything is type-erased as we need
+// to store instances of this type as elements of another map.
+// NOTE: the key in this map is the base, the vectors
+// are the base raised to its natural powers. All these
+// boost::any will contain instances of the base type.
+using series_te_pow_map_t = ::std::unordered_map<::boost::any, ::std::vector<::boost::any>,
+                                                 // Hashing functor.
+                                                 ::std::function<::std::size_t(const ::boost::any &)>,
+                                                 // Equality comparator.
+                                                 ::std::function<bool(const ::boost::any &, const ::boost::any &)>>;
+
+// Series pow cache. It maps a C++ series type, represented
+// as a type_index, to a series_te_pow_map_t map.
+using series_pow_map_t = ::std::unordered_map<::std::type_index, series_te_pow_map_t>;
+
+// Function to fetch the global series pow cache and associated mutex.
+OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map();
+
+// Function to clear the global series pow cache.
+OBAKE_DLL_PUBLIC void clear_series_pow_map();
+
+// Fetch the n-th natural power of the input
+// series 'base' from the global cache. If the
+// power is not present in the cache already,
+// it will be computed on the fly.
+template <typename Base>
+inline Base series_pow_from_cache(const Base &base, unsigned n)
+{
+    // Fetch the global data.
+    auto [map, mutex] = internal::get_series_pow_map();
+
+    // Turn the type into a type_index.
+    ::std::type_index t_idx(typeid(Base));
+
+    // The concrete hasher and equality comparator
+    // functors for use in series_te_pow_map_t.
+    // They will be wrapped in a std::function.
+    struct hasher {
+        ::std::size_t operator()(const ::boost::any &x) const
+        {
+            // Combine the hashes of all terms
+            // via addition, so that their order
+            // does not matter.
+            ::std::size_t retval = 0;
+
+            for (const auto &t : ::boost::any_cast<const Base &>(x)) {
+                // NOTE: use the same hasher used in the implementation
+                // of series.
+                // NOTE: parallelisation opportunities here for
+                // segmented tables.
+                retval += detail::series_key_hasher{}(t.first);
+            }
+
+            return retval;
+        }
+    };
+
+    struct comparer {
+        bool operator()(const ::boost::any &x, const ::boost::any &y) const
+        {
+            // NOTE: need to use series_are_identical() (and not the comparison operator)
+            // because the comparison operator does symbol merging, and thus it is
+            // not consistent with the hasher defined above (i.e., two series may
+            // compare equal according to operator==() and have different hashes).
+            // NOTE: with these choices of hasher/comparer, the requirement that
+            // cmp(a, b) == true -> hash(a) == hash(b) is always satisfied (even if, say,
+            // the user customises series_equal_to()).
+            return internal::series_are_identical(::boost::any_cast<const Base &>(x),
+                                                  ::boost::any_cast<const Base &>(y));
+        }
+    };
+
+    // Lock down before accessing the cache.
+    ::std::lock_guard<::std::mutex> lock(mutex);
+
+    // Try first to locate the series_te_pow_map_t for the current type,
+    // then, in that map, try to locate 'base'. Use try_emplace() so that
+    // table elements are created as needed.
+    auto it = map.try_emplace(t_idx, 0, hasher{}, comparer{}).first->second.try_emplace(base).first;
+
+    // Fetch a reference to the base and the corresponding
+    // exponentiation vector.
+    const auto &b = ::boost::any_cast<const Base &>(it->first);
+    auto &v = it->second;
+
+    // If the exponentiation vector is empty, init it with
+    // base**0 = 1.
+    if (v.empty()) {
+        // NOTE: constructability from 1 is ensured by the
+        // constructability of the return coefficient type from int
+        // (and the return type is guaranteed to be the same as
+        // the Base type in this function).
+        v.emplace_back(Base(1));
+    }
+
+    // Fill in the missing powers as needed.
+    while (v.size() <= n) {
+        v.emplace_back(::boost::any_cast<const Base &>(v.back()) * b);
+    }
+
+    // Return a copy of the desired power.
+    // NOTE: returnability is guaranteed because
+    // the return type is a series.
+    return ::boost::any_cast<const Base &>(v[static_cast<decltype(v.size())>(n)]);
+}
+
 // Default implementation of series exponentiation.
 struct series_default_pow_impl {
     // A couple of handy shortcuts.
@@ -1555,65 +1717,47 @@ struct series_default_pow_impl {
         }
 
         // Let's determine if we can run exponentiation
-        // by repeated multiplications:
-        // - e must either be an mppp::integer or safely convertible to
-        //   mppp::integer<1>,
-        // - the return type must be compound-multipliable by T.
-        if constexpr (::std::conjunction_v<::std::disjunction<detail::is_mppp_integer<rU>,
-                                                              is_safely_convertible<const rU &, ::mppp::integer<1> &>>,
-                                           is_compound_multipliable<ret_t<T &&, U &&> &, const rT &>>) {
-            // Transform the exponent into an integral.
-            // NOTE: if e is an integer, just return a const reference
-            // to it. Otherwise, return a new object of type mppp::integer<1>.
-            decltype(auto) n = [&e]() -> decltype(auto) {
-                if constexpr (detail::is_mppp_integer_v<rU>) {
-                    return e;
+        // by repeated multiplications, backed by a cache:
+        // - e must be safely-convertible to unsigned,
+        // - T * T must be defined and return T (via const lvalue
+        //   references),
+        // - T must be the same as ret_t,
+        // - the coefficient of T must be
+        //   equality-comparable (for the pow cache to work).
+        // NOTE: the idea here is that, for ease of reasoning and
+        // implementation, we want the base type, its product type
+        // and the return type to be all the same.
+        if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
+                                           // NOTE: this also checks that mul_t is defined, as
+                                           // nonesuch is not a series type.
+                                           ::std::is_same<rT, detected_t<detail::mul_t, const rT &, const rT &>>,
+                                           ::std::is_same<rT, ret_t<T &&, U &&>>,
+                                           is_equality_comparable<const series_cf_t<rT> &>>) {
+            unsigned un;
+            if (obake_unlikely(!::obake::safe_convert(un, e))) {
+                if constexpr (is_stream_insertable_v<const rU &>) {
+                    // Provide better error message if U is ostreamable.
+                    ::std::ostringstream oss;
+                    static_cast<::std::ostream &>(oss) << e;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for series exponentiation via repeated "
+                                "multiplications: the exponent ("
+                                    + oss.str() + ") cannot be converted into a non-negative integral value");
                 } else {
-                    ::mppp::integer<1> ret;
-
-                    if (obake_unlikely(!::obake::safe_convert(ret, e))) {
-                        if constexpr (is_stream_insertable_v<const rU &>) {
-                            // Provide better error message if U is ostreamable.
-                            ::std::ostringstream oss;
-                            static_cast<::std::ostream &>(oss) << e;
-                            obake_throw(::std::invalid_argument,
-                                        "Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent ("
-                                            + oss.str() + ") cannot be converted into an integral value");
-                        } else {
-                            obake_throw(::std::invalid_argument,
-                                        "Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent cannot be converted into an integral value");
-                        }
-                    }
-
-                    return ret;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for series exponentiation via repeated "
+                                "multiplications: the exponent cannot be converted into a non-negative integral value");
                 }
-            }();
-
-            if (obake_unlikely(n.sgn() < 0)) {
-                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                     "multiplications: the exponent ("
-                                                         + n.to_string() + ") is negative");
             }
 
-            // NOTE: constructability from 1 is ensured by the
-            // constructability of the coefficient type from int.
-            ret_t<T &&, U &&> retval(1);
-            for (remove_cvref_t<decltype(n)> i(0); i < n; ++i) {
-                retval *= ::std::as_const(b);
-            }
-
-            // NOTE: returnability is guaranteed because
-            // the return type is a series.
-            return retval;
+            return internal::series_pow_from_cache(b, un);
         } else {
             obake_throw(::std::invalid_argument,
                         "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
                             + "': the series does not consist of a single coefficient, "
                               "and exponentiation via repeated multiplications is not possible (either because the "
-                              "exponent cannot be converted to an integral value, or because the series type does "
-                              "not support the necessary arithmetic operations)");
+                              "exponent cannot be converted to a non-negative integral value, or because the "
+                              "series/coefficient types do not support the necessary operations)");
         }
     }
 };
@@ -3081,41 +3225,8 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
     if constexpr (algo == 3) {
         // Two series with equal rank, same key/tag, possibly
         // different coefficient type.
-
-        // Helper to compare series with identical symbol sets.
-        auto cmp_identical_ss = [](const auto &lhs, const auto &rhs) {
-            assert(lhs.get_symbol_set() == rhs.get_symbol_set());
-
-            // If the series have different sizes,
-            // they cannot be equal.
-            if (lhs.size() != rhs.size()) {
-                return false;
-            }
-
-            // Cache the end iterator of rhs.
-            const auto rhs_end = rhs.end();
-            // NOTE: this can be parallelised and
-            // improved performance-wise by having specialised
-            // codepaths for single table layout, same
-            // n segments, etc. Keep it in mind for
-            // future optimisations.
-            for (const auto &t : lhs) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                const auto &k = t.first;
-                const auto &c = t.second;
-
-                const auto it = rhs.find(k);
-                if (it == rhs_end || c != it->second) {
-                    return false;
-                }
-            }
-
-            return true;
-        };
-
         if (x.get_symbol_set() == y.get_symbol_set()) {
-            return cmp_identical_ss(x, y);
+            return customisation::internal::series_cmp_identical_ss(x, y);
         } else {
             // Merge the symbol sets.
             const auto &[merged_ss, ins_map_x, ins_map_y]
@@ -3141,7 +3252,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     b.set_symbol_set(merged_ss);
                     detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                    return cmp_identical_ss(x, b);
+                    return customisation::internal::series_cmp_identical_ss(x, b);
                 }
                 case 2u: {
                     // y already has the correct symbol
@@ -3150,7 +3261,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     a.set_symbol_set(merged_ss);
                     detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                    return cmp_identical_ss(a, y);
+                    return customisation::internal::series_cmp_identical_ss(a, y);
                 }
             }
 
@@ -3162,7 +3273,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
             detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-            return cmp_identical_ss(a, b);
+            return customisation::internal::series_cmp_identical_ss(a, b);
         }
     } else {
         // Helper to compare series of different rank
