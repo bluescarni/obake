@@ -1,6 +1,27 @@
 Changelog
 =========
 
+0.3 (unreleased)
+----------------
+
+New
+~~~
+
+- Implement safe conversion between rationals
+  and C++ integrals
+  (`#84 <https://github.com/bluescarni/obake/pull/84>`__).
+
+Changes
+~~~~~~~
+
+- Various speedups in the dynamic packed monomial class
+  (`#83 <https://github.com/bluescarni/obake/pull/83>`__).
+- Update Catch to the latest version, 2.10.2
+  (`#83 <https://github.com/bluescarni/obake/pull/83>`__).
+- Various docs/build system updates/improvements
+  (`#82 <https://github.com/bluescarni/obake/pull/82>`__,
+  `#83 <https://github.com/bluescarni/obake/pull/83>`__).
+
 0.2 (27-10-2019)
 ----------------
 

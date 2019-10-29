@@ -60,6 +60,8 @@ void series_stream_single_term(::std::string &ret, ::std::string &str_cf, const 
 namespace customisation::internal
 {
 
+// On-demand instantiation of the global
+// objects used to implement the pow map.
 ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map()
 {
     static series_pow_map_t retval;

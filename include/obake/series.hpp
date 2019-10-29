@@ -50,7 +50,6 @@
 #include <obake/detail/fcast.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
-#include <obake/detail/mppp_utils.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -1562,13 +1561,13 @@ inline bool series_are_identical(const S &s1, const S &s2)
     return s1.get_symbol_set() == s2.get_symbol_set() && internal::series_cmp_identical_ss(s1, s2);
 }
 
-// TODO: internal docs, changed requirements, extra requirements.
-// TODO: check use of const references etc, locking.
-
 // The series pow cache for a specific series type.
 // It maps a series instance x to a vector of natural
 // powers of x. Everything is type-erased as we need
 // to store instances of this type as elements of another map.
+// NOTE: the key in this map is the base, the vectors
+// are the base raised to its natural powers. All these
+// boost::any will contain instances of the base type.
 using series_te_pow_map_t = ::std::unordered_map<::boost::any, ::std::vector<::boost::any>,
                                                  // Hashing functor.
                                                  ::std::function<::std::size_t(const ::boost::any &)>,
@@ -1586,8 +1585,8 @@ OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow
 // series base from the global cache. If the
 // power is not present in the cache already,
 // it will be computed on the fly.
-template <typename Ret, typename Base>
-inline auto series_pow_from_cache(const Base &base, unsigned n)
+template <typename Base>
+inline Base series_pow_from_cache(const Base &base, unsigned n)
 {
     // Fetch the global data.
     auto [map, mutex] = internal::get_series_pow_map();
@@ -1650,19 +1649,21 @@ inline auto series_pow_from_cache(const Base &base, unsigned n)
     // base**0 = 1.
     if (v.empty()) {
         // NOTE: constructability from 1 is ensured by the
-        // constructability of the coefficient type from int.
-        v.emplace_back(Ret(1));
+        // constructability of the return coefficient type from int
+        // (and the return type is guaranteed to be the same as
+        // the Base type in this function).
+        v.emplace_back(Base(1));
     }
 
-    // Fill in the missing powers, if any.
+    // Fill in the missing powers as needed.
     while (v.size() <= n) {
-        v.emplace_back(::boost::any_cast<const Ret &>(v.back()) * b);
+        v.emplace_back(::boost::any_cast<const Base &>(v.back()) * b);
     }
 
     // Return a copy of the desired power.
     // NOTE: returnability is guaranteed because
     // the return type is a series.
-    return ::boost::any_cast<const Ret &>(v[static_cast<decltype(v.size())>(n)]);
+    return ::boost::any_cast<const Base &>(v[static_cast<decltype(v.size())>(n)]);
 }
 
 // Default implementation of series exponentiation.
@@ -1715,13 +1716,20 @@ struct series_default_pow_impl {
         // Let's determine if we can run exponentiation
         // by repeated multiplications, backed by a cache:
         // - e must be safely-convertible to unsigned,
-        // - the return type must be multipliable by T (via const lvalue
+        // - T * T must be defined and return T (via const lvalue
         //   references),
-        // - the coefficient of the return type must be
+        // - T must be the same as ret_t,
+        // - the coefficient of T must be
         //   equality-comparable (for the pow cache to work).
+        // NOTE: the idea here is that, for ease of reasoning and
+        // implementation, we want that the base, its product type
+        // and the return type are all the same.
         if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
-                                           is_multipliable<const ret_t<T &&, U &&> &, const rT &>,
-                                           is_equality_comparable<const series_cf_t<ret_t<T &&, U &&>> &>>) {
+                                           // NOTE: this also checks that mul_t is defined, as
+                                           // nonesuch is not a series type.
+                                           ::std::is_same<rT, detected_t<detail::mul_t, const rT &, const rT &>>,
+                                           ::std::is_same<rT, ret_t<T &&, U &&>>,
+                                           is_equality_comparable<const series_cf_t<rT> &>>) {
             unsigned un;
             if (obake_unlikely(!::obake::safe_convert(un, e))) {
                 if constexpr (is_stream_insertable_v<const rU &>) {
@@ -1739,7 +1747,7 @@ struct series_default_pow_impl {
                 }
             }
 
-            return internal::series_pow_from_cache<ret_t<T &&, U &&>>(b, un);
+            return internal::series_pow_from_cache(b, un);
         } else {
             obake_throw(::std::invalid_argument,
                         "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
