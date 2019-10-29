@@ -69,6 +69,17 @@ namespace customisation::internal
     return ::std::make_tuple(::std::ref(retval), ::std::ref(mutex));
 }
 
+void clear_series_pow_map()
+{
+    // Fetch the global data.
+    auto [map, mutex] = internal::get_series_pow_map();
+
+    // Lock down before accessing the cache.
+    ::std::lock_guard<::std::mutex> lock(mutex);
+
+    map.clear();
+}
+
 } // namespace customisation::internal
 
 } // namespace obake

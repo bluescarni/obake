@@ -1581,6 +1581,9 @@ using series_pow_map_t = ::std::unordered_map<::std::type_index, series_te_pow_m
 // Function to fetch the global series pow cache and associated mutex.
 OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map();
 
+// Function to clear the global series pow cache.
+OBAKE_DLL_PUBLIC void clear_series_pow_map();
+
 // Fetch the n-th natural power of the input
 // series base from the global cache. If the
 // power is not present in the cache already,
@@ -1633,7 +1636,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     };
 
     // Lock down before accessing the cache.
-    ::std::lock_guard lock(mutex);
+    ::std::lock_guard<::std::mutex> lock(mutex);
 
     // Try first to locate the series_te_pow_map_t for the current type,
     // then, in that map, try to locate 'base'. Use try_emplace() so that

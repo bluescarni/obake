@@ -14,6 +14,7 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
+#include <obake/detail/ignore.hpp>
 #include <obake/math/evaluate.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/trim.hpp>
@@ -96,6 +97,16 @@ TEST_CASE("series_pow_test")
               "and exponentiation via repeated multiplications is not possible (either because the "
               "exponent cannot be converted to a non-negative integral value, or because the "
               "series/coefficient types do not support the necessary operations)");
+
+    // Test clearing of the cache.
+    auto [map, _] = customisation::internal::get_series_pow_map();
+    detail::ignore(_);
+
+    REQUIRE(!map.empty());
+
+    customisation::internal::clear_series_pow_map();
+
+    REQUIRE(map.empty());
 }
 
 TEST_CASE("series_evaluate_test")

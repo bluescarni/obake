@@ -7,6 +7,9 @@ Changelog
 New
 ~~~
 
+- Implement a caching mechanism for the natural powers
+  of series
+  (`#84 <https://github.com/bluescarni/obake/pull/84>`__).
 - Implement safe conversion between rationals
   and C++ integrals
   (`#84 <https://github.com/bluescarni/obake/pull/84>`__).
@@ -14,7 +17,7 @@ New
 Changes
 ~~~~~~~
 
-- Various speedups in the dynamic packed monomial class
+- Speedups and simplifications in the dynamic packed monomial class
   (`#83 <https://github.com/bluescarni/obake/pull/83>`__).
 - Update Catch to the latest version, 2.10.2
   (`#83 <https://github.com/bluescarni/obake/pull/83>`__).
