@@ -1585,7 +1585,7 @@ OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow
 OBAKE_DLL_PUBLIC void clear_series_pow_map();
 
 // Fetch the n-th natural power of the input
-// series base from the global cache. If the
+// series 'base' from the global cache. If the
 // power is not present in the cache already,
 // it will be computed on the fly.
 template <typename Base>
@@ -1725,8 +1725,8 @@ struct series_default_pow_impl {
         // - the coefficient of T must be
         //   equality-comparable (for the pow cache to work).
         // NOTE: the idea here is that, for ease of reasoning and
-        // implementation, we want that the base, its product type
-        // and the return type are all the same.
+        // implementation, we want the base type, its product type
+        // and the return type to be all the same.
         if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
                                            // NOTE: this also checks that mul_t is defined, as
                                            // nonesuch is not a series type.
