@@ -127,7 +127,7 @@ requires Integral<T> && !::std::is_const_v<T>
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
 #endif
-    inline bool safe_convert(T &n, const ::mppp::integer<SSize> &m)
+inline bool safe_convert(T &n, const ::mppp::integer<SSize> &m)
 {
     return ::mppp::get(n, m);
 }
@@ -149,6 +149,34 @@ inline bool safe_convert(::mppp::integer<SSize> &n, const ::mppp::rational<SSize
 
 template <::std::size_t SSize>
 inline bool safe_convert(::mppp::rational<SSize> &q, const ::mppp::integer<SSize> &n)
+{
+    q = n;
+    return true;
+}
+
+// Implementations for C++ integrals - mppp::rational.
+#if defined(OBAKE_HAVE_CONCEPTS)
+template <typename T, ::std::size_t SSize>
+    requires Integral<T> && !::std::is_const_v<T>
+#else
+template <typename T, ::std::size_t SSize,
+          ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
+#endif
+inline bool safe_convert(T &n, const ::mppp::rational<SSize> &q)
+{
+    if (q.get_den().is_one()) {
+        return ::mppp::get(n, q.get_num());
+    } else {
+        return false;
+    }
+}
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+template <Integral T, ::std::size_t SSize>
+#else
+template <typename T, ::std::size_t SSize, ::std::enable_if_t<is_integral_v<T>, int> = 0>
+#endif
+inline bool safe_convert(::mppp::rational<SSize> &q, const T &n)
 {
     q = n;
     return true;

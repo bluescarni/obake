@@ -262,6 +262,86 @@ TEST_CASE("safe_convert_mppp_integer_rational")
     REQUIRE(!obake::is_safely_convertible_v<int_t, rat_t>);
 }
 
+// integral/rational.
+TEST_CASE("safe_convert_integrals_rational")
+{
+    using rat_t = mppp::rational<1>;
+
+    int out;
+    REQUIRE(obake::safe_convert(out, rat_t{2, 2}));
+    REQUIRE(out == 1);
+    REQUIRE(obake::safe_convert(out, rat_t{-2, 2}));
+    REQUIRE(out == -1);
+    REQUIRE(!obake::safe_convert(out, rat_t{2, 3}));
+    REQUIRE(out == -1);
+    REQUIRE(!obake::safe_convert(out, rat_t{-2, 3}));
+    REQUIRE(out == -1);
+
+    unsigned uout;
+    REQUIRE(obake::safe_convert(uout, rat_t{2, 2}));
+    REQUIRE(uout == 1u);
+    REQUIRE(!obake::safe_convert(uout, rat_t{-2, 2}));
+    REQUIRE(uout == 1u);
+    REQUIRE(!obake::safe_convert(uout, rat_t{2, 3}));
+    REQUIRE(uout == 1u);
+    REQUIRE(!obake::safe_convert(uout, rat_t{-2, 3}));
+    REQUIRE(uout == 1u);
+
+    rat_t r;
+    REQUIRE(obake::safe_convert(r, 123));
+    REQUIRE(r == 123);
+    REQUIRE(obake::safe_convert(r, -123));
+    REQUIRE(r == -123);
+    REQUIRE(obake::safe_convert(r, 123u));
+    REQUIRE(r == 123);
+    REQUIRE(obake::safe_convert(r, 123ull));
+    REQUIRE(r == 123);
+
+#if defined(OBAKE_HAVE_GCC_INT128)
+    __int128_t iout;
+    REQUIRE(obake::safe_convert(iout, rat_t{2, 2}));
+    REQUIRE(iout == 1);
+    REQUIRE(obake::safe_convert(iout, rat_t{-2, 2}));
+    REQUIRE(iout == -1);
+    REQUIRE(!obake::safe_convert(iout, rat_t{2, 3}));
+    REQUIRE(iout == -1);
+    REQUIRE(!obake::safe_convert(iout, rat_t{-2, 3}));
+    REQUIRE(iout == -1);
+
+    __uint128_t uiout;
+    REQUIRE(obake::safe_convert(uiout, rat_t{2, 2}));
+    REQUIRE(uiout == 1);
+    REQUIRE(!obake::safe_convert(uiout, rat_t{-2, 2}));
+    REQUIRE(uiout == 1);
+    REQUIRE(!obake::safe_convert(uiout, rat_t{2, 3}));
+    REQUIRE(uiout == 1);
+    REQUIRE(!obake::safe_convert(uiout, rat_t{-2, 3}));
+    REQUIRE(uiout == 1);
+#endif
+
+    REQUIRE(obake::is_safely_convertible_v<rat_t, int &>);
+    REQUIRE(obake::is_safely_convertible_v<rat_t &, int &>);
+    REQUIRE(obake::is_safely_convertible_v<const rat_t &, int &>);
+    REQUIRE(!obake::is_safely_convertible_v<const rat_t &, const int &>);
+    REQUIRE(!obake::is_safely_convertible_v<const rat_t &, int &&>);
+    REQUIRE(obake::is_safely_convertible_v<int, rat_t &>);
+    REQUIRE(obake::is_safely_convertible_v<int &, rat_t &>);
+    REQUIRE(obake::is_safely_convertible_v<const int &, rat_t &>);
+    REQUIRE(!obake::is_safely_convertible_v<const int &, const rat_t &>);
+    REQUIRE(!obake::is_safely_convertible_v<const int &, rat_t>);
+
+    REQUIRE(obake::is_safely_convertible_v<rat_t, unsigned &>);
+    REQUIRE(obake::is_safely_convertible_v<rat_t &, unsigned &>);
+    REQUIRE(obake::is_safely_convertible_v<const rat_t &, unsigned &>);
+    REQUIRE(!obake::is_safely_convertible_v<const rat_t &, const unsigned &>);
+    REQUIRE(!obake::is_safely_convertible_v<const rat_t &, unsigned &&>);
+    REQUIRE(obake::is_safely_convertible_v<unsigned, rat_t &>);
+    REQUIRE(obake::is_safely_convertible_v<unsigned &, rat_t &>);
+    REQUIRE(obake::is_safely_convertible_v<const unsigned &, rat_t &>);
+    REQUIRE(!obake::is_safely_convertible_v<const unsigned &, const rat_t &>);
+    REQUIRE(!obake::is_safely_convertible_v<const unsigned &, rat_t>);
+}
+
 // Test the customisation machinery.
 
 // A new type.
