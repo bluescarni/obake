@@ -76,12 +76,14 @@ TEST_CASE("series_pow_test")
     REQUIRE(impl(x - y, mppp::integer<1>{10}) == impl(x - y, mppp::integer<1>{5}) * impl(x - y, mppp::integer<1>{5}));
 
     // Error handling.
-    OBAKE_REQUIRES_THROWS_CONTAINS(impl(x - y, rat_t{1, 2}), std::invalid_argument,
-                                   "Invalid exponent for series exponentiation via repeated "
-                                   "multiplications: the exponent (1/2) cannot be converted into an integral value");
-    OBAKE_REQUIRES_THROWS_CONTAINS(impl(x - y, -1), std::invalid_argument,
-                                   "Invalid exponent for series exponentiation via repeated "
-                                   "multiplications: the exponent (-1) is negative");
+    OBAKE_REQUIRES_THROWS_CONTAINS(
+        impl(x - y, rat_t{1, 2}), std::invalid_argument,
+        "Invalid exponent for series exponentiation via repeated "
+        "multiplications: the exponent (1/2) cannot be converted into a non-negative integral value");
+    OBAKE_REQUIRES_THROWS_CONTAINS(
+        impl(x - y, -1), std::invalid_argument,
+        "Invalid exponent for series exponentiation via repeated "
+        "multiplications: the exponent (-1) cannot be converted into a non-negative integral value");
 
     s1_t a;
     a.set_symbol_set(symbol_set{"a"});
@@ -92,8 +94,8 @@ TEST_CASE("series_pow_test")
         "Cannot compute the power of a series of type '" + type_name<s1_t>()
             + "': the series does not consist of a single coefficient, "
               "and exponentiation via repeated multiplications is not possible (either because the "
-              "exponent cannot be converted to an integral value, or because the series type does "
-              "not support the necessary arithmetic operations)");
+              "exponent cannot be converted to a non-negative integral value, or because the "
+              "series/coefficient types do not support the necessary operations)");
 }
 
 TEST_CASE("series_evaluate_test")

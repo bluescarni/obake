@@ -1564,26 +1564,53 @@ inline bool series_are_identical(const S &s1, const S &s2)
 
 // TODO: internal docs, changed requirements, extra requirements.
 // TODO: check use of const references etc, locking.
+
+// The series pow cache for a specific series type.
+// It maps a series instance x to a vector of natural
+// powers of x. Everything is type-erased as we need
+// to store instances of this type as elements of another map.
 using series_te_pow_map_t = ::std::unordered_map<::boost::any, ::std::vector<::boost::any>,
+                                                 // Hashing functor.
                                                  ::std::function<::std::size_t(const ::boost::any &)>,
+                                                 // Equality comparator.
                                                  ::std::function<bool(const ::boost::any &, const ::boost::any &)>>;
 
+// Series pow cache. It maps a C++ series type, represented
+// as a type_index, to a series_te_pow_map_t map.
 using series_pow_map_t = ::std::unordered_map<::std::type_index, series_te_pow_map_t>;
 
+// Function to fetch the global series pow cache and associated mutex.
 OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map();
 
+// Fetch the n-th natural power of the input
+// series base from the global cache. If the
+// power is not present in the cache already,
+// it will be computed on the fly.
 template <typename Ret, typename Base>
 inline auto series_pow_from_cache(const Base &base, unsigned n)
 {
+    // Fetch the global data.
     auto [map, mutex] = internal::get_series_pow_map();
+
+    // Turn the type into a type_index.
     ::std::type_index t_idx(typeid(Base));
 
+    // The concrete hasher and equality comparator
+    // functors for use in series_te_pow_map_t.
+    // They will be wrapped in a std::function.
     struct hasher {
         ::std::size_t operator()(const ::boost::any &x) const
         {
+            // Combine the hashes of all terms
+            // via addition, so that their order
+            // does not matter.
             ::std::size_t retval = 0;
 
             for (const auto &t : ::boost::any_cast<const Base &>(x)) {
+                // NOTE: use the same hasher used in the implementation
+                // of series.
+                // NOTE: parallelisation opportunities here for
+                // segmented tables.
                 retval += detail::series_key_hasher{}(t.first);
             }
 
@@ -1594,25 +1621,47 @@ inline auto series_pow_from_cache(const Base &base, unsigned n)
     struct comparer {
         bool operator()(const ::boost::any &x, const ::boost::any &y) const
         {
+            // NOTE: need to use series_are_identical() (and not the comparison operator)
+            // because the comparison operator does symbol merging, and thus it is
+            // not consistent with the hasher defined above (i.e., two series may
+            // compare equal according to operator==() and have different hashes).
+            // NOTE: with these choices of hasher/comparer, the requirement that
+            // cmp(a, b) == true -> hash(a) == hash(b) is always satisfied (even if, say,
+            // the user customises series_equal_to()).
             return internal::series_are_identical(::boost::any_cast<const Base &>(x),
                                                   ::boost::any_cast<const Base &>(y));
         }
     };
 
+    // Lock down before accessing the cache.
     ::std::lock_guard lock(mutex);
 
+    // Try first to locate the series_te_pow_map_t for the current type,
+    // then, in that map, try to locate 'base'. Use try_emplace() so that
+    // table elements are created as needed.
     auto it = map.try_emplace(t_idx, 0, hasher{}, comparer{}).first->second.try_emplace(base).first;
+
+    // Fetch a reference to the base and the corresponding
+    // exponentiation vector.
     const auto &b = ::boost::any_cast<const Base &>(it->first);
     auto &v = it->second;
 
+    // If the exponentiation vector is empty, init it with
+    // base**0 = 1.
     if (v.empty()) {
+        // NOTE: constructability from 1 is ensured by the
+        // constructability of the coefficient type from int.
         v.emplace_back(Ret(1));
     }
 
+    // Fill in the missing powers, if any.
     while (v.size() <= n) {
         v.emplace_back(::boost::any_cast<const Ret &>(v.back()) * b);
     }
 
+    // Return a copy of the desired power.
+    // NOTE: returnability is guaranteed because
+    // the return type is a series.
     return ::boost::any_cast<const Ret &>(v[static_cast<decltype(v.size())>(n)]);
 }
 
@@ -1664,69 +1713,40 @@ struct series_default_pow_impl {
         }
 
         // Let's determine if we can run exponentiation
-        // by repeated multiplications:
-        // - e must either be an mppp::integer or safely convertible to
-        //   mppp::integer<1>,
-        // - the return type must be compound-multipliable by T.
-        if constexpr (::std::conjunction_v<::std::disjunction<detail::is_mppp_integer<rU>,
-                                                              is_safely_convertible<const rU &, ::mppp::integer<1> &>>,
-                                           is_compound_multipliable<ret_t<T &&, U &&> &, const rT &>>) {
-            // Transform the exponent into an integral.
-            // NOTE: if e is an integer, just return a const reference
-            // to it. Otherwise, return a new object of type mppp::integer<1>.
-            decltype(auto) n = [&e]() -> decltype(auto) {
-                if constexpr (detail::is_mppp_integer_v<rU>) {
-                    return e;
+        // by repeated multiplications, backed by a cache:
+        // - e must be safely-convertible to unsigned,
+        // - the return type must be multipliable by T (via const lvalue
+        //   references),
+        // - the coefficient of the return type must be
+        //   equality-comparable (for the pow cache to work).
+        if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
+                                           is_multipliable<const ret_t<T &&, U &&> &, const rT &>,
+                                           is_equality_comparable<const series_cf_t<ret_t<T &&, U &&>> &>>) {
+            unsigned un;
+            if (obake_unlikely(!::obake::safe_convert(un, e))) {
+                if constexpr (is_stream_insertable_v<const rU &>) {
+                    // Provide better error message if U is ostreamable.
+                    ::std::ostringstream oss;
+                    static_cast<::std::ostream &>(oss) << e;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for series exponentiation via repeated "
+                                "multiplications: the exponent ("
+                                    + oss.str() + ") cannot be converted into a non-negative integral value");
                 } else {
-                    ::mppp::integer<1> ret;
-
-                    if (obake_unlikely(!::obake::safe_convert(ret, e))) {
-                        if constexpr (is_stream_insertable_v<const rU &>) {
-                            // Provide better error message if U is ostreamable.
-                            ::std::ostringstream oss;
-                            static_cast<::std::ostream &>(oss) << e;
-                            obake_throw(::std::invalid_argument,
-                                        "Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent ("
-                                            + oss.str() + ") cannot be converted into an integral value");
-                        } else {
-                            obake_throw(::std::invalid_argument,
-                                        "Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent cannot be converted into an integral value");
-                        }
-                    }
-
-                    return ret;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for series exponentiation via repeated "
+                                "multiplications: the exponent cannot be converted into a non-negative integral value");
                 }
-            }();
-
-            if (obake_unlikely(n.sgn() < 0)) {
-                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                     "multiplications: the exponent ("
-                                                         + n.to_string() + ") is negative");
             }
 
-            return internal::series_pow_from_cache<ret_t<T &&, U &&>>(b, static_cast<unsigned>(n));
-
-#if 0
-            // NOTE: constructability from 1 is ensured by the
-            // constructability of the coefficient type from int.
-            ret_t<T &&, U &&> retval(1);
-            for (remove_cvref_t<decltype(n)> i(0); i < n; ++i) {
-                retval *= ::std::as_const(b);
-            }
-
-            // NOTE: returnability is guaranteed because
-            // the return type is a series.
-            return retval;
-#endif
+            return internal::series_pow_from_cache<ret_t<T &&, U &&>>(b, un);
         } else {
             obake_throw(::std::invalid_argument,
                         "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
                             + "': the series does not consist of a single coefficient, "
                               "and exponentiation via repeated multiplications is not possible (either because the "
-                              "exponent cannot be converted to an integral value, or because the series type does "
-                              "not support the necessary arithmetic operations)");
+                              "exponent cannot be converted to a non-negative integral value, or because the "
+                              "series/coefficient types do not support the necessary operations)");
         }
     }
 };
