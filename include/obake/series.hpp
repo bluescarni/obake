@@ -2682,7 +2682,10 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
         // - T must not be const (need to insert into it),
         // - the coefficient type of T must be constructible
         //   from the coefficient type of U (both const lvalue
-        //   and rvalue variants),
+        //   and rvalue variants, because depending on symbol
+        //   merging we may have a runtime choice between
+        //   rvalue and lvalue regardless of the original
+        //   type of U),
         // - the key type must be symbols mergeable.
         if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<rU>>,
                                            ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>,
@@ -2735,6 +2738,11 @@ inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_com
         }
     } else if constexpr (algo == 2) {
         // The rank of U is less than the rank of T.
+        // NOTE: we can turn off key compat check, as we know
+        // the new key will be compatible by construction. The other
+        // checks are needed. Also, because we don't know
+        // the segmentation of y, we need to use series_add_term()
+        // instead of series_add_term_table().
         detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
                                 sat_assume_unique::off>(x, series_key_t<rT>(x.get_symbol_set()), ::std::forward<U>(y));
 
@@ -2896,17 +2904,22 @@ constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<0>)
 struct series_compound_add_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::series_compound_add_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                          detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
+            detail::series_compound_add_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
 };
 
 inline constexpr auto series_compound_add = series_compound_add_msvc{};
 
 #else
 
-inline constexpr auto series_compound_add =
-    [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(detail::series_compound_add_impl(
-        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+// NOTE: explicitly cast the result of the implementation
+// to an lvalue reference to the type of x, so that
+// we disable the implementation if such conversion is
+// malformed. The idea is that we want an implementation
+// which feels like the builtin operators.
+inline constexpr auto series_compound_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_add_impl(
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 #endif
 
@@ -3042,17 +3055,22 @@ constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<0>)
 struct series_compound_sub_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::series_compound_sub_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                          detail::priority_tag<2>{}))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
+            detail::series_compound_sub_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
 };
 
 inline constexpr auto series_compound_sub = series_compound_sub_msvc{};
 
 #else
 
-inline constexpr auto series_compound_sub =
-    [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(detail::series_compound_sub_impl(
-        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
+// NOTE: explicitly cast the result of the implementation
+// to an lvalue reference to the type of x, so that
+// we disable the implementation if such conversion is
+// malformed. The idea is that we want an implementation
+// which feels like the builtin operators.
+inline constexpr auto series_compound_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_sub_impl(
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 #endif
 
