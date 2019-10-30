@@ -203,7 +203,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... na
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 template <typename T>
 struct make_polynomials_msvc {
     template <typename... Args>

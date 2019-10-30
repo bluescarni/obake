@@ -2146,7 +2146,7 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 struct series_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&s) const
@@ -2557,7 +2557,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 struct series_add_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
@@ -2897,7 +2897,7 @@ constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_compound_add_msvc {
     template <typename T, typename U>
@@ -2980,7 +2980,7 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 struct series_sub_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
@@ -3047,7 +3047,7 @@ constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_compound_sub_msvc {
     template <typename T, typename U>
@@ -3292,7 +3292,7 @@ constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_mul_msvc {
     template <typename T, typename U>
@@ -3481,7 +3481,7 @@ constexpr auto series_div_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_div_msvc {
     template <typename T, typename U>
@@ -3708,7 +3708,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_equal_to_msvc {
     template <typename T, typename U>
@@ -4401,7 +4401,7 @@ inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct filter_msvc {
     template <typename T, typename F>
@@ -4450,7 +4450,7 @@ inline series<K, C, Tag> add_symbols_impl(const series<K, C, Tag> &s, const symb
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct add_symbols_msvc {
     template <typename T>
