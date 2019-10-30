@@ -17,6 +17,7 @@
 #include <mp++/rational.hpp>
 
 #include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -307,22 +308,37 @@ TEST_CASE("series_comparison")
 TEST_CASE("series_compound_add_sub")
 {
     using pm_t = packed_monomial<int>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = polynomial<pm_t, rat_t>;
+    using s11_t = polynomial<pm_t, s1_t>;
 
     REQUIRE(!is_compound_addable_v<s1_t &, void>);
     REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
     REQUIRE(!is_compound_addable_v<const s1_t &, int>);
     REQUIRE(!is_compound_subtractable_v<const s1_t &, int>);
-
-    REQUIRE(!is_compound_addable_v<s1_t &, void>);
-    REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
+    REQUIRE(!is_compound_addable_v<void, s1_t &>);
+    REQUIRE(!is_compound_subtractable_v<void, s1_t &>);
     REQUIRE(!is_compound_addable_v<const int &, s1_t>);
     REQUIRE(!is_compound_subtractable_v<const int &, s1_t>);
+    REQUIRE(!is_compound_addable_v<const s1_t &, s1_t>);
+    REQUIRE(!is_compound_addable_v<const s1_t &, s11_t>);
+    REQUIRE(!is_compound_addable_v<const s11_t &, s1_t>);
+    REQUIRE(!is_compound_subtractable_v<const s1_t &, s11_t>);
+    REQUIRE(!is_compound_subtractable_v<const s11_t &, s1_t>);
 
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += 1)>);
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= 1)>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() += 1)>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() -= 1)>);
     REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() += s1_t{})>);
     REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() -= s1_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += s11_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() += s11_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &>() += s1_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &&>() += s1_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= s11_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() -= s11_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &>() -= s1_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &&>() -= s1_t{})>);
 
     for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
         // Scalar.
@@ -345,19 +361,155 @@ TEST_CASE("series_compound_add_sub")
             s1.set_n_segments(s_idx1);
             s1.set_symbol_set(symbol_set{"x", "y", "z"});
             s1.add_term(pm_t{1, 2, 3}, 1);
-            auto old_s1(s1);
+            auto old_s1(s1), old_s1_copy(s1);
 
             s1_t s1a;
             s1a.set_n_segments(s_idx2);
             s1a.set_symbol_set(symbol_set{"x", "y", "z"});
             s1a.add_term(pm_t{4, 5, 6}, 2);
+            auto old_s1a(s1a);
 
             s1 += s1a;
             REQUIRE(s1 == old_s1 + s1a);
+            s1 += std::move(s1a);
+            REQUIRE(s1 == old_s1 + 2 * old_s1a);
 
             s1 -= old_s1;
-            REQUIRE(s1 == s1a);
+            REQUIRE(s1 == 2 * old_s1a);
+            s1 -= std::move(old_s1);
+            REQUIRE(s1 == -old_s1_copy + 2 * old_s1a);
+
+            // Do some tests with different symbol sets too,
+            // to check the symbol merging.
+            auto [a] = make_polynomials<s1_t>("a");
+            auto [b] = make_polynomials<s1_t>("b");
+            auto a_copy(a);
+            auto b_copy(b);
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>("b")[0];
+            a_copy = a;
+            b_copy = b;
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>("a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            // Run also tests with rvalue reference on the
+            // first operand.
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>("a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>("b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>("a")[0];
+            b = make_polynomials<s1_t>("b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
         }
+
+        // Higher rank vs lower rank.
+        auto [a] = make_polynomials<s11_t>("a");
+        auto [b] = make_polynomials<s1_t>("b");
+        auto a_copy(a);
+        auto b_copy(b);
+        a += b;
+        REQUIRE(a == a_copy + b);
+        a += ::std::move(b);
+        REQUIRE(a == a_copy + 2 * b_copy);
+        b = b_copy;
+        a -= b;
+        REQUIRE(a == a_copy + b);
+        a -= std::move(b);
+        REQUIRE(a == a_copy);
 
         // Try with self.
         s1 = s1_t{};
@@ -594,4 +746,143 @@ TEST_CASE("series_clear_terms")
     REQUIRE(s.empty());
     REQUIRE(s.get_symbol_set() == symbol_set{"x", "y", "z"});
     REQUIRE(s._get_s_table().size() == 16u);
+}
+
+namespace ns
+{
+
+// ADL-based customisation.
+template <typename K, typename C>
+series<K, C, tag00> &series_compound_add(series<K, C, tag00> &, const series<K, C, tag00> &);
+
+struct tag02 {
+};
+
+// Wrong ADL-based customisation.
+template <typename K, typename C>
+void series_compound_add(series<K, C, tag02> &, const series<K, C, tag02> &);
+
+} // namespace ns
+
+struct custom_compound_add {
+    template <typename T, typename U>
+    T &operator()(T &, const U &) const;
+};
+
+struct wrong_custom_compound_add {
+    template <typename T, typename U>
+    void operator()(T &, const U &) const;
+};
+
+// External customisation.
+namespace obake::customisation
+{
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_compound_add<T, U>
+#else
+inline constexpr auto
+    series_add<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
+#endif
+    = custom_compound_add{};
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_compound_add<T, U>
+#else
+inline constexpr auto
+    series_add<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
+#endif
+    = wrong_custom_compound_add{};
+
+} // namespace obake::customisation
+
+TEST_CASE("series_compound_add_custom")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+    using s1a_t = series<pm_t, rat_t, ns::tag02>;
+    using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
+    using s2a_t = series<ns::pm_t, rat_t, ns::tag02>;
+
+    REQUIRE(is_compound_addable_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_compound_addable_v<s1a_t &, const s1a_t &>);
+
+    REQUIRE(is_compound_addable_v<s2_t &, const s2_t &>);
+    REQUIRE(!is_compound_addable_v<s2a_t &, const s2a_t &>);
+}
+
+namespace ns
+{
+
+// ADL-based customisation.
+template <typename K, typename C>
+series<K, C, tag00> &series_compound_sub(series<K, C, tag00> &, const series<K, C, tag00> &);
+
+// Wrong ADL-based customisation.
+template <typename K, typename C>
+void series_compound_sub(series<K, C, tag02> &, const series<K, C, tag02> &);
+
+} // namespace ns
+
+struct custom_compound_sub {
+    template <typename T, typename U>
+    T &operator()(T &, const U &) const;
+};
+
+struct wrong_custom_compound_sub {
+    template <typename T, typename U>
+    void operator()(T &, const U &) const;
+};
+
+// External customisation.
+namespace obake::customisation
+{
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_compound_sub<T, U>
+#else
+inline constexpr auto
+    series_sub<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
+#endif
+    = custom_compound_sub{};
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_compound_sub<T, U>
+#else
+inline constexpr auto
+    series_sub<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
+#endif
+    = wrong_custom_compound_sub{};
+
+} // namespace obake::customisation
+
+TEST_CASE("series_compound_sub_custom")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+    using s1a_t = series<pm_t, rat_t, ns::tag02>;
+    using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
+    using s2a_t = series<ns::pm_t, rat_t, ns::tag02>;
+
+    REQUIRE(is_compound_subtractable_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_compound_subtractable_v<s1a_t &, const s1a_t &>);
+
+    REQUIRE(is_compound_subtractable_v<s2_t &, const s2_t &>);
+    REQUIRE(!is_compound_subtractable_v<s2a_t &, const s2a_t &>);
 }
