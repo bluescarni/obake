@@ -2750,7 +2750,7 @@ inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_com
     } else {
         // Both T and U are series, same rank, possibly different cf (but same key).
 
-        // Implementation when a and b have identical symbol sets.
+        // Implementation for identical symbol sets.
         auto in_place_with_identical_ss = [](auto &lhs, auto &&rhs) {
             assert(lhs.get_symbol_set() == rhs.get_symbol_set());
 
