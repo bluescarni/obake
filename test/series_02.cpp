@@ -17,6 +17,7 @@
 #include <mp++/rational.hpp>
 
 #include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -307,22 +308,36 @@ TEST_CASE("series_comparison")
 TEST_CASE("series_compound_add_sub")
 {
     using pm_t = packed_monomial<int>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = polynomial<pm_t, rat_t>;
+    using s11_t = polynomial<pm_t, s1_t>;
 
     REQUIRE(!is_compound_addable_v<s1_t &, void>);
     REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
     REQUIRE(!is_compound_addable_v<const s1_t &, int>);
     REQUIRE(!is_compound_subtractable_v<const s1_t &, int>);
-
-    REQUIRE(!is_compound_addable_v<s1_t &, void>);
-    REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
+    REQUIRE(!is_compound_addable_v<void, s1_t &>);
+    REQUIRE(!is_compound_subtractable_v<void, s1_t &>);
     REQUIRE(!is_compound_addable_v<const int &, s1_t>);
     REQUIRE(!is_compound_subtractable_v<const int &, s1_t>);
+    REQUIRE(!is_compound_addable_v<const s1_t &, s11_t>);
+    REQUIRE(!is_compound_addable_v<const s11_t &, s1_t>);
+    REQUIRE(!is_compound_subtractable_v<const s1_t &, s11_t>);
+    REQUIRE(!is_compound_subtractable_v<const s11_t &, s1_t>);
 
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += 1)>);
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= 1)>);
+    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() += 1)>);
+    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() -= 1)>);
     REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() += s1_t{})>);
     REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() -= s1_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += s11_t{})>);
+    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() += s11_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &>() += s1_t{})>);
+    REQUIRE(std::is_same_v<s11_t &&, decltype(std::declval<s11_t &&>() += s1_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= s11_t{})>);
+    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() -= s11_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &>() -= s1_t{})>);
+    REQUIRE(std::is_same_v<s11_t &&, decltype(std::declval<s11_t &&>() -= s1_t{})>);
 
     for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
         // Scalar.
@@ -345,19 +360,97 @@ TEST_CASE("series_compound_add_sub")
             s1.set_n_segments(s_idx1);
             s1.set_symbol_set(symbol_set{"x", "y", "z"});
             s1.add_term(pm_t{1, 2, 3}, 1);
-            auto old_s1(s1);
+            auto old_s1(s1), old_s1_copy(s1);
 
             s1_t s1a;
             s1a.set_n_segments(s_idx2);
             s1a.set_symbol_set(symbol_set{"x", "y", "z"});
             s1a.add_term(pm_t{4, 5, 6}, 2);
+            auto old_s1a(s1a);
 
             s1 += s1a;
             REQUIRE(s1 == old_s1 + s1a);
+            s1 += std::move(s1a);
+            REQUIRE(s1 == old_s1 + 2 * old_s1a);
 
             s1 -= old_s1;
-            REQUIRE(s1 == s1a);
+            REQUIRE(s1 == 2 * old_s1a);
+            s1 -= std::move(old_s1);
+            REQUIRE(s1 == -old_s1_copy + 2 * old_s1a);
+
+            // Do some tests with different symbol sets too,
+            // to check the symbol merging.
+            auto [a] = make_polynomials<s1_t>("a");
+            auto [b] = make_polynomials<s1_t>("b");
+            auto a_copy(a);
+            auto b_copy(b);
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>("b")[0];
+            a_copy = a;
+            b_copy = b;
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>("a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            a += b;
+            REQUIRE(a == a_copy + b);
+            a += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            a -= b;
+            REQUIRE(a == a_copy + b);
+            a -= std::move(b);
+            REQUIRE(a == a_copy);
         }
+
+        // Higher rank vs lower rank.
+        auto [a] = make_polynomials<s11_t>("a");
+        auto [b] = make_polynomials<s1_t>("b");
+        auto a_copy(a);
+        auto b_copy(b);
+        a += b;
+        REQUIRE(a == a_copy + b);
+        a += ::std::move(b);
+        REQUIRE(a == a_copy + 2 * b_copy);
+        b = b_copy;
+        a -= b;
+        REQUIRE(a == a_copy + b);
+        a -= std::move(b);
+        REQUIRE(a == a_copy);
 
         // Try with self.
         s1 = s1_t{};
