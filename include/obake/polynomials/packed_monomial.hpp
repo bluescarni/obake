@@ -21,6 +21,12 @@
 #include <utility>
 #include <vector>
 
+#include <boost/serialization/access.hpp>
+
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_invoke.h>
+#include <tbb/parallel_reduce.h>
+
 #include <mp++/integer.hpp>
 
 #include <obake/config.hpp>
@@ -36,6 +42,7 @@
 #include <obake/math/safe_convert.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/ranges.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -52,6 +59,8 @@ template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
 #endif
 class packed_monomial
 {
+    friend class ::boost::serialization::access;
+
 public:
     // Alias for T.
     using value_type = T;
@@ -153,6 +162,14 @@ public:
     constexpr void _set_value(const T &n)
     {
         m_value = n;
+    }
+
+private:
+    // Serialisation.
+    template <class Archive>
+    void serialize(Archive &ar, unsigned)
+    {
+        ar &m_value;
     }
 
 private:
@@ -404,6 +421,7 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
 }
 
 // Implementation of monomial_mul().
+// NOTE: requires a, b and out to be compatible with ss.
 template <typename T>
 constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a, const packed_monomial<T> &b,
                             [[maybe_unused]] const symbol_set &ss)
@@ -411,6 +429,7 @@ constexpr void monomial_mul(packed_monomial<T> &out, const packed_monomial<T> &a
     // Verify the inputs.
     assert(polynomials::key_is_compatible(a, ss));
     assert(polynomials::key_is_compatible(b, ss));
+    assert(polynomials::key_is_compatible(out, ss));
 
     out._set_value(a.get_value() + b.get_value());
 
@@ -479,13 +498,9 @@ template <typename R1, typename R2,
     const auto e2 = ::obake::end(::std::forward<R2>(r2));
 
     if (b1 == e1 || b2 == e2) {
-        // If either range is empty, there will be no
-        // overflow, just return true;
+        // If either range is empty, there will be no overflow.
         return true;
     }
-
-    // Fetch the delta bit width from the size.
-    const auto nbits = ::obake::detail::k_packing_size_to_bits<value_type>(s_size);
 
     // Prepare the limits vectors.
     auto [limits1, limits2] = [s_size]() {
@@ -504,7 +519,7 @@ template <typename R1, typename R2,
         }
     }();
 
-    // Init with the first elements of the ranges.
+    // Init the limits vectors with the first elements of the ranges.
     {
         // NOTE: if the iterators return copies
         // of the monomials, rather than references,
@@ -535,45 +550,106 @@ template <typename R1, typename R2,
         }
     }
 
-    // Examine the rest of the ranges.
-    for (++b1; b1 != e1; ++b1) {
-        const auto &cur = *b1;
+    // Serial implementation.
+    auto serial_impl = [&ss, s_size, b1, e1, &l1 = limits1, b2, e2, &l2 = limits2]() {
+        // Helper to examine the rest of the ranges.
+        auto update_minmax = [&ss, s_size](auto b, auto e, auto &limits) {
+            ::obake::detail::ignore(ss);
 
-        assert(polynomials::key_is_compatible(cur, ss));
+            for (++b; b != e; ++b) {
+                const auto &cur = *b;
 
-        k_unpacker<value_type> ku(cur.get_value(), s_size);
-        value_type tmp;
-        for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
-            ku >> tmp;
-            if constexpr (is_signed_v<value_type>) {
-                limits1[i].first = ::std::min(limits1[i].first, tmp);
-                limits1[i].second = ::std::max(limits1[i].second, tmp);
-            } else {
-                limits1[i] = ::std::max(limits1[i], tmp);
+                assert(polynomials::key_is_compatible(cur, ss));
+
+                k_unpacker<value_type> ku(cur.get_value(), s_size);
+                value_type tmp;
+                for (auto i = 0u; i < s_size; ++i) {
+                    ku >> tmp;
+                    if constexpr (is_signed_v<value_type>) {
+                        limits[i].first = ::std::min(limits[i].first, tmp);
+                        limits[i].second = ::std::max(limits[i].second, tmp);
+                    } else {
+                        limits[i] = ::std::max(limits[i], tmp);
+                    }
+                }
             }
+        };
+        // Examine the rest of the ranges.
+        update_minmax(b1, e1, l1);
+        update_minmax(b2, e2, l2);
+    };
+
+    if constexpr (::std::conjunction_v<is_random_access_iterator<decltype(b1)>,
+                                       is_random_access_iterator<decltype(b2)>>) {
+        // If both ranges are random-access, we have the option of running a parallel
+        // overflow check.
+        const auto size1 = ::std::distance(b1, e1);
+        const auto size2 = ::std::distance(b2, e2);
+
+        // NOTE: run the parallel implementation only if
+        // at least one of the sizes is large enough.
+        if (size1 > 5000 || size2 > 5000) {
+            auto par_functor = [&ss, s_size](auto b, auto e, const auto &limits) {
+                return ::tbb::parallel_reduce(
+                    // NOTE: the ranges are guaranteed to be non-empty,
+                    // thus b + 1 is always well-defined.
+                    ::tbb::blocked_range<decltype(b)>(b + 1, e), limits,
+                    [&ss, s_size](const auto &range, auto cur) {
+                        ::obake::detail::ignore(ss);
+
+                        for (const auto &m : range) {
+                            assert(polynomials::key_is_compatible(m, ss));
+
+                            k_unpacker<value_type> ku(m.get_value(), s_size);
+                            value_type tmp;
+                            for (auto i = 0u; i < s_size; ++i) {
+                                ku >> tmp;
+                                if constexpr (is_signed_v<value_type>) {
+                                    cur[i].first = ::std::min(cur[i].first, tmp);
+                                    cur[i].second = ::std::max(cur[i].second, tmp);
+                                } else {
+                                    cur[i] = ::std::max(cur[i], tmp);
+                                }
+                            }
+                        }
+
+                        return cur;
+                    },
+                    [s_size](const auto &l1, const auto &l2) {
+                        assert(l1.size() == s_size);
+                        assert(l2.size() == s_size);
+
+                        remove_cvref_t<decltype(l1)> ret;
+                        ret.reserve(s_size);
+
+                        for (auto i = 0u; i < s_size; ++i) {
+                            if constexpr (is_signed_v<value_type>) {
+                                ret.emplace_back(::std::min(l1[i].first, l2[i].first),
+                                                 ::std::max(l1[i].second, l2[i].second));
+                            } else {
+                                ret.emplace_back(::std::max(l1[i], l2[i]));
+                            }
+                        }
+
+                        return ret;
+                    });
+            };
+
+            ::tbb::parallel_invoke([par_functor, b1, e1, &l1 = limits1]() { l1 = par_functor(b1, e1, l1); },
+                                   [par_functor, b2, e2, &l2 = limits2]() { l2 = par_functor(b2, e2, l2); });
+        } else {
+            serial_impl();
         }
-    }
-
-    for (++b2; b2 != e2; ++b2) {
-        const auto &cur = *b2;
-
-        assert(polynomials::key_is_compatible(cur, ss));
-
-        k_unpacker<value_type> ku(cur.get_value(), s_size);
-        value_type tmp;
-        for (decltype(limits2.size()) i = 0; i < s_size; ++i) {
-            ku >> tmp;
-            if constexpr (is_signed_v<value_type>) {
-                limits2[i].first = ::std::min(limits2[i].first, tmp);
-                limits2[i].second = ::std::max(limits2[i].second, tmp);
-            } else {
-                limits2[i] = ::std::max(limits2[i], tmp);
-            }
-        }
+    } else {
+        serial_impl();
     }
 
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
+
+    // Fetch the delta bit width from the size.
+    const auto nbits = ::obake::detail::k_packing_size_to_bits<value_type>(s_size);
+
     if constexpr (is_signed_v<value_type>) {
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
@@ -848,7 +924,7 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
     }
     assert(sm_it == sm_end);
 
-    return std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
+    return ::std::make_pair(::std::move(retval), packed_monomial<T>(kp.get()));
 }
 
 // Identify non-trimmable exponents in p.
@@ -1018,5 +1094,15 @@ template <typename T>
 inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
 
 } // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for packed_monomial.
+template <typename T>
+struct tracking_level<::obake::packed_monomial<T>> : ::obake::detail::s11n_no_tracking<::obake::packed_monomial<T>> {
+};
+
+} // namespace boost::serialization
 
 #endif

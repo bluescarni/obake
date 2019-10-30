@@ -221,8 +221,8 @@ template <typename T>
 using is_returnable = ::std::disjunction<
     ::std::is_same<::std::remove_cv_t<T>, void>,
     ::std::conjunction<::std::is_destructible<T>,
-                       ::std::disjunction<::std::is_constructible<T, std::add_lvalue_reference_t<T>>,
-                                          ::std::is_constructible<T, std::add_rvalue_reference_t<T>>>>>;
+                       ::std::disjunction<::std::is_constructible<T, ::std::add_lvalue_reference_t<T>>,
+                                          ::std::is_constructible<T, ::std::add_rvalue_reference_t<T>>>>>;
 
 template <typename T>
 inline constexpr bool is_returnable_v = is_returnable<T>::value;
@@ -449,6 +449,56 @@ OBAKE_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
 namespace detail
 {
 
+template <typename T>
+using predec_t = decltype(--::std::declval<T>());
+
+}
+
+// Pre-decrementable type-trait.
+template <typename T>
+using is_pre_decrementable = is_detected<detail::predec_t, T>;
+
+template <typename T>
+inline constexpr bool is_pre_decrementable_v = is_pre_decrementable<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL PreDecrementable = requires(T &&x)
+{
+    --::std::forward<T>(x);
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T>
+using postdec_t = decltype(::std::declval<T>()--);
+
+}
+
+// Post-decrementable type-trait.
+template <typename T>
+using is_post_decrementable = is_detected<detail::postdec_t, T>;
+
+template <typename T>
+inline constexpr bool is_post_decrementable_v = is_post_decrementable<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL PostDecrementable = requires(T &&x)
+{
+    ::std::forward<T>(x)--;
+};
+
+#endif
+
+namespace detail
+{
+
 template <typename T, typename U>
 using mul_t = decltype(::std::declval<T>() * ::std::declval<U>());
 
@@ -636,9 +686,108 @@ OBAKE_CONCEPT_DECL LessThanComparable = requires(T &&x, U &&y)
 namespace detail
 {
 
+template <typename T, typename U>
+using gt_cmp_t = decltype(::std::declval<T>() > ::std::declval<U>());
+
+} // namespace detail
+
+// Greater-than comparable type trait.
+template <typename T, typename U = T>
+using is_greater_than_comparable = ::std::conjunction<::std::is_convertible<detected_t<detail::gt_cmp_t, T, U>, bool>,
+                                                      ::std::is_convertible<detected_t<detail::gt_cmp_t, U, T>, bool>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_greater_than_comparable_v = is_greater_than_comparable<T, U>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+OBAKE_CONCEPT_DECL GreaterThanComparable = requires(T &&x, U &&y)
+{
+    {
+        ::std::forward<T>(x) > ::std::forward<U>(y)
+    }
+    ->bool;
+    {
+        ::std::forward<U>(y) > ::std::forward<T>(x)
+    }
+    ->bool;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using lte_cmp_t = decltype(::std::declval<T>() <= ::std::declval<U>());
+
+} // namespace detail
+
+// Less-than/equal to comparable type trait.
+template <typename T, typename U = T>
+using is_lte_comparable = ::std::conjunction<::std::is_convertible<detected_t<detail::lte_cmp_t, T, U>, bool>,
+                                             ::std::is_convertible<detected_t<detail::lte_cmp_t, U, T>, bool>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_lte_comparable_v = is_lte_comparable<T, U>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+OBAKE_CONCEPT_DECL LTEComparable = requires(T &&x, U &&y)
+{
+    {
+        ::std::forward<T>(x) <= ::std::forward<U>(y)
+    }
+    ->bool;
+    {
+        ::std::forward<U>(y) <= ::std::forward<T>(x)
+    }
+    ->bool;
+};
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using gte_cmp_t = decltype(::std::declval<T>() >= ::std::declval<U>());
+
+} // namespace detail
+
+// Greater-than/equal to comparable type trait.
+template <typename T, typename U = T>
+using is_gte_comparable = ::std::conjunction<::std::is_convertible<detected_t<detail::gte_cmp_t, T, U>, bool>,
+                                             ::std::is_convertible<detected_t<detail::gte_cmp_t, U, T>, bool>>;
+
+template <typename T, typename U = T>
+inline constexpr bool is_gte_comparable_v = is_gte_comparable<T, U>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T, typename U = T>
+OBAKE_CONCEPT_DECL GTEComparable = requires(T &&x, U &&y)
+{
+    {
+        ::std::forward<T>(x) >= ::std::forward<U>(y)
+    }
+    ->bool;
+    {
+        ::std::forward<U>(y) >= ::std::forward<T>(x)
+    }
+    ->bool;
+};
+
+#endif
+
+namespace detail
+{
+
 // Helpers for the detection of the typedefs in std::iterator_traits.
 // Use a macro (yuck) to reduce typing.
-#define OBAKE_DECLARE_IT_TRAITS_TYPE(type)                                                                           \
+#define OBAKE_DECLARE_IT_TRAITS_TYPE(type)                                                                             \
     template <typename T>                                                                                              \
     using it_traits_##type = typename ::std::iterator_traits<T>::type;
 
@@ -972,6 +1121,111 @@ OBAKE_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
 namespace detail
 {
 
+// *it-- expression, used in the detection
+// of bidirectional iterators.
+template <typename T>
+using it_dec_deref_t = decltype(*::std::declval<T>()--);
+
+} // namespace detail
+
+template <typename T>
+using is_bidirectional_iterator = ::std::conjunction<
+    // Must be a forward iterator.
+    // NOTE: the pointer or class requirement is already in the forward iterator.
+    is_forward_iterator<T>,
+    // Lvalue must be pre-decrementable, returning
+    // lvalue reference to T.
+    ::std::is_same<detected_t<detail::predec_t, ::std::add_lvalue_reference_t<T>>, ::std::add_lvalue_reference_t<T>>,
+    // Lvalue must be post-decrementable, returning
+    // something which is convertible to const T &.
+    ::std::is_convertible<detected_t<detail::postdec_t, ::std::add_lvalue_reference_t<T>>,
+                          ::std::add_lvalue_reference_t<const T>>,
+    // *r-- returns it_traits::reference.
+    ::std::is_same<detected_t<detail::it_dec_deref_t, ::std::add_lvalue_reference_t<T>>,
+                   detected_t<detail::it_traits_reference, T>>,
+    // Category check.
+    ::std::is_base_of<::std::bidirectional_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>;
+
+template <typename T>
+inline constexpr bool is_bidirectional_iterator_v = is_bidirectional_iterator<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL BidirectionalIterator = is_bidirectional_iterator_v<T>;
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U>
+using subscript_t = decltype(::std::declval<T>()[::std::declval<U>()]);
+
+}
+
+template <typename T>
+using is_random_access_iterator = ::std::conjunction<
+    // Must be a bidir iterator.
+    // NOTE: the pointer or class requirement is already in the forward iterator.
+    is_bidirectional_iterator<T>,
+    // r += n must be defined and return T &.
+    // NOTE: difference type is present, we check it in the
+    // iterator requirements.
+    // NOTE: as usual, check against an lvalue reference for n.
+    // We'll do the same below as well.
+    ::std::is_same<::std::add_lvalue_reference_t<T>,
+                   detected_t<detail::compound_add_t, ::std::add_lvalue_reference_t<T>,
+                              ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
+    // a + n and n + a must be defined and return T.
+    ::std::is_same<T,
+                   detected_t<detail::add_t, ::std::add_lvalue_reference_t<const T>,
+                              ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
+    ::std::is_same<T, detected_t<detail::add_t,
+                                 ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>,
+                                 ::std::add_lvalue_reference_t<const T>>>,
+    // r -= n must be defined and return T &.
+    ::std::is_same<::std::add_lvalue_reference_t<T>,
+                   detected_t<detail::compound_sub_t, ::std::add_lvalue_reference_t<T>,
+                              ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
+    // a - n must be defined and return T.
+    ::std::is_same<T,
+                   detected_t<detail::sub_t, ::std::add_lvalue_reference_t<const T>,
+                              ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
+    // b - a must be defined and return difference_type.
+    ::std::is_same<
+        detected_t<detail::it_traits_difference_type, T>,
+        detected_t<detail::sub_t, ::std::add_lvalue_reference_t<const T>, ::std::add_lvalue_reference_t<const T>>>,
+    // a[n] must be defined and return something convertible
+    // to reference.
+    ::std::is_convertible<
+        detected_t<detail::subscript_t, ::std::add_lvalue_reference_t<T>,
+                   ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>,
+        detected_t<detail::it_traits_reference, T>>,
+    // a < b must be defined and return something convertible to bool.
+    is_less_than_comparable<::std::add_lvalue_reference_t<const T>>,
+    // Ditto for a > b.
+    is_greater_than_comparable<::std::add_lvalue_reference_t<const T>>,
+    // Ditto for a <= b.
+    is_lte_comparable<::std::add_lvalue_reference_t<const T>>,
+    // Ditto for a >= b.
+    is_gte_comparable<::std::add_lvalue_reference_t<const T>>,
+    // Category check.
+    ::std::is_base_of<::std::random_access_iterator_tag, detected_t<detail::it_traits_iterator_category, T>>>;
+
+template <typename T>
+inline constexpr bool is_random_access_iterator_v = is_random_access_iterator<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL RandomAccessIterator = is_random_access_iterator_v<T>;
+
+#endif
+
+namespace detail
+{
+
 template <typename T>
 using stream_insertion_t = decltype(::std::declval<::std::ostream &>() << ::std::declval<T>());
 
@@ -991,6 +1245,22 @@ template <typename T>
 OBAKE_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
 
 #endif
+
+namespace detail
+{
+
+// A small utility to make a type dependent on
+// another one. This is sometimes useful
+// in if-constexpr contexts (e.g., see use in the tests).
+template <typename T, typename>
+struct make_dependent {
+    using type = T;
+};
+
+template <typename T, typename U>
+using make_dependent_t = typename make_dependent<T, U>::type;
+
+} // namespace detail
 
 } // namespace obake
 

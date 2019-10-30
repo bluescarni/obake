@@ -151,6 +151,32 @@ OBAKE_CONCEPT_DECL MutableForwardRange = Range<T> &&MutableForwardIterator<range
 
 #endif
 
+template <typename T>
+using is_bidirectional_range = ::std::conjunction<is_range<T>, is_bidirectional_iterator<detected_t<range_begin_t, T>>>;
+
+template <typename T>
+inline constexpr bool is_bidirectional_range_v = is_bidirectional_range<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL BidirectionalRange = Range<T> &&BidirectionalIterator<range_begin_t<T>>;
+
+#endif
+
+template <typename T>
+using is_random_access_range = ::std::conjunction<is_range<T>, is_random_access_iterator<detected_t<range_begin_t, T>>>;
+
+template <typename T>
+inline constexpr bool is_random_access_range_v = is_random_access_range<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL RandomAccessRange = Range<T> &&RandomAccessIterator<range_begin_t<T>>;
+
+#endif
+
 namespace detail
 {
 

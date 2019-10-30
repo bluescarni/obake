@@ -90,6 +90,22 @@ struct xoroshiro128_plus {
         return static_cast<Int>(u_retval);
     }
 
+    // Provide also an interface compatible with the UniformRandomBitGenerator concept:
+    // https://en.cppreference.com/w/cpp/named_req/UniformRandomBitGenerator
+    using result_type = ::std::uint64_t;
+    static constexpr result_type min()
+    {
+        return 0;
+    }
+    static constexpr result_type max()
+    {
+        return limits_max<result_type>;
+    }
+    constexpr result_type operator()()
+    {
+        return next();
+    }
+
     ::std::uint64_t m_state[2];
 };
 

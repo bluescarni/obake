@@ -6,11 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// NOTE: helper to include the catch_impl.hpp
-// header with pre-defined options (i.e., this avoids
-// having to re-define the same catch options in
-// every test file).
-#define CATCH_CONFIG_FAST_COMPILE
-#define CATCH_CONFIG_NO_CPP17_BYTE
+#include <obake/polynomials/packed_monomial.hpp>
 
-#include "catch_impl.hpp"
+#include <mp++/integer.hpp>
+
+#include "dense.hpp"
+
+using namespace obake;
+using namespace obake_benchmark;
+
+int main()
+{
+    dense_benchmark_5_vars<packed_monomial<unsigned long>, mppp::integer<1>>(14);
+}

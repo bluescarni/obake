@@ -13,12 +13,15 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <numeric>
+#include <random>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -30,23 +33,25 @@
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_invoke.h>
+#include <tbb/parallel_reduce.h>
+#include <tbb/parallel_sort.h>
 
 #include <mp++/integer.hpp>
 
 #include <obake/byte_size.hpp>
 #include <obake/config.hpp>
-#include <obake/detail/container_it_diff_check.hpp>
+#include <obake/detail/abseil.hpp>
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
+#include <obake/detail/it_diff_check.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
 #include <obake/detail/xoroshiro128_plus.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/hash.hpp>
-#include <obake/key/key_degree.hpp>
 #include <obake/key/key_merge_symbols.hpp>
-#include <obake/math/degree.hpp>
 #include <obake/math/diff.hpp>
 #include <obake/math/fma3.hpp>
 #include <obake/math/is_zero.hpp>
@@ -157,6 +162,11 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
         // Create and add a new term.
+        // NOTE: at least for some monomial types (e.g., packed monomial),
+        // we will be computing the iterator difference when constructing from
+        // a range. Make sure we can safely represent the size of tmp via
+        // iterator difference.
+        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
         retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
 
         return retval;
@@ -219,6 +229,59 @@ namespace polynomials
 namespace detail
 {
 
+// Small helper to create a vector of indices
+// into the input vector v, in parallel using TBB.
+template <typename V>
+inline auto poly_mul_impl_par_make_idx_vector(const V &v)
+{
+    // NOTE: we could use here a custom allocator
+    // that does default initialisation, instead of
+    // value initialisation.
+    ::std::vector<decltype(v.size())> ret;
+    ret.resize(::obake::safe_cast<decltype(ret.size())>(v.size()));
+
+    ::tbb::parallel_for(::tbb::blocked_range<decltype(v.size())>(0, v.size()), [&ret](const auto &range) {
+        for (auto i = range.begin(); i != range.end(); ++i) {
+            ret[i] = i;
+        }
+    });
+
+    return ret;
+}
+
+// Helper to prepare the variables that will hold the degree
+// data used during polynomial multiplication. In untruncated
+// multiplication, an empty tuple will be returned, otherwise
+// a tuple of 2 vectors containing the (partial) degrees of the terms
+// in the input series will be returned. The degrees
+// are computed using the facilities in series.hpp.
+// The input series are of types T and U, while the terms
+// of the series are stored in the input vectors v1 and v2.
+template <typename T, typename U, typename V1, typename V2, typename... Args>
+inline auto poly_mul_impl_prepare_degree_data([[maybe_unused]] const V1 &v1, [[maybe_unused]] const V2 &v2,
+                                              [[maybe_unused]] const symbol_set &ss,
+                                              [[maybe_unused]] const Args &... args)
+{
+    if constexpr (sizeof...(Args) == 0u) {
+        // Untruncated case, return an empty tuple.
+        return ::std::make_tuple();
+    } else if constexpr (sizeof...(Args) == 1u) {
+        // Total truncation.
+        return ::std::make_tuple(
+            // NOTE: the invocation here uses parallel mode, but it does not really
+            // matter as the return type does not change wrt serial mode.
+            decltype(customisation::internal::make_degree_vector<T>(v1.cbegin(), v1.cend(), ss, true)){},
+            decltype(customisation::internal::make_degree_vector<U>(v2.cbegin(), v2.cend(), ss, true)){});
+    } else {
+        // Partial truncation.
+        return ::std::make_tuple(
+            decltype(customisation::internal::make_p_degree_vector<T>(
+                v1.cbegin(), v1.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){},
+            decltype(customisation::internal::make_p_degree_vector<U>(
+                v2.cbegin(), v2.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true)){});
+    }
+}
+
 // Small helper to extract a const reference to
 // a term's key (that is, the first element of the
 // input pair p).
@@ -271,9 +334,13 @@ constexpr auto poly_mul_algorithm_impl()
             using ret_cf_t = detected_t<::obake::detail::mul_t, const cf1_t &, const cf2_t &>;
 
             if constexpr (::std::conjunction_v<
+                              // NOTE: this will also check that switching around the
+                              // operands produces the same result. This is necessary
+                              // because we might need to switch the arguments
+                              // in the top level poly multiplication function.
+                              // NOTE: this also ensures that ret_cf_t is detected.
+                              is_multipliable<const cf1_t &, const cf2_t &>,
                               // If ret_cf_t a coefficient type?
-                              // NOTE: this checks ensures that ret_cf_t is detected,
-                              // because nonesuch is not a coefficient type.
                               is_cf<ret_cf_t>,
                               // We may need to merge new symbols into the original key type.
                               // NOTE: the key types of T and U must be identical at the moment,
@@ -305,27 +372,11 @@ inline constexpr int poly_mul_algo = poly_mul_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_mul_ret_t = typename decltype(poly_mul_algorithm<T, U>.second)::type;
 
-// A small wrapper representing the lazy multiplication
-// of two coefficients.
-template <typename C1, typename C2, typename CR>
-struct poly_cf_mul_expr {
-    // The two factors.
-    const C1 &c1;
-    const C2 &c2;
-
-    // Conversion operator to compute
-    // and fetch the result of the multiplication.
-    explicit operator CR() const
-    {
-        return c1 * c2;
-    }
-};
-
-// Helper to estimate an appropriate log2 of the number of segments
-// of the destination polynomial in a multithreaded homomorphic
-// polynomial multiplication.
+// Helper to estimate the average term size (in bytes) in a poly multiplication.
+// NOTE: should this also be made proportional to the number
+// of estimated term-by-term multiplications?
 template <typename RetCf, typename T1, typename T2>
-inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &v1, const ::std::vector<T2> &v2,
+inline ::std::size_t poly_mul_impl_estimate_average_term_size(const ::std::vector<T1> &v1, const ::std::vector<T2> &v2,
                                                        const symbol_set &ss)
 {
     using ret_key_t = typename T1::first_type;
@@ -342,29 +393,27 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
     // randomness mixed in with the sizes of v1/v2.
     constexpr ::std::uint64_t s1 = 18379758338774109289ull;
     constexpr ::std::uint64_t s2 = 15967298767098049689ull;
-    ::obake::detail::xoroshiro128_plus rng{s1 + static_cast<::std::uint64_t>(v1.size()),
-                                           s2 + static_cast<::std::uint64_t>(v2.size())};
+    ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(s1 + v1.size()),
+                                           static_cast<::std::uint64_t>(s2 + v2.size())};
 
     // The idea now is to compute a small amount of term-by-term
     // multiplications and determine the average size in bytes
-    // of the produced terms. From there, we'll try to estimate the
-    // size in bytes of the series product and finally infer an
-    // adequately small number of segments.
-    constexpr int ntrials = 10;
+    // of the produced terms.
+    constexpr auto ntrials = 10u;
 
     // Temporary monomial used for term-by-term multiplications.
-    ret_key_t tmp_key;
+    ret_key_t tmp_key(ss);
 
-    // Cache the series sizes.
-    const auto v1_size = v1.size();
-    const auto v2_size = v2.size();
+    // Create the distributions.
+    ::std::uniform_int_distribution<decltype(v1.size())> dist1(0, v1.size() - 1u);
+    ::std::uniform_int_distribution<decltype(v2.size())> dist2(0, v2.size() - 1u);
 
     // Run the trials.
     ::std::size_t acc = 0;
-    for (auto i = 0; i < ntrials; ++i) {
+    for (auto i = 0u; i < ntrials; ++i) {
         // Pick a random term in each series.
-        const auto idx1 = rng.template random<decltype(v1.size())>() % v1_size;
-        const auto idx2 = rng.template random<decltype(v2.size())>() % v2_size;
+        const auto idx1 = dist1(rng);
+        const auto idx2 = dist2(rng);
 
         // Multiply monomial and coefficient.
         ::obake::monomial_mul(tmp_key, v1[idx1].first, v2[idx2].first, ss);
@@ -374,31 +423,14 @@ inline unsigned poly_mul_impl_mt_hm_compute_log2_nsegs(const ::std::vector<T1> &
         // coefficient, and, if present, padding.
         acc += ::obake::byte_size(::std::as_const(tmp_key)) + ::obake::byte_size(tmp_cf) + pad_size;
     }
-    // Compute the average term size.
-    const auto avg_size = static_cast<double>(acc) / ntrials;
 
-    // Estimate the total byte size of the series product. The heuristic
-    // is based on a very sparse case (i.e., we take a small percentage
-    // of the size of the product of a completely sparse multitplication). If the multiplication
-    // is denser, we overestimate the total size and we have a higher
-    // number of segments than necessary. Luckily, this does not
-    // seem to hurt performance much.
-    // NOTE: this factor might become a user-tunable parameter.
-    // Need to test more.
-    const auto est_total_size = 5. / 100. * (avg_size * static_cast<double>(v1_size) * static_cast<double>(v2_size));
+    // Compute the ceil of the average term size.
+    const auto ret = acc / ntrials + static_cast<::std::size_t>(acc % ntrials != 0u);
 
-    // Compute the number of segments by enforcing a fixed
-    // amount of bytes per segment.
-    const auto nsegs
-        = ::boost::numeric_cast<typename polynomial<ret_key_t, RetCf>::s_size_type>(est_total_size / (500. * 1024.));
-
-    // Finally, compute the log2 + 1 of nsegs and return it, but
-    // make sure that it is not greater than the max_log2_size()
-    // allowed in a series.
-    // NOTE: even if nsegs is zero, this will still yield some
-    // useful value, as nbits() on zero will return zero.
-    return ::std::min(::obake::safe_cast<unsigned>(::mppp::integer<1>{nsegs}.nbits()),
-                      polynomial<ret_key_t, RetCf>::get_max_s_size());
+    // NOTE: theoretically ret could be zero if
+    // in the loop above we somehow overflow std::size_t.
+    // Thus, make it 1 in such a case.
+    return ret + static_cast<::std::size_t>(ret == 0u);
 }
 
 #if defined(_MSC_VER) && !defined(__clang__)
@@ -419,22 +451,338 @@ struct poly_mul_impl_pair_transform {
     }
 };
 
-// Add an input value y to another value x, a reference
-// to which is created on construction.
-template <typename T>
-struct poly_mul_impl_degree_adder {
-    // Ensure def-constructability.
-    poly_mul_impl_degree_adder() : x_ptr(nullptr) {}
-    explicit poly_mul_impl_degree_adder(const T *ptr) : x_ptr(ptr) {}
-    template <typename U>
-    auto operator()(const U &y) const
+// This function will:
+// - estimate the size of the product of two input polynomials,
+// - compute the total number of term-by-term multiplications that will
+//   be performed in the computation of the polynomial product
+//   (which could be different from the product of the sizes of the
+//   factors due to truncation).
+// S1 and S2 are the types of the polyomials, x and y the polynomials
+// represented as vectors of terms. The extra arguments represent
+// the truncation limits.
+// Requires x and y not empty, y not shorter than x. The returned
+// value is guaranteed to be nonzero.
+// NOTE: by imposing that x is the shorter series, we are able to
+// greatly reduce the estimation overhead for highly rectangular
+// multiplications. The downside is that we overestimate the final
+// series size quite a bit. Not sure how we could proceed to
+// improve the situation.
+template <typename S1, typename S2, typename T1, typename T2, typename... Args>
+inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::std::vector<T2> &y, const symbol_set &ss,
+                                           const Args &... args)
     {
-        assert(x_ptr != nullptr);
+    // Preconditions.
+    assert(!x.empty());
+    assert(!y.empty());
+    assert(x.size() <= y.size());
+    static_assert(sizeof...(args) <= 2u);
 
-        return *x_ptr + y;
+    // Make sure that the input types are consistent.
+    using key_type = typename T1::first_type;
+    static_assert(::std::is_same_v<key_type, typename T2::first_type>);
+    static_assert(::std::is_same_v<series_key_t<S1>, key_type>);
+    static_assert(::std::is_same_v<series_key_t<S2>, key_type>);
+    static_assert(::std::is_same_v<series_cf_t<S1>, typename T1::second_type>);
+    static_assert(::std::is_same_v<series_cf_t<S2>, typename T2::second_type>);
+
+    // Prepare the variable to hold the degree data.
+    auto degree_data = detail::poly_mul_impl_prepare_degree_data<S1, S2>(x, y, ss, args...);
+
+    // Prepare vectors of indices into x/y.
+    decltype(detail::poly_mul_impl_par_make_idx_vector(x)) vidx1;
+    decltype(detail::poly_mul_impl_par_make_idx_vector(y)) vidx2;
+
+    // Concurrently create the degree data for x and y, and fill
+    // in the vidx1/vidx2 vectors.
+    ::tbb::parallel_invoke(
+        [&vidx1, &x, &ss, &degree_data, &args...]() {
+            if constexpr (sizeof...(args) == 1u) {
+                // Total degree truncation.
+                ::obake::detail::ignore(args...);
+
+                ::obake::detail::container_it_diff_check(x);
+
+                ::std::get<0>(degree_data)
+                    = customisation::internal::make_degree_vector<S1>(x.cbegin(), x.cend(), ss, true);
+            } else if constexpr (sizeof...(args) == 2u) {
+                // Partial degree truncation.
+                ::obake::detail::container_it_diff_check(x);
+
+                ::std::get<0>(degree_data) = customisation::internal::make_p_degree_vector<S1>(
+                    x.cbegin(), x.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
+            } else {
+                ::obake::detail::ignore(ss, degree_data, args...);
+            }
+
+            vidx1 = detail::poly_mul_impl_par_make_idx_vector(x);
+        },
+        [&vidx2, &y, &ss, &degree_data, &args...]() {
+            if constexpr (sizeof...(args) == 1u) {
+                // Total degree truncation.
+                ::obake::detail::ignore(args...);
+
+                ::obake::detail::container_it_diff_check(y);
+
+                ::std::get<1>(degree_data)
+                    = customisation::internal::make_degree_vector<S2>(y.cbegin(), y.cend(), ss, true);
+            } else if constexpr (sizeof...(args) == 2u) {
+                // Partial degree truncation.
+                ::obake::detail::container_it_diff_check(y);
+
+                ::std::get<1>(degree_data) = customisation::internal::make_p_degree_vector<S2>(
+                    y.cbegin(), y.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
+            } else {
+                ::obake::detail::ignore(ss, degree_data, args...);
+            }
+
+            vidx2 = detail::poly_mul_impl_par_make_idx_vector(y);
+
+            // In truncated multiplication, order
+            // the indices into y according to the degree of
+            // the terms, and sort the vector of
+            // degrees as well.
+            if constexpr (sizeof...(args) > 0u) {
+                auto &v2_deg = ::std::get<1>(degree_data);
+
+                ::tbb::parallel_sort(vidx2.begin(), vidx2.end(),
+                                     [&cv2_deg = ::std::as_const(v2_deg)](const auto &idx1, const auto &idx2) {
+                                         return cv2_deg[idx1] < cv2_deg[idx2];
+                                     });
+
+                // Apply the permutation to v2_deg.
+                ::obake::detail::container_it_diff_check(v2_deg);
+                v2_deg = ::std::remove_reference_t<decltype(v2_deg)>(
+                    ::boost::make_permutation_iterator(v2_deg.cbegin(), vidx2.cbegin()),
+                    ::boost::make_permutation_iterator(v2_deg.cend(), vidx2.cend()));
+
+                // Verify the sorting in debug mode.
+                assert(::std::is_sorted(v2_deg.cbegin(), v2_deg.cend()));
+            }
+        });
+
+    // Determine the total number of term-by-term multiplications
+    // that will be performed in the poly multiplication.
+    auto tot_n_mults = [&vidx1, &vidx2, &degree_data, &args...]() {
+        if constexpr (sizeof...(Args) == 0u) {
+            // In the untruncated case, the total number of term-by-term
+            // multiplications to be performed is simply the product
+            // of the series sizes.
+            ::obake::detail::ignore(degree_data, args...);
+
+            return ::mppp::integer<1>(vidx1.size()) * vidx2.size();
+        } else {
+            // In the truncated case, we need to take into account
+            // the truncation limit term by term.
+            ::obake::detail::ignore(vidx2);
+
+            // Fetch the truncation limit.
+            const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
+
+            return ::tbb::parallel_reduce(
+                ::tbb::blocked_range<decltype(vidx1.cbegin())>(vidx1.cbegin(), vidx1.cend()), ::mppp::integer<1>{},
+                [&max_deg, &degree_data](const auto &range, ::mppp::integer<1> cur) {
+                    // NOTE: vidx1 is unsorted, vidx2 is sorted according
+                    // to the degree.
+
+                    // Get the degree data for x and y.
+                    const auto &[v1_deg, v2_deg] = degree_data;
+
+                    for (auto idx1 : range) {
+                        // Fetch the degree of the current term in x.
+                        const auto &d1 = v1_deg[idx1];
+
+                        // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
+                        const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
+                                                           [&d1](const auto &mdeg, const auto &d2) {
+                                                               // NOTE: we require below
+                                                               // comparability between const lvalue limit
+                                                               // and rvalue of the sum of the degrees.
+                                                               return mdeg < d1 + d2;
+                                                           });
+
+                        // Accumulate in cur how many terms in y would be multiplied
+                        // by the current term in x.
+                        // NOTE: we checked when constructing v2_deg that its iterator
+                        // diff type can represent the total size.
+                        cur += it - v2_deg.cbegin();
+                    }
+
+                    return cur;
+                },
+                [](const auto &a, const auto &b) { return a + b; });
+        }
+    }();
+
+    // Parameters for the random trials.
+    // NOTE: the idea here is that the larger the
+    // multiplication, the larger the number of trials we can
+    // do. Doing more trials also helps stabilizing
+    // the estimation. The constant is inferred from
+    // testing on the usual benchmarks.
+    // NOTE: put a floor of 5 trials, which also ensures
+    // that ntrials is never estimated to 0.
+    const auto ntrials = ::std::max(5u, ::boost::numeric_cast<unsigned>(5e-8 * tot_n_mults));
+    // NOTE: we further divide by 2 below, so that the
+    // multiplier is actually 3/2.
+    const auto multiplier = 3u;
+
+    // NOTE: workaround for a GCC 7 issue.
+    using vidx2_size_t = typename ::std::vector<decltype(y.size())>::size_type;
+
+    // Run the trials.
+    // NOTE: ideally, we would like to select without repetition random term-by-term
+    // multiplications. This could be done by mapping the two sizes of v1 and v2
+    // into a single integer N (k-packing style), and then using a linear congruential
+    // generator with period N which guarantees that there are no repetitions within
+    // that period. See:
+    // https://stackoverflow.com/questions/9755538/how-do-i-create-a-list-of-random-numbers-without-duplicates/53646842
+    // https://en.wikipedia.org/wiki/Linear_congruential_generator
+    // (see the SO answer a bit down the page).
+    // However, I don't know how this would work when truncation is involved.
+    // The current approach is to shuffle v1 and then pick randomly into v2.
+    // This result in a choice of index in v1 without repetitions, but the
+    // random picking in v2 could have repetitions, so it's not precisely
+    // equivalent to having truly random term-by-term multiplications.
+    auto c_est = ::tbb::parallel_reduce(
+        ::tbb::blocked_range<unsigned>(0, ntrials), ::mppp::integer<1>{},
+        [multiplier, &degree_data, &x, &y, &vidx1, &vidx2, &ss, &args...](const auto &range, ::mppp::integer<1> cur) {
+            // Make a local copy of vidx1.
+            auto vidx1_copy(vidx1);
+
+            // Prepare a distribution for randomly indexing into vidx2.
+            using dist_type = ::std::uniform_int_distribution<vidx2_size_t>;
+            using dist_param_type = typename dist_type::param_type;
+            dist_type idist;
+
+            // Init the hash set we will be using for the trials.
+            // NOTE: use exactly the same hasher/comparer as in series.hpp, so that
+            // we are sure we are being consistent wrt type requirements, etc.
+            using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
+                                                    ::obake::detail::series_key_comparer>;
+            local_set ls;
+            ls.reserve(::obake::safe_cast<decltype(ls.size())>(vidx1.size()));
+
+            // Temporary object for monomial multiplications.
+            key_type tmp_key(ss);
+
+            for (auto i = range.begin(); i != range.end(); ++i) {
+                // Init a random engine for this trial, mixing compile
+                // time randomness with the current trial index.
+                constexpr ::std::uint64_t s1 = 14295768699618639914ull;
+                constexpr ::std::uint64_t s2 = 12042842946850383048ull;
+                ::obake::detail::xoroshiro128_plus rng{static_cast<::std::uint64_t>(i + s1),
+                                                       static_cast<::std::uint64_t>(i + s2)};
+
+                // Shuffle the indices into the first series.
+                ::std::shuffle(vidx1_copy.begin(), vidx1_copy.end(), rng);
+
+                // This will be used to determine the average number of terms in y
+                // that participate in the multiplication. It is used only in case
+                // there are no collisions at the end of the loop below.
+                ::mppp::integer<1> acc_y;
+
+                for (auto idx1 : vidx1_copy) {
+                    // Get the upper limit for indexing in vidx2.
+                    // NOTE: this will be an index into a vector of indices.
+                    const auto limit = [&degree_data, idx1, &vidx2, &args...]() {
+                        if constexpr (sizeof...(args) == 0u) {
+                            // Untruncated case, just return the size of vidx2.
+                            ::obake::detail::ignore(degree_data, idx1);
+
+                            return vidx2.size();
+                        } else {
+                            // Truncated case: determine the first index
+                            // into vidx2 which does not satisfy the truncation
+                            // limit.
+                            ::obake::detail::ignore(vidx2);
+
+                            // Fetch the truncation limit.
+                            const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
+
+                            // Get the degree data for x and y.
+                            const auto &[v1_deg, v2_deg] = degree_data;
+
+                            // Fetch the degree of the current term in x.
+                            const auto &d1 = v1_deg[idx1];
+
+                            // Find the first degree d2 in v2_deg such that d1 + d2 > max_degree.
+                            const auto it = ::std::upper_bound(v2_deg.cbegin(), v2_deg.cend(), max_deg,
+                                                               [&d1](const auto &mdeg, const auto &d2) {
+                                                                   // NOTE: we require below
+                                                                   // comparability between const lvalue limit
+                                                                   // and rvalue of the sum of the degrees.
+                                                                   return mdeg < d1 + d2;
+                                                               });
+
+                            // We checked when constructing v2_deg that its iterator
+                            // diff type can represent the total size. Because
+                            // the sizes of vidx2 and v2_deg are the same, the static cast
+                            // is also safe.
+                            return static_cast<vidx2_size_t>(it - v2_deg.cbegin());
+                        }
+                    }();
+
+                    if (limit == 0u) {
+                        // The upper limit is 0, we cannot multiply by any
+                        // term in y without violating the truncation constraint.
+                        continue;
+                    }
+
+                    // Keep track of how many terms in y would be multiplied
+                    // by the current term in x in the full multiplication.
+                    acc_y += limit;
+
+                    // Pick a random index in s2 within the limit.
+                    const auto idx2 = vidx2[idist(rng, dist_param_type(0u, limit - 1u))];
+
+                    // Try to do the multiplication.
+                    ::obake::monomial_mul(tmp_key, x[idx1].first, y[idx2].first, ss);
+
+                    // Try the insertion into the local set.
+                    const auto ret = ls.insert(tmp_key);
+                    if (!ret.second) {
+                        // The key already exists, break out.
+                        break;
+                    }
+                }
+
+                // Determine how many unique terms were generated
+                // in the loop above.
+                const auto count = ls.size();
+
+                if (count == vidx1_copy.size()) {
+                    // We generated as many unique terms as
+                    // the number of terms in x. This means that
+                    // we will estimate a perfect sparsity. In untruncated
+                    // multiplication, this means nx * ny, in a truncated
+                    // multiplication is less than that (depending on
+                    // how many terms were skipped due to the truncation
+                    // limits).
+                    cur += acc_y;
+                } else {
+                    // We detected a duplicate term, use the
+                    // quadratic estimate.
+                    cur += (::mppp::integer<1>{multiplier} * count * count) >> 1;
+                }
+
+                // Clear up the local set for the next iteration.
+                ls.clear();
+            }
+
+            // Return the accumulated estimate.
+            return cur;
+        },
+        [](const auto &a, const auto &b) { return a + b; });
+
+    // Return the average of the estimates (but don't return zero).
+    // NOTE: ntrials is guaranteed to be nonzero from above.
+    auto ret = c_est / ntrials;
+    if (ret.is_zero()) {
+        return ::std::make_tuple(::mppp::integer<1>{1}, ::std::move(tot_n_mults));
+    } else {
+        return ::std::make_tuple(::std::move(ret), ::std::move(tot_n_mults));
     }
-    const T *x_ptr;
-};
+    }
 
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U, typename... Args>
@@ -450,6 +798,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
+    assert(x.size() <= y.size());
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
     assert(retval.empty());
@@ -474,7 +823,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::boost::make_transform_iterator(y.begin(), poly_mul_impl_pair_transform{}),
         ::boost::make_transform_iterator(y.end(), poly_mul_impl_pair_transform{}));
 
-    // Do the monomial overflow checking, if possible.
+    // Do the monomial overflow checking, if supported.
+    // NOTE: we have to sequence the overflow checking before the product
+    // size estimation and the average term size estimation, as those two
+    // operations might generate overflows during monomial multiplication.
     const auto r1
         = ::obake::detail::make_range(::boost::make_transform_iterator(v1.cbegin(), poly_term_key_ref_extractor{}),
                                       ::boost::make_transform_iterator(v1.cend(), poly_term_key_ref_extractor{}));
@@ -482,44 +834,81 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         = ::obake::detail::make_range(::boost::make_transform_iterator(v2.cbegin(), poly_term_key_ref_extractor{}),
                                       ::boost::make_transform_iterator(v2.cend(), poly_term_key_ref_extractor{}));
     if constexpr (are_overflow_testable_monomial_ranges_v<decltype(r1) &, decltype(r2) &>) {
-        // Do the monomial overflow checking.
+        // The monomial overflow checking is supported, run it.
         if (obake_unlikely(!::obake::monomial_range_overflow_check(r1, r2, ss))) {
-            obake_throw(
-                ::std::overflow_error,
-                "An overflow in the monomial exponents was detected while attempting to multiply two polynomials");
+            obake_throw(::std::overflow_error, "An overflow in the monomial exponents was detected while "
+                                               "attempting to multiply two polynomials");
         }
     }
 
-    // Determination of log2_nsegs.
-    const auto log2_nsegs = detail::poly_mul_impl_mt_hm_compute_log2_nsegs<ret_cf_t>(v1, v2, ss);
+    // Estimate the total number of terms, and compute the total number
+    // of term-by-term multiplications.
+    // NOTE: poly_mul_estimate_product_size() requires the shorter series first,
+    // which is ensured by the preconditions of this function.
+    const auto [est_nterms, tot_n_mults] = detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...);
+
+    // Estimate the average term size.
+    // NOTE: once poly_mul_impl_estimate_average_term_size() becomes more computationally intensive,
+    // we can do it in parallel with poly_mul_estimate_product_size().
+    const auto avg_term_size = detail::poly_mul_impl_estimate_average_term_size<ret_cf_t>(v1, v2, ss);
+
+    // Compute the estimated sparsity.
+    const auto est_sp = static_cast<double>(est_nterms) / static_cast<double>(tot_n_mults);
+
+    // Establish the desired segment size in kilobytes.
+    // NOTE: the idea here is the following. For highly
+    // sparse polynomials (est_sp >= threshold), we want to pick
+    // a relatively large size so that it fits somewhere in L2
+    // cache, say. The reason is that we won't do much computation
+    // per segment due to the sparsity, thus we aim at reducing
+    // the parallelisation overhead by operating on larger chunks
+    // of the product series. When the sparsity is smaller, then
+    // we have a higher computational density, thus we will spend
+    // more time computing a single segment, and thus we can aim
+    // at staying in L1 cache instead, as the parallelisation overhead
+    // will be smaller. Note that these values will be just rule-of-thumb,
+    // because the sparsity is not estimated accurately and because
+    // of further manipulations below. Additionally, it is not clear
+    // to me how smooth the transition between high and low sparsity
+    // will be. Eventually, we may perhaps want to leave this parameter as
+    // a tunable parameter for the user or perhaps even determine
+    // the cache sizes at runtime and use those.
+    // NOTE: if est_sp is not finite, due to tot_n_mults being zero or other
+    // FP issues, go with a default value.
+    // NOTE: is it worth it to exit early if tot_n_mults is zero? This would
+    // mean that the truncation limits will produce an empty series.
+    const auto seg_size = (!::std::isfinite(est_sp) || est_sp >= 1E-3) ? 200ul : 20ul;
+
+    // Estimate the number of segments via the deduced segment size.
+    const auto est_nsegs = (est_nterms * avg_term_size) / (seg_size * 1024ul);
+
+    // Fetch the base-2 logarithm + 1 of est_nsegs, making sure it does not
+    // overflow the max allowed value for the return polynomial type.
+    const auto log2_nsegs = ::std::min(::obake::safe_cast<unsigned>(est_nsegs.nbits()),
+                                       polynomial<ret_key_t, ret_cf_t>::get_max_s_size());
 
     // Setup the number of segments in retval.
     retval.set_n_segments(log2_nsegs);
 
-    // Cache the number of segments.
+    // Cache the actual number of segments.
     const auto nsegs = s_size_t(1) << log2_nsegs;
 
-    // Sort the input terms according to the hash value modulo
+    // Helper to sort the input terms according to the hash value modulo
     // 2**log2_nsegs. That is, sort them according to the bucket
     // they would occupy in a segmented table with 2**log2_nsegs
     // segments.
-    // NOTE: there are parallelisation opportunities here: parallel sort,
-    // computation of the segmentation in parallel, etc. Need to profile first.
     auto t_sorter = [log2_nsegs](const auto &p1, const auto &p2) {
         const auto h1 = ::obake::hash(p1.first);
         const auto h2 = ::obake::hash(p2.first);
 
         return h1 % (s_size_t(1) << log2_nsegs) < h2 % (s_size_t(1) << log2_nsegs);
     };
-    ::std::sort(v1.begin(), v1.end(), t_sorter);
-    ::std::sort(v2.begin(), v2.end(), t_sorter);
 
-    // Compute the segmentation for the input series.
+    // Helper to compute the segmentation for the input series.
     // The segmentation is a vector of ranges (represented
-    // as pairs of indices into v1/v2)
-    // of size nsegs. The index at which each range is stored
-    // is the index of the bucket that the terms corresponding
-    // to that range would occupy in a segmented table
+    // as pairs of indices into v1/v2) paired to indices
+    // representing the bucket that the range
+    // would occupy in a segmented table
     // with 2**log2_nsegs segments.
     auto compute_vseg = [nsegs, log2_nsegs](const auto &v) {
         // Ensure that the size of v is representable by
@@ -528,76 +917,68 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         ::obake::detail::container_it_diff_check(v);
 
         using idx_t = decltype(v.size());
-        ::std::vector<::std::pair<idx_t, idx_t>> vseg;
-        vseg.resize(::obake::safe_cast<decltype(vseg.size())>(nsegs));
+        ::std::vector<::std::tuple<idx_t, idx_t, s_size_t>> vseg;
+        // NOTE: the max possible size of vseg is the number of segments.
+        vseg.reserve(::obake::safe_cast<decltype(vseg.size())>(nsegs));
 
-        idx_t idx = 0;
         const auto v_begin = v.begin(), v_end = v.end();
+
+        // NOTE: if the number of terms in v is small enough,
+        // compute a sparse representation of vseg (meaning that
+        // the number of segmentation ranges will be less than
+        // nsegs and all the ranges will be non-empty). Otherwise,
+        // compute a dense representation, where the number
+        // of ranges is equal to nsegs and empty ranges might
+        // be present. We will later run different parallel
+        // functors depending on whether we are in the sparse
+        // or dense case.
+        // NOTE: the idea here is that we want to run
+        // the sparse functor only in highly sparse cases,
+        // because otherwise the more complicated logic
+        // of the sparse functor carries a measurable performance
+        // penalty in the "mostly-dense" cases.
+        if (v.size() < nsegs / 2u) {
+            for (auto it = v_begin; it != v_end;) {
+                // Get the bucket index of the current term.
+                const auto cur_b_idx = static_cast<s_size_t>(::obake::hash(it->first) % (s_size_t(1) << log2_nsegs));
+                // Look for the first term whose bucket index is greater than cur_b_idx.
+                const auto range_end
+                    = ::std::upper_bound(it, v_end, cur_b_idx, [log2_nsegs](const auto &b_idx, const auto &p) {
+                          return b_idx < ::obake::hash(p.first) % (s_size_t(1) << log2_nsegs);
+                      });
+                // NOTE: because we are in the sparse representation case,
+                // range_end cannot be equal to it.
+                assert(range_end != it);
+                // Add the range to vseg.
+                // NOTE: the overflow check was done earlier.
+                vseg.emplace_back(static_cast<idx_t>(it - v_begin), static_cast<idx_t>(range_end - v_begin), cur_b_idx);
+                // Update 'it'.
+                it = range_end;
+            }
+        } else {
+            // NOTE: the segmentation in dense form may be
+            // parallelised easily if needed.
+        idx_t idx = 0;
         auto it = v_begin;
         for (s_size_t i = 0; i < nsegs; ++i) {
-            vseg[i].first = idx;
+                // Look for the first term whose bucket index is greater than i.
+                // NOTE: this might result in 'it' not changing, in which case
+                // the segmentation range will be empty.
             it = ::std::upper_bound(it, v_end, i, [log2_nsegs](const auto &b_idx, const auto &p) {
-                const auto h = ::obake::hash(p.first);
-                return b_idx < h % (s_size_t(1) << log2_nsegs);
+                    return b_idx < ::obake::hash(p.first) % (s_size_t(1) << log2_nsegs);
             });
+                const auto old_idx = idx;
             // NOTE: the overflow check was done earlier.
             idx = static_cast<idx_t>(it - v_begin);
-            vseg[i].second = idx;
+                vseg.emplace_back(old_idx, idx, i);
+            }
         }
 
         return vseg;
     };
-    const auto vseg1 = compute_vseg(v1);
-    const auto vseg2 = compute_vseg(v2);
 
-#if !defined(NDEBUG)
-    {
-        // Check the segmentations in debug mode.
-        assert(vseg1.size() == nsegs);
-        assert(vseg2.size() == nsegs);
-
-        decltype(v1.size()) counter1 = 0;
-        decltype(v2.size()) counter2 = 0;
-
-        auto verify_seg = [log2_nsegs](const auto &v, s_size_t bucket_idx, const auto &range, auto &counter) {
-            for (auto idx = range.first; idx != range.second; ++idx) {
-                const auto h = ::obake::hash(v[idx].first);
-                assert(h % (s_size_t(1) << log2_nsegs) == bucket_idx);
-                ++counter;
-            }
-        };
-
-        for (s_size_t i = 0; i < nsegs; ++i) {
-            if (i) {
-                // Ensure the current range begins
-                // where the previous range ends.
-                assert(vseg1[i].first == vseg1[i - 1u].second);
-                assert(vseg2[i].first == vseg2[i - 1u].second);
-            }
-            verify_seg(v1, i, vseg1[i], counter1);
-            verify_seg(v2, i, vseg2[i], counter2);
-        }
-
-        assert(counter1 == v1.size());
-        assert(counter2 == v2.size());
-    }
-#endif
-
-    // Functor to compute the end index in the
-    // inner multiplication loops below, given
-    // an index into the first series and an index
-    // range into the second series. In non-truncated
-    // mode, this functor will always return the end
-    // of the range, otherwise the returned
-    // value will ensure that the truncation limits
-    // are respected.
-    auto compute_end_idx2 = [&ss, &v1, &v2, &vseg1, &vseg2, &args...]() {
-        if constexpr (sizeof...(args) == 0u) {
-            ::obake::detail::ignore(ss, v1, v2, vseg1, vseg2);
-
-            return [](const auto &, const auto &r2) { return r2.second; };
-        } else {
-            // Helper that, given a list of ranges vseg into v, will:
+    // Helper that, given a segmentation vseg into a vector of terms
+    // v, will:
             //
             // - create and return a vector vd
             //   containing the total/partial degrees of all the
@@ -607,7 +988,13 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             //
             // v will be one of v1/v2, t is a type_c instance
             // containing either T or U.
-            auto sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
+    auto seg_sorter = [&ss, &args...](auto &v, auto t, const auto &vseg) {
+        if constexpr (sizeof...(args) == 0u) {
+            // Non-truncated case: seg_sorter will be a no-op.
+            ::obake::detail::ignore(v, t, vseg, ss, args...);
+        } else {
+            // Truncated case.
+
                 // NOTE: we will be using the machinery from the default implementation
                 // of degree() for series, so that we can re-use the concept checking bits
                 // as well.
@@ -615,30 +1002,21 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
 
                 // Compute the vector of degrees.
                 auto vd = [&v, &ss, &args...]() {
+                // NOTE: in the make_(p_)degree_vector() helpers we need
+                // to compute the size of v via iterator differences.
+                ::obake::detail::container_it_diff_check(v);
+
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
-
                         ::obake::detail::ignore(args...);
 
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                    return customisation::internal::make_degree_vector<s_t>(v.cbegin(), v.cend(), ss, true);
                     } else {
                         // Partial degree.
-                        using d_impl = customisation::internal::series_default_p_degree_impl;
+                    static_assert(sizeof...(args) == 2u);
 
-                        // Fetch the list of symbols from the arguments and turn it into a
-                        // set of indices.
-                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
-
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
-
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                    return customisation::internal::make_p_degree_vector<s_t>(
+                        v.cbegin(), v.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), true);
                     }
                 }();
 
@@ -649,41 +1027,42 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 ::obake::detail::container_it_diff_check(::std::as_const(vd));
 
                 // Create a vector of indices into vd.
-                ::std::vector<decltype(vd.size())> vidx;
-                vidx.resize(::obake::safe_cast<decltype(vidx.size())>(vd.size()));
-                ::std::iota(vidx.begin(), vidx.end(), decltype(vd.size())(0));
+            auto vidx = detail::poly_mul_impl_par_make_idx_vector(vd);
 
                 // Sort indirectly each range from vseg according to the degree.
                 // NOTE: capture vd as const ref because in the lt-comparable requirements for the degree
                 // type we are using const lrefs.
-                for (const auto &r : vseg) {
-                    ::std::sort(vidx.data() + r.first, vidx.data() + r.second,
-                                [&vdc = ::std::as_const(vd)](const auto &idx1, const auto &idx2) {
-                                    return vdc[idx1] < vdc[idx2];
+            ::tbb::parallel_for(
+                ::tbb::blocked_range<decltype(vseg.cbegin())>(vseg.cbegin(), vseg.cend()),
+                [&vidx, &vdc = ::std::as_const(vd)](const auto &range) {
+                    for (const auto &r : range) {
+                        // NOTE: note sure if it is worth to run
+                        // a parallel sort here.
+                        ::std::sort(vidx.data() + ::std::get<0>(r), vidx.data() + ::std::get<1>(r),
+                                    [&vdc](const auto &idx1, const auto &idx2) { return vdc[idx1] < vdc[idx2]; });
+                    }
                                 });
-                }
 
                 // Apply the sorting to vd and v. Ensure we don't run
                 // into overflows during the permutated access.
                 ::obake::detail::container_it_diff_check(vd);
                 // NOTE: use cbegin/cend on vd to ensure the copy ctor of
                 // the degree type is being called.
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
+            vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.cbegin()),
+                              ::boost::make_permutation_iterator(vd.cend(), vidx.cend()));
                 ::obake::detail::container_it_diff_check(v);
-                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
-                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
+            v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.cbegin(), vidx.cbegin()),
+                                                       ::boost::make_permutation_iterator(v.cend(), vidx.cend()));
 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
                 for (const auto &r : vseg) {
-                    const auto &idx_begin = r.first;
-                    const auto &idx_end = r.second;
+                const auto &idx_begin = ::std::get<0>(r);
+                const auto &idx_end = ::std::get<1>(r);
 
                     // NOTE: add constness to vd in order to ensure that
                     // the degrees are compared via const refs.
-                    assert(
-                        ::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
+                assert(::std::is_sorted(::std::as_const(vd).data() + idx_begin, ::std::as_const(vd).data() + idx_end));
 
                     if constexpr (sizeof...(args) == 1u) {
                         using d_impl = customisation::internal::series_default_degree_impl;
@@ -698,26 +1077,108 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                         const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
                         const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
-                        assert(::std::equal(vd.data() + idx_begin, vd.data() + idx_end,
-                                            ::boost::make_transform_iterator(v.data() + idx_begin,
-                                                                             d_impl::d_extractor<s_t>{&s, &si, &ss}),
+                    assert(::std::equal(
+                        vd.data() + idx_begin, vd.data() + idx_end,
+                        ::boost::make_transform_iterator(v.data() + idx_begin, d_impl::d_extractor<s_t>{&s, &si, &ss}),
                                             [](const auto &a, const auto &b) { return !(a < b) && !(b < a); }));
                     }
                 }
 #endif
 
+            // Return the vector of degrees.
                 return vd;
+        }
             };
 
-            using ::obake::detail::type_c;
-#if defined(_MSC_VER) && (_MSVC_LANG > 201703L)
-            auto vd1 = sorter(v1, type_c<T>{}, vseg1);
-            auto vd2 = sorter(v2, type_c<U>{}, vseg2);
-            return [vd1,vd2,
-#else
+    // Prepare the variables to hold the segmentations
+    // and the degrees of the terms, if we are in a
+    // truncated multiplication.
+    decltype(compute_vseg(v1)) vseg1;
+    decltype(compute_vseg(v2)) vseg2;
+    auto degree_data = detail::poly_mul_impl_prepare_degree_data<T, U>(v1, v2, ss, args...);
+
+    // For both x and y, concurrently:
+    // - sort v1/v2 according to the segmentation order,
+    // - compute the segmentation ranges,
+    // - compute the degrees of the terms and sort according
+    //   to the degree within each segment (only for truncated
+    //   multiplication).
+    ::tbb::parallel_invoke(
+        [&v1, t_sorter, &vseg1, compute_vseg, &degree_data, seg_sorter]() {
+            ::tbb::parallel_sort(v1.begin(), v1.end(), t_sorter);
+            vseg1 = compute_vseg(v1);
+            if constexpr (sizeof...(Args) > 0u) {
+                ::std::get<0>(degree_data) = seg_sorter(v1, ::obake::detail::type_c<T>{}, vseg1);
+            } else {
+                ::obake::detail::ignore(degree_data, seg_sorter);
+            }
+        },
+        [&v2, t_sorter, &vseg2, compute_vseg, &degree_data, seg_sorter]() {
+            ::tbb::parallel_sort(v2.begin(), v2.end(), t_sorter);
+            vseg2 = compute_vseg(v2);
+            if constexpr (sizeof...(Args) > 0u) {
+                ::std::get<1>(degree_data) = seg_sorter(v2, ::obake::detail::type_c<U>{}, vseg2);
+            } else {
+                ::obake::detail::ignore(degree_data, seg_sorter);
+            }
+        });
+
+#if !defined(NDEBUG)
+    {
+        // Check the segmentations in debug mode.
+        assert(vseg1.size() <= nsegs);
+        assert(vseg2.size() <= nsegs);
+
+        auto verify_seg = [log2_nsegs, nsegs](const auto &vs, const auto &v) {
+            // Counter for the number of terms represented in the
+            // segmentation vector.
+            decltype(v.size()) counter = 0;
+
+            for (const auto &t : vs) {
+                const auto &[start, end, b_idx] = t;
+                assert(end <= v.size());
+                // NOTE: different check depending
+                // on whether we are in the sparse or
+                // dense case.
+                if (vs.size() < nsegs) {
+                    assert(start < end);
+                } else {
+                    assert(start <= end);
+                }
+                counter += end - start;
+
+                // Check that all elements in the range
+                // hash to the correct bucket index.
+                for (auto idx = start; idx < end; ++idx) {
+                    assert(::obake::hash(v[idx].first) % (s_size_t(1) << log2_nsegs) == b_idx);
+                }
+            }
+
+            assert(counter == v.size());
+        };
             
-            return [vd1 = sorter(v1, type_c<T>{}, vseg1), vd2 = sorter(v2, type_c<U>{}, vseg2),
+        verify_seg(vseg1, v1);
+        verify_seg(vseg2, v2);
+    }
 #endif
+
+    // Functor to compute the end index in the
+    // inner multiplication loops below, given
+    // an index into the first series and a segmentation
+    // range into the second series. In non-truncated
+    // mode, this functor will always return the end
+    // of the range, otherwise the returned
+    // value will ensure that the truncation limits
+    // are respected.
+    auto compute_end_idx2 = [&degree_data, &args...]() {
+        if constexpr (sizeof...(Args) == 0u) {
+            ::obake::detail::ignore(degree_data, args...);
+
+            return [](const auto &, const auto &r2) { return ::std::get<1>(r2); };
+        } else {
+            // Create and return the functor. The degree data
+            // for the two series will be moved in as vd1 and vd2.
+            return [vd1 = ::std::move(::std::get<0>(degree_data)), vd2 = ::std::move(::std::get<1>(degree_data)),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
@@ -726,28 +1187,26 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
-                using deg_t = remove_cvref_t<decltype(d_i)>;
 
                 // Find the first term in the range r2 such
                 // that d_i + d_j > max_deg.
                 // NOTE: we checked above that the static cast
                 // to the it diff type is safe.
                 using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
-                const auto it = ::std::upper_bound(
-                    ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.first),
-                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cbegin() + static_cast<it_diff_t>(r2.second),
-                                                     poly_mul_impl_degree_adder<deg_t>(&d_i)),
-                    max_deg,
-                    // Supply custom comparer in order to ensure the comparison
-                    // happens via const lvalue refs.
-                    [](const auto &a, const auto &b) { return a < b; });
+                const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(::std::get<0>(r2)),
+                                                   vd2.cbegin() + static_cast<it_diff_t>(::std::get<1>(r2)), max_deg,
+                                                   [&d_i](const auto &mdeg, const auto &d_j) {
+                                                       // NOTE: we require below
+                                                       // comparability between const lvalue limit
+                                                       // and rvalue of the sum of the degrees.
+                                                       return mdeg < d_i + d_j;
+                                                   });
 
                 // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
                 // type can safely be used as an index (for both
                 // vd1 and vd2).
-                return static_cast<idx_t>(it.base() - vd2.cbegin());
+                return static_cast<idx_t>(it - vd2.cbegin());
             };
         }
     }();
@@ -759,15 +1218,193 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     ::std::atomic<unsigned long long> n_mults(0);
 #endif
 
-    try {
-        // Parallel iteration over the number of buckets of the
-        // output segmented table.
-        ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), [&v1, &v2, &vseg1, &vseg2, nsegs, log2_nsegs,
-                                                                       &retval, &ss, mts = retval._get_max_table_size(),
-                                                                       &compute_end_idx2
+    // The parallel multiplication functor for the sparse case.
+    auto sparse_par_functor
+        = [&v1, &v2, &vseg1, &vseg2, nsegs, &retval, &ss, mts = retval._get_max_table_size(), &compute_end_idx2
+#if !defined(NDEBUG)
+           ,
+           log2_nsegs, &n_mults
+#endif
+    ](const auto &range) {
+              // Cache the pointers to the terms data.
+              // NOTE: doing it here rather than in the lambda
+              // capture seems to help performance on GCC.
+              auto vptr1 = v1.data();
+              auto vptr2 = v2.data();
+
+              // Temporary variable used in monomial multiplication.
+              ret_key_t tmp_key(ss);
+
+              // Cache begin/end interators into vseg2.
+              const auto vseg2_begin = vseg2.begin(), vseg2_end = vseg2.end();
+
+              for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
+                  // Get a reference to the current table in retval.
+                  auto &table = retval._get_s_table()[seg_idx];
+
+                  // The iterator in vseg2 that we will use
+                  // as the end point in the binary search below.
+                  // Initially, it is just the end of vseg2
+                  // (so that all of vseg2 is searched).
+                  auto end_search = vseg2_end;
+
+                  // The wrap around flag (see below).
+                  bool wrap_around = false;
+
+                  for (const auto &r1 : vseg1) {
+                      // Unpack in local variables.
+                      const auto [r1_start, r1_end, bi1] = r1;
+
+                      // The first time that bi1 is > seg_idx
+                      // we have a wrap-around. This means that:
+                      // - the search range in vseg2 will be reset
+                      //   to [vseg2_begin, vseg2_end),
+                      // - the bucket idx we need to look for
+                      //   in vseg2 is not seg_idx any more, but
+                      //   seg_idx + nsegs.
+                      // E.g., if seg_idx is 4, bi1 is 5 and nsegs
+                      // is 8, then there is no bucket index bi2 in
+                      // vseg2 such that 5 + bi2 = 4, but there might
+                      // be a bi2 such that 5 + bi2 = 4 + 8.
+                      if (!wrap_around && bi1 > seg_idx) {
+                          wrap_around = true;
+                          end_search = vseg2_end;
+                      }
+
+                      // Compute the target idx: this is seg_idx in case we
+                      // have not wrapped around yet, otherwise seg_idx + nsegs
+                      // (so that tgt_idx % nsegs == seg_idx).
+                      // NOTE: the guarantee on get_max_s_size() ensures that
+                      // we can always compute seg_idx + nsegs without overflow.
+                      const auto tgt_idx = wrap_around ? (seg_idx + nsegs) : seg_idx;
+
+                      // Locate a range in vseg2 such that the bucket idx of that range + bi1
+                      // is equal to tgt_idx.
+                      const auto it = ::std::lower_bound(
+                          vseg2_begin, end_search, tgt_idx,
+                          [bi1_ = bi1](const auto &t, const auto &b_idx) { return ::std::get<2>(t) + bi1_ < b_idx; });
+
+                      if (it == end_search || ::std::get<2>(*it) + bi1 != tgt_idx) {
+                          // There is no range in vseg2 such that its multiplication
+                          // by the current range in vseg1 results in terms which
+                          // end up at the bucket index seg_idx in the destination
+                          // segmented table. Move to the next range in vseg1.
+                          continue;
+                      }
+                      // Update the end point of the binary search. We know that
+                      // the next vseg1 range will bump up bi1 at least by one, thus,
+                      // in the next binary search, we know that anything we may find
+                      // must be *before* it.
+                      end_search = it;
+
+                      // Unpack in local variables.
+                      const auto &r2 = *it;
+                      const auto [r2_start, r2_end, bi2] = r2;
+                      ::obake::detail::ignore(r2_end, bi2);
+
+                      // The O(N**2) multiplication loop over the ranges.
+                      for (auto idx1 = r1_start; idx1 != r1_end; ++idx1) {
+                          const auto &[k1, c1] = *(vptr1 + idx1);
+
+                          // Compute the end index in the second range
+                          // for the current value of idx1.
+                          const auto idx_end2 = compute_end_idx2(idx1, r2);
+
+                          // In the truncated case, check if the end index
+                          // coincides with the begin index. In such a case,
+                          // we can skip all the remaining indices in r1 because
+                          // none of them will ever generate a term which respects
+                          // the truncation limits (both r1 and r2 are sorted
+                          // according to the degree).
+                          if (sizeof...(Args) > 0u && idx_end2 == r2_start) {
+                              break;
+                          }
+
+                          const auto end2 = vptr2 + idx_end2;
+                          for (auto ptr2 = vptr2 + r2_start; ptr2 != end2; ++ptr2) {
+                              const auto &[k2, c2] = *ptr2;
+
+                              // Do the monomial multiplication.
+                              ::obake::monomial_mul(tmp_key, k1, k2, ss);
+
+                              // Check that the result ends up in the correct bucket.
+                              assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
+
+                              // Attempt the insertion.
+                              // NOTE: this will attempt to insert a term with a default-constructed
+                              // coefficient. This is wasteful, it would be better to directly
+                              // construct the coefficient product only if the insertion actually
+                              // takes place (using a lazy multiplication approach).
+                              // Unfortunately, abseil's hash map is not exception safe,
+                              // and if the lazy multiplication throws, the table will be left
+                              // in an inconsistent state. See:
+                              // https://github.com/abseil/abseil-cpp/issues/388
+                              // See the commit
+                              // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                              // for an implementation of the lazy multiplication approach.
+                              // If they fix the exception safety issue, we can re-enable the
+                              // lazy approach.
+                              // NOTE: the coefficient concept demands default constructibility,
+                              // thus we can always emplace without arguments for the coefficient.
+                              const auto res = table.try_emplace(tmp_key);
+
+                              // NOTE: optimise with likely/unlikely here?
+                              if (res.second) {
+                                  // NOTE: coefficients are guaranteed to be move-assignable.
+                                  res.first->second = c1 * c2;
+                              } else {
+                                  // The insertion failed, a term with the same monomial
+                                  // exists already. Accumulate c1*c2 into the
+                                  // existing coefficient.
+                                  // NOTE: do it with fma3(), if possible.
+                                  if constexpr (is_mult_addable_v<ret_cf_t &, const cf1_t &, const cf2_t &>) {
+                                      ::obake::fma3(res.first->second, c1, c2);
+                                  } else {
+                                      res.first->second += c1 * c2;
+                                  }
+                              }
+
+#if !defined(NDEBUG)
+                              ++n_mults;
+#endif
+                          }
+                      }
+                  }
+
+                  // Locate and erase terms with zero coefficients
+                  // in the current table.
+                  const auto it_f = table.end();
+                  for (auto it = table.begin(); it != it_f;) {
+                      // NOTE: abseil's flat_hash_map returns void on erase(),
+                      // thus we need to increase 'it' before possibly erasing.
+                      // erase() does not cause rehash and thus will not invalidate
+                      // any other iterator apart from the one being erased.
+                      if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
+                          table.erase(it++);
+                      } else {
+                          ++it;
+                      }
+                  }
+
+                  // LCOV_EXCL_START
+                  // Check the table size against the max allowed size.
+                  if (obake_unlikely(table.size() > mts)) {
+                      obake_throw(::std::overflow_error, "The homomorphic multithreaded multiplication of two "
+                                                         "polynomials resulted in a table whose size ("
+                                                             + ::obake::detail::to_string(table.size())
+                                                             + ") is larger than the maximum allowed value ("
+                                                             + ::obake::detail::to_string(mts) + ")");
+                  }
+                  // LCOV_EXCL_STOP
+              }
+          };
+
+    // The parallel multiplication functor for the dense case.
+    auto dense_par_functor
+        = [&v1, &v2, &vseg1, &vseg2, nsegs, &retval, &ss, mts = retval._get_max_table_size(), &compute_end_idx2
 #if !defined(NDEBUG)
                                                                        ,
-                                                                       &n_mults
+           log2_nsegs, &n_mults
 #endif
         ](const auto &range) {
             // Cache the pointers to the terms data.
@@ -777,7 +1414,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             auto vptr2 = v2.data();
 
             // Temporary variable used in monomial multiplication.
-            ret_key_t tmp_key;
+              ret_key_t tmp_key(ss);
 
             for (auto seg_idx = range.begin(); seg_idx != range.end(); ++seg_idx) {
                 // Get a reference to the current table in retval.
@@ -792,20 +1429,42 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 // (i + j) % nsegs in retval. Thus, we need to select
                 // all i, j pairs such that (i + j) % nsegs == seg_idx.
                 for (s_size_t i = 0; i < nsegs; ++i) {
-                    const auto j = seg_idx >= i ? (seg_idx - i) : ((s_size_t(1) << log2_nsegs) - i + seg_idx);
+                      const auto j = seg_idx >= i ? (seg_idx - i) : (nsegs - i + seg_idx);
                     assert(j < vseg2.size());
 
                     // Fetch the corresponding ranges.
-                    const auto r1 = vseg1[i];
-                    const auto r2 = vseg2[j];
+                      const auto [r1_start, r1_end, bi1] = vseg1[i];
+                      const auto &r2 = vseg2[j];
+                      const auto [r2_start, r2_end, bi2] = r2;
+                      ::obake::detail::ignore(r2_end);
+
+                      // NOTE: in the dense case, the bucket
+                      // indices must be equal to i/j.
+                      assert(bi1 == i);
+                      assert(bi2 == j);
+                      ::obake::detail::ignore(bi1);
+                      ::obake::detail::ignore(bi2);
 
                     // The O(N**2) multiplication loop over the ranges.
-                    const auto idx_end1 = r1.second;
-                    for (auto idx1 = r1.first; idx1 != idx_end1; ++idx1) {
+                      for (auto idx1 = r1_start; idx1 != r1_end; ++idx1) {
                         const auto &[k1, c1] = *(vptr1 + idx1);
 
-                        const auto end2 = vptr2 + compute_end_idx2(idx1, r2);
-                        for (auto ptr2 = vptr2 + r2.first; ptr2 != end2; ++ptr2) {
+                          // Compute the end index in the second range
+                          // for the current value of idx1.
+                          const auto idx_end2 = compute_end_idx2(idx1, r2);
+
+                          // In the truncated case, check if the end index
+                          // coincides with the begin index. In such a case,
+                          // we can skip all the remaining indices in r1 because
+                          // none of them will ever generate a term which respects
+                          // the truncation limits (both r1 and r2 are sorted
+                          // according to the degree).
+                          if (sizeof...(Args) > 0u && idx_end2 == r2_start) {
+                              break;
+                          }
+
+                          const auto end2 = vptr2 + idx_end2;
+                          for (auto ptr2 = vptr2 + r2_start; ptr2 != end2; ++ptr2) {
                             const auto &[k2, c2] = *ptr2;
 
                             // Do the monomial multiplication.
@@ -814,13 +1473,29 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                             // Check that the result ends up in the correct bucket.
                             assert(::obake::hash(tmp_key) % (s_size_t(1) << log2_nsegs) == seg_idx);
 
-                            // Attempt the insertion. The coefficients are lazily multiplied
-                            // only if the insertion actually takes place.
-                            const auto res
-                                = table.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+                              // Attempt the insertion.
+                              // NOTE: this will attempt to insert a term with a default-constructed
+                              // coefficient. This is wasteful, it would be better to directly
+                              // construct the coefficient product only if the insertion actually
+                              // takes place (using a lazy multiplication approach).
+                              // Unfortunately, abseil's hash map is not exception safe,
+                              // and if the lazy multiplication throws, the table will be left
+                              // in an inconsistent state. See:
+                              // https://github.com/abseil/abseil-cpp/issues/388
+                              // See the commit
+                              // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                              // for an implementation of the lazy multiplication approach.
+                              // If they fix the exception safety issue, we can re-enable the
+                              // lazy approach.
+                              // NOTE: the coefficient concept demands default constructibility,
+                              // thus we can always emplace without arguments for the coefficient.
+                              const auto res = table.try_emplace(tmp_key);
 
                             // NOTE: optimise with likely/unlikely here?
-                            if (!res.second) {
+                              if (res.second) {
+                                  // NOTE: coefficients are guaranteed to be move-assignable.
+                                  res.first->second = c1 * c2;
+                              } else {
                                 // The insertion failed, a term with the same monomial
                                 // exists already. Accumulate c1*c2 into the
                                 // existing coefficient.
@@ -865,7 +1540,18 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                 }
                 // LCOV_EXCL_STOP
             }
-        });
+          };
+
+    try {
+        if (vseg1.size() == nsegs && vseg2.size() == nsegs) {
+            // Both vseg1 and vseg2 are represented in dense
+            // form, run the dense functor.
+            ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), dense_par_functor);
+        } else {
+            // At least one of vseg1/vseg2 are represented
+            // in sparse form, run the sparse functor.
+            ::tbb::parallel_for(::tbb::blocked_range<s_size_t>(0, nsegs), sparse_par_functor);
+        }
 
 #if !defined(NDEBUG)
         // Verify the number of term multiplications we performed,
@@ -875,8 +1561,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                    == static_cast<unsigned long long>(x.size()) * static_cast<unsigned long long>(y.size()));
         }
 #endif
-    } catch (...) {
         // LCOV_EXCL_START
+    } catch (...) {
         // In case of exceptions, clear retval before
         // rethrowing to ensure a known sane state.
         retval.clear();
@@ -915,6 +1601,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     static_assert(sizeof...(args) <= 2u);
     assert(!x.empty());
     assert(!y.empty());
+    assert(x.size() <= y.size());
     assert(retval.get_symbol_set() == x.get_symbol_set());
     assert(retval.get_symbol_set() == y.get_symbol_set());
     assert(retval.empty());
@@ -983,28 +1670,20 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 auto vd = [&v, &ss, &args...]() {
                     if constexpr (sizeof...(args) == 1u) {
                         // Total degree.
-                        using d_impl = customisation::internal::series_default_degree_impl;
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&ss}(*v.cbegin()));
-
                         ::obake::detail::ignore(args...);
 
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&ss}));
+                        // NOTE: in the make_degree_vector() helper we need
+                        // to compute the size of v via iterator differences.
+                        ::obake::detail::container_it_diff_check(v);
+
+                        return customisation::internal::make_degree_vector<s_t>(v.cbegin(), v.cend(), ss, false);
                     } else {
-                        // Partial degree.
-                        using d_impl = customisation::internal::series_default_p_degree_impl;
+                        // NOTE: in the make_p_degree_vector() helper we need
+                        // to compute the size of v via iterator differences.
+                        ::obake::detail::container_it_diff_check(v);
 
-                        // Fetch the list of symbols from the arguments and turn it into a
-                        // set of indices.
-                        const auto &s = ::std::get<1>(::std::forward_as_tuple(args...));
-                        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
-
-                        using deg_t = decltype(d_impl::d_extractor<s_t>{&s, &si, &ss}(*v.cbegin()));
-
-                        return ::std::vector<deg_t>(
-                            ::boost::make_transform_iterator(v.cbegin(), d_impl::d_extractor<s_t>{&s, &si, &ss}),
-                            ::boost::make_transform_iterator(v.cend(), d_impl::d_extractor<s_t>{&s, &si, &ss}));
+                        return customisation::internal::make_p_degree_vector<s_t>(
+                            v.cbegin(), v.cend(), ss, ::std::get<1>(::std::forward_as_tuple(args...)), false);
                     }
                 }();
 
@@ -1031,11 +1710,12 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 ::obake::detail::container_it_diff_check(vd);
                 // NOTE: use cbegin/cend on vd to ensure the copy ctor of
                 // the degree type is being called.
-                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.begin()),
-                                  ::boost::make_permutation_iterator(vd.cend(), vidx.end()));
+                vd = decltype(vd)(::boost::make_permutation_iterator(vd.cbegin(), vidx.cbegin()),
+                                  ::boost::make_permutation_iterator(vd.cend(), vidx.cend()));
                 ::obake::detail::container_it_diff_check(v);
-                v = ::std::remove_reference_t<decltype(v)>(::boost::make_permutation_iterator(v.begin(), vidx.begin()),
-                                                           ::boost::make_permutation_iterator(v.end(), vidx.end()));
+                v = ::std::remove_reference_t<decltype(v)>(
+                    ::boost::make_permutation_iterator(v.cbegin(), vidx.cbegin()),
+                    ::boost::make_permutation_iterator(v.cend(), vidx.cend()));
 
 #if !defined(NDEBUG)
                 // Check the results in debug mode.
@@ -1075,22 +1755,22 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 // Get the total/partial degree of the current term
                 // in the first series.
                 const auto &d_i = vd1[i];
-                using deg_t = remove_cvref_t<decltype(d_i)>;
 
                 // Find the first term in the second series such
                 // that d_i + d_j > max_deg.
-                const auto it = ::std::upper_bound(
-                    ::boost::make_transform_iterator(vd2.cbegin(), poly_mul_impl_degree_adder<deg_t>(&d_i)),
-                    ::boost::make_transform_iterator(vd2.cend(), poly_mul_impl_degree_adder<deg_t>(&d_i)), max_deg,
-                    // Supply custom comparer in order to ensure the comparison
-                    // happens via const lvalue refs.
-                    [](const auto &a, const auto &b) { return a < b; });
+                const auto it
+                    = ::std::upper_bound(vd2.cbegin(), vd2.cend(), max_deg, [&d_i](const auto &mdeg, const auto &d_j) {
+                          // NOTE: we require below
+                          // comparability between const lvalue limit
+                          // and rvalue of the sum of the degrees.
+                          return mdeg < d_i + d_j;
+                      });
 
                 // Turn the iterator into an index and return it.
                 // NOTE: we checked above that the iterator diff
                 // type can safely be used as an index (for both
                 // vd1 and vd2).
-                return static_cast<idx_t>(it.base() - vd2.cbegin());
+                return static_cast<idx_t>(it - vd2.cbegin());
             };
         }
     }();
@@ -1100,7 +1780,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
     try {
         // Temporary variable used in monomial multiplication.
-        ret_key_t tmp_key;
+        ret_key_t tmp_key(ss);
 
         const auto v1_size = v1.size();
         for (decltype(v1.size()) i = 0; i < v1_size; ++i) {
@@ -1111,8 +1791,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             // Get the upper limit of the multiplication
             // range in v2.
             const auto j_end = compute_j_end(i);
-            if (j_end == 0u) {
-                // If j_end is zero, we don't need to perform
+            if (sizeof...(Args) != 0u && j_end == 0u) {
+                // In truncated mode, if j_end is zero, we don't need to perform
                 // any more term multiplications as the remaining
                 // ones will all end up above the truncation limit.
                 break;
@@ -1126,10 +1806,15 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                 ::obake::monomial_mul(tmp_key, k1, t2->first, ss);
 
                 // Try to insert the new term.
-                const auto res = tab.try_emplace(tmp_key, poly_cf_mul_expr<cf1_t, cf2_t, ret_cf_t>{c1, c2});
+                // NOTE: see the explanation in the other
+                // multiplication function about why we adopt
+                // this scheme (i.e., default-emplace the coefficient).
+                const auto res = tab.try_emplace(tmp_key);
 
                 // NOTE: optimise with likely/unlikely here?
-                if (!res.second) {
+                if (res.second) {
+                    res.first->second = c1 * c2;
+                } else {
                     // The insertion failed, accumulate c1*c2 into the
                     // existing coefficient.
                     // NOTE: do it with fma3(), if possible.
@@ -1159,8 +1844,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 
         // NOTE: no need to check the table size, as retval
         // is not segmented.
-    } catch (...) {
         // LCOV_EXCL_START
+    } catch (...) {
         // retval may now contain zero coefficients.
         // Make sure to clear it before rethrowing.
         tab.clear();
@@ -1170,12 +1855,15 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 }
 
 // Implementation of poly multiplication with identical symbol sets.
+// Requires that x is not longer than y.
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
     using ret_key_t = series_key_t<ret_t>;
 
+    // Check the preconditions.
+    assert(x.size() <= y.size());
     assert(x.get_symbol_set() == y.get_symbol_set());
 
     // Init the return value.
@@ -1187,27 +1875,29 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
         return retval;
     }
 
-    if constexpr (::std::conjunction_v<is_homomorphically_hashable_monomial<ret_key_t>,
+    if constexpr (::std::conjunction_v<
+                      is_homomorphically_hashable_monomial<ret_key_t>,
                                        // Need also to be able to measure the byte size
-                                       // of the key/cf of ret_t, via const lvalue references.
+                      // of x, y, and the key/cf of ret_t, via const lvalue references.
                                        // NOTE: perhaps this is too much of a hard requirement,
                                        // and we can make this optional (if not supported,
                                        // fix the nsegs to something like twice the cores).
-                                       is_size_measurable<const ret_key_t &>,
-                                       is_size_measurable<const series_cf_t<ret_t> &>>) {
+                      is_size_measurable<const remove_cvref_t<T> &>, is_size_measurable<const remove_cvref_t<U> &>,
+                      is_size_measurable<const ret_key_t &>, is_size_measurable<const series_cf_t<ret_t> &>>) {
         // Homomorphic hashing is available, we can run
         // the multi-threaded implementation.
-        // NOTE: perhaps the heuristic here can be improved
-        // by taking into account the byte sizes of x/y?
-        if (x.size() < 1000u / y.size() || ::obake::detail::hc() == 1u) {
-            // If the operands are "small" (less than N
-            // term-by-term mults), or we just have 1 core
-            // available, just run the simple
-            // implementation.
+
+        // Establish the max byte size of the input series.
+        const auto max_bs = ::std::max(::obake::byte_size(::std::as_const(x)), ::obake::byte_size(::std::as_const(y)));
+
+        if ((x.size() == 1u && y.size() == 1u) || max_bs < 30000ul || ::obake::detail::hc() == 1u) {
+            // Run the simple implementation if either:
+            // - both polys have only 1 term, or
+            // - the maximum operand size is less than a threshold value, or
+            // - we have just 1 core.
             detail::poly_mul_impl_simple(retval, x, y, args...);
         } else {
-            // "Large" operands and multiple cores available,
-            // run the MT implementation.
+            // Otherwise, run the MT implementation.
             detail::poly_mul_impl_mt_hm(retval, x, y, args...);
         }
     } else {
@@ -1219,10 +1909,36 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
     return retval;
 }
 
-// Top level function for poly multiplication.
+// Top level function for poly multiplication. Requires that
+// x is not longer than y.
+// NOTE: future improvements:
+// - make the ntrials for the estimation of the average term size
+//   dependent on the number of term-by-term multiplications (need data for that).
+// NOTE: performance considerations:
+// - the multithreaded implementation still computes
+//   the degrees of the terms of the input series twice. This
+//   could be reduced at the price of changing a bit the code structure
+//   and at the cost of additional indirect sorting (because we
+//   would be computing the degree vectors at the beginning and then
+//   we would need to sort them for segmentation purposes). It's not
+//   clear to me if this is worth it at this time, need to profile;
+// - in highly rectangular multiplications, quite a bit of time
+//   is spent copying the larger operand into a vector of terms.
+//   Perhaps this could be parallelised for segmented series?
+// - in highly rectangular multiplications, the series size
+//   estimation is quite poor (see comments on top of the
+//   function). Not sure what we could do about it;
+// - when constructing vectors of indices, or when building
+//   vectors of degrees, we could improve performance by using
+//   a default-constructing allocator, in order to avoid zeroing
+//   out data which we will be overwriting anyway;
+// - perhaps vector permutations could be done in parallel?
 template <typename T, typename U, typename... Args>
 inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 {
+    // Check the precondition.
+    assert(x.size() <= y.size());
+
     if (x.get_symbol_set() == y.get_symbol_set()) {
         return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y), args...);
     } else {
@@ -1277,12 +1993,24 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
     }
 }
 
+// Helper to ensure that poly_mul_impl() is called with the
+// shorter poly first, switching around the arguments if necessary.
+template <typename T, typename U, typename... Args>
+inline auto poly_mul_impl_switch(T &&x, U &&y, const Args &... args)
+{
+    if (x.size() <= y.size()) {
+        return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), args...);
+    } else {
+        return detail::poly_mul_impl(::std::forward<U>(y), ::std::forward<T>(x), args...);
+    }
+}
+
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
 {
-    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
+    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 namespace detail
@@ -1291,6 +2019,8 @@ namespace detail
 // Metaprogramming to establish if we can perform
 // truncated total/partial degree multiplication on the
 // polynomial operands T and U with degree limit of type V.
+// NOTE: at this time, truncated multiplication is implemented
+// only if only the key is with degree.
 template <typename T, typename U, typename V, bool Total>
 constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
@@ -1299,15 +2029,15 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
     if constexpr (poly_mul_algo<T, U> == 0) {
         return 0;
     } else {
-        using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
-                                            customisation::internal::series_default_p_degree_impl>;
-
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
+        using d_impl = ::std::conditional_t<Total, customisation::internal::series_default_degree_impl,
+                                            customisation::internal::series_default_p_degree_impl>;
         constexpr auto algo1 = d_impl::template algo<T>;
         constexpr auto algo2 = d_impl::template algo<U>;
 
-        if constexpr (algo1 != 0 && algo2 != 0) {
+        // NOTE: algo == 3 means that only the key is with degree.
+        if constexpr (algo1 == 3 && algo2 == 3) {
             // Fetch the degree types.
             using deg1_t = typename d_impl::template ret_t<T>;
             using deg2_t = typename d_impl::template ret_t<U>;
@@ -1320,22 +2050,24 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
             // - V must be lt-comparable to the type of their sum via const lrefs.
             using deg_add_t = detected_t<::obake::detail::add_t, const deg1_t &, const deg2_t &>;
 
-            if constexpr (::std::conjunction_v<
-                              // NOTE: verify deg_add_t, before using it below.
-                              is_detected<::obake::detail::add_t, const deg1_t &, const deg2_t &>,
-                              ::std::is_copy_constructible<deg1_t>, ::std::is_copy_constructible<deg2_t>,
-                              ::std::is_move_constructible<deg1_t>, ::std::is_move_constructible<deg2_t>,
-                              is_less_than_comparable<::std::add_lvalue_reference_t<const V>,
-                                                      ::std::add_lvalue_reference_t<const deg_add_t>>>) {
-                return 1;
+            return static_cast<int>(::std::conjunction_v<
+                                    // NOTE: this will ensure that switching around
+                                    // the degree operands still works and produces the same
+                                    // type. This is necessary because in the poly moltiplication
+                                    // function we might end up swapping the operands.
+                                    // NOTE: this will also verify that deg_add_t is present.
+                                    is_addable<const deg1_t &, const deg2_t &>, ::std::is_copy_constructible<deg1_t>,
+                                    ::std::is_copy_constructible<deg2_t>, ::std::is_move_constructible<deg1_t>,
+                                    ::std::is_move_constructible<deg2_t>,
+                                    // NOTE: in the implementation functions, we always compare
+                                    // an lvalue ref to the limit V to an rvalue resulting
+                                    // from adding the degrees of one term from each series.
+                                    is_less_than_comparable<::std::add_lvalue_reference_t<const V>, deg_add_t>>);
             } else {
                 return 0;
             }
-        } else {
-            return 0;
         }
     }
-}
 
 template <typename T, typename U, typename V>
 inline constexpr auto poly_mul_truncated_degree_algo
@@ -1349,18 +2081,19 @@ inline constexpr auto poly_mul_truncated_p_degree_algo
 
 // Truncated multiplication.
 // NOTE: do we need the type traits/concepts as well?
+// NOTE: should these be function objects?
 template <typename T, typename U, typename V,
           ::std::enable_if_t<detail::poly_mul_truncated_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
 {
-    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
+    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
 }
 
 template <typename T, typename U, typename V,
           ::std::enable_if_t<detail::poly_mul_truncated_p_degree_algo<T &&, U &&, V> != 0, int> = 0>
 inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
 {
-    return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
+    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
 }
 
 namespace detail
@@ -1559,34 +2292,29 @@ constexpr auto poly_truncate_degree_algorithm_impl()
         // Not a polynomial.
         return failure;
     } else {
-        using key_t = series_key_t<rT>;
+        // Check if we can compute the degree of the terms via the default
+        // implementation for series.
+        using d_impl = customisation::internal::series_default_degree_impl;
+        constexpr auto algo = d_impl::template algo<T>;
 
-        if constexpr (is_key_with_degree_v<const key_t &>) {
-            // The key supports degree computation.
-
-            if constexpr (::std::disjunction_v<is_with_degree<const series_cf_t<rT> &>>) {
-                // NOTE: for the time being, we deal with only truncation
-                // based on key filtering. Thus, if the coefficient type
-                // has a degree, return failure.
-                return failure;
-            } else {
+        if constexpr (algo == 3) {
                 // The truncation will involve only key-based
                 // filtering. We need to be able to lt-compare U
                 // to the degree type of the key (const lvalue
-                // ref vs rvalue). The degree of the key
-                // is computed via lvalue ref.
-                if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>,
-                                                        ::obake::detail::key_degree_t<const key_t &>>) {
+            // ref vs rvalue).
+            using deg_t = typename d_impl::template ret_t<T>;
+
+            if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t>) {
                     return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
                 } else {
                     return failure;
                 }
-            }
         } else {
-            // The key does not support degree computation, fail.
+            // The key degree computation is not possible, or it
+            // involves the coefficient in addition to the key.
             // NOTE: the case in which the coefficient is degree
             // truncatable and the key does not support degree computation
-            // should eventually be handled in a default series implementation
+            // may eventually be handled in a default series implementation
             // of truncate_degree().
             return failure;
         }
@@ -1605,7 +2333,7 @@ using poly_truncate_degree_ret_t = typename decltype(poly_truncate_degree_algori
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U &&y_)
+inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x, U &&y_)
 {
     using ret_t = detail::poly_truncate_degree_ret_t<T &&, U &&>;
     constexpr auto algo = detail::poly_truncate_degree_algo<T &&, U &&>;
@@ -1614,51 +2342,15 @@ inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x_, U 
     static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
     static_assert(algo == 1);
 
-    // We will need only const access to x and y.
-    const auto &x = ::std::as_const(x_);
-    const auto &y = ::std::as_const(y_);
+    // Use the default functor for the extraction of the term degree.
+    using d_impl = customisation::internal::series_default_degree_impl;
 
-    // Cache the symbol set.
-    const auto &ss = x.get_symbol_set();
-
-    // Prepare the return value: same symbol set,
-    // same number of segments, but don't reserve
-    // space beforehand.
-    ret_t retval;
-    retval.set_symbol_set(ss);
-    retval.set_n_segments(x.get_s_size());
-
-    // Get references to the in & out tables.
-    const auto &in_s_table = x._get_s_table();
-    auto &out_s_table = retval._get_s_table();
-
-    // NOTE: parallelisation opportunities here,
-    // since we operate table by table.
-    // NOTE: in principle we could exploit an x rvalue
-    // here to move the existing coefficients instead
-    // of copying them (as we do elsewhere with the help
-    // of a rref_cleaner). Keep it in mind for the
-    // future.
-    for (decltype(in_s_table.size()) i = 0; i < in_s_table.size(); ++i) {
-        const auto &tab_in = in_s_table[i];
-        auto &tab_out = out_s_table[i];
-
-        for (const auto &t : tab_in) {
-            const auto &k = t.first;
-
-            if (!(y < ::obake::key_degree(k, ss))) {
-                // The key degree does not exceed the
-                // limit, add the term to the return value.
-                // NOTE: we can emplace directly into the table
-                // with no checks, as we are not changing anything
-                // in the term.
-                [[maybe_unused]] const auto res = tab_out.try_emplace(k, t.second);
-                assert(res.second);
-            }
-        }
-    }
-
-    return retval;
+    // Implement on top of filter().
+    // NOTE: d_extractor will strip out the cvref
+    // from T, thus we can just pass in T as-is.
+    return ::obake::filter(::std::forward<T>(x),
+                           [deg_ext = d_impl::d_extractor<T>{&x.get_symbol_set()},
+                            &y = ::std::as_const(y_)](const auto &t) { return !(y < deg_ext(t)); });
 }
 
 namespace detail

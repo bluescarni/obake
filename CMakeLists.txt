@@ -14,7 +14,7 @@ endif()
 # enable C here, on some configurations (e.g., Ubuntu
 # + clang) the threading detection/setup seems to break
 # down.
-project(obake VERSION 0.1 LANGUAGES CXX C)
+project(obake VERSION 0.3 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
 
@@ -58,6 +58,7 @@ set(OBAKE_CXX_FLAGS_DEBUG ${YACMA_CXX_FLAGS} ${YACMA_CXX_FLAGS_DEBUG})
 set(OBAKE_CXX_FLAGS_RELEASE ${YACMA_CXX_FLAGS})
 
 if(YACMA_COMPILER_IS_MSVC)
+    include(CheckCXXCompilerFlag)
     # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
     # Also, enable the bigobj flag and the WIN32_LEAN_AND_MEAN definitions:
     # https://stackoverflow.com/questions/11040133/what-does-defining-win32-lean-and-mean-exclude-exactly
@@ -163,8 +164,8 @@ endif()
 # TBB.
 find_package(TBB REQUIRED)
 
-# Depend on DbgEng on MSVC, for the stack trace support.
-if(YACMA_COMPILER_IS_MSVC)
+# Depend on DbgEng on WIN32, for the stack trace support.
+if(WIN32)
     find_package(DbgEng REQUIRED)
 endif()
 
@@ -190,8 +191,8 @@ else()
 endif()
 
 add_library(obake SHARED "${OBAKE_SRC_FILES}")
-set_property(TARGET obake PROPERTY VERSION "1.0")
-set_property(TARGET obake PROPERTY SOVERSION 1 )
+set_property(TARGET obake PROPERTY VERSION "3.0")
+set_property(TARGET obake PROPERTY SOVERSION 3 )
 target_compile_options(obake PRIVATE
     "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
@@ -211,7 +212,16 @@ target_include_directories(obake PUBLIC
     $<INSTALL_INTERFACE:include>)
 
 # Link the deps.
-target_link_libraries(obake PUBLIC Threads::Threads mp++::mp++ absl::flat_hash_map absl::hash Boost::boost TBB::tbb)
+target_link_libraries(obake PUBLIC
+    Threads::Threads
+    mp++::mp++
+    absl::flat_hash_map
+    absl::flat_hash_set
+    absl::hash
+    Boost::boost
+    Boost::serialization
+    TBB::tbb
+)
 if(OBAKE_WITH_LIBBACKTRACE)
     target_link_libraries(obake PUBLIC libbacktrace::libbacktrace)
 else()
@@ -220,8 +230,8 @@ else()
     target_link_libraries(obake PUBLIC obake::dl)
 endif()
 
-# Link to DbgEng on MSVC.
-if(YACMA_COMPILER_IS_MSVC)
+# Link to DbgEng on Windows.
+if(WIN32)
     target_link_libraries(obake PUBLIC DbgEng::DbgEng)
 endif()
 

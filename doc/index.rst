@@ -6,20 +6,21 @@
 obake
 =====
 
+    `Obake (お化け) <https://en.wikipedia.org/wiki/Obake>`_ [...] are a
+    class of yōkai, preternatural creatures in Japanese folklore.
+    Literally, the terms mean a thing that changes, referring to a state of
+    transformation or shapeshifting.
+
 obake is a C++ computer algebra library for the symbolic
 manipulation of sparse multivariate polynomials and other
 closely-related symbolic objects (such as truncated power
 series, Poisson series, etc.).
 
-.. _getting_started:
-
-Getting started
----------------
-
 .. toctree::
    :maxdepth: 1
 
-   install
+   install.rst
+   changelog.rst
 
 
 Indices and tables

@@ -20,13 +20,10 @@ obake also depends on other libraries for optional features:
 * on some operating systems, obake can use `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   to improve the quality of the stack traces.
 
-Installing obake
-----------------
-
 .. _installation_from_source:
 
 Installation from source
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 obake is written in `C++17 <https://en.wikipedia.org/wiki/C%2B%2B17>`_,
 and thus it requires a fairly recent compiler with
@@ -38,7 +35,7 @@ tested in obake's continuous integration setup:
 * Visual Studio 2019 on Windows,
 * Clang + Visual Studio 2015 on Windows
   (via the ``clang-cl`` driver),
-* Clang 4 and Xcode 10.2 on OSX.
+* Clang 9 on OSX.
 
 See also the
 :ref:`compiler and platform specific notes <platform_specific_notes>`.
@@ -118,7 +115,7 @@ If enabled, the test suite can be executed with the command:
    DLL (otherwise the tests will fail to run).
 
 Troubleshooting
-"""""""""""""""
+^^^^^^^^^^^^^^^
 
 By far, the most common problem when compiling obake is the detection
 of the dependencies.
@@ -145,7 +142,7 @@ for obake's build system to correctly locate the dependencies.
 .. _platform_specific_notes:
 
 Compiler and platform specific notes
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Visual Studio:
 
@@ -184,16 +181,16 @@ OSX:
   `Homebrew <https://brew.sh/>`_.
 
 Building the documentation
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 obake's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/>`_,
-and it uses a `custom theme <https://github.com/myyasuda/sphinx_materialdesign_theme>`_.
+and it uses a `custom theme <https://sphinx-rtd-theme.readthedocs.io/en/stable/>`_.
 Sphinx can typically be installed from a variety of package managers,
 while the custom theme can easily be installed with ``pip``:
 
 .. code-block:: console
 
-   $ pip install --user sphinx_materialdesign_theme
+   $ pip install --user sphinx_rtd_theme
 
 Before attempting to build the documentation, you must ensure
 to run CMake from the ``build`` directory at least once
@@ -215,3 +212,29 @@ to build the documentation. Executing the command
 
 will produce the documentation in HTML format. The documentation will be
 generated in the ``doc/_build`` directory.
+
+Packages
+--------
+
+Conda
+^^^^^
+
+obake is available in the `conda <https://conda.io/en/latest/>`__ package manager from the
+`conda-forge <https://conda-forge.org/>`__ channel. Two
+packages are available:
+
+* `obake <https://anaconda.org/conda-forge/obake>`__, which contains the obake shared library,
+* `obake-devel <https://anaconda.org/conda-forge/obake-devel>`__,
+  which contains the obake headers and the
+  CMake support files.
+
+In order to install obake via conda, you just need
+to add ``conda-forge`` to the channels:
+
+.. code-block:: console
+
+   $ conda config --add channels conda-forge
+   $ conda install obake obake-devel
+
+Please refer to the `conda documentation <https://conda.io/en/latest/>`__ for instructions on how to setup and manage
+your conda installation.

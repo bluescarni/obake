@@ -93,10 +93,7 @@ TEST_CASE("k_packer_unpacker")
 
         // Unitary packing/unpacking.
         kp_t kp1(1);
-        // Also test get() without enough pushed values.
-        OBAKE_REQUIRES_THROWS_CONTAINS(
-            kp1.get(), std::out_of_range,
-            "the number of values pushed to the packer (0) is less than the size used for construction (1)");
+        REQUIRE(kp1.get() == int_t{0});
 
         // Try the limits.
         kp1 << lim_min;
@@ -143,6 +140,7 @@ TEST_CASE("k_packer_unpacker")
 
                 for (auto k = 0; k < ntrials; ++k) {
                     kp1 = kp_t(size);
+                    REQUIRE(kp1.get() == int_t{0});
                     for (auto j = 0u; j < size; ++j) {
                         if constexpr (is_signed_v<int_t>) {
                             v[j] = idist(

@@ -117,7 +117,7 @@ constexpr auto k_packing_compute_deltas()
 
             // The generated random number will have the top two bits
             // set to 1. This ensures that the generated deltas don't vary
-            // too much, while still retaining some randomicity in the lower bits.
+            // too much, while still retaining some randomness in the lower bits.
             const auto hi = T(3) << (cur_nbits - 2u);
             const auto lo = static_cast<T>(rnd >> (static_cast<unsigned>(limits_digits<uint_t>) - cur_nbits + 2u));
 
@@ -470,13 +470,9 @@ public:
     // Fetch the encoded value.
     constexpr const T &get() const
     {
-        if (obake_unlikely(m_index < m_size)) {
-            obake_throw(::std::out_of_range, "Cannot fetch the packed value from this Kronecker packer: the number of "
-                                             "values pushed to the packer ("
-                                                 + detail::to_string(m_index)
-                                                 + ") is less than the size used for construction ("
-                                                 + detail::to_string(m_size) + ")");
-        }
+        // NOTE: if we pushed fewer values than m_size,
+        // this will be equivalent to having pushed
+        // zeroes for the missing values.
         return m_value;
     }
 

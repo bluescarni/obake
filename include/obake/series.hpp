@@ -27,6 +27,11 @@
 #include <boost/iterator/iterator_categories.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/split_member.hpp>
+
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
 
 #include <mp++/integer.hpp>
 
@@ -67,6 +72,7 @@
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
 #include <obake/math/trim.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/tex_stream_insert.hpp>
 #include <obake/type_name.hpp>
@@ -79,7 +85,7 @@ namespace obake
 // - constructor from symbol_set generates unitary key
 //   compatible with the input symbol set (this is used, for
 //   instance, in series' generic constructor from a lower rank
-//   series).
+//   series, and when preparing an output value for monomial_mul()).
 template <typename T>
 using is_key = ::std::conjunction<is_semi_regular<T>, is_constructible<T, const symbol_set &>,
                                   is_hashable<::std::add_lvalue_reference_t<const T>>,
@@ -267,7 +273,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
     static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
     // Cache a reference to the symbol set.
-    const auto &ss = s.get_symbol_set();
+    [[maybe_unused]] const auto &ss = s.get_symbol_set();
 
     if constexpr (CheckTableSize == sat_check_table_size::on) {
         // LCOV_EXCL_START
@@ -544,6 +550,102 @@ struct series_rref_clearer {
     T &&m_ref;
 };
 
+// Helper to extend the keys of "from" with the symbol insertion map ins_map.
+// The new series will be written to "to". The coefficient type of "to"
+// may be different from the coefficient type of "from", in which case a coefficient
+// conversion will take place. "to" is supposed to have to correct symbol set already,
+// but, apart from that, it must be empty, and the number of segments and space
+// reservation will be taken from "from".
+template <typename To, typename From>
+inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
+{
+    // NOTE: we assume that this helper is
+    // invoked with a non-empty insertion map, and an empty
+    // "to" series. "to" must have the correct symbol set.
+    assert(!ins_map.empty());
+    assert(to.empty());
+
+    // Ensure that the key type of From
+    // is symbol mergeable (via const lvalue ref).
+    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
+
+    // We may end up moving coefficients from "from" in the conversion to "to".
+    // Make sure we will clear "from" out properly.
+    series_rref_clearer<From> from_c(::std::forward<From>(from));
+
+    // Cache the original symbol set.
+    const auto &orig_ss = from.get_symbol_set();
+
+    // Set the number of segments, reserve space.
+    const auto from_log2_size = from.get_s_size();
+    to.set_n_segments(from_log2_size);
+    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
+
+    // Establish if we need to check for zero coefficients
+    // when inserting. We don't if the coefficient types of to and from
+    // coincide (i.e., no cf conversion takes place),
+    // otherwise the conversion might generate zeroes.
+    constexpr auto check_zero
+        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+
+    // Merge the terms, distinguishing the segmented vs non-segmented case.
+    if (from_log2_size) {
+        for (auto &t : from._get_s_table()) {
+            for (auto &term : t) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                auto &k = term.first;
+                auto &c = term.second;
+
+                // Compute the merged key.
+                auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+
+                // Insert the term. We need the following checks:
+                // - zero check, in case the coefficient type changes,
+                // - table size check, because even if we know the
+                //   max table size was not exceeded in the original series,
+                //   it might be now (as the merged key may end up in a different
+                //   table).
+                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
+                // that symbol merging does not affect is_zero(), compatibility and
+                // uniqueness.
+                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
+                } else {
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
+                }
+            }
+        }
+    } else {
+        auto &to_table = to._get_s_table()[0];
+
+        for (auto &t : from._get_s_table()[0]) {
+            // NOTE: old clang does not like structured
+            // bindings in the for loop.
+            auto &k = t.first;
+            auto &c = t.second;
+
+            // Compute the merged key.
+            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+
+            // Insert the term: the only check we may need is check_zero, in case
+            // the coefficient type changes. We know that the table size cannot be
+            // exceeded as we are dealing with a single table.
+            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::move(c));
+            } else {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::as_const(c));
+            }
+        }
+    }
+}
+
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
@@ -554,6 +656,8 @@ template <typename K, typename C, typename Tag, typename>
 #endif
 class series
 {
+    friend class ::boost::serialization::access;
+
 public:
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
     using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
@@ -791,6 +895,16 @@ public:
             }
         }
 #endif
+
+        if (m_s_table.size() > 1u) {
+            // Clear the tables in parallel if there's more than 1.
+            ::tbb::parallel_for(::tbb::blocked_range<decltype(m_s_table.begin())>(m_s_table.begin(), m_s_table.end()),
+                                [](const auto &range) {
+                                    for (auto &t : range) {
+                                        t.clear();
+                                    }
+                                });
+        }
     }
 
     // Member function implementation of the swap primitive.
@@ -836,7 +950,7 @@ public:
     // NOTE: the guarantee that we can
     // always shift a s_size_type by this
     // value is important and needs to be
-    // documents.
+    // documented.
     static unsigned get_max_s_size()
     {
         return max_log2_size;
@@ -1236,6 +1350,110 @@ public:
     {
         return series::find_impl(*this, k);
     }
+
+    // Return a bunch of statistics
+    // about the hash table(s) in string
+    // format.
+    ::std::string table_stats() const
+    {
+        ::std::ostringstream oss;
+
+        const auto s = size();
+        const auto ntables = m_s_table.size();
+
+        oss << "Total number of terms             : " << s << '\n';
+        oss << "Total number of tables            : " << ntables << '\n';
+
+        if (s != 0u) {
+            oss << "Average terms per table           : " << static_cast<double>(s) / static_cast<double>(ntables)
+                << '\n';
+            const auto [it_min, it_max] = ::std::minmax_element(
+                m_s_table.cbegin(), m_s_table.cend(),
+                [](const table_type &t1, const table_type &t2) { return t1.size() < t2.size(); });
+            oss << "Min/max terms per table           : " << it_min->size() << '/' << it_max->size() << '\n';
+        }
+
+        oss << "Total size in bytes               : " << ::obake::byte_size(*this) << '\n';
+
+        return oss.str();
+    }
+
+private:
+    // Serialisation.
+    template <class Archive>
+    void save(Archive &ar, unsigned) const
+    {
+        ar << m_log2_size;
+        ar << m_symbol_set;
+
+        for (const auto &tab : m_s_table) {
+            ar << tab.size();
+
+            // Save separately key and coefficient.
+            for (const auto &t : tab) {
+                ar << t.first;
+                ar << t.second;
+            }
+        }
+    }
+    template <class Archive>
+    void load(Archive &ar, unsigned)
+    {
+        // Empty out before doing anything.
+        clear();
+
+        try {
+            // Recover the segmented size.
+            unsigned log2_size;
+            ar >> log2_size;
+            set_n_segments(log2_size);
+
+            // Recover the symbol set.
+            ar >> m_symbol_set;
+
+            // Iterate over the tables, reading in
+            // the keys/coefficients sequentially
+            // and inserting them.
+            K tmp_k;
+            C tmp_c;
+            for (auto &tab : m_s_table) {
+                decltype(tab.size()) size;
+                ar >> size;
+                tab.reserve(size);
+
+                for (decltype(tab.size()) i = 0; i < size; ++i) {
+                    ar >> tmp_k;
+                    ar >> tmp_c;
+
+                    // NOTE: don't need any checking, as we assume that:
+                    // - the original table had no zeroes,
+                    // - the original table had no incompatible keys,
+                    // - the original table did not overflow the max size,
+                    // - the original table had only unique keys.
+                    // Note that deserialisation of a series that was saved
+                    // in a previous program execution will result in a term
+                    // order different from the original one due to abseil's salting,
+                    // but the number of terms in a specific table will be the same
+                    // because the first level hash is not salted.
+                    // NOTE: this is essentially identical to a straight emplace_back()
+                    // on the table, just with some added assertions.
+                    detail::series_add_term_table<true, detail::sat_check_zero::off, detail::sat_check_compat_key::off,
+                                                  detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+                        *this, tab,
+                        // NOTE: pass as const, so that we are sure the copy constructors
+                        // will be used.
+                        ::std::as_const(tmp_k), ::std::as_const(tmp_c));
+                }
+            }
+            // LCOV_EXCL_START
+        } catch (...) {
+            // Avoid inconsistent state in case of exceptions.
+            clear();
+            throw;
+        }
+        // LCOV_EXCL_STOP
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 private:
     s_table_type m_s_table;
@@ -1866,100 +2084,6 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<2>)
 template <typename T, typename U>
 constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
     OBAKE_SS_FORWARD_FUNCTION(series_add(::std::forward<T>(x), ::std::forward<U>(y)));
-
-// Helper to extend the keys of "from" with the symbol insertion map ins_map.
-// The new series will be written to "to". The coefficient type of "to"
-// may be different from the coefficient type of "from", in which case a coefficient
-// conversion will take place.
-template <typename To, typename From>
-inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
-{
-    // NOTE: we assume that this helper is
-    // invoked with a non-empty insertion map, and an empty
-    // "to" series. "to" must have the correct symbol set.
-    assert(!ins_map.empty());
-    assert(to.empty());
-
-    // Ensure that the key type of From
-    // is symbol mergeable (via const lvalue ref).
-    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
-
-    // We may end up moving coefficients from "from" in the conversion to "to".
-    // Make sure we will clear "from" out properly.
-    series_rref_clearer<From> from_c(::std::forward<From>(from));
-
-    // Cache the original symbol set.
-    const auto &orig_ss = from.get_symbol_set();
-
-    // Set the number of segments, reserve space.
-    const auto from_log2_size = from.get_s_size();
-    to.set_n_segments(from_log2_size);
-    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
-
-    // Establish if we need to check for zero coefficients
-    // when inserting. We don't if the coefficient types of to and from
-    // coincide (i.e., no cf conversion takes place),
-    // otherwise the conversion might generate zeroes.
-    constexpr auto check_zero
-        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
-
-    // Merge the terms, distinguishing the segmented vs non-segmented case.
-    if (from_log2_size) {
-        for (auto &t : from._get_s_table()) {
-            for (auto &term : t) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                auto &k = term.first;
-                auto &c = term.second;
-
-                // Compute the merged key.
-                auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
-
-                // Insert the term. We need the following checks:
-                // - zero check, in case the coefficient type changes,
-                // - table size check, because even if we know the
-                //   max table size was not exceeded in the original series,
-                //   it might be now (as the merged key may end up in a different
-                //   table).
-                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
-                // that symbol merging does not affect is_zero(), compatibility and
-                // uniqueness.
-                if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
-                } else {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
-                }
-            }
-        }
-    } else {
-        auto &to_table = to._get_s_table()[0];
-
-        for (auto &t : from._get_s_table()[0]) {
-            // NOTE: old clang does not like structured
-            // bindings in the for loop.
-            auto &k = t.first;
-            auto &c = t.second;
-
-            // Compute the merged key.
-            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
-
-            // Insert the term: the only check we may need is check_zero, in case
-            // the coefficient type changes. We know that the table size cannot be
-            // exceeded as we are dealing with a single table.
-            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::move(c));
-            } else {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::as_const(c));
-            }
-        }
-    }
-}
 
 // Meta-programming to establish the algorithm and return type
 // of the default implementation of series add/sub. It will return
@@ -3224,7 +3348,7 @@ struct series_default_degree_impl {
         auto operator()(const U &p) const
         {
             constexpr auto al = algo<remove_cvref_t<T>>;
-            static_assert(al > 0 || al <= 2);
+            static_assert(al > 0 && al <= 3);
             assert(ss != nullptr);
 
             if constexpr (al == 1) {
@@ -3286,6 +3410,42 @@ inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::a
 #endif
     = series_default_degree_impl{};
 
+// Helper to construct a vector of total degrees
+// from a range of terms using the series_default_degree_impl
+// machinery. T is the series type which the terms
+// in the range refer to. The 'parallel' flag establishes
+// if the construction of the vector of degrees should
+// be done in a parallel fashion. 'It' must be a random-access iterator.
+template <typename T, typename It>
+inline auto make_degree_vector(It begin, It end, const symbol_set &ss, bool parallel)
+{
+    static_assert(is_random_access_iterator_v<It>);
+
+    using d_impl = series_default_degree_impl;
+    using deg_t = decltype(d_impl::d_extractor<T>{&ss}(*begin));
+
+    // Build the degree extractor.
+    const auto d_ex = d_impl::d_extractor<T>{&ss};
+
+    if (parallel) {
+        ::std::vector<deg_t> retval;
+        // NOTE: we require deg_t to be a semi-regular type,
+        // thus it is def-constructible.
+        retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
+
+        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+            for (auto it = range.begin(); it != range.end(); ++it) {
+                retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
+            }
+        });
+
+        return retval;
+    } else {
+        return ::std::vector<deg_t>(::boost::make_transform_iterator(begin, d_ex),
+                                    ::boost::make_transform_iterator(end, d_ex));
+    }
+}
+
 } // namespace customisation::internal
 
 // Customise obake::p_degree() for series types.
@@ -3316,7 +3476,7 @@ struct series_default_p_degree_impl {
         auto operator()(const U &p) const
         {
             constexpr auto al = algo<remove_cvref_t<T>>;
-            static_assert(al > 0 || al <= 2);
+            static_assert(al > 0 && al <= 3);
             assert(s != nullptr);
             assert(si != nullptr);
             assert(ss != nullptr);
@@ -3389,6 +3549,46 @@ template <typename T>
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
 #endif
     = series_default_p_degree_impl{};
+
+// Helper to construct a vector of partial degrees
+// from a range of terms using the series_default_p_degree_impl
+// machinery. T is the series type which the terms
+// in the range refer to. The 'parallel' flag establishes
+// if the construction of the vector of degrees should
+// be done in a parallel fashion. 'It' must be a random-access iterator.
+template <typename T, typename It>
+inline auto make_p_degree_vector(It begin, It end, const symbol_set &ss, const symbol_set &s, bool parallel)
+{
+    static_assert(is_random_access_iterator_v<It>);
+
+    using d_impl = series_default_p_degree_impl;
+
+    // Turn the list of symbols into a set of indices.
+    const auto si = detail::ss_intersect_idx(s, ss);
+
+    using deg_t = decltype(d_impl::d_extractor<T>{&s, &si, &ss}(*begin));
+
+    // Build the degree extractor.
+    const auto d_ex = d_impl::d_extractor<T>{&s, &si, &ss};
+
+    if (parallel) {
+        ::std::vector<deg_t> retval;
+        // NOTE: we require deg_t to be a semi-regular type,
+        // thus it is def-constructible.
+        retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
+
+        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+            for (auto it = range.begin(); it != range.end(); ++it) {
+                retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
+            }
+        });
+
+        return retval;
+    } else {
+        return ::std::vector<deg_t>(::boost::make_transform_iterator(begin, d_ex),
+                                    ::boost::make_transform_iterator(end, d_ex));
+    }
+}
 
 } // namespace customisation::internal
 
@@ -3643,6 +3843,129 @@ inline constexpr auto trim<T, ::std::enable_if_t<series_default_trim_impl::algo<
 
 } // namespace customisation::internal
 
+namespace detail
+{
+
+// The type returned by the application of the functor
+// F to a term of a series with key K, coefficient C and tag Tag.
+// Everything done via const lvalue refs.
+template <typename F, typename K, typename C, typename Tag>
+using term_filter_return_t
+    = decltype(::std::declval<const F &>()(::std::declval<const series_term_t<series<K, C, Tag>> &>()));
+
+// NOTE: for now, pass the series with a const reference. In the future,
+// we may want to allow for perfect forwarding to exploit move-construction
+// of the coefficients, as done elsewhere (see rref cleaner).
+template <typename K, typename C, typename Tag, typename F,
+          ::std::enable_if_t<::std::is_convertible_v<detected_t<term_filter_return_t, F, K, C, Tag>, bool>, int> = 0>
+inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
+{
+    // Init the return value. Same symbol set
+    // and same number of segments as s.
+    series<K, C, Tag> retval;
+    retval.set_symbol_set(s.get_symbol_set());
+    retval.set_n_segments(s.get_s_size());
+
+    // Do the filtering table by table.
+    // NOTE: this can easily be parallelised.
+    const auto n_tables = s._get_s_table().size();
+    for (decltype(s._get_s_table().size()) table_idx = 0; table_idx < n_tables; ++table_idx) {
+        // Fetch references to the input/output tables.
+        const auto &in_table = s._get_s_table()[table_idx];
+        auto &out_table = retval._get_s_table()[table_idx];
+
+        for (const auto &t : in_table) {
+            if (f(t)) {
+                [[maybe_unused]] const auto res = out_table.insert(t);
+                // The insertion must be successful,
+                // as we are not changing the original keys.
+                assert(res.second);
+            }
+        }
+    }
+
+    return retval;
+}
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct filter_msvc {
+    template <typename T, typename F>
+    constexpr auto operator()(T &&s, const F &f) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::filter_impl(::std::forward<T>(s), f))
+};
+
+inline constexpr auto filter = filter_msvc{};
+
+#else
+
+// NOTE: do we need a concept/type trait for this? See also the testing.
+// NOTE: force const reference passing for f as a hint
+// that the implementation may be parallel.
+inline constexpr auto filter =
+    [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filter_impl(::std::forward<decltype(s)>(s), f));
+
+#endif
+
+namespace detail
+{
+
+// NOTE: for now, pass the series with a const reference. In the future,
+// we may want to allow for perfect forwarding to exploit rvalue
+// semantics in series_sym_extender().
+template <typename K, typename C, typename Tag, ::std::enable_if_t<is_symbols_mergeable_key_v<const K &>, int> = 0>
+inline series<K, C, Tag> add_symbols_impl(const series<K, C, Tag> &s, const symbol_set &ss)
+{
+    const auto [merged_ss, ins_map, _] = detail::merge_symbol_sets(s.get_symbol_set(), ss);
+    detail::ignore(_);
+
+    if (ins_map.empty()) {
+        // Empty insertion map: there are no
+        // symbols to add.
+        return s;
+    }
+
+    series<K, C, Tag> retval;
+    // NOTE: the sym extender takes care of the segmentation/allocation,
+    // it just needs the proper symbol set.
+    retval.set_symbol_set(merged_ss);
+    detail::series_sym_extender(retval, s, ins_map);
+
+    return retval;
+}
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct add_symbols_msvc {
+    template <typename T>
+    constexpr auto operator()(T &&s, const symbol_set &ss) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::add_symbols_impl(::std::forward<T>(s), ss))
+};
+
+inline constexpr auto add_symbols = add_symbols_msvc{};
+
+#else
+
+// NOTE: do we need a concept/type trait for this? See also the testing.
+inline constexpr auto add_symbols = [](auto &&s, const symbol_set &ss)
+    OBAKE_SS_FORWARD_LAMBDA(detail::add_symbols_impl(::std::forward<decltype(s)>(s), ss));
+
+#endif
+
 } // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for series.
+template <typename K, typename C, typename Tag>
+struct tracking_level<::obake::series<K, C, Tag>> : ::obake::detail::s11n_no_tracking<::obake::series<K, C, Tag>> {
+};
+
+} // namespace boost::serialization
 
 #endif

@@ -11,7 +11,6 @@
 
 #include <iostream>
 
-#include <obake/byte_size.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
 #include "simple_timer.hpp"
@@ -20,7 +19,7 @@ namespace obake_benchmark
 {
 
 template <typename M, typename C>
-inline auto dense_benchmark(int n)
+inline auto dense_benchmark_4_vars(int n)
 {
     using namespace obake;
 
@@ -39,10 +38,32 @@ inline auto dense_benchmark(int n)
         ret = f * g;
     }
 
-    std::cout << "Total number of terms             : " << ret.size() << '\n';
-    std::cout << "Total number of tables            : " << ret._get_s_table().size() << '\n';
-    std::cout << "Number of terms in the first table: " << ret._get_s_table()[0].size() << '\n';
-    std::cout << "Total size in bytes               : " << byte_size(ret) << '\n';
+    std::cout << ret.table_stats() << '\n';
+
+    return ret;
+}
+
+template <typename M, typename C>
+inline auto dense_benchmark_5_vars(int n)
+{
+    using namespace obake;
+
+    auto [x, y, z, t, u] = make_polynomials<polynomial<M, C>>("x", "y", "z", "t", "u");
+
+    auto f = x + y + z + t + u + 1;
+    const auto tmp(f);
+    for (auto i = 1; i < n; ++i) {
+        f *= tmp;
+    }
+    auto g = f + 1;
+
+    polynomial<M, C> ret;
+    {
+        simple_timer t;
+        ret = f * g;
+    }
+
+    std::cout << ret.table_stats() << '\n';
 
     return ret;
 }
