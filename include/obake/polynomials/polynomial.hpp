@@ -847,6 +847,11 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     // NOTE: poly_mul_estimate_product_size() requires the shorter series first,
     // which is ensured by the preconditions of this function.
     const auto [est_nterms, tot_n_mults] = detail::poly_mul_estimate_product_size<T, U>(v1, v2, ss, args...);
+    // Exit early if the truncation limits
+    // result in an empty output series.
+    if (sizeof...(Args) > 0u && tot_n_mults.is_zero()) {
+        return;
+    }
 
     // Estimate the average term size.
     // NOTE: once poly_mul_impl_estimate_average_term_size() becomes more computationally intensive,
