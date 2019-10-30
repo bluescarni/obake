@@ -807,7 +807,7 @@ constexpr auto pm_key_evaluate_algorithm_impl()
         // multiply it in-place and then return it.
         // NOTE: require also a semi-regular type,
         // it's just easier to reason about.
-        if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, int>,
+        if constexpr (::std::conjunction_v<is_constructible<ret_t, int>,
                                            // NOTE: we will be multiplying an
                                            // lvalue by an rvalue.
                                            is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,

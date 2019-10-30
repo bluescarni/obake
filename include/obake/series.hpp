@@ -1041,15 +1041,14 @@ private:
 
         // Implicit converting ctor from another specialisation. This is
         // used to construct a const iterator from a mutable one.
-        template <typename U,
-                  ::std::enable_if_t<
-                      ::std::conjunction_v<
-                          // NOTE: prevent competition with the
-                          // copy constructor.
-                          ::std::negation<::std::is_same<T, U>>,
-                          ::std::is_constructible<s_table_ptr_t, const typename iterator_impl<U>::s_table_ptr_t &>,
-                          ::std::is_constructible<local_it_t<T>, const local_it_t<U> &>>,
-                      int> = 0>
+        template <typename U, ::std::enable_if_t<
+                                  ::std::conjunction_v<
+                                      // NOTE: prevent competition with the
+                                      // copy constructor.
+                                      ::std::negation<::std::is_same<T, U>>,
+                                      is_constructible<s_table_ptr_t, const typename iterator_impl<U>::s_table_ptr_t &>,
+                                      is_constructible<local_it_t<T>, const local_it_t<U> &>>,
+                                  int> = 0>
         iterator_impl(const iterator_impl<U> &other)
             : m_s_table_ptr(other.m_s_table_ptr), m_idx(other.m_idx), m_local_it(other.m_local_it)
         {
@@ -1501,11 +1500,11 @@ constexpr auto series_default_pow_algorithm_impl()
         // lvalue refs.
         using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
 
-        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>,
+        if constexpr (::std::conjunction_v<is_constructible<cf_t, int>,
                                            // NOTE: these take care of ensuring that cf_pow_t
                                            // is detected (nonesuch is not ctible from int,
                                            // nor it is a coefficient).
-                                           is_cf<cf_pow_t>, ::std::is_constructible<cf_pow_t, int>,
+                                           is_cf<cf_pow_t>, is_constructible<cf_pow_t, int>,
                                            is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
             return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
         } else {
@@ -2667,7 +2666,7 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
         // const (after reference removal), and the cf
         // type of T must be constructible from U.
         if constexpr (::std::conjunction_v<::std::negation<::std::is_const<::std::remove_reference_t<T>>>,
-                                           ::std::is_constructible<series_cf_t<rT>, U>>) {
+                                           is_constructible<series_cf_t<rT>, U>>) {
             // NOTE: we can use rT & because in the implementation
             // we return an lvalue of something which is not
             // const (as ensured by the condition in the if
@@ -2690,8 +2689,8 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
         if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<rU>>,
                                            ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>,
                                            ::std::negation<::std::is_const<::std::remove_reference_t<T>>>,
-                                           ::std::is_constructible<series_cf_t<rT>, series_cf_t<rU> &&>,
-                                           ::std::is_constructible<series_cf_t<rT>, const series_cf_t<rU> &>,
+                                           is_constructible<series_cf_t<rT>, series_cf_t<rU> &&>,
+                                           is_constructible<series_cf_t<rT>, const series_cf_t<rU> &>,
                                            // We may need to merge new symbols into the original key type.
                                            // NOTE: the key types of T and U must be identical at the moment,
                                            // so checking only T's key type is enough.
@@ -3792,7 +3791,7 @@ constexpr auto series_default_degree_algorithm_impl()
                                   // NOTE: these take care of ensuring that degree_t is detected
                                   // (because nonesuch is not lt-comparable etc.)
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  is_constructible<degree_t, int>, is_returnable<degree_t>,
                                   // NOTE: require a semi-regular type,
                                   // it's just easier to reason about.
                                   is_semi_regular<degree_t>>) {
@@ -3808,7 +3807,7 @@ constexpr auto series_default_degree_algorithm_impl()
 
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  is_constructible<degree_t, int>, is_returnable<degree_t>,
                                   // NOTE: require a semi-regular type,
                                   // it's just easier to reason about.
                                   is_semi_regular<degree_t>>) {
@@ -3824,7 +3823,7 @@ constexpr auto series_default_degree_algorithm_impl()
 
                 if constexpr (::std::conjunction_v<
                                   is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  is_constructible<degree_t, int>, is_returnable<degree_t>,
                                   // NOTE: require a semi-regular type,
                                   // it's just easier to reason about.
                                   is_semi_regular<degree_t>>) {
@@ -4139,7 +4138,7 @@ constexpr auto series_default_evaluate_algorithm_impl()
             if constexpr (::std::conjunction_v<
                               // NOTE: these will also verify that ret_t is detected.
                               is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                              ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
+                              is_constructible<ret_t, int>, is_returnable<ret_t>,
                               // NOTE: require a semi-regular type,
                               // it's just easier to reason about.
                               is_semi_regular<ret_t>>) {

@@ -207,33 +207,12 @@ OBAKE_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
 
 #endif
 
-// Detect if a local variable of a given type can be returned from a function.
 // NOTE: constructability currently implies destructability:
 // https://cplusplus.github.io/LWG/issue2116
 // But it also seems like in the future the two concepts might
 // be separated:
 // https://en.cppreference.com/w/cpp/concepts/Constructible
 // So require destructability explicitly as well.
-// NOTE: for returnability, we check for constructability from
-// an lvalue or rvalue. See:
-// https://en.cppreference.com/w/cpp/language/return
-template <typename T>
-using is_returnable = ::std::disjunction<
-    ::std::is_same<::std::remove_cv_t<T>, void>,
-    ::std::conjunction<::std::is_destructible<T>,
-                       ::std::disjunction<::std::is_constructible<T, ::std::add_lvalue_reference_t<T>>,
-                                          ::std::is_constructible<T, ::std::add_rvalue_reference_t<T>>>>>;
-
-template <typename T>
-inline constexpr bool is_returnable_v = is_returnable<T>::value;
-
-#if defined(OBAKE_HAVE_CONCEPTS)
-
-template <typename T>
-OBAKE_CONCEPT_DECL Returnable = is_returnable_v<T>;
-
-#endif
-
 template <typename T, typename... Args>
 using is_constructible = ::std::conjunction<::std::is_constructible<T, Args...>, ::std::is_destructible<T>>;
 
@@ -244,6 +223,26 @@ inline constexpr bool is_constructible_v = is_constructible<T, Args...>::value;
 
 template <typename T, typename... Args>
 OBAKE_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
+
+#endif
+
+// Detect if a local variable of a given type can be returned from a function.
+// NOTE: for returnability, we check for constructability from
+// an lvalue or rvalue. See:
+// https://en.cppreference.com/w/cpp/language/return
+template <typename T>
+using is_returnable
+    = ::std::disjunction<::std::is_same<::std::remove_cv_t<T>, void>,
+                         ::std::conjunction<::std::disjunction<is_constructible<T, ::std::add_lvalue_reference_t<T>>,
+                                                               is_constructible<T, ::std::add_rvalue_reference_t<T>>>>>;
+
+template <typename T>
+inline constexpr bool is_returnable_v = is_returnable<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL Returnable = is_returnable_v<T>;
 
 #endif
 
