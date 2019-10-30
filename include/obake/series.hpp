@@ -12,16 +12,23 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <iterator>
+#include <mutex>
 #include <numeric>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <boost/any.hpp>
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
@@ -43,7 +50,6 @@
 #include <obake/detail/fcast.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
-#include <obake/detail/mppp_utils.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -693,7 +699,8 @@ public:
     }
     // NOTE: the generic construction algorithm must be well-documented,
     // as we rely on its behaviour in a variety of places (e.g., when constructing
-    // series from scalars).
+    // series from scalars - see for instance the default series pow()
+    // implementation).
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
@@ -1507,6 +1514,161 @@ constexpr auto series_default_pow_algorithm_impl()
     }
 }
 
+// Helper to compare series with identical symbol sets.
+// Two series are considered equal if they have the same
+// number of terms and if for each term in one series
+// an equal term exists in the other series (term equality
+// is tested by comparing both the coefficient and the key).
+template <typename T, typename U>
+inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
+{
+    assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+
+    // If the series have different sizes,
+    // they cannot be equal.
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    // Cache the end iterator of rhs.
+    const auto rhs_end = rhs.end();
+    // NOTE: this can be parallelised and
+    // improved performance-wise by having specialised
+    // codepaths for single table layout, same
+    // n segments, etc. Keep it in mind for
+    // future optimisations.
+    for (const auto &t : lhs) {
+        // NOTE: old clang does not like structured
+        // bindings in the for loop.
+        const auto &k = t.first;
+        const auto &c = t.second;
+
+        const auto it = rhs.find(k);
+        if (it == rhs_end || c != it->second) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Helper to determine if two series of the same type are identical.
+// They are if the symbol sets are equal and if the series
+// compare equal according to series_cmp_identical_ss().
+template <typename S>
+inline bool series_are_identical(const S &s1, const S &s2)
+{
+    return s1.get_symbol_set() == s2.get_symbol_set() && internal::series_cmp_identical_ss(s1, s2);
+}
+
+// The series pow cache for a specific series type.
+// It maps a series instance x to a vector of natural
+// powers of x. Everything is type-erased as we need
+// to store instances of this type as elements of another map.
+// NOTE: the key in this map is the base, the vectors
+// are the base raised to its natural powers. All these
+// boost::any will contain instances of the base type.
+using series_te_pow_map_t = ::std::unordered_map<::boost::any, ::std::vector<::boost::any>,
+                                                 // Hashing functor.
+                                                 ::std::function<::std::size_t(const ::boost::any &)>,
+                                                 // Equality comparator.
+                                                 ::std::function<bool(const ::boost::any &, const ::boost::any &)>>;
+
+// Series pow cache. It maps a C++ series type, represented
+// as a type_index, to a series_te_pow_map_t map.
+using series_pow_map_t = ::std::unordered_map<::std::type_index, series_te_pow_map_t>;
+
+// Function to fetch the global series pow cache and associated mutex.
+OBAKE_DLL_PUBLIC ::std::tuple<series_pow_map_t &, ::std::mutex &> get_series_pow_map();
+
+// Function to clear the global series pow cache.
+OBAKE_DLL_PUBLIC void clear_series_pow_map();
+
+// Fetch the n-th natural power of the input
+// series 'base' from the global cache. If the
+// power is not present in the cache already,
+// it will be computed on the fly.
+template <typename Base>
+inline Base series_pow_from_cache(const Base &base, unsigned n)
+{
+    // Fetch the global data.
+    auto [map, mutex] = internal::get_series_pow_map();
+
+    // Turn the type into a type_index.
+    ::std::type_index t_idx(typeid(Base));
+
+    // The concrete hasher and equality comparator
+    // functors for use in series_te_pow_map_t.
+    // They will be wrapped in a std::function.
+    struct hasher {
+        ::std::size_t operator()(const ::boost::any &x) const
+        {
+            // Combine the hashes of all terms
+            // via addition, so that their order
+            // does not matter.
+            ::std::size_t retval = 0;
+
+            for (const auto &t : ::boost::any_cast<const Base &>(x)) {
+                // NOTE: use the same hasher used in the implementation
+                // of series.
+                // NOTE: parallelisation opportunities here for
+                // segmented tables.
+                retval += detail::series_key_hasher{}(t.first);
+            }
+
+            return retval;
+        }
+    };
+
+    struct comparer {
+        bool operator()(const ::boost::any &x, const ::boost::any &y) const
+        {
+            // NOTE: need to use series_are_identical() (and not the comparison operator)
+            // because the comparison operator does symbol merging, and thus it is
+            // not consistent with the hasher defined above (i.e., two series may
+            // compare equal according to operator==() and have different hashes).
+            // NOTE: with these choices of hasher/comparer, the requirement that
+            // cmp(a, b) == true -> hash(a) == hash(b) is always satisfied (even if, say,
+            // the user customises series_equal_to()).
+            return internal::series_are_identical(::boost::any_cast<const Base &>(x),
+                                                  ::boost::any_cast<const Base &>(y));
+        }
+    };
+
+    // Lock down before accessing the cache.
+    ::std::lock_guard<::std::mutex> lock(mutex);
+
+    // Try first to locate the series_te_pow_map_t for the current type,
+    // then, in that map, try to locate 'base'. Use try_emplace() so that
+    // table elements are created as needed.
+    auto it = map.try_emplace(t_idx, 0, hasher{}, comparer{}).first->second.try_emplace(base).first;
+
+    // Fetch a reference to the base and the corresponding
+    // exponentiation vector.
+    const auto &b = ::boost::any_cast<const Base &>(it->first);
+    auto &v = it->second;
+
+    // If the exponentiation vector is empty, init it with
+    // base**0 = 1.
+    if (v.empty()) {
+        // NOTE: constructability from 1 is ensured by the
+        // constructability of the return coefficient type from int
+        // (and the return type is guaranteed to be the same as
+        // the Base type in this function).
+        v.emplace_back(Base(1));
+    }
+
+    // Fill in the missing powers as needed.
+    while (v.size() <= n) {
+        v.emplace_back(::boost::any_cast<const Base &>(v.back()) * b);
+    }
+
+    // Return a copy of the desired power.
+    // NOTE: returnability is guaranteed because
+    // the return type is a series.
+    return ::boost::any_cast<const Base &>(v[static_cast<decltype(v.size())>(n)]);
+}
+
 // Default implementation of series exponentiation.
 struct series_default_pow_impl {
     // A couple of handy shortcuts.
@@ -1555,65 +1717,47 @@ struct series_default_pow_impl {
         }
 
         // Let's determine if we can run exponentiation
-        // by repeated multiplications:
-        // - e must either be an mppp::integer or safely convertible to
-        //   mppp::integer<1>,
-        // - the return type must be compound-multipliable by T.
-        if constexpr (::std::conjunction_v<::std::disjunction<detail::is_mppp_integer<rU>,
-                                                              is_safely_convertible<const rU &, ::mppp::integer<1> &>>,
-                                           is_compound_multipliable<ret_t<T &&, U &&> &, const rT &>>) {
-            // Transform the exponent into an integral.
-            // NOTE: if e is an integer, just return a const reference
-            // to it. Otherwise, return a new object of type mppp::integer<1>.
-            decltype(auto) n = [&e]() -> decltype(auto) {
-                if constexpr (detail::is_mppp_integer_v<rU>) {
-                    return e;
+        // by repeated multiplications, backed by a cache:
+        // - e must be safely-convertible to unsigned,
+        // - T * T must be defined and return T (via const lvalue
+        //   references),
+        // - T must be the same as ret_t,
+        // - the coefficient of T must be
+        //   equality-comparable (for the pow cache to work).
+        // NOTE: the idea here is that, for ease of reasoning and
+        // implementation, we want the base type, its product type
+        // and the return type to be all the same.
+        if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
+                                           // NOTE: this also checks that mul_t is defined, as
+                                           // nonesuch is not a series type.
+                                           ::std::is_same<rT, detected_t<detail::mul_t, const rT &, const rT &>>,
+                                           ::std::is_same<rT, ret_t<T &&, U &&>>,
+                                           is_equality_comparable<const series_cf_t<rT> &>>) {
+            unsigned un;
+            if (obake_unlikely(!::obake::safe_convert(un, e))) {
+                if constexpr (is_stream_insertable_v<const rU &>) {
+                    // Provide better error message if U is ostreamable.
+                    ::std::ostringstream oss;
+                    static_cast<::std::ostream &>(oss) << e;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for series exponentiation via repeated "
+                                "multiplications: the exponent ("
+                                    + oss.str() + ") cannot be converted into a non-negative integral value");
                 } else {
-                    ::mppp::integer<1> ret;
-
-                    if (obake_unlikely(!::obake::safe_convert(ret, e))) {
-                        if constexpr (is_stream_insertable_v<const rU &>) {
-                            // Provide better error message if U is ostreamable.
-                            ::std::ostringstream oss;
-                            static_cast<::std::ostream &>(oss) << e;
-                            obake_throw(::std::invalid_argument,
-                                        "Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent ("
-                                            + oss.str() + ") cannot be converted into an integral value");
-                        } else {
-                            obake_throw(::std::invalid_argument,
-                                        "Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent cannot be converted into an integral value");
-                        }
-                    }
-
-                    return ret;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for series exponentiation via repeated "
+                                "multiplications: the exponent cannot be converted into a non-negative integral value");
                 }
-            }();
-
-            if (obake_unlikely(n.sgn() < 0)) {
-                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                     "multiplications: the exponent ("
-                                                         + n.to_string() + ") is negative");
             }
 
-            // NOTE: constructability from 1 is ensured by the
-            // constructability of the coefficient type from int.
-            ret_t<T &&, U &&> retval(1);
-            for (remove_cvref_t<decltype(n)> i(0); i < n; ++i) {
-                retval *= ::std::as_const(b);
-            }
-
-            // NOTE: returnability is guaranteed because
-            // the return type is a series.
-            return retval;
+            return internal::series_pow_from_cache(b, un);
         } else {
             obake_throw(::std::invalid_argument,
                         "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
                             + "': the series does not consist of a single coefficient, "
                               "and exponentiation via repeated multiplications is not possible (either because the "
-                              "exponent cannot be converted to an integral value, or because the series type does "
-                              "not support the necessary arithmetic operations)");
+                              "exponent cannot be converted to a non-negative integral value, or because the "
+                              "series/coefficient types do not support the necessary operations)");
         }
     }
 };
@@ -2244,7 +2388,7 @@ inline series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(
 
         return retval;
     } else {
-        // Both T and U are series, same rank, possibly different cf.
+        // Both T and U are series, same rank, possibly different cf (but same key).
 
         // Implementation of the addition/subtraction between
         // two series with identical symbol sets.
@@ -2441,8 +2585,344 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 constexpr auto operator+(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
-// NOTE: for now, implement operator+=() in terms of operator+().
-// This can be optimised later performance-wise.
+namespace customisation
+{
+
+// External customisation point for obake::series_compound_add().
+template <typename T, typename U
+#if !defined(OBAKE_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_compound_add = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U>
+constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<2>)
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_compound_add<T &&, U &&>)(::std::forward<T>(x),
+                                                                               ::std::forward<U>(y)));
+
+// Unqualified function call implementation.
+template <typename T, typename U>
+constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<1>)
+    OBAKE_SS_FORWARD_FUNCTION(series_compound_add(::std::forward<T>(x), ::std::forward<U>(y)));
+
+// Meta-programming to establish the algorithm and return type
+// of the default implementation of series compound add/sub. It will return
+// a pair containing an integral value (1, 2 or 3) signalling the algorithm
+// to be used in the implementation, and a type_c wrapper representing
+// the return type of the operation. If the add/sub implementation is not
+// well-defined for the input types, it will return (0, void).
+template <bool Sign, typename T, typename U>
+constexpr auto series_default_compound_addsub_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+
+    constexpr auto rank_T = series_rank<rT>;
+    [[maybe_unused]] constexpr auto rank_U = series_rank<rU>;
+
+    // Shortcut for signalling that the add/sub implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, type_c<void>{});
+
+    if constexpr (!rank_T) {
+        // The lhs is not a series, return failure. This will disable
+        // the default series_compound_add/sub() implementations.
+        return failure;
+    } else if constexpr (rank_T < rank_U) {
+        // The rank of T is less than the rank of U.
+        // We will be delegating to the binary operator.
+        if constexpr (Sign) {
+            if constexpr (::std::conjunction_v<
+                              is_detected<add_t, T, U>,
+                              ::std::is_assignable<::std::remove_reference_t<T> &, detected_t<add_t, T, U>>>) {
+                // NOTE: use rT & here because in the implementation
+                // below we return the value returned by a series
+                // assignment operator, which is always rT &.
+                return ::std::make_pair(1, type_c<rT &>{});
+            } else {
+                return failure;
+            }
+        } else {
+            if constexpr (::std::conjunction_v<
+                              is_detected<sub_t, T, U>,
+                              ::std::is_assignable<::std::remove_reference_t<T> &, detected_t<sub_t, T, U>>>) {
+                return ::std::make_pair(1, type_c<rT &>{});
+            } else {
+                return failure;
+            }
+        }
+    } else if constexpr (rank_T > rank_U) {
+        // The rank of T is larger than the rank of U.
+        // Implement via direct insertion: T must not be
+        // const (after reference removal), and the cf
+        // type of T must be constructible from U.
+        if constexpr (::std::conjunction_v<::std::negation<::std::is_const<::std::remove_reference_t<T>>>,
+                                           ::std::is_constructible<series_cf_t<rT>, U>>) {
+            // NOTE: we can use rT & because in the implementation
+            // we return an lvalue of something which is not
+            // const (as ensured by the condition in the if
+            // statement above).
+            return ::std::make_pair(2, type_c<rT &>{});
+        } else {
+            return failure;
+        }
+    } else {
+        // Equal ranks:
+        // - key/tag must match,
+        // - T must not be const (need to insert into it),
+        // - the coefficient type of T must be constructible
+        //   from the coefficient type of U (both const lvalue
+        //   and rvalue variants, because depending on symbol
+        //   merging we may have a runtime choice between
+        //   rvalue and lvalue regardless of the original
+        //   type of U),
+        // - the key type must be symbols mergeable.
+        if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<rU>>,
+                                           ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>,
+                                           ::std::negation<::std::is_const<::std::remove_reference_t<T>>>,
+                                           ::std::is_constructible<series_cf_t<rT>, series_cf_t<rU> &&>,
+                                           ::std::is_constructible<series_cf_t<rT>, const series_cf_t<rU> &>,
+                                           // We may need to merge new symbols into the original key type.
+                                           // NOTE: the key types of T and U must be identical at the moment,
+                                           // so checking only T's key type is enough.
+                                           // NOTE: the merging is done via a const ref.
+                                           is_symbols_mergeable_key<const series_key_t<rT> &>>) {
+            // NOTE: we can use rT & because in the implementation
+            // we return an lvalue of something which is not
+            // const (as ensured by the condition in the if
+            // statement above).
+            return ::std::make_pair(3, type_c<rT &>{});
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Shortcuts.
+template <bool Sign, typename T, typename U>
+inline constexpr auto series_default_compound_addsub_algorithm
+    = detail::series_default_compound_addsub_algorithm_impl<Sign, T, U>();
+
+template <bool Sign, typename T, typename U>
+using series_default_compound_addsub_ret_t =
+    typename decltype(series_default_compound_addsub_algorithm<Sign, T, U>.second)::type;
+
+// Default implementation of the compound add/sub primitive for series.
+template <bool Sign, typename T, typename U>
+inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_compound_addsub_impl(T &&x, U &&y)
+{
+    using rT [[maybe_unused]] = remove_cvref_t<T>;
+    using rU [[maybe_unused]] = remove_cvref_t<U>;
+
+    // Determine the algorithm.
+    constexpr int algo = series_default_compound_addsub_algorithm<Sign, T &&, U &&>.first;
+    static_assert(algo > 0 && algo <= 3);
+
+    if constexpr (algo == 1) {
+        // The rank of T is less than the rank of U.
+        // Delegate to the binary operator.
+        if constexpr (Sign) {
+            return x = ::std::forward<T>(x) + ::std::forward<U>(y);
+        } else {
+            return x = ::std::forward<T>(x) - ::std::forward<U>(y);
+        }
+    } else if constexpr (algo == 2) {
+        // The rank of U is less than the rank of T.
+        // NOTE: we can turn off key compat check, as we know
+        // the new key will be compatible by construction. The other
+        // checks are needed. Also, because we don't know
+        // the segmentation of y, we need to use series_add_term()
+        // instead of series_add_term_table().
+        detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
+                                sat_assume_unique::off>(x, series_key_t<rT>(x.get_symbol_set()), ::std::forward<U>(y));
+
+        return x;
+    } else {
+        // Both T and U are series, same rank, possibly different cf (but same key).
+
+        // Implementation for identical symbol sets.
+        auto in_place_with_identical_ss = [](auto &lhs, auto &&rhs) {
+            assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+
+            // We may end up moving coefficients from rhs.
+            // Make sure we will clear it out properly.
+            using rhs_t = decltype(rhs);
+            series_rref_clearer<rhs_t> rhs_c(::std::forward<rhs_t>(rhs));
+
+            // Distinguish the two cases in which the lhs table
+            // is segmented or not.
+            if (lhs._get_s_table().size() > 1u) {
+                for (auto &t : rhs) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
+                    auto &k = t.first;
+                    auto &c = t.second;
+
+                    if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
+                        // NOTE: turn on the zero check, as we might end up
+                        // annihilating terms during insertion.
+                        // Compatibility check is not needed.
+                        detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off,
+                                                sat_check_table_size::on, sat_assume_unique::off>(lhs, k,
+                                                                                                  ::std::move(c));
+                    } else {
+                        detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off,
+                                                sat_check_table_size::on, sat_assume_unique::off>(lhs, k,
+                                                                                                  ::std::as_const(c));
+                    }
+                }
+            } else {
+                assert(lhs._get_s_table().size() == 1u);
+
+                auto &t = lhs._get_s_table()[0];
+
+                for (auto &term : rhs) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
+                    auto &k = term.first;
+                    auto &c = term.second;
+
+                    if constexpr (is_mutable_rvalue_reference_v<rhs_t &&>) {
+                        // NOTE: disable the table size check, as we are
+                        // sure we have a single table.
+                        detail::series_add_term_table<Sign, sat_check_zero::on, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::off>(
+                            lhs, t, k, ::std::move(c));
+                    } else {
+                        detail::series_add_term_table<Sign, sat_check_zero::on, sat_check_compat_key::off,
+                                                      sat_check_table_size::off, sat_assume_unique::off>(
+                            lhs, t, k, ::std::as_const(c));
+                    }
+                }
+            }
+        };
+
+        if (x.get_symbol_set() == y.get_symbol_set()) {
+            // Same symbol sets, run the implementation
+            // directly on x and y.
+            if constexpr (::std::is_same_v<rT, rU>) {
+                // NOTE: if x and y are of the same type,
+                // and they are the same object, use a copy
+                // of y *without forwarding*, otherwise
+                // we will be ending up possibly erasing
+                // or re-inserting terms from a series into
+                // itself above.
+                // NOTE: to improve performance, we could
+                // implement addition as a scalar multiplication
+                // by 2, and subtraction as a clear()ing of
+                // x. Keep it in mind for the future.
+                if (&x == &y) {
+                    in_place_with_identical_ss(x, rU(y));
+                } else {
+                    in_place_with_identical_ss(x, ::std::forward<U>(y));
+                }
+            } else {
+                in_place_with_identical_ss(x, ::std::forward<U>(y));
+            }
+        } else {
+            // Merge the symbol sets.
+            const auto &[merged_ss, ins_map_x, ins_map_y]
+                = detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
+
+            // The insertion maps cannot be both empty, as we already handled
+            // the identical symbol sets case above.
+            assert(!ins_map_x.empty() || !ins_map_y.empty());
+
+            // Create a flag indicating empty insertion maps:
+            // - 0 -> both non-empty,
+            // - 1 -> x is empty,
+            // - 2 -> y is empty.
+            // (Cannot both be empty as we handled identical symbol sets already).
+            const auto flag
+                = static_cast<unsigned>(ins_map_x.empty()) + (static_cast<unsigned>(ins_map_y.empty()) << 1);
+
+            switch (flag) {
+                case 0u: {
+                    // Both x and y need to be extended.
+                    rT a;
+                    rU b;
+                    a.set_symbol_set(merged_ss);
+                    b.set_symbol_set(merged_ss);
+                    detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+                    detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+                    x = ::std::move(a);
+
+                    in_place_with_identical_ss(x, ::std::move(b));
+                    break;
+                }
+                case 1u: {
+                    // x already has the correct symbol
+                    // set, extend only y.
+                    rU b;
+                    b.set_symbol_set(merged_ss);
+                    detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+
+                    in_place_with_identical_ss(x, ::std::move(b));
+                    break;
+                }
+                case 2u: {
+                    // y already has the correct symbol
+                    // set, extend only x.
+                    rT a;
+                    a.set_symbol_set(merged_ss);
+                    detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+                    x = ::std::move(a);
+
+                    in_place_with_identical_ss(x, ::std::forward<U>(y));
+                    break;
+                }
+            }
+        }
+
+        return x;
+    }
+}
+
+template <typename T, typename U>
+inline constexpr int series_default_compound_add_algo = series_default_compound_addsub_algorithm<true, T, U>.first;
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U, ::std::enable_if_t<series_default_compound_add_algo<T &&, U &&> != 0, int> = 0>
+constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_compound_addsub_impl<true>(::std::forward<T>(x),
+                                                                                ::std::forward<U>(y)));
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct series_compound_add_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
+            detail::series_compound_add_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+};
+
+inline constexpr auto series_compound_add = series_compound_add_msvc{};
+
+#else
+
+// NOTE: explicitly cast the result of the implementation
+// to an lvalue reference to the type of x, so that
+// we disable the implementation if such conversion is
+// malformed. The idea is that we want an implementation
+// which feels like the builtin operators.
+inline constexpr auto series_compound_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_add_impl(
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
+
+#endif
+
+// NOTE: handle separately the two cases
+// series lhs vs non-series lhs.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
@@ -2450,8 +2930,10 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator+=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) + ::std::forward<U>(y));
+        OBAKE_SS_FORWARD_FUNCTION(::obake::series_compound_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
+// NOTE: if the lhs is not a series, just implement
+// on top of the binary operator.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires !CvrSeries<T> && CvrSeries<U>
@@ -2459,7 +2941,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator+=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
+    constexpr auto operator+=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -2526,8 +3008,71 @@ template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr
 constexpr auto operator-(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
-// NOTE: for now, implement operator-=() in terms of operator-().
-// This can be optimised later performance-wise.
+namespace customisation
+{
+
+// External customisation point for obake::series_compound_sub().
+template <typename T, typename U
+#if !defined(OBAKE_HAVE_CONCEPTS)
+          ,
+          typename = void
+#endif
+          >
+inline constexpr auto series_compound_sub = not_implemented;
+
+} // namespace customisation
+
+namespace detail
+{
+
+// Highest priority: explicit user override in the external customisation namespace.
+template <typename T, typename U>
+constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<2>)
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_compound_sub<T &&, U &&>)(::std::forward<T>(x),
+                                                                               ::std::forward<U>(y)));
+
+// Unqualified function call implementation.
+template <typename T, typename U>
+constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<1>)
+    OBAKE_SS_FORWARD_FUNCTION(series_compound_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+
+template <typename T, typename U>
+inline constexpr int series_default_compound_sub_algo = series_default_compound_addsub_algorithm<false, T, U>.first;
+
+// Lowest priority: the default implementation for series.
+template <typename T, typename U, ::std::enable_if_t<series_default_compound_sub_algo<T &&, U &&> != 0, int> = 0>
+constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_compound_addsub_impl<false>(::std::forward<T>(x),
+                                                                                 ::std::forward<U>(y)));
+
+} // namespace detail
+
+#if defined(_MSC_VER)
+
+struct series_compound_sub_msvc {
+    template <typename T, typename U>
+    constexpr auto operator()(T &&x, U &&y) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
+            detail::series_compound_sub_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+};
+
+inline constexpr auto series_compound_sub = series_compound_sub_msvc{};
+
+#else
+
+// NOTE: explicitly cast the result of the implementation
+// to an lvalue reference to the type of x, so that
+// we disable the implementation if such conversion is
+// malformed. The idea is that we want an implementation
+// which feels like the builtin operators.
+inline constexpr auto series_compound_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_sub_impl(
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
+
+#endif
+
+// NOTE: handle separately the two cases
+// series lhs vs non-series lhs.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
@@ -2535,8 +3080,10 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator-=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) - ::std::forward<U>(y));
+        OBAKE_SS_FORWARD_FUNCTION(::obake::series_compound_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
+// NOTE: if the lhs is not a series, just implement
+// on top of the binary operator.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires !CvrSeries<T> && CvrSeries<U>
@@ -2544,7 +3091,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator-=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
+    constexpr auto operator-=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -2782,8 +3329,7 @@ requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    constexpr auto operator*=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) * ::std::forward<U>(y));
+    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::forward<T>(x) * ::std::forward<U>(y));
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
@@ -2792,7 +3338,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
+    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -2972,8 +3518,7 @@ requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    constexpr auto operator/=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) / ::std::forward<U>(y));
+    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::forward<T>(x) / ::std::forward<U>(y));
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
@@ -2982,7 +3527,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
+    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3078,41 +3623,8 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
     if constexpr (algo == 3) {
         // Two series with equal rank, same key/tag, possibly
         // different coefficient type.
-
-        // Helper to compare series with identical symbol sets.
-        auto cmp_identical_ss = [](const auto &lhs, const auto &rhs) {
-            assert(lhs.get_symbol_set() == rhs.get_symbol_set());
-
-            // If the series have different sizes,
-            // they cannot be equal.
-            if (lhs.size() != rhs.size()) {
-                return false;
-            }
-
-            // Cache the end iterator of rhs.
-            const auto rhs_end = rhs.end();
-            // NOTE: this can be parallelised and
-            // improved performance-wise by having specialised
-            // codepaths for single table layout, same
-            // n segments, etc. Keep it in mind for
-            // future optimisations.
-            for (const auto &t : lhs) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                const auto &k = t.first;
-                const auto &c = t.second;
-
-                const auto it = rhs.find(k);
-                if (it == rhs_end || c != it->second) {
-                    return false;
-                }
-            }
-
-            return true;
-        };
-
         if (x.get_symbol_set() == y.get_symbol_set()) {
-            return cmp_identical_ss(x, y);
+            return customisation::internal::series_cmp_identical_ss(x, y);
         } else {
             // Merge the symbol sets.
             const auto &[merged_ss, ins_map_x, ins_map_y]
@@ -3138,7 +3650,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     b.set_symbol_set(merged_ss);
                     detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-                    return cmp_identical_ss(x, b);
+                    return customisation::internal::series_cmp_identical_ss(x, b);
                 }
                 case 2u: {
                     // y already has the correct symbol
@@ -3147,7 +3659,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     a.set_symbol_set(merged_ss);
                     detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
-                    return cmp_identical_ss(a, y);
+                    return customisation::internal::series_cmp_identical_ss(a, y);
                 }
             }
 
@@ -3159,7 +3671,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
             detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
-            return cmp_identical_ss(a, b);
+            return customisation::internal::series_cmp_identical_ss(a, b);
         }
     } else {
         // Helper to compare series of different rank
