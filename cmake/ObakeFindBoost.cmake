@@ -24,4 +24,12 @@ if(NOT TARGET Boost::serialization)
     )
 endif()
 
+if(NOT TARGET Boost::disable_autolinking)
+    message(STATUS "The 'Boost::disable_autolinking' target is missing, creating it.")
+    add_library(Boost::disable_autolinking INTERFACE IMPORTED)
+    if(WIN32)
+        set_target_properties(Boost::disable_autolinking PROPERTIES INTERFACE_COMPILE_DEFINITIONS "BOOST_ALL_NO_LIB")
+    endif()
+endif()
+
 unset(_OBAKE_BOOST_MINIMUM_VERSION)
