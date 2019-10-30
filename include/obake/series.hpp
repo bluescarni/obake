@@ -2642,16 +2642,21 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
         // The rank of T is less than the rank of U.
         // We will be delegating to the binary operator.
         if constexpr (Sign) {
-            if constexpr (::std::conjunction_v<is_detected<add_t, T, U>,
-                                               ::std::is_assignable<T, detected_t<add_t, T, U>>>) {
-                return ::std::make_pair(1, type_c<T>{});
+            if constexpr (::std::conjunction_v<
+                              is_detected<add_t, T, U>,
+                              ::std::is_assignable<::std::remove_reference_t<T> &, detected_t<add_t, T, U>>>) {
+                // NOTE: use rT & here because in the implementation
+                // below we return the value returned by a series
+                // assignment operator, which is always rT &.
+                return ::std::make_pair(1, type_c<rT &>{});
             } else {
                 return failure;
             }
         } else {
-            if constexpr (::std::conjunction_v<is_detected<sub_t, T, U>,
-                                               ::std::is_assignable<T, detected_t<sub_t, T, U>>>) {
-                return ::std::make_pair(1, type_c<T>{});
+            if constexpr (::std::conjunction_v<
+                              is_detected<sub_t, T, U>,
+                              ::std::is_assignable<::std::remove_reference_t<T> &, detected_t<sub_t, T, U>>>) {
+                return ::std::make_pair(1, type_c<rT &>{});
             } else {
                 return failure;
             }
@@ -2663,19 +2668,25 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
         // type of T must be constructible from U.
         if constexpr (::std::conjunction_v<::std::negation<::std::is_const<::std::remove_reference_t<T>>>,
                                            ::std::is_constructible<series_cf_t<rT>, U>>) {
-            return ::std::make_pair(2, type_c<T>{});
+            // NOTE: we can use rT & because in the implementation
+            // we return an lvalue of something which is not
+            // const (as ensured by the condition in the if
+            // statement above).
+            return ::std::make_pair(2, type_c<rT &>{});
         } else {
             return failure;
         }
     } else {
         // Equal ranks:
         // - key/tag must match,
+        // - T must not be const (need to insert into it),
         // - the coefficient type of T must be constructible
-        //   from the coefficient type of U (both lvalue and rvalue
-        //   variants),
+        //   from the coefficient type of U (both const lvalue
+        //   and rvalue variants),
         // - the key type must be symbols mergeable.
         if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, series_key_t<rU>>,
                                            ::std::is_same<series_tag_t<rT>, series_tag_t<rU>>,
+                                           ::std::negation<::std::is_const<::std::remove_reference_t<T>>>,
                                            ::std::is_constructible<series_cf_t<rT>, series_cf_t<rU> &&>,
                                            ::std::is_constructible<series_cf_t<rT>, const series_cf_t<rU> &>,
                                            // We may need to merge new symbols into the original key type.
@@ -2683,7 +2694,11 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
                                            // so checking only T's key type is enough.
                                            // NOTE: the merging is done via a const ref.
                                            is_symbols_mergeable_key<const series_key_t<rT> &>>) {
-            return ::std::make_pair(3, type_c<T>{});
+            // NOTE: we can use rT & because in the implementation
+            // we return an lvalue of something which is not
+            // const (as ensured by the condition in the if
+            // statement above).
+            return ::std::make_pair(3, type_c<rT &>{});
         } else {
             return failure;
         }
@@ -2714,16 +2729,16 @@ inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_com
         // The rank of T is less than the rank of U.
         // Delegate to the binary operator.
         if constexpr (Sign) {
-            return ::std::forward<T>(x) = ::std::forward<T>(x) + ::std::forward<U>(y);
+            return x = ::std::forward<T>(x) + ::std::forward<U>(y);
         } else {
-            return ::std::forward<T>(x) = ::std::forward<T>(x) - ::std::forward<U>(y);
+            return x = ::std::forward<T>(x) - ::std::forward<U>(y);
         }
     } else if constexpr (algo == 2) {
         // The rank of U is less than the rank of T.
         detail::series_add_term<Sign, sat_check_zero::on, sat_check_compat_key::off, sat_check_table_size::on,
                                 sat_assume_unique::off>(x, series_key_t<rT>(x.get_symbol_set()), ::std::forward<U>(y));
 
-        return ::std::forward<T>(x);
+        return x;
     } else {
         // Both T and U are series, same rank, possibly different cf (but same key).
 
@@ -2861,7 +2876,7 @@ inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_com
             }
         }
 
-        return ::std::forward<T>(x);
+        return x;
     }
 }
 
@@ -2915,7 +2930,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator+=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
+    constexpr auto operator+=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3061,7 +3076,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator-=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
+    constexpr auto operator-=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3299,8 +3314,7 @@ requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    constexpr auto operator*=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) * ::std::forward<U>(y));
+    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::forward<T>(x) * ::std::forward<U>(y));
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
@@ -3309,7 +3323,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
+    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3489,8 +3503,7 @@ requires CvrSeries<T>
 #else
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    constexpr auto operator/=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = ::std::forward<T>(x) / ::std::forward<U>(y));
+    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::forward<T>(x) / ::std::forward<U>(y));
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
@@ -3499,7 +3512,7 @@ requires !CvrSeries<T> && CvrSeries<U>
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
+    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {

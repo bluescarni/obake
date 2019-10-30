@@ -319,6 +319,7 @@ TEST_CASE("series_compound_add_sub")
     REQUIRE(!is_compound_subtractable_v<void, s1_t &>);
     REQUIRE(!is_compound_addable_v<const int &, s1_t>);
     REQUIRE(!is_compound_subtractable_v<const int &, s1_t>);
+    REQUIRE(!is_compound_addable_v<const s1_t &, s1_t>);
     REQUIRE(!is_compound_addable_v<const s1_t &, s11_t>);
     REQUIRE(!is_compound_addable_v<const s11_t &, s1_t>);
     REQUIRE(!is_compound_subtractable_v<const s1_t &, s11_t>);
@@ -326,18 +327,18 @@ TEST_CASE("series_compound_add_sub")
 
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += 1)>);
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= 1)>);
-    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() += 1)>);
-    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() -= 1)>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() += 1)>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() -= 1)>);
     REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() += s1_t{})>);
     REQUIRE(std::is_same_v<int &, decltype(std::declval<int &>() -= s1_t{})>);
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += s11_t{})>);
-    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() += s11_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() += s11_t{})>);
     REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &>() += s1_t{})>);
-    REQUIRE(std::is_same_v<s11_t &&, decltype(std::declval<s11_t &&>() += s1_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &&>() += s1_t{})>);
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= s11_t{})>);
-    REQUIRE(std::is_same_v<s1_t &&, decltype(std::declval<s1_t &&>() -= s11_t{})>);
+    REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &&>() -= s11_t{})>);
     REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &>() -= s1_t{})>);
-    REQUIRE(std::is_same_v<s11_t &&, decltype(std::declval<s11_t &&>() -= s1_t{})>);
+    REQUIRE(std::is_same_v<s11_t &, decltype(std::declval<s11_t &&>() -= s1_t{})>);
 
     for (auto s_idx1 : {0u, 1u, 2u, 4u}) {
         // Scalar.
@@ -434,6 +435,64 @@ TEST_CASE("series_compound_add_sub")
             a -= b;
             REQUIRE(a == a_copy + b);
             a -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            // Run also tests with rvalue reference on the
+            // first operand.
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>("a")[0];
+            b = make_polynomials<s1_t>(symbol_set{"a", "b"}, "b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>(symbol_set{"a", "b"}, "a")[0];
+            b = make_polynomials<s1_t>("b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
+            REQUIRE(a == a_copy);
+
+            a = make_polynomials<s1_t>("a")[0];
+            b = make_polynomials<s1_t>("b")[0];
+            a_copy = a;
+            b_copy = b;
+            ::std::move(a) += b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) += ::std::move(b);
+            REQUIRE(a == a_copy + 2 * b_copy);
+            b = b_copy;
+            ::std::move(a) -= b;
+            REQUIRE(a == a_copy + b);
+            ::std::move(a) -= std::move(b);
             REQUIRE(a == a_copy);
         }
 
