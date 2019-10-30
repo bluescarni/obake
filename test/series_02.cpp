@@ -747,3 +747,142 @@ TEST_CASE("series_clear_terms")
     REQUIRE(s.get_symbol_set() == symbol_set{"x", "y", "z"});
     REQUIRE(s._get_s_table().size() == 16u);
 }
+
+namespace ns
+{
+
+// ADL-based customisation.
+template <typename K, typename C>
+series<K, C, tag00> &series_compound_add(series<K, C, tag00> &, const series<K, C, tag00> &);
+
+struct tag02 {
+};
+
+// Wrong ADL-based customisation.
+template <typename K, typename C>
+void series_compound_add(series<K, C, tag02> &, const series<K, C, tag02> &);
+
+} // namespace ns
+
+struct custom_compound_add {
+    template <typename T, typename U>
+    T &operator()(T &, const U &) const;
+};
+
+struct wrong_custom_compound_add {
+    template <typename T, typename U>
+    void operator()(T &, const U &) const;
+};
+
+// External customisation.
+namespace obake::customisation
+{
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_compound_add<T, U>
+#else
+inline constexpr auto
+    series_add<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
+#endif
+    = custom_compound_add{};
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_compound_add<T, U>
+#else
+inline constexpr auto
+    series_add<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
+#endif
+    = wrong_custom_compound_add{};
+
+} // namespace obake::customisation
+
+TEST_CASE("series_compound_add_custom")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+    using s1a_t = series<pm_t, rat_t, ns::tag02>;
+    using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
+    using s2a_t = series<ns::pm_t, rat_t, ns::tag02>;
+
+    REQUIRE(is_compound_addable_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_compound_addable_v<s1a_t &, const s1a_t &>);
+
+    REQUIRE(is_compound_addable_v<s2_t &, const s2_t &>);
+    REQUIRE(!is_compound_addable_v<s2a_t &, const s2a_t &>);
+}
+
+namespace ns
+{
+
+// ADL-based customisation.
+template <typename K, typename C>
+series<K, C, tag00> &series_compound_sub(series<K, C, tag00> &, const series<K, C, tag00> &);
+
+// Wrong ADL-based customisation.
+template <typename K, typename C>
+void series_compound_sub(series<K, C, tag02> &, const series<K, C, tag02> &);
+
+} // namespace ns
+
+struct custom_compound_sub {
+    template <typename T, typename U>
+    T &operator()(T &, const U &) const;
+};
+
+struct wrong_custom_compound_sub {
+    template <typename T, typename U>
+    void operator()(T &, const U &) const;
+};
+
+// External customisation.
+namespace obake::customisation
+{
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_compound_sub<T, U>
+#else
+inline constexpr auto
+    series_sub<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
+#endif
+    = custom_compound_sub{};
+
+template <typename T, typename U>
+#if defined(OBAKE_HAVE_CONCEPTS)
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_compound_sub<T, U>
+#else
+inline constexpr auto
+    series_sub<T, U,
+               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
+                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
+#endif
+    = wrong_custom_compound_sub{};
+
+} // namespace obake::customisation
+
+TEST_CASE("series_compound_sub_custom")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, ns::tag00>;
+    using s1a_t = series<pm_t, rat_t, ns::tag02>;
+    using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
+    using s2a_t = series<ns::pm_t, rat_t, ns::tag02>;
+
+    REQUIRE(is_compound_subtractable_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_compound_subtractable_v<s1a_t &, const s1a_t &>);
+
+    REQUIRE(is_compound_subtractable_v<s2_t &, const s2_t &>);
+    REQUIRE(!is_compound_subtractable_v<s2a_t &, const s2a_t &>);
+}
