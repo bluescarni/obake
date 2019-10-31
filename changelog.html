@@ -89,15 +89,16 @@
 <li class="toctree-l2"><a class="reference internal" href="#unreleased">0.3 (unreleased)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#new">New</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#changes">Changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fix">Fix</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#id1">0.2 (27-10-2019)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#id2">New</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#fix">Fix</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Fix</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#id3">0.1 (18-10-2019)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id4">New</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">0.1 (18-10-2019)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id5">New</a></li>
 </ul>
 </li>
 </ul>
@@ -184,6 +185,9 @@ and C++ integrals
 <div class="section" id="changes">
 <h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p>Significant speedups (and small fixes) for the series
+arithmetic compound operators
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/85">#85</a>).</p></li>
 <li><p>Speedups and simplifications in the dynamic packed monomial class
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/83">#83</a>).</p></li>
 <li><p>Update Catch to the latest version, 2.10.2
@@ -191,6 +195,16 @@ and C++ integrals
 <li><p>Various docs/build system updates/improvements
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/82">#82</a>,
 <a class="reference external" href="https://github.com/bluescarni/obake/pull/83">#83</a>).</p></li>
+</ul>
+</div>
+<div class="section" id="fix">
+<h3>Fix<a class="headerlink" href="#fix" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fix a division by zero and silence various ubsan
+warnings originating from TBB
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/87">#87</a>).</p></li>
+<li><p>Fix a build issue on MSVC involving Boost
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/86">#86</a>).</p></li>
 </ul>
 </div>
 </div>
@@ -209,8 +223,8 @@ and ranges
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/77">#77</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="fix">
-<h3>Fix<a class="headerlink" href="#fix" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id3">
+<h3>Fix<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Fix a missing include file
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/81">#81</a>).</p></li>
@@ -221,10 +235,10 @@ and ranges
 </ul>
 </div>
 </div>
-<div class="section" id="id3">
-<h2>0.1 (18-10-2019)<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="id4">
-<h3>New<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<h2>0.1 (18-10-2019)<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id5">
+<h3>New<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Initial release of obake.</p></li>
 </ul>
