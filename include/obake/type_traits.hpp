@@ -201,6 +201,14 @@ using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
 // type traits. In general, when we require constructability,
 // we are also asking for destructability, unless we are using
 // placement new and the likes.
+// NOTE: notably, std::is_copy_constructible is *different*
+// from std::copy_constructible, because the latter requires
+// initialisation via T u = v to be available, while the former
+// does not. This matters, for instance, in the definition of
+// the iterator concept, and perhaps also, e.g., in the poly
+// class when we need to determine if we can store degrees in
+// a vector (need to double check the concept requirements
+// for std::vector).
 template <typename T>
 using is_semi_regular
     = ::std::conjunction<::std::is_default_constructible<T>, ::std::is_copy_constructible<T>,
@@ -845,6 +853,13 @@ struct derives_from_it_tag {
 template <typename T>
 using is_iterator = ::std::conjunction<
     // Copy constr/ass, destructible.
+    // NOTE: this is incomplete because
+    // is_copy_constructible does not guarantee that
+    // initialisation via T u = v is possible, but
+    // the iterator concept requires it:
+    // https://en.cppreference.com/w/cpp/named_req/CopyConstructible
+    // See how this is done in the std::copy_constructible concept:
+    // https://en.cppreference.com/w/cpp/concepts/copy_constructible
     ::std::is_copy_constructible<T>, ::std::is_copy_assignable<T>, ::std::is_destructible<T>,
     // Swappable.
     // NOTE: this adds lvalue refs to T, and becomes false if
