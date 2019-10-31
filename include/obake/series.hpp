@@ -93,7 +93,7 @@ namespace obake
 //   instance, in series' generic constructor from a lower rank
 //   series, and when preparing an output value for monomial_mul()).
 template <typename T>
-using is_key = ::std::conjunction<is_semi_regular<T>, is_constructible<T, const symbol_set &>,
+using is_key = ::std::conjunction<is_semi_regular<T>, ::std::is_constructible<T, const symbol_set &>,
                                   is_hashable<::std::add_lvalue_reference_t<const T>>,
                                   is_equality_comparable<::std::add_lvalue_reference_t<const T>>,
                                   is_zero_testable_key<::std::add_lvalue_reference_t<const T>>,
@@ -438,7 +438,7 @@ constexpr int series_generic_ctor_algorithm_impl()
         } else if constexpr (series_rank<rT> < series_rank<series_t>) {
             // Construction from lesser rank requires
             // to be able to construct C from T.
-            return is_constructible_v<C, T> ? 1 : 0;
+            return ::std::is_constructible_v<C, T> ? 1 : 0;
         } else if constexpr (series_rank<rT> == series_rank<series_t>) {
             if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
                                                ::std::is_same<series_tag_t<rT>, Tag>>) {
@@ -448,7 +448,7 @@ constexpr int series_generic_ctor_algorithm_impl()
                 // reference, depending on whether T is a mutable rvalue reference or not.
                 using cf_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&,
                                                        const series_cf_t<rT> &>;
-                return is_constructible_v<C, cf_conv_t> ? 2 : 0;
+                return ::std::is_constructible_v<C, cf_conv_t> ? 2 : 0;
             } else {
                 return 0;
             }
@@ -458,7 +458,7 @@ constexpr int series_generic_ctor_algorithm_impl()
             // type of T.
             using series_conv_t
                 = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
-            return is_constructible_v<series_t, series_conv_t> ? 3 : 0;
+            return ::std::is_constructible_v<series_t, series_conv_t> ? 3 : 0;
         }
     } else {
         return 0;
@@ -485,9 +485,9 @@ OBAKE_CONCEPT_DECL SeriesConstructible = is_series_constructible_v<T, K, C, Tag>
 #endif
 
 template <typename T, typename C>
-using is_series_convertible
-    = ::std::conjunction<::std::integral_constant<bool, series_rank<T> == 0u>, ::std::is_object<T>,
-                         is_constructible<T, int>, is_constructible<T, ::std::add_lvalue_reference_t<const C>>>;
+using is_series_convertible = ::std::conjunction<::std::integral_constant<bool, series_rank<T> == 0u>,
+                                                 ::std::is_object<T>, ::std::is_constructible<T, int>,
+                                                 ::std::is_constructible<T, ::std::add_lvalue_reference_t<const C>>>;
 
 template <typename T, typename C>
 inline constexpr bool is_series_convertible_v = is_series_convertible<T, C>::value;
@@ -559,9 +559,10 @@ struct series_rref_clearer {
 // Helper to extend the keys of "from" with the symbol insertion map ins_map.
 // The new series will be written to "to". The coefficient type of "to"
 // may be different from the coefficient type of "from", in which case a coefficient
-// conversion will take place. "to" is supposed to have to correct symbol set already,
+// conversion will take place. "to" is supposed to have the correct symbol set already,
 // but, apart from that, it must be empty, and the number of segments and space
 // reservation will be taken from "from".
+// Another precondition is that to and from must be distinct objects.
 template <typename To, typename From>
 inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
 {
@@ -570,6 +571,9 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // "to" series. "to" must have the correct symbol set.
     assert(!ins_map.empty());
     assert(to.empty());
+    if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
+        assert(&to != &from);
+    }
 
     // Ensure that the key type of From
     // is symbol mergeable (via const lvalue ref).
@@ -1255,13 +1259,15 @@ public:
         }
     }
 
+    // NOTE: this method requires that the term
+    // being inserted is not from this series.
     template <bool Sign = true,
 #if defined(OBAKE_HAVE_CONCEPTS)
               SameCvr<K> T, typename... Args>
     requires Constructible<C, Args...>
 #else
               typename T, typename... Args,
-              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, is_constructible<C, Args...>>, int> = 0>
+              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, ::std::is_constructible<C, Args...>>, int> = 0>
 #endif
         void add_term(T &&key, Args &&... args)
     {
@@ -2270,7 +2276,8 @@ constexpr auto series_default_addsub_algorithm_impl()
             // NOTE: we'll have to construct the retval from U,
             // and insert into it a term with coefficient constructed
             // from T.
-            if constexpr (::std::conjunction_v<is_constructible<ret_t, U>, is_constructible<ret_cf_t, T>>) {
+            if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, U>,
+                                               ::std::is_constructible<ret_cf_t, T>>) {
                 return ::std::make_pair(1, type_c<ret_t>{});
             } else {
                 return failure;
@@ -2290,7 +2297,8 @@ constexpr auto series_default_addsub_algorithm_impl()
 
         if constexpr (is_cf_v<ret_cf_t>) {
             using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
-            if constexpr (::std::conjunction_v<is_constructible<ret_t, T>, is_constructible<ret_cf_t, U>>) {
+            if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, T>,
+                                               ::std::is_constructible<ret_cf_t, U>>) {
                 return ::std::make_pair(2, type_c<ret_t>{});
             } else {
                 return failure;
@@ -2320,10 +2328,10 @@ constexpr auto series_default_addsub_algorithm_impl()
 
             if constexpr (::std::conjunction_v<
                               // We may need to construct a ret_t from T or U.
-                              is_constructible<ret_t, T>, is_constructible<ret_t, U>,
+                              ::std::is_constructible<ret_t, T>, ::std::is_constructible<ret_t, U>,
                               // We may need to copy/move convert the original coefficients
                               // to ret_cf_t.
-                              is_constructible<ret_cf_t, cf1_t>, is_constructible<ret_cf_t, cf2_t>,
+                              ::std::is_constructible<ret_cf_t, cf1_t>, ::std::is_constructible<ret_cf_t, cf2_t>,
                               // We may need to merge new symbols into the original key type.
                               // NOTE: the key types of T and U must be identical at the moment,
                               // so checking only T's key type is enough.
@@ -2915,6 +2923,11 @@ inline constexpr auto series_compound_add = series_compound_add_msvc{};
 // we disable the implementation if such conversion is
 // malformed. The idea is that we want an implementation
 // which feels like the builtin operators.
+// NOTE: the default implementation does not support
+// move-adding in-place a coefficient belonging to a series
+// to the same series, as that may result in the original
+// series coefficient becoming zero after being moved-from.
+// This is a corner case, but perhaps we need to document it?
 inline constexpr auto series_compound_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_add_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
@@ -3065,6 +3078,11 @@ inline constexpr auto series_compound_sub = series_compound_sub_msvc{};
 // we disable the implementation if such conversion is
 // malformed. The idea is that we want an implementation
 // which feels like the builtin operators.
+// NOTE: the default implementation does not support
+// move-subtracting in-place a coefficient belonging to a series
+// from the same series, as that may result in the original
+// series coefficient becoming zero after being moved-from.
+// This is a corner case, but perhaps we need to document it?
 inline constexpr auto series_compound_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_sub_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
@@ -3165,7 +3183,7 @@ constexpr auto series_default_mul_algorithm_impl()
                 // - multiply in-place the coefficient type of ret_t
                 //   by a const reference to T.
                 if constexpr (::std::conjunction_v<
-                                  is_constructible<ret_t, U>,
+                                  ::std::is_constructible<ret_t, U>,
                                   is_compound_multipliable<ret_cf_t &, ::std::add_lvalue_reference_t<const rT>>>) {
                     return ::std::make_pair(1, type_c<ret_t>{});
                 } else {
@@ -3180,7 +3198,7 @@ constexpr auto series_default_mul_algorithm_impl()
             if constexpr (is_cf_v<ret_cf_t>) {
                 using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
                 if constexpr (::std::conjunction_v<
-                                  is_constructible<ret_t, T>,
+                                  ::std::is_constructible<ret_t, T>,
                                   is_compound_multipliable<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
                     return ::std::make_pair(2, type_c<ret_t>{});
                 } else {
@@ -3400,7 +3418,7 @@ constexpr auto series_default_div_algorithm_impl()
             // - divide in-place the coefficient type of ret_t
             //   by a const reference to U.
             if constexpr (::std::conjunction_v<
-                              is_constructible<ret_t, T>,
+                              ::std::is_constructible<ret_t, T>,
                               is_compound_divisible<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
                 return ::std::make_pair(1, type_c<ret_t>{});
             } else {
