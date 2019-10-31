@@ -96,7 +96,7 @@ constexpr auto is_zero_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct is_zero_msvc {
     template <typename T>

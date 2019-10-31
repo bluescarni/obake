@@ -107,7 +107,7 @@ constexpr auto diff_impl(T &&x, const ::std::string &s, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct diff_msvc {
     template <typename T>

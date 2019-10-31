@@ -74,7 +74,7 @@ constexpr auto monomial_integrate_impl_with_ret_check(T &&x, const symbol_idx &i
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct monomial_integrate_msvc {
     template <typename T>

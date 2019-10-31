@@ -81,7 +81,7 @@ constexpr auto trim_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct trim_msvc {
     template <typename T>

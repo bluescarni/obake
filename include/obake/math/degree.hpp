@@ -67,7 +67,7 @@ constexpr auto degree_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct degree_msvc {
     template <typename T>

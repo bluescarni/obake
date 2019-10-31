@@ -50,7 +50,7 @@ constexpr auto key_is_one_impl(T &&x, const symbol_set &ss, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct key_is_one_msvc {
     template <typename T>

@@ -63,7 +63,7 @@ constexpr auto key_trim_impl_with_ret_check(T &&x, const symbol_idx_set &si, con
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct key_trim_msvc {
     template <typename T>
