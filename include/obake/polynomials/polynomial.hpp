@@ -2274,7 +2274,7 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
         // values in a polynomial with integral coefficients.
         // NOTE: another optimisation is possible if
         // the type of subs(c, sm) is the coefficient type of
-        // tmp_poly. In that case we can avoid the multiplication
+        // tmp_poly. In that case we can avoid one multiplication
         // and call tmp_poly.add_term() above directly with
         // subs(c, sm) as a coefficient instead of 1.
         retval += ::std::move(k_sub.first) * ::obake::subs(c, sm) * ::std::as_const(tmp_poly);
