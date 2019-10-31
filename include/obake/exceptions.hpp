@@ -25,7 +25,7 @@ struct ex_thrower {
     // Determine the type of the __LINE__ macro.
     using line_type = remove_cvref_t<decltype(__LINE__)>;
     // The non-decorating version of the call operator.
-    template <typename... Args, ::std::enable_if_t<is_constructible_v<Exception, Args...>, int> = 0>
+    template <typename... Args, ::std::enable_if_t<::std::is_constructible_v<Exception, Args...>, int> = 0>
     [[noreturn]] void operator()(Args &&... args) const
     {
         throw Exception(::std::forward<Args>(args)...);
@@ -35,7 +35,7 @@ struct ex_thrower {
     // if Str is not a string-like type or the construction of the decorated exception is not possible.
     template <typename Str, typename... Args,
               ::std::enable_if_t<::std::conjunction_v<is_string_like<::std::remove_reference_t<Str>>,
-                                                      is_constructible<Exception, ::std::string, Args...>>,
+                                                      ::std::is_constructible<Exception, ::std::string, Args...>>,
                                  int> = 0>
     [[noreturn]] void operator()(Str &&desc, Args &&... args) const
     {

@@ -1681,20 +1681,6 @@ struct nondestr00 {
 
 TEST_CASE("constructible")
 {
-    REQUIRE(!is_constructible_v<void>);
-
-    REQUIRE(is_constructible_v<int>);
-    REQUIRE(!is_constructible_v<int, void>);
-    REQUIRE(!is_constructible_v<int &>);
-    REQUIRE(!is_constructible_v<int &&>);
-    REQUIRE(!is_constructible_v<const int &>);
-
-    REQUIRE(is_constructible_v<defstr00>);
-    REQUIRE(is_constructible_v<defstr00, int, int>);
-    REQUIRE(is_constructible_v<defstr00, int &, const int &>);
-
-    REQUIRE(!is_constructible_v<nondestr00>);
-
 #if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Constructible<void>);
 

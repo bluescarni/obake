@@ -122,9 +122,9 @@ namespace detail
 // - poly cf can be constructed from an integral literal.
 template <typename T, typename... Args>
 using make_polynomials_enabler
-    = ::std::enable_if_t<::std::conjunction_v<is_polynomial<T>, is_constructible<::std::string, const Args &>...,
-                                              is_constructible<series_key_t<T>, const int *, const int *>,
-                                              is_constructible<series_cf_t<T>, int>>,
+    = ::std::enable_if_t<::std::conjunction_v<is_polynomial<T>, ::std::is_constructible<::std::string, const Args &>...,
+                                              ::std::is_constructible<series_key_t<T>, const int *, const int *>,
+                                              ::std::is_constructible<series_cf_t<T>, int>>,
                          int>;
 
 // Overload with a symbol set.
@@ -2205,7 +2205,7 @@ constexpr auto poly_subs_algorithm_impl()
                               // in ret_t.
                               is_detected<::obake::detail::mul_t, key_subs_t, cf_subs_t>,
                               is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
-                              is_constructible<cf_t, int>>) {
+                              ::std::is_constructible<cf_t, int>>) {
                 return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
             } else {
                 return failure;
@@ -2420,10 +2420,10 @@ constexpr auto poly_diff_algorithm_impl()
                                   // the differentiation variable is not in the polynomial.
                                   is_compound_addable<::std::add_lvalue_reference_t<s_t>, prod2_t>,
                                   // Need to init s_t to zero for accumulation.
-                                  is_constructible<s_t, int>,
+                                  ::std::is_constructible<s_t, int>,
                                   // Need to construct cf_t from 1 for the temporary
                                   // polynomials.
-                                  is_constructible<cf_t, int>>) {
+                                  ::std::is_constructible<cf_t, int>>) {
                     return ::std::make_pair(1, ::obake::detail::type_c<s_t>{});
                 } else {
                     return failure;
@@ -2606,10 +2606,10 @@ constexpr auto poly_integrate_algorithm_impl()
                                   // as nonesuch is not compound addable.
                                   is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
                                   // Need to init ret_t to zero for accumulation.
-                                  is_constructible<ret_t, int>,
+                                  ::std::is_constructible<ret_t, int>,
                                   // Need to construct cf_t from 1 for the temporary
                                   // polynomials.
-                                  is_constructible<cf_t, int>,
+                                  ::std::is_constructible<cf_t, int>,
                                   // Need to test that the derivative of the coefficient is zero.
                                   is_zero_testable<cf_diff_t>>) {
                     return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});

@@ -191,6 +191,16 @@ template <typename T>
 using make_unsigned_t = typename detail::make_unsigned_impl<T>::type;
 
 // Detect semi-regular types.
+// NOTE: constructability currently implies destructability:
+// https://cplusplus.github.io/LWG/issue2116
+// But it also seems like in the future the two concepts might
+// be separated, for instance see:
+// https://en.cppreference.com/w/cpp/concepts/constructible_from
+// In the future we might want to revisit this, both here
+// but also wherever else we use the is_*_constructible
+// type traits. In general, when we require constructability,
+// we are also asking for destructability, unless we are using
+// placement new and the likes.
 template <typename T>
 using is_semi_regular
     = ::std::conjunction<::std::is_default_constructible<T>, ::std::is_copy_constructible<T>,
@@ -207,22 +217,10 @@ OBAKE_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
 
 #endif
 
-// NOTE: constructability currently implies destructability:
-// https://cplusplus.github.io/LWG/issue2116
-// But it also seems like in the future the two concepts might
-// be separated:
-// https://en.cppreference.com/w/cpp/concepts/Constructible
-// So require destructability explicitly as well.
-template <typename T, typename... Args>
-using is_constructible = ::std::conjunction<::std::is_constructible<T, Args...>, ::std::is_destructible<T>>;
-
-template <typename T, typename... Args>
-inline constexpr bool is_constructible_v = is_constructible<T, Args...>::value;
-
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename... Args>
-OBAKE_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
+OBAKE_CONCEPT_DECL Constructible = ::std::is_constructible_v<T, Args...>;
 
 #endif
 
@@ -231,10 +229,10 @@ OBAKE_CONCEPT_DECL Constructible = is_constructible_v<T, Args...>;
 // an lvalue or rvalue. See:
 // https://en.cppreference.com/w/cpp/language/return
 template <typename T>
-using is_returnable
-    = ::std::disjunction<::std::is_same<::std::remove_cv_t<T>, void>,
-                         ::std::conjunction<::std::disjunction<is_constructible<T, ::std::add_lvalue_reference_t<T>>,
-                                                               is_constructible<T, ::std::add_rvalue_reference_t<T>>>>>;
+using is_returnable = ::std::disjunction<
+    ::std::is_same<::std::remove_cv_t<T>, void>,
+    ::std::conjunction<::std::disjunction<::std::is_constructible<T, ::std::add_lvalue_reference_t<T>>,
+                                          ::std::is_constructible<T, ::std::add_rvalue_reference_t<T>>>>>;
 
 template <typename T>
 inline constexpr bool is_returnable_v = is_returnable<T>::value;
