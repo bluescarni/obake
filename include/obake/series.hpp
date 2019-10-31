@@ -559,9 +559,10 @@ struct series_rref_clearer {
 // Helper to extend the keys of "from" with the symbol insertion map ins_map.
 // The new series will be written to "to". The coefficient type of "to"
 // may be different from the coefficient type of "from", in which case a coefficient
-// conversion will take place. "to" is supposed to have to correct symbol set already,
+// conversion will take place. "to" is supposed to have the correct symbol set already,
 // but, apart from that, it must be empty, and the number of segments and space
 // reservation will be taken from "from".
+// Another precondition is that to and from must be distinct objects.
 template <typename To, typename From>
 inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
 {
@@ -570,6 +571,9 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     // "to" series. "to" must have the correct symbol set.
     assert(!ins_map.empty());
     assert(to.empty());
+    if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
+        assert(&to != &from);
+    }
 
     // Ensure that the key type of From
     // is symbol mergeable (via const lvalue ref).
@@ -1255,6 +1259,8 @@ public:
         }
     }
 
+    // NOTE: this method requires that the term
+    // being inserted is not from this series.
     template <bool Sign = true,
 #if defined(OBAKE_HAVE_CONCEPTS)
               SameCvr<K> T, typename... Args>
@@ -2919,6 +2925,11 @@ inline constexpr auto series_compound_add = series_compound_add_msvc{};
 // we disable the implementation if such conversion is
 // malformed. The idea is that we want an implementation
 // which feels like the builtin operators.
+// NOTE: the default implementation does not support
+// move-adding in-place a coefficient belonging to a series
+// to the same series, as that may result in the original
+// series coefficient becoming zero after being moved-from.
+// This is a corner case, but perhaps we need to document it?
 inline constexpr auto series_compound_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_add_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
@@ -3070,6 +3081,11 @@ inline constexpr auto series_compound_sub = series_compound_sub_msvc{};
 // we disable the implementation if such conversion is
 // malformed. The idea is that we want an implementation
 // which feels like the builtin operators.
+// NOTE: the default implementation does not support
+// move-subtracting in-place a coefficient belonging to a series
+// from the same series, as that may result in the original
+// series coefficient becoming zero after being moved-from.
+// This is a corner case, but perhaps we need to document it?
 inline constexpr auto series_compound_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_sub_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
