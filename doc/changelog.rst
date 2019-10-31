@@ -17,6 +17,9 @@ New
 Changes
 ~~~~~~~
 
+- Significant speedups (and small fixes) for the series
+  arithmetic compound operators
+  (`#85 <https://github.com/bluescarni/obake/pull/85>`__).
 - Speedups and simplifications in the dynamic packed monomial class
   (`#83 <https://github.com/bluescarni/obake/pull/83>`__).
 - Update Catch to the latest version, 2.10.2
@@ -24,6 +27,15 @@ Changes
 - Various docs/build system updates/improvements
   (`#82 <https://github.com/bluescarni/obake/pull/82>`__,
   `#83 <https://github.com/bluescarni/obake/pull/83>`__).
+
+Fix
+~~~
+
+- Fix a division by zero and silence various ubsan
+  warnings originating from TBB
+  (`#87 <https://github.com/bluescarni/obake/pull/87>`__).
+- Fix a build issue on MSVC involving Boost
+  (`#86 <https://github.com/bluescarni/obake/pull/86>`__).
 
 0.2 (27-10-2019)
 ----------------
