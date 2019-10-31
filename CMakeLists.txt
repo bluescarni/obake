@@ -62,8 +62,8 @@ if(YACMA_COMPILER_IS_MSVC)
     # Disable the idiotic minmax macros on MSVC (both cl and clang-cl).
     # Also, enable the bigobj flag and the WIN32_LEAN_AND_MEAN definitions:
     # https://stackoverflow.com/questions/11040133/what-does-defining-win32-lean-and-mean-exclude-exactly
-    list(APPEND OBAKE_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
-    list(APPEND OBAKE_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN")
+    list(APPEND OBAKE_CXX_FLAGS_DEBUG "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN" "/Zc:__cplusplus")
+    list(APPEND OBAKE_CXX_FLAGS_RELEASE "-DNOMINMAX" "/bigobj" "-DWIN32_LEAN_AND_MEAN" "/Zc:__cplusplus" )
     # Enable strict conformance mode, if supported.
     set(CMAKE_REQUIRED_QUIET TRUE)
     check_cxx_compiler_flag("/permissive-" _OBAKE_MSVC_SUPPORTS_STRICT_CONFORMANCE)
