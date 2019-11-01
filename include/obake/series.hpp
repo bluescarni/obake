@@ -147,7 +147,7 @@ inline constexpr ::std::size_t series_rank_impl = 0;
 
 template <typename K, typename C, typename Tag>
 inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> =
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
     series_rank_impl<C> + 1u
 #else
     []() {

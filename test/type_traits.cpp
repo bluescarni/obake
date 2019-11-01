@@ -1222,7 +1222,13 @@ TEST_CASE("iterators")
     REQUIRE(!is_input_iterator_v<iter08>);
     REQUIRE(!is_input_iterator_v<iter08 &>);
     REQUIRE(!is_input_iterator_v<const iter08>);
+
+    #if __cplusplus <201704L
     REQUIRE(!is_iterator_v<iter08>);
+    #else
+    REQUIRE(is_iterator_v<iter08>);
+    #endif
+    
     REQUIRE(!is_iterator_v<iter08 &>);
     REQUIRE(!is_iterator_v<const iter08>);
     REQUIRE(is_input_iterator_v<iter09>);

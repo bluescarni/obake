@@ -924,3 +924,9 @@ TEST_CASE("monomial_pow_test")
         }
     });
 }
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
