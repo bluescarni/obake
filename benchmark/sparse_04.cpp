@@ -17,5 +17,10 @@ using namespace obake_benchmark;
 
 int main()
 {
-    sparse_benchmark<packed_monomial<unsigned long>, mppp::integer<2>>(25);
+    try {
+        sparse_benchmark<packed_monomial<uint64_t>, mppp::integer<2>>(25);
+    } catch (std::exception &e)
+    {
+        std::cerr << e.what();
+    }
 }

@@ -22,25 +22,30 @@ int main()
 {
     using namespace obake;
     const auto n = 16;
+    try {
 
-    auto [x, y, z, t, u]
-        = make_polynomials<polynomial<packed_monomial<unsigned long>, mppp::integer<2>>>("x", "y", "z", "t", "u");
+        auto [x, y, z, t, u]
+            = make_polynomials<polynomial<packed_monomial<uint64_t>, mppp::integer<2>>>("x", "y", "z", "t", "u");
 
-    auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
-    const auto tmp_f(f);
-    auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
-    const auto tmp_g(g);
+        auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
+        const auto tmp_f(f);
+        auto g = (u + t + z * z * 2 + y * y * y * 3 + x * x * x * x * x * 5 + 1);
+        const auto tmp_g(g);
 
-    for (int i = 1; i < n; ++i) {
-        f *= tmp_f;
-        g *= tmp_g;
-    }
+        for (int i = 1; i < n; ++i) {
+            f *= tmp_f;
+            g *= tmp_g;
+        }
 
-    polynomial<packed_monomial<unsigned long>, mppp::integer<2>> ret;
+        polynomial<packed_monomial<uint64_t>, mppp::integer<2>> ret;
+        {
+            simple_timer t;
+            ret = truncated_mul(f, g, 300);
+        }
+
+        std::cout << ret.table_stats() << '\n';
+    } catch (std::exception &e)
     {
-        simple_timer t;
-        ret = truncated_mul(f, g, 300);
+        std::cerr << e.what();
     }
-
-    std::cout << ret.table_stats() << '\n';
 }
