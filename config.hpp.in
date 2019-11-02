@@ -50,6 +50,19 @@
 
 #endif
 
+// C++ standard setup.
+// NOTE: this is necessary because at this time MSVC does not set correctly the
+// __cplusplus macro.
+#if defined(_MSC_VER)
+
+#define OBAKE_CPLUSPLUS _MSVC_LANG
+
+#else
+
+#define OBAKE_CPLUSPLUS __cplusplus
+
+#endif
+
 // Detect 128bit integers, lifted from mp++. This is part of the public API.
 #include <mp++/config.hpp>
 
