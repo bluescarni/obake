@@ -194,8 +194,8 @@ add_library(obake SHARED "${OBAKE_SRC_FILES}")
 set_property(TARGET obake PROPERTY VERSION "3.0")
 set_property(TARGET obake PROPERTY SOVERSION 3 )
 target_compile_options(obake PRIVATE
-    "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
-    "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
+    "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
 )
