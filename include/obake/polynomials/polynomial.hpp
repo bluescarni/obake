@@ -2368,6 +2368,92 @@ namespace detail
 {
 
 // Meta-programming for the selection of the
+// truncate_p_degree() algorithm.
+// NOTE: at this time, we support only truncation
+// based on key filtering.
+template <typename T, typename U>
+constexpr auto poly_truncate_p_degree_algorithm_impl()
+{
+    using rT = remove_cvref_t<T>;
+
+    // Shortcut for signalling that the truncate_p_degree() implementation
+    // is not well-defined.
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_polynomial_v<rT>) {
+        // Not a polynomial.
+        return failure;
+    } else {
+        // Check if we can compute the p_degree of the terms via the default
+        // implementation for series.
+        using d_impl = customisation::internal::series_default_p_degree_impl;
+        constexpr auto algo = d_impl::template algo<T>;
+
+        if constexpr (algo == 3) {
+            // The truncation will involve only key-based
+            // filtering. We need to be able to lt-compare U
+            // to the partial degree type of the key (const lvalue
+            // ref vs rvalue).
+            using deg_t = typename d_impl::template ret_t<T>;
+
+            if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t>) {
+                return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
+            } else {
+                return failure;
+            }
+        } else {
+            // The key partial degree computation is not possible, or it
+            // involves the coefficient in addition to the key.
+            // NOTE: the case in which the coefficient is partial degree
+            // truncatable and the key does not support partial degree computation
+            // may eventually be handled in a default series implementation
+            // of truncate_p_degree().
+            return failure;
+        }
+    }
+}
+
+template <typename T, typename U>
+inline constexpr auto poly_truncate_p_degree_algorithm = detail::poly_truncate_p_degree_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int poly_truncate_p_degree_algo = poly_truncate_p_degree_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using poly_truncate_p_degree_ret_t = typename decltype(poly_truncate_p_degree_algorithm<T, U>.second)::type;
+
+} // namespace detail
+
+template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_p_degree_algo<T &&, U &&> != 0, int> = 0>
+inline detail::poly_truncate_p_degree_ret_t<T &&, U &&> truncate_p_degree(T &&x, U &&y_, const symbol_set &s)
+{
+    using ret_t = detail::poly_truncate_p_degree_ret_t<T &&, U &&>;
+    constexpr auto algo = detail::poly_truncate_p_degree_algo<T &&, U &&>;
+
+    // Sanity checks.
+    static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
+    static_assert(algo == 1);
+
+    // Use the default functor for the extraction of the term partial degree.
+    using d_impl = customisation::internal::series_default_p_degree_impl;
+
+    // Extract the symbol indices.
+    const auto &ss = x.get_symbol_set();
+    const auto si = ::obake::detail::ss_intersect_idx(s, ss);
+
+    // Implement on top of filter().
+    // NOTE: d_extractor will strip out the cvref
+    // from T, thus we can just pass in T as-is.
+    return ::obake::filter(::std::forward<T>(x),
+                           [deg_ext = d_impl::d_extractor<T>{&s, &si, &ss}, &y = ::std::as_const(y_)](const auto &t) {
+                               return !(y < deg_ext(t));
+                           });
+}
+
+namespace detail
+{
+
+// Meta-programming for the selection of the
 // diff() algorithm.
 template <typename T>
 constexpr auto poly_diff_algorithm_impl()
