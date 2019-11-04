@@ -7,7 +7,7 @@ function(ADD_OBAKE_BENCHMARK arg1)
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
   )
-  set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
+  set_property(TARGET ${arg1} PROPERTY CXX_STANDARD "${OBAKE_LANGUAGE_STANDARD}")
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
 endfunction()

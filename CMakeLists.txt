@@ -25,6 +25,12 @@ message(STATUS "obake version: ${obake_VERSION}")
 option(OBAKE_BUILD_TESTS "Build unit tests." OFF)
 option(OBAKE_BUILD_BENCHMARKS "Build benchmarks." OFF)
 option(OBAKE_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
+# setup language standard 
+set(OBAKE_LANGUAGE_STANDARD 17 CACHE STRING "The Language standard to be used when compiling OBAKE")
+set(LANGUAGE_STANDARDS 17;20)
+set_property(CACHE OBAKE_LANGUAGE_STANDARD PROPERTY STRINGS ${LANGUAGE_STANDARDS})
+message(STATUS "OBAKE_LANGUAGE_STANDARD = '${OBAKE_LANGUAGE_STANDARD}'")
+
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -201,7 +207,7 @@ target_compile_options(obake PRIVATE
 )
 set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
-set_property(TARGET obake PROPERTY CXX_STANDARD 17)
+set_property(TARGET obake PROPERTY CXX_STANDARD "${OBAKE_LANGUAGE_STANDARD}")
 set_property(TARGET obake PROPERTY CXX_STANDARD_REQUIRED YES)
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
 
