@@ -7,6 +7,8 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <iostream>
+#include <exception>
+#include <cstdint>
 
 #include <mp++/integer.hpp>
 
@@ -25,7 +27,7 @@ int main()
     try {
 
         auto [x, y, z, t, u]
-            = make_polynomials<polynomial<packed_monomial<uint64_t>, mppp::integer<2>>>("x", "y", "z", "t", "u");
+            = make_polynomials<polynomial<packed_monomial<std::uint64_t>, mppp::integer<2>>>("x", "y", "z", "t", "u");
 
         auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
         const auto tmp_f(f);
@@ -37,7 +39,7 @@ int main()
             g *= tmp_g;
         }
 
-        polynomial<packed_monomial<uint64_t>, mppp::integer<2>> ret;
+        polynomial<packed_monomial<std::uint64_t>, mppp::integer<2>> ret;
         {
             simple_timer t;
             ret = truncated_mul(f, g, 300);
