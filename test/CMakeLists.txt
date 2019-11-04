@@ -1,7 +1,7 @@
 add_library(obake_test STATIC catch_main.cpp)
 target_compile_options(obake_test PRIVATE
-  "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
-  "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
+  "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
   "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
   "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
 )
@@ -13,8 +13,8 @@ function(ADD_OBAKE_TESTCASE arg1)
   add_executable(${arg1} ${arg1}.cpp)
   target_link_libraries(${arg1} obake obake_test)
   target_compile_options(${arg1} PRIVATE
-    "$<$<CONFIG:DEBUG>:${OBAKE_CXX_FLAGS_DEBUG}>"
-    "$<$<CONFIG:RELEASE>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
+    "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
   )
