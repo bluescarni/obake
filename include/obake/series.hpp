@@ -132,7 +132,7 @@ OBAKE_CONCEPT_DECL Cf = is_cf_v<T>;
 #endif
 
 // Forward declaration.
-#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key, Cf, typename>
 #else
 template <typename K, typename C, typename, typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
@@ -659,7 +659,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
-#if defined(OBAKE_HAVE_CONCEPTS) && !defined(_MSC_VER)
+#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key K, Cf C, typename Tag>
 #else
 template <typename K, typename C, typename Tag, typename>
