@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.3.0)
+# NOTE: C++17 supported since CMake 3.8.0:
+# https://cmake.org/cmake/help/v3.8/prop_tgt/CXX_STANDARD.html
+cmake_minimum_required(VERSION 3.8.0)
 
 # Set default build type to "Release".
 # NOTE: this should be done before the project command since the latter can set
