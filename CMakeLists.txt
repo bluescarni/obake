@@ -31,7 +31,9 @@ if (NOT CMAKE_CXX_STANDARD)
 	set(CMAKE_CXX_STANDARD 17)
 else()
 	if(CMAKE_CXX_STANDARD LESS 17)
-		message(FATAL_ERROR "Language standard less than 17 is not supported. It is currently set to ${CMAKE_CXX_STANDARD}")
+		message(FATAL_ERROR "Language standard less than 17 is not supported. It is currently manually set to ${CMAKE_CXX_STANDARD}")
+	enlse()
+		message(STATUS "Using the manually-specified value for the C++ standard version (${CMAKE_CXX_STANDARD}).")
 	endif()	
 endif()
 # NOTE: CXX_STANDARD is initialized with CMAKE_CXX_STANDARD when the target is created
@@ -212,6 +214,7 @@ target_compile_options(obake PRIVATE
 )
 set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
+set_target_properties(obake PROPERTIES CXX_STANDARD ${CMAKE_CXX_STANDARD}) 
 set_property(TARGET obake PROPERTY CXX_STANDARD_REQUIRED YES)
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
 # Add the include dirs to the obake target's interface.
