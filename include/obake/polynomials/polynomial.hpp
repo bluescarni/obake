@@ -203,8 +203,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... na
 
 } // namespace detail
 
-#if defined(_MSC_VER)
-
+#if !defined(OBAKE_MSVC_SUPPORTED)
 template <typename T>
 struct make_polynomials_msvc {
     template <typename... Args>
@@ -1184,36 +1183,44 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         } else {
             // Create and return the functor. The degree data
             // for the two series will be moved in as vd1 and vd2.
+#ifdef _MSC_VER //until MS fixes the lamda capture
+            auto vd1 = ::std::move(::std::get<0>(degree_data));
+            auto vd2 = ::std::move(::std::get<1>(degree_data));
+            return [vd1, vd2,
+#else
+
             return [vd1 = ::std::move(::std::get<0>(degree_data)), vd2 = ::std::move(::std::get<1>(degree_data)),
-                    // NOTE: max_deg is captured via const lref this way,
-                    // as args is passed as a const lref pack.
-                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
-                using idx_t = remove_cvref_t<decltype(i)>;
+#endif
+            // NOTE: max_deg is captured via const lref this way,
+            // as args is passed as a const lref pack.
+                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2)
+                    {
+                        using idx_t = remove_cvref_t<decltype(i)>;
 
-                // Get the total/partial degree of the current term
-                // in the first series.
-                const auto &d_i = vd1[i];
+                        // Get the total/partial degree of the current term
+                        // in the first series.
+                        const auto &d_i = vd1[i];
 
-                // Find the first term in the range r2 such
-                // that d_i + d_j > max_deg.
-                // NOTE: we checked above that the static cast
-                // to the it diff type is safe.
-                using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
-                const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(::std::get<0>(r2)),
-                                                   vd2.cbegin() + static_cast<it_diff_t>(::std::get<1>(r2)), max_deg,
-                                                   [&d_i](const auto &mdeg, const auto &d_j) {
-                                                       // NOTE: we require below
-                                                       // comparability between const lvalue limit
-                                                       // and rvalue of the sum of the degrees.
-                                                       return mdeg < d_i + d_j;
-                                                   });
+                        // Find the first term in the range r2 such
+                        // that d_i + d_j > max_deg.
+                        // NOTE: we checked above that the static cast
+                        // to the it diff type is safe.
+                        using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
+                        const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(::std::get<0>(r2)),
+                                                           vd2.cbegin() + static_cast<it_diff_t>(::std::get<1>(r2)),
+                                                           max_deg, [&d_i](const auto &mdeg, const auto &d_j) {
+                                                               // NOTE: we require below
+                                                               // comparability between const lvalue limit
+                                                               // and rvalue of the sum of the degrees.
+                                                               return mdeg < d_i + d_j;
+                                                           });
 
-                // Turn the iterator into an index and return it.
-                // NOTE: we checked above that the iterator diff
-                // type can safely be used as an index (for both
-                // vd1 and vd2).
-                return static_cast<idx_t>(it - vd2.cbegin());
-            };
+                        // Turn the iterator into an index and return it.
+                        // NOTE: we checked above that the iterator diff
+                        // type can safely be used as an index (for both
+                        // vd1 and vd2).
+                        return static_cast<idx_t>(it - vd2.cbegin());
+                    };
         }
     }();
 
@@ -2690,7 +2697,7 @@ constexpr auto poly_integrate_algorithm_impl()
                 using ret_t = detected_t<::obake::detail::mul_t, quot_t, const rT &>;
 
                 if constexpr (::std::conjunction_v<
-                                  // Ensure quot_t is detected, as we use it in the definition of ret_t.
+                                  //  Ensure quot_t is detected, as we use it in the definition of ret_t.
                                   is_detected<::obake::detail::div_t, const cf_t &, key_int_t>,
                                   // The return type must be accumulable.
                                   // NOTE: this condition also checks that ret_t is detected,

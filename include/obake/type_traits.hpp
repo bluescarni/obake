@@ -822,7 +822,7 @@ using deref_t = decltype(*::std::declval<T>());
 
 // Check if the type T derives from one of the standard iterator tags.
 // NOTE: MSVC has issues with the pattern below, adopt another implementation.
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 // NOTE: default empty for hard error (the default implementation is unused).
 template <typename, typename>

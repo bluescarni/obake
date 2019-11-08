@@ -50,6 +50,19 @@
 
 #endif
 
+// C++ standard setup.
+// NOTE: this is necessary because at this time MSVC does not set correctly the
+// __cplusplus macro.
+#if defined(_MSC_VER)
+
+#define OBAKE_CPLUSPLUS _MSVC_LANG
+
+#else
+
+#define OBAKE_CPLUSPLUS __cplusplus
+
+#endif
+
 // Detect 128bit integers, lifted from mp++. This is part of the public API.
 #include <mp++/config.hpp>
 
@@ -78,6 +91,15 @@
 
 #define OBAKE_HAVE_STRING_VIEW
 
+#endif
+
+// temporary measure for MSVC versioning
+// language support is set to latest
+// at least MSVC 16.4.0 preview 2.0
+#if defined (_MSC_VER) && (_MSVC_LANG > 201703L) && (_MSC_FULL_VER > 192428206)
+
+    #define OBAKE_MSVC_SUPPORTED 
+    
 #endif
 
 #endif

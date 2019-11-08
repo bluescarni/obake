@@ -105,7 +105,7 @@ constexpr auto pow_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct pow_msvc {
     template <typename T, typename U>

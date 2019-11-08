@@ -17,7 +17,7 @@ namespace obake
 // Wrapper around mppp::type_name() for getting
 // the name of T at runtime.
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 template <typename T>
 struct type_name_msvc {
