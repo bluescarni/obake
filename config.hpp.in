@@ -93,9 +93,9 @@
 
 #endif
 
-// temporary measure for MSVC versioning
-// language support is set to latest
-// at least MSVC 16.4.0 preview 2.0
+// Temporary measure for MSVC versioning.
+// Language support is set to latest
+// at least MSVC 16.4.0 preview 2.0.
 #if defined(_MSC_VER) && (_MSVC_LANG > 201703L) && (_MSC_FULL_VER > 192428206)
 
 #define OBAKE_MSVC_SUPPORTED
