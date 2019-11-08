@@ -40,7 +40,7 @@
 #include <obake/detail/to_string.hpp>
 #include <obake/stack_trace.hpp>
 
-#if defined(OBAKE_COMPILER_IS_CLANG)
+#if defined(__clang__)
 
 // Silence clang warning when doing overflow checking below.
 #pragma clang diagnostic push
@@ -123,7 +123,7 @@ namespace obake::detail
 
 } // namespace obake::detail
 
-#if defined(OBAKE_COMPILER_IS_CLANG)
+#if defined(__clang__)
 
 #pragma clang diagnostic pop
 
