@@ -1770,7 +1770,7 @@ struct series_default_pow_impl {
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires (series_default_pow_impl::algo<T, U> != 0) inline constexpr auto pow<T, U>
+requires(series_default_pow_impl::algo<T, U> != 0) inline constexpr auto pow<T, U>
 #else
 inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
 #endif
@@ -3803,20 +3803,20 @@ constexpr auto series_default_degree_algorithm_impl()
                 // NOTE: check for addability using rvalues.
                 using degree_t = detected_t<detail::add_t, key_degree_t, cf_degree_t>;
 
-                    if constexpr (::std::conjunction_v<
+                if constexpr (::std::conjunction_v<
                                   // NOTE: these take care of ensuring that degree_t is detected
                                   // (because nonesuch is not lt-comparable etc.)
-                                      is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                      ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
                                   // NOTE: require a semi-regular type,
                                   // it's just easier to reason about.
                                   is_semi_regular<degree_t>>) {
                     // degree_t is well defined, it supports operator<, it can be constructed from int,
                     // it is returnable and semi-regular (hence, move-assignable).
-                        return ::std::make_pair(1, detail::type_c<degree_t>{});
-                    } else {
-                        return failure;
-                    }
+                    return ::std::make_pair(1, detail::type_c<degree_t>{});
+                } else {
+                    return failure;
+                }
             } else if constexpr (cf_has_degree) {
                 // Only the coefficient is with degree.
                 using degree_t = DegreeT<const cf_t &>;
@@ -3934,7 +3934,7 @@ struct series_default_degree_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires (series_default_degree_impl::algo<T> != 0) inline constexpr auto degree<T>
+requires(series_default_degree_impl::algo<T> != 0) inline constexpr auto degree<T>
 #else
 inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
 #endif
@@ -4074,7 +4074,7 @@ struct series_default_p_degree_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires (series_default_p_degree_impl::algo<T> != 0) inline constexpr auto p_degree<T>
+requires(series_default_p_degree_impl::algo<T> != 0) inline constexpr auto p_degree<T>
 #else
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
 #endif
@@ -4239,7 +4239,7 @@ struct series_default_evaluate_impl {
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires (series_default_evaluate_impl::algo<T, U> != 0) inline constexpr auto evaluate<T, U>
+requires(series_default_evaluate_impl::algo<T, U> != 0) inline constexpr auto evaluate<T, U>
 #else
 inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
 #endif
