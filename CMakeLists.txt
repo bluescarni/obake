@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.3.0)
+# NOTE: C++17 supported since CMake 3.8.0:
+# https://cmake.org/cmake/help/v3.8/prop_tgt/CXX_STANDARD.html
+cmake_minimum_required(VERSION 3.8.0)
 
 # Set default build type to "Release".
 # NOTE: this should be done before the project command since the latter can set
@@ -25,19 +27,6 @@ message(STATUS "obake version: ${obake_VERSION}")
 option(OBAKE_BUILD_TESTS "Build unit tests." OFF)
 option(OBAKE_BUILD_BENCHMARKS "Build benchmarks." OFF)
 option(OBAKE_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
-
-# setup language standard, can be controlled from the command line 
-if (NOT CMAKE_CXX_STANDARD)
-	set(CMAKE_CXX_STANDARD 17)
-else()
-	if(CMAKE_CXX_STANDARD LESS 17)
-		message(FATAL_ERROR "Language standard less than 17 is not supported. It is currently manually set to ${CMAKE_CXX_STANDARD}")
-	enlse()
-		message(STATUS "Using the manually-specified value for the C++ standard version (${CMAKE_CXX_STANDARD}).")
-	endif()	
-endif()
-# NOTE: CXX_STANDARD is initialized with CMAKE_CXX_STANDARD when the target is created
-
 
 # Run the YACMA compiler setup.
 include(YACMACompilerLinkerSettings)
@@ -214,7 +203,14 @@ target_compile_options(obake PRIVATE
 )
 set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
-set_target_properties(obake PROPERTIES CXX_STANDARD ${CMAKE_CXX_STANDARD}) 
+if(NOT CMAKE_CXX_STANDARD)
+    # The user did not provide the CMAKE_CXX_STANDARD variable,
+    # go with the default (C++17).
+    message(STATUS "Setting the C++ standard version to the default value (17).")
+    set_property(TARGET obake PROPERTY CXX_STANDARD 17)
+else()
+    message(STATUS "Using the manually-specified value for the C++ standard version (${CMAKE_CXX_STANDARD}).")
+endif()
 set_property(TARGET obake PROPERTY CXX_STANDARD_REQUIRED YES)
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
 # Add the include dirs to the obake target's interface.

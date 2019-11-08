@@ -1223,12 +1223,15 @@ TEST_CASE("iterators")
     REQUIRE(!is_input_iterator_v<iter08 &>);
     REQUIRE(!is_input_iterator_v<const iter08>);
 
-    #if OBAKE_CPLUSPLUS > 201703L  // C++20 dependend, different interfaces for iterators
+#if OBAKE_CPLUSPLUS > 201703L
+    // C++20 dependent, different interfaces for iterators
+    // (iterators don't need to provide explicit specialisations
+    // of iterator_traits any more).
     REQUIRE(is_iterator_v<iter08>);
-    #else
+#else
     REQUIRE(!is_iterator_v<iter08>);
-    #endif
-    
+#endif
+
     REQUIRE(!is_iterator_v<iter08 &>);
     REQUIRE(!is_iterator_v<const iter08>);
     REQUIRE(is_input_iterator_v<iter09>);

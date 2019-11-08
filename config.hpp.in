@@ -37,9 +37,9 @@
 
 #define OBAKE_HAVE_CONCEPTS
 
-#if defined(OBAKE_COMPILER_IS_GCC)
+// NOTE: GCC < 9 uses the syntax of the concept TS.
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 9
 
-// NOTE: currently, all GCC versions are still using the concepts TS syntax.
 #define OBAKE_CONCEPT_DECL concept bool
 
 #else
@@ -93,13 +93,13 @@
 
 #endif
 
-// temporary measure for MSVC versioning
-// language support is set to latest
-// at least MSVC 16.4.0 preview 2.0
-#if defined (_MSC_VER) && (_MSVC_LANG > 201703L) && (_MSC_FULL_VER > 192428206)
+// Temporary measure for MSVC versioning.
+// Language support is set to latest
+// at least MSVC 16.4.0 preview 2.0.
+#if defined(_MSC_VER) && (_MSVC_LANG > 201703L) && (_MSC_FULL_VER > 192428206)
 
-    #define OBAKE_MSVC_SUPPORTED 
-    
+#define OBAKE_MSVC_SUPPORTED
+
 #endif
 
 #endif

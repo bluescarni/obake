@@ -6,9 +6,9 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <iostream>
-#include <exception>
 #include <cstdint>
+#include <exception>
+#include <iostream>
 
 #include <mp++/integer.hpp>
 
@@ -46,8 +46,7 @@ int main()
         }
 
         std::cout << ret.table_stats() << '\n';
-    } catch (std::exception &e)
-    {
+    } catch (std::exception &e) {
         std::cerr << e.what();
     }
 }

@@ -6,11 +6,12 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <exception>
 #include <cstdint>
-#include <obake/polynomials/packed_monomial.hpp>
+#include <exception>
 
 #include <mp++/integer.hpp>
+
+#include <obake/polynomials/packed_monomial.hpp>
 
 #include "sparse.hpp"
 
@@ -22,6 +23,6 @@ int main()
     try {
         sparse_benchmark<packed_monomial<std::uint64_t>, mppp::integer<2>>(16);
     } catch (std::exception &e) {
-        std::cerr << e.what();    
+        std::cerr << e.what();
     }
 }

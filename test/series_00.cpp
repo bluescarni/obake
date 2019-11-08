@@ -379,7 +379,8 @@ TEST_CASE("add_term_primitives")
 
 #if defined(MPPP_WITH_MPFR)
                         // Test coefficient move semantics with mppp::real.
-#if defined(_MSC_VER)   // MSVC bug in VS2019. using vs. typedef should make no difference
+#if defined(_MSC_VER)
+                        // MSVC bug in VS2019. using vs. typedef should make no difference
                         typedef series<pm_t, real, void> s2_t;
 #else
                         using s2_t = series<pm_t, real, void>;
@@ -1308,7 +1309,7 @@ TEST_CASE("series_conversion_operator")
     s1.add_term(pm_t{4, 5, 6}, 2);
     s1.add_term(pm_t{7, 8, 9}, -2);
     OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
-                                     "because the series does not consist of a single coefficient");
+                                   "because the series does not consist of a single coefficient");
 }
 
 TEST_CASE("series_swap")

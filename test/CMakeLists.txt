@@ -5,7 +5,11 @@ target_compile_options(obake_test PRIVATE
   "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
   "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
 )
-set_property(TARGET obake_test PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD}) 
+if(NOT CMAKE_CXX_STANDARD)
+  # The user did not provide the CMAKE_CXX_STANDARD variable,
+  # go with the default (C++17).
+  set_property(TARGET obake_test PROPERTY CXX_STANDARD 17)
+endif()
 set_property(TARGET obake_test PROPERTY CXX_STANDARD_REQUIRED YES)
 set_property(TARGET obake_test PROPERTY CXX_EXTENSIONS NO)
 
@@ -18,7 +22,11 @@ function(ADD_OBAKE_TESTCASE arg1)
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
   )
-  set_property(TARGET obake_test PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
+  if(NOT CMAKE_CXX_STANDARD)
+    # The user did not provide the CMAKE_CXX_STANDARD variable,
+    # go with the default (C++17).
+    set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
+  endif()
   set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
   add_test(${arg1} ${arg1})
