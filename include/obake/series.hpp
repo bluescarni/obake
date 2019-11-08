@@ -147,7 +147,7 @@ inline constexpr ::std::size_t series_rank_impl = 0;
 
 template <typename K, typename C, typename Tag>
 inline constexpr ::std::size_t series_rank_impl<series<K, C, Tag>> =
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
     series_rank_impl<C> + 1u
 #else
     []() {
@@ -1770,7 +1770,7 @@ struct series_default_pow_impl {
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_pow_impl::algo<T, U> != 0 inline constexpr auto pow<T, U>
+    requires (series_default_pow_impl::algo<T, U> != 0) inline constexpr auto pow<T, U>
 #else
 inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
 #endif
@@ -2152,8 +2152,7 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
 
 } // namespace detail
 
-#if defined(_MSC_VER)
-
+#if !defined(OBAKE_MSVC_SUPPORTED)
 struct series_stream_insert_msvc {
     template <typename T>
     constexpr auto operator()(::std::ostream &os, T &&s) const
@@ -2566,8 +2565,7 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
-
+#if !defined(OBAKE_MSVC_SUPPORTED)
 struct series_add_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
@@ -2907,7 +2905,7 @@ constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_compound_add_msvc {
     template <typename T, typename U>
@@ -2995,8 +2993,7 @@ constexpr auto series_sub_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
-
+#if !defined(OBAKE_MSVC_SUPPORTED)
 struct series_sub_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
@@ -3063,7 +3060,7 @@ constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_compound_sub_msvc {
     template <typename T, typename U>
@@ -3313,7 +3310,7 @@ constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_mul_msvc {
     template <typename T, typename U>
@@ -3502,7 +3499,7 @@ constexpr auto series_div_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_div_msvc {
     template <typename T, typename U>
@@ -3729,7 +3726,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct series_equal_to_msvc {
     template <typename T, typename U>
@@ -3806,20 +3803,20 @@ constexpr auto series_default_degree_algorithm_impl()
                 // NOTE: check for addability using rvalues.
                 using degree_t = detected_t<detail::add_t, key_degree_t, cf_degree_t>;
 
-                if constexpr (::std::conjunction_v<
+                    if constexpr (::std::conjunction_v<
                                   // NOTE: these take care of ensuring that degree_t is detected
                                   // (because nonesuch is not lt-comparable etc.)
-                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
+                                      is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
+                                      ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
                                   // NOTE: require a semi-regular type,
                                   // it's just easier to reason about.
                                   is_semi_regular<degree_t>>) {
                     // degree_t is well defined, it supports operator<, it can be constructed from int,
                     // it is returnable and semi-regular (hence, move-assignable).
-                    return ::std::make_pair(1, detail::type_c<degree_t>{});
-                } else {
-                    return failure;
-                }
+                        return ::std::make_pair(1, detail::type_c<degree_t>{});
+                    } else {
+                        return failure;
+                    }
             } else if constexpr (cf_has_degree) {
                 // Only the coefficient is with degree.
                 using degree_t = DegreeT<const cf_t &>;
@@ -3937,7 +3934,7 @@ struct series_default_degree_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_degree_impl::algo<T> != 0 inline constexpr auto degree<T>
+    requires (series_default_degree_impl::algo<T> != 0) inline constexpr auto degree<T>
 #else
 inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
 #endif
@@ -4077,7 +4074,7 @@ struct series_default_p_degree_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_p_degree_impl::algo<T> != 0 inline constexpr auto p_degree<T>
+    requires (series_default_p_degree_impl::algo<T> != 0) inline constexpr auto p_degree<T>
 #else
 inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
 #endif
@@ -4242,7 +4239,7 @@ struct series_default_evaluate_impl {
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires series_default_evaluate_impl::algo<T, U> != 0 inline constexpr auto evaluate<T, U>
+    requires (series_default_evaluate_impl::algo<T, U> != 0) inline constexpr auto evaluate<T, U>
 #else
 inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
 #endif
@@ -4422,7 +4419,7 @@ inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct filter_msvc {
     template <typename T, typename F>
@@ -4471,7 +4468,7 @@ inline series<K, C, Tag> add_symbols_impl(const series<K, C, Tag> &s, const symb
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct add_symbols_msvc {
     template <typename T>

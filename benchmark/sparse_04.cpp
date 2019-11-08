@@ -5,6 +5,8 @@
 // This Source Code Form is subject to the terms of the Mozilla
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#include <exception>
+#include <cstdint>
 
 #include <obake/polynomials/packed_monomial.hpp>
 
@@ -17,5 +19,10 @@ using namespace obake_benchmark;
 
 int main()
 {
-    sparse_benchmark<packed_monomial<unsigned long>, mppp::integer<2>>(25);
+    try {
+        sparse_benchmark<packed_monomial<std::uint64_t>, mppp::integer<2>>(25);
+    } catch (std::exception &e)
+    {
+        std::cerr << e.what();
+    }
 }

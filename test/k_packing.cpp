@@ -335,3 +335,9 @@ TEST_CASE("homomorphism")
 #endif
     });
 }
+
+#if defined(_MSC_VER)
+
+#pragma warning(pop)
+
+#endif

@@ -134,7 +134,7 @@ constexpr auto byte_size_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct byte_size_msvc {
     template <typename T>

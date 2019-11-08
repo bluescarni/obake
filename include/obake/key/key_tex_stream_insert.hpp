@@ -57,7 +57,7 @@ constexpr auto key_tex_stream_insert_impl(::std::ostream &os, T &&x, const symbo
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct key_tex_stream_insert_msvc {
     template <typename T>

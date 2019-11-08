@@ -379,7 +379,11 @@ TEST_CASE("add_term_primitives")
 
 #if defined(MPPP_WITH_MPFR)
                         // Test coefficient move semantics with mppp::real.
+#if defined(_MSC_VER)   // MSVC bug in VS2019. using vs. typedef should make no difference
+                        typedef series<pm_t, real, void> s2_t;
+#else
                         using s2_t = series<pm_t, real, void>;
+#endif
 
                         s2_t s2;
                         real r{42};

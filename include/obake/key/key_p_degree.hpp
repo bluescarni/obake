@@ -50,7 +50,7 @@ constexpr auto key_p_degree_impl(T &&x, const symbol_idx_set &si, const symbol_s
 
 } // namespace detail
 
-#if defined(_MSC_VER)
+#if !defined(OBAKE_MSVC_SUPPORTED)
 
 struct key_p_degree_msvc {
     template <typename T>
