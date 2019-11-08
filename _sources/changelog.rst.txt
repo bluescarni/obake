@@ -1,6 +1,34 @@
 Changelog
 =========
 
+0.4 (unreleased)
+----------------
+
+New
+~~~
+
+- Implement explicit truncation based on the
+  partial degree
+  (`#91 <https://github.com/bluescarni/obake/pull/91>`__).
+
+Changes
+~~~~~~~
+
+- obake now respects the ``CMAKE_CXX_STANDARD``
+  variable, if set by the user
+  (`#92 <https://github.com/bluescarni/obake/pull/92>`__).
+
+Fix
+~~~
+
+- Many MSVC fixes/improvements, including support for
+  the latest MSVC builds in C++20 mode with concepts
+  (`#50 <https://github.com/bluescarni/obake/pull/50>`__).
+  Many thanks to `7ofNine <https://github.com/7ofNine>`__!
+- Various incremental build system fixes/improvements
+  (`#90 <https://github.com/bluescarni/obake/pull/90>`__,
+  `#92 <https://github.com/bluescarni/obake/pull/92>`__).
+
 0.3 (31-10-2019)
 ----------------
 

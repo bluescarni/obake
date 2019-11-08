@@ -41,7 +41,7 @@ See also the
 :ref:`compiler and platform specific notes <platform_specific_notes>`.
 
 In order to install obake from source, `CMake <https://cmake.org/>`_ is
-required (at least version 3.3). After downloading and unpacking obake's
+required (at least version 3.8). After downloading and unpacking obake's
 source code, go to obake's
 source tree, create a ``build`` directory and ``cd`` into it. E.g.,
 on a Unix-like system:
