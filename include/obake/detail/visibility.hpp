@@ -30,7 +30,7 @@
 
 #define OBAKE_DLL_LOCAL
 
-#elif defined(__clang__) || defined(__GNUC__) || defined(__INTEL_COMPILER)
+#elif defined(__clang__) || defined(__GNUC__)
 
 #define OBAKE_DLL_PUBLIC __attribute__((visibility("default")))
 #define OBAKE_DLL_LOCAL __attribute__((visibility("hidden")))

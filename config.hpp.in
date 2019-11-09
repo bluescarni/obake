@@ -18,18 +18,12 @@
 // clang-format on
 // End of defines instantiated by CMake.
 
-// Detect compilers.
-// NOTE: clang has to go first, as it might define __GNUC__ internally.
-#if defined(__clang__)
-
-#define OBAKE_COMPILER_IS_CLANG
-
-#elif defined(__GNUC__)
+// Create a shortcut for detecting GCC.
+// NOTE: clang defines __GNUC__ internally.
+#if defined(__GNUC__) && !defined(__clang__)
 
 #define OBAKE_COMPILER_IS_GCC
 
-#else
-// NOTE: additional compiler configurations go here.
 #endif
 
 // Concepts setup.
@@ -38,12 +32,13 @@
 #define OBAKE_HAVE_CONCEPTS
 
 // NOTE: GCC < 9 uses the syntax of the concept TS.
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 9
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 9
 
 #define OBAKE_CONCEPT_DECL concept bool
 
 #else
 
+// Otherwise, just use the C++20 syntax.
 #define OBAKE_CONCEPT_DECL concept
 
 #endif
@@ -73,7 +68,7 @@
 #endif
 
 // likely/unlikely macros, supported on GCC/clang.
-#if defined(OBAKE_COMPILER_IS_GCC) || defined(OBAKE_COMPILER_IS_CLANG)
+#if defined(__GNUC__) || defined(__clang__)
 
 #define obake_likely(x) __builtin_expect(static_cast<bool>(x), 1)
 #define obake_unlikely(x) __builtin_expect(static_cast<bool>(x), 0)
@@ -95,7 +90,7 @@
 
 // Temporary measure for MSVC versioning.
 // Language support is set to latest
-// at least MSVC 16.4.0 preview 2.0.
+// on at least MSVC 16.4.0 preview 2.0.
 #if defined(_MSC_VER) && (_MSVC_LANG > 201703L) && (_MSC_FULL_VER > 192428206)
 
 #define OBAKE_MSVC_SUPPORTED
