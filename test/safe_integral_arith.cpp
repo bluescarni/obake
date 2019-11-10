@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include <boost/algorithm/string/predicate.hpp>
 
