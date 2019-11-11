@@ -3883,6 +3883,7 @@ struct series_default_degree_impl {
             assert(ss != nullptr);
 
             if constexpr (al == 1) {
+#if !defined(_MSC_VER) || defined(__clang__)
                 // Both coefficient and key with degree.
                 using key_deg_t = decltype(::obake::key_degree(p.first, *ss));
                 using cf_deg_t = decltype(::obake::degree(p.second));
@@ -3896,8 +3897,11 @@ struct series_default_degree_impl {
                     return detail::safe_int_add<deg_add_t>(::obake::key_degree(p.first, *ss),
                                                            ::obake::degree(p.second));
                 } else {
+#endif
                     return ::obake::key_degree(p.first, *ss) + ::obake::degree(p.second);
+#if !defined(_MSC_VER) || defined(__clang__)
                 }
+#endif
             } else if constexpr (al == 2) {
                 // Only coefficient with degree.
                 return ::obake::degree(p.second);
@@ -4026,6 +4030,7 @@ struct series_default_p_degree_impl {
             assert(ss != nullptr);
 
             if constexpr (al == 1) {
+#if !defined(_MSC_VER) || defined(__clang__)
                 // Both coefficient and key with partial degree.
                 using key_deg_t = decltype(::obake::key_p_degree(p.first, *si, *ss));
                 using cf_deg_t = decltype(::obake::p_degree(p.second, *s));
@@ -4040,8 +4045,11 @@ struct series_default_p_degree_impl {
                     return detail::safe_int_add<deg_add_t>(::obake::key_p_degree(p.first, *si, *ss),
                                                            ::obake::p_degree(p.second, *s));
                 } else {
+#endif
                     return ::obake::key_p_degree(p.first, *si, *ss) + ::obake::p_degree(p.second, *s);
+#if !defined(_MSC_VER) || defined(__clang__)
                 }
+#endif
             } else if constexpr (al == 2) {
                 // Only coefficient with partial degree.
                 return ::obake::p_degree(p.second, *s);
