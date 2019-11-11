@@ -197,10 +197,10 @@ TEST_CASE("degree_overflow_test_bug00")
         constexpr auto bw = detail::limits_digits<int_t>;
         using pm_t = d_packed_monomial<int_t, bw>;
 
-        pm_t r0[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u,
-                                            detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u}};
-        pm_t r1[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u,
-                                            detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u}};
+        pm_t r0[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3,
+                                            detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3}};
+        pm_t r1[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3,
+                                            detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3}};
 
         REQUIRE(!monomial_range_overflow_check(r0, r1, symbol_set{"t", "x", "y", "z"}));
     }
@@ -210,10 +210,10 @@ TEST_CASE("degree_overflow_test_bug00")
         constexpr auto bw = detail::limits_digits<int_t>;
         using pm_t = d_packed_monomial<int_t, bw>;
 
-        pm_t r0[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u,
-                                            detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u}};
-        pm_t r1[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u,
-                                            detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u}};
+        pm_t r0[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3,
+                                            detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3}};
+        pm_t r1[] = {pm_t{0, 0, 0, 0}, pm_t{detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3,
+                                            detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3}};
 
         REQUIRE(!monomial_range_overflow_check(r0, r1, symbol_set{"t", "x", "y", "z"}));
     }
@@ -241,12 +241,12 @@ TEST_CASE("degree_overflow_test_bug00")
         using pm_t = d_packed_monomial<int_t, bw>;
 
         std::vector<pm_t> r0(6000, pm_t{0, 0, 0, 0});
-        r0.push_back(pm_t{detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u,
-                          detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u});
+        r0.push_back(pm_t{detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3,
+                          detail::limits_max<int_t> / 3});
 
         std::vector<pm_t> r1(6000, pm_t{0, 0, 0, 0});
-        r1.push_back(pm_t{detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u,
-                          detail::limits_max<int_t> / 3u, detail::limits_max<int_t> / 3u});
+        r1.push_back(pm_t{detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3, detail::limits_max<int_t> / 3,
+                          detail::limits_max<int_t> / 3});
 
         REQUIRE(!monomial_range_overflow_check(r0, r1, symbol_set{"t", "x", "y", "z"}));
     }
@@ -257,12 +257,12 @@ TEST_CASE("degree_overflow_test_bug00")
         using pm_t = d_packed_monomial<int_t, bw>;
 
         std::vector<pm_t> r0(6000, pm_t{0, 0, 0, 0});
-        r0.push_back(pm_t{detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u,
-                          detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u});
+        r0.push_back(pm_t{detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3,
+                          detail::limits_min<int_t> / 3});
 
         std::vector<pm_t> r1(6000, pm_t{0, 0, 0, 0});
-        r1.push_back(pm_t{detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u,
-                          detail::limits_min<int_t> / 3u, detail::limits_min<int_t> / 3u});
+        r1.push_back(pm_t{detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3, detail::limits_min<int_t> / 3,
+                          detail::limits_min<int_t> / 3});
 
         REQUIRE(!monomial_range_overflow_check(r0, r1, symbol_set{"t", "x", "y", "z"}));
     }
