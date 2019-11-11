@@ -122,6 +122,7 @@ TEST_CASE("series_degree")
         REQUIRE(degree((x + y) * (x - y) - x * z * y + 1) == 3);
     }
 
+#if !defined(_MSC_VER) || defined(__clang__)
     {
         // Overflow checking.
         auto [x] = make_polynomials<s1_t>("x");
@@ -132,6 +133,7 @@ TEST_CASE("series_degree")
 
         OBAKE_REQUIRES_THROWS_CONTAINS(degree(x * y), std::overflow_error, "Overflow error in an integral ");
     }
+#endif
 }
 
 TEST_CASE("series_p_degree")
@@ -287,6 +289,7 @@ TEST_CASE("series_p_degree")
         REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 4, symbol_set{"y"}) == 2);
     }
 
+#if !defined(_MSC_VER) || defined(__clang__)
     {
         // Overflow checking.
         auto [x] = make_polynomials<s1_t>("x");
@@ -300,4 +303,5 @@ TEST_CASE("series_p_degree")
         REQUIRE(p_degree(x * y, symbol_set{"x"}) == detail::limits_max<int>);
         REQUIRE(p_degree(x * y, symbol_set{"y"}) == detail::limits_max<int>);
     }
+#endif
 }
