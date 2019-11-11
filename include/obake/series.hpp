@@ -52,6 +52,7 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
+#include <obake/detail/safe_integral_arith.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
@@ -3883,7 +3884,20 @@ struct series_default_degree_impl {
 
             if constexpr (al == 1) {
                 // Both coefficient and key with degree.
-                return ::obake::key_degree(p.first, *ss) + ::obake::degree(p.second);
+                using key_deg_t = decltype(::obake::key_degree(p.first, *ss));
+                using cf_deg_t = decltype(::obake::degree(p.second));
+
+                if constexpr (::std::conjunction_v<is_integral<key_deg_t>, is_integral<cf_deg_t>>) {
+                    // Both key and coefficient return an integral degree.
+                    // Determine the common type (via addition) and then
+                    // do the summation using checked integral arithmetics.
+                    using deg_add_t = decltype(::obake::key_degree(p.first, *ss) + ::obake::degree(p.second));
+
+                    return detail::safe_int_add<deg_add_t>(::obake::key_degree(p.first, *ss),
+                                                           ::obake::degree(p.second));
+                } else {
+                    return ::obake::key_degree(p.first, *ss) + ::obake::degree(p.second);
+                }
             } else if constexpr (al == 2) {
                 // Only coefficient with degree.
                 return ::obake::degree(p.second);
@@ -4013,7 +4027,21 @@ struct series_default_p_degree_impl {
 
             if constexpr (al == 1) {
                 // Both coefficient and key with partial degree.
-                return ::obake::key_p_degree(p.first, *si, *ss) + ::obake::p_degree(p.second, *s);
+                using key_deg_t = decltype(::obake::key_p_degree(p.first, *si, *ss));
+                using cf_deg_t = decltype(::obake::p_degree(p.second, *s));
+
+                if constexpr (::std::conjunction_v<is_integral<key_deg_t>, is_integral<cf_deg_t>>) {
+                    // Both key and coefficient return an integral degree.
+                    // Determine the common type (via addition) and then
+                    // do the summation using checked integral arithmetics.
+                    using deg_add_t
+                        = decltype(::obake::key_p_degree(p.first, *si, *ss) + ::obake::p_degree(p.second, *s));
+
+                    return detail::safe_int_add<deg_add_t>(::obake::key_p_degree(p.first, *si, *ss),
+                                                           ::obake::p_degree(p.second, *s));
+                } else {
+                    return ::obake::key_p_degree(p.first, *si, *ss) + ::obake::p_degree(p.second, *s);
+                }
             } else if constexpr (al == 2) {
                 // Only coefficient with partial degree.
                 return ::obake::p_degree(p.second, *s);

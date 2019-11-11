@@ -6,13 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <stdexcept>
 #include <type_traits>
 
 #include <mp++/rational.hpp>
 
 #include <obake/byte_size.hpp>
+#include <obake/detail/limits.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
@@ -117,6 +120,17 @@ TEST_CASE("series_degree")
         REQUIRE(degree((x + y) * (x - y) - z) == 2);
         REQUIRE(degree((x + y) * (x - y) - x * z * y) == 3);
         REQUIRE(degree((x + y) * (x - y) - x * z * y + 1) == 3);
+    }
+
+    {
+        // Overflow checking.
+        auto [x] = make_polynomials<s1_t>("x");
+        auto [y] = make_polynomials<s11_t>("y");
+
+        x = obake::pow(x, detail::limits_max<int>);
+        y = obake::pow(y, detail::limits_max<int>);
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(degree(x * y), std::overflow_error, "Overflow error in an integral ");
     }
 }
 
@@ -271,5 +285,19 @@ TEST_CASE("series_p_degree")
         REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 3, symbol_set{"z"}) == 1);
         REQUIRE(p_degree((x + y) * (x - y) - x * z * y - 3, symbol_set{"x"}) == 2);
         REQUIRE(p_degree((x + y) * (x - y) - x * z * y + 4, symbol_set{"y"}) == 2);
+    }
+
+    {
+        // Overflow checking.
+        auto [x] = make_polynomials<s1_t>("x");
+        auto [y] = make_polynomials<s11_t>("y");
+
+        x = obake::pow(x, detail::limits_max<int>);
+        y = obake::pow(y, detail::limits_max<int>);
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(p_degree(x * y, symbol_set{"x", "y"}), std::overflow_error,
+                                       "Overflow error in an integral ");
+        REQUIRE(p_degree(x * y, symbol_set{"x"}) == detail::limits_max<int>);
+        REQUIRE(p_degree(x * y, symbol_set{"y"}) == detail::limits_max<int>);
     }
 }
