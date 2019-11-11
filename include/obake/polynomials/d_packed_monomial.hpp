@@ -685,9 +685,9 @@ template <typename R1, typename R2,
 
                 symbol_idx idx = 0;
                 value_type tmp;
+                ::mppp::integer<1> deg;
                 for (const auto &n : cur._container()) {
                     k_unpacker<value_type> ku(n, psize);
-                    ::mppp::integer<1> deg;
 
                     for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                         ku >> tmp;
@@ -701,15 +701,15 @@ template <typename R1, typename R2,
                             limits[idx] = ::std::max(limits[idx], tmp);
                         }
                     }
+                }
 
-                    if constexpr (is_signed_v<value_type>) {
-                        // Update the min/max degrees.
-                        dl.first = ::std::min(dl.first, deg);
-                        dl.second = ::std::max(dl.second, deg);
-                    } else {
-                        // Update the max degree.
-                        dl = ::std::max(dl, deg);
-                    }
+                if constexpr (is_signed_v<value_type>) {
+                    // Update the min/max degrees.
+                    dl.first = ::std::min(dl.first, deg);
+                    dl.second = ::std::max(dl.second, deg);
+                } else {
+                    // Update the max degree.
+                    dl = ::std::max(dl, deg);
                 }
             }
         };
@@ -751,9 +751,9 @@ template <typename R1, typename R2,
 
                             symbol_idx idx = 0;
                             value_type tmp;
+                            ::mppp::integer<1> deg;
                             for (const auto &n : m._container()) {
                                 k_unpacker<value_type> ku(n, psize);
-                                ::mppp::integer<1> deg;
 
                                 for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                                     ku >> tmp;
@@ -767,15 +767,15 @@ template <typename R1, typename R2,
                                         cur.first[idx] = ::std::max(cur.first[idx], tmp);
                                     }
                                 }
+                            }
 
-                                if constexpr (is_signed_v<value_type>) {
-                                    // Update the min/max degrees.
-                                    cur.second.first = ::std::min(cur.second.first, deg);
-                                    cur.second.second = ::std::max(cur.second.second, deg);
-                                } else {
-                                    // Update the max degree.
-                                    cur.second = ::std::max(cur.second, deg);
-                                }
+                            if constexpr (is_signed_v<value_type>) {
+                                // Update the min/max degrees.
+                                cur.second.first = ::std::min(cur.second.first, deg);
+                                cur.second.second = ::std::max(cur.second.second, deg);
+                            } else {
+                                // Update the max degree.
+                                cur.second = ::std::max(cur.second, deg);
                             }
                         }
 
