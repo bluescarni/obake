@@ -35,6 +35,7 @@
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/mppp_utils.hpp>
+#include <obake/detail/safe_integral_arith.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
 #include <obake/exceptions.hpp>
@@ -901,16 +902,13 @@ inline T key_degree(const d_packed_monomial<T, NBits> &d, const symbol_set &ss)
     const auto s_size = ss.size();
 
     symbol_idx idx = 0;
-    T tmp;
-    // NOTE: do the computation in multiprecision,
-    // convert back to T at the end.
-    ::mppp::integer<1> retval;
+    T tmp, retval(0);
     for (const auto &n : d._container()) {
         k_unpacker<T> ku(n, psize);
 
         for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
-            retval += tmp;
+            retval = ::obake::detail::safe_int_add(retval, tmp);
         }
     }
 
@@ -930,12 +928,9 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
     const auto s_size = ss.size();
 
     symbol_idx idx = 0;
-    T tmp;
+    T tmp, retval(0);
     auto si_it = si.begin();
     const auto si_it_end = si.end();
-    // NOTE: do the computation in multiprecision,
-    // convert back to T at the end.
-    ::mppp::integer<1> retval;
     for (const auto &n : d._container()) {
         k_unpacker<T> ku(n, psize);
 
@@ -943,7 +938,7 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
             ku >> tmp;
 
             if (idx == *si_it) {
-                retval += tmp;
+                retval = ::obake::detail::safe_int_add(retval, tmp);
                 ++si_it;
             }
         }
