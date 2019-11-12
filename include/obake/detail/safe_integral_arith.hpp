@@ -59,6 +59,43 @@ inline ::std::string safe_int_arith_err(const char *op, T op1, T op2)
            + "', and the operands' values are " + detail::to_string(op1) + " and " + detail::to_string(op2);
 }
 
+#if defined(OBAKE_HAVE_INTEGER_OVERFLOW_BUILTINS)
+
+template <typename T>
+inline T safe_int_add(T a, T b)
+{
+    // A couple of compile-time checks.
+    // First, these functions are supposed to be called only with integral types in input.
+    static_assert(is_integral_v<T>, "This function needs integral types in input.");
+
+    // Second, the overflow builtins do not work on bools (we have an explicit specialisation
+    // for bools later).
+    static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
+
+    T retval;
+    if (obake_unlikely(__builtin_add_overflow(a, b, &retval))) {
+        obake_throw(::std::overflow_error, detail::safe_int_arith_err("addition", a, b));
+    }
+
+    return retval;
+}
+
+template <typename T>
+inline T safe_int_sub(T a, T b)
+{
+    static_assert(is_integral_v<T>, "This function needs integral types in input.");
+    static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
+
+    T retval;
+    if (obake_unlikely(__builtin_sub_overflow(a, b, &retval))) {
+        obake_throw(::std::overflow_error, detail::safe_int_arith_err("subtraction", a, b));
+    }
+
+    return retval;
+}
+
+#else
+
 // The add implementation based on std::numeric_limits.
 template <typename T>
 inline T safe_int_add_impl(T a, T b)
@@ -104,43 +141,6 @@ inline T safe_int_sub_impl(T a, T b)
 
     return static_cast<T>(a - b);
 }
-
-#if defined(OBAKE_HAVE_INTEGER_OVERFLOW_BUILTINS)
-
-template <typename T>
-inline T safe_int_add(T a, T b)
-{
-    // A couple of compile-time checks.
-    // First, these functions are supposed to be called only with integral types in input.
-    static_assert(is_integral_v<T>, "This function needs integral types in input.");
-
-    // Second, the overflow builtins do not work on bools (we have an explicit specialisation
-    // for bools later).
-    static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
-
-    T retval;
-    if (obake_unlikely(__builtin_add_overflow(a, b, &retval))) {
-        obake_throw(::std::overflow_error, detail::safe_int_arith_err("addition", a, b));
-    }
-
-    return retval;
-}
-
-template <typename T>
-inline T safe_int_sub(T a, T b)
-{
-    static_assert(is_integral_v<T>, "This function needs integral types in input.");
-    static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
-
-    T retval;
-    if (obake_unlikely(__builtin_sub_overflow(a, b, &retval))) {
-        obake_throw(::std::overflow_error, detail::safe_int_arith_err("subtraction", a, b));
-    }
-
-    return retval;
-}
-
-#else
 
 template <typename T>
 inline T safe_int_add(T a, T b)
