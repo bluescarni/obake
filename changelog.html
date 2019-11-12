@@ -183,19 +183,25 @@
 <li><p>Implement explicit truncation based on the
 partial degree
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/91">#91</a>).</p></li>
-</ul>
-</div>
-<div class="section" id="changes">
-<h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
-<ul class="simple">
 <li><p>obake now respects the <code class="docutils literal notranslate"><span class="pre">CMAKE_CXX_STANDARD</span></code>
 variable, if set by the user
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/92">#92</a>).</p></li>
 </ul>
 </div>
+<div class="section" id="changes">
+<h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Various improvements to the overflow checking
+machinery for polynomial exponents
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/94">#94</a>).</p></li>
+</ul>
+</div>
 <div class="section" id="fix">
 <h3>Fix<a class="headerlink" href="#fix" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p>Fix an overflow detection bug in the dynamic packed
+monomial class
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/94">#94</a>).</p></li>
 <li><p>Many MSVC fixes/improvements, including support for
 the latest MSVC builds in C++20 mode with concepts
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/50">#50</a>).
