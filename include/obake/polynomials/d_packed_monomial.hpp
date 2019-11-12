@@ -35,6 +35,7 @@
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/mppp_utils.hpp>
+#include <obake/detail/safe_integral_arith.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
 #include <obake/exceptions.hpp>
@@ -544,6 +545,13 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // of the product are within the k_packing limits,
 // and that the degrees of the product monomials
 // are all computable without overflows.
+// NOTE: this may be sped up by using safe integral
+// arithmetics rather than mppp::integer. However,
+// we would need to deal with the fact that safe
+// arithmetics throws in case of overflows, whereas
+// here we want to return a boolean. Not sure if it
+// is worth it to change the safe arithmetics API
+// for this.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
 requires InputRange<R1> &&InputRange<R2> &&
@@ -598,15 +606,14 @@ template <typename R1, typename R2,
             minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));
             minmax2.reserve(static_cast<decltype(minmax2.size())>(s_size));
 
-            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2),
-                                     ::std::make_pair(::mppp::integer<1>{}, ::mppp::integer<1>{}),
-                                     ::std::make_pair(::mppp::integer<1>{}, ::mppp::integer<1>{}));
+            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2), ::std::make_pair(int_t{}, int_t{}),
+                                     ::std::make_pair(int_t{}, int_t{}));
         } else {
             ::std::vector<value_type> max1, max2;
             max1.reserve(static_cast<decltype(max1.size())>(s_size));
             max2.reserve(static_cast<decltype(max2.size())>(s_size));
 
-            return ::std::make_tuple(::std::move(max1), ::std::move(max2), ::mppp::integer<1>{}, ::mppp::integer<1>{});
+            return ::std::make_tuple(::std::move(max1), ::std::move(max2), int_t{}, int_t{});
         }
     }();
 
@@ -684,9 +691,9 @@ template <typename R1, typename R2,
 
                 symbol_idx idx = 0;
                 value_type tmp;
+                int_t deg;
                 for (const auto &n : cur._container()) {
                     k_unpacker<value_type> ku(n, psize);
-                    ::mppp::integer<1> deg;
 
                     for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                         ku >> tmp;
@@ -700,15 +707,15 @@ template <typename R1, typename R2,
                             limits[idx] = ::std::max(limits[idx], tmp);
                         }
                     }
+                }
 
-                    if constexpr (is_signed_v<value_type>) {
-                        // Update the min/max degrees.
-                        dl.first = ::std::min(dl.first, deg);
-                        dl.second = ::std::max(dl.second, deg);
-                    } else {
-                        // Update the max degree.
-                        dl = ::std::max(dl, deg);
-                    }
+                if constexpr (is_signed_v<value_type>) {
+                    // Update the min/max degrees.
+                    dl.first = ::std::min(dl.first, deg);
+                    dl.second = ::std::max(dl.second, deg);
+                } else {
+                    // Update the max degree.
+                    dl = ::std::max(dl, deg);
                 }
             }
         };
@@ -750,9 +757,9 @@ template <typename R1, typename R2,
 
                             symbol_idx idx = 0;
                             value_type tmp;
+                            int_t deg;
                             for (const auto &n : m._container()) {
                                 k_unpacker<value_type> ku(n, psize);
-                                ::mppp::integer<1> deg;
 
                                 for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                                     ku >> tmp;
@@ -766,15 +773,15 @@ template <typename R1, typename R2,
                                         cur.first[idx] = ::std::max(cur.first[idx], tmp);
                                     }
                                 }
+                            }
 
-                                if constexpr (is_signed_v<value_type>) {
-                                    // Update the min/max degrees.
-                                    cur.second.first = ::std::min(cur.second.first, deg);
-                                    cur.second.second = ::std::max(cur.second.second, deg);
-                                } else {
-                                    // Update the max degree.
-                                    cur.second = ::std::max(cur.second, deg);
-                                }
+                            if constexpr (is_signed_v<value_type>) {
+                                // Update the min/max degrees.
+                                cur.second.first = ::std::min(cur.second.first, deg);
+                                cur.second.second = ::std::max(cur.second.second, deg);
+                            } else {
+                                // Update the max degree.
+                                cur.second = ::std::max(cur.second, deg);
                             }
                         }
 
@@ -901,16 +908,13 @@ inline T key_degree(const d_packed_monomial<T, NBits> &d, const symbol_set &ss)
     const auto s_size = ss.size();
 
     symbol_idx idx = 0;
-    T tmp;
-    // NOTE: do the computation in multiprecision,
-    // convert back to T at the end.
-    ::mppp::integer<1> retval;
+    T tmp, retval(0);
     for (const auto &n : d._container()) {
         k_unpacker<T> ku(n, psize);
 
         for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
-            retval += tmp;
+            retval = ::obake::detail::safe_int_add(retval, tmp);
         }
     }
 
@@ -930,12 +934,9 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
     const auto s_size = ss.size();
 
     symbol_idx idx = 0;
-    T tmp;
+    T tmp, retval(0);
     auto si_it = si.begin();
     const auto si_it_end = si.end();
-    // NOTE: do the computation in multiprecision,
-    // convert back to T at the end.
-    ::mppp::integer<1> retval;
     for (const auto &n : d._container()) {
         k_unpacker<T> ku(n, psize);
 
@@ -943,7 +944,7 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
             ku >> tmp;
 
             if (idx == *si_it) {
-                retval += tmp;
+                retval = ::obake::detail::safe_int_add(retval, tmp);
                 ++si_it;
             }
         }
