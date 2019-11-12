@@ -112,9 +112,7 @@ inline T safe_int_add(T a, T b)
 {
     // A couple of compile-time checks.
     // First, these functions are supposed to be called only with integral types in input.
-    // NOTE: use std::is_integral instead of obake::is_integral because
-    // we don't want this function to be called with 128-bit ints.
-    static_assert(::std::is_integral_v<T>, "This function needs integral types in input.");
+    static_assert(is_integral_v<T>, "This function needs integral types in input.");
 
     // Second, the overflow builtins do not work on bools (we have an explicit specialisation
     // for bools later).
@@ -131,7 +129,7 @@ inline T safe_int_add(T a, T b)
 template <typename T>
 inline T safe_int_sub(T a, T b)
 {
-    static_assert(::std::is_integral_v<T>, "This function needs integral types in input.");
+    static_assert(is_integral_v<T>, "This function needs integral types in input.");
     static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
 
     T retval;
@@ -147,7 +145,7 @@ inline T safe_int_sub(T a, T b)
 template <typename T>
 inline T safe_int_add(T a, T b)
 {
-    static_assert(::std::is_integral_v<T>, "This function needs integral types in input.");
+    static_assert(is_integral_v<T>, "This function needs integral types in input.");
     static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
 
     return detail::safe_int_add_impl(a, b);
@@ -156,7 +154,7 @@ inline T safe_int_add(T a, T b)
 template <typename T>
 inline T safe_int_sub(T a, T b)
 {
-    static_assert(::std::is_integral_v<T>, "This function needs integral types in input.");
+    static_assert(is_integral_v<T>, "This function needs integral types in input.");
     static_assert(!::std::is_same_v<T, bool>, "This function cannot be invoked with a bool argument.");
 
     return detail::safe_int_sub_impl(a, b);
@@ -184,36 +182,6 @@ inline bool safe_int_sub(bool a, bool b)
 
     return (a - b) != 0;
 }
-
-#if defined(OBAKE_HAVE_GCC_INT128)
-
-// Provide implementations for the 128-bit integers, if supported.
-
-template <>
-inline __int128_t safe_int_add(__int128_t a, __int128_t b)
-{
-    return detail::safe_int_add_impl(a, b);
-}
-
-template <>
-inline __int128_t safe_int_sub(__int128_t a, __int128_t b)
-{
-    return detail::safe_int_sub_impl(a, b);
-}
-
-template <>
-inline __uint128_t safe_int_add(__uint128_t a, __uint128_t b)
-{
-    return detail::safe_int_add_impl(a, b);
-}
-
-template <>
-inline __uint128_t safe_int_sub(__uint128_t a, __uint128_t b)
-{
-    return detail::safe_int_sub_impl(a, b);
-}
-
-#endif
 
 } // namespace obake::detail
 
