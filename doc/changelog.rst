@@ -7,9 +7,6 @@ Changelog
 New
 ~~~
 
-- Various improvements to the overflow checking
-  machinery for polynomial exponents
-  (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
 - Implement explicit truncation based on the
   partial degree
   (`#91 <https://github.com/bluescarni/obake/pull/91>`__).
@@ -17,6 +14,9 @@ New
 Changes
 ~~~~~~~
 
+- Various improvements to the overflow checking
+  machinery for polynomial exponents
+  (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
 - obake now respects the ``CMAKE_CXX_STANDARD``
   variable, if set by the user
   (`#92 <https://github.com/bluescarni/obake/pull/92>`__).
