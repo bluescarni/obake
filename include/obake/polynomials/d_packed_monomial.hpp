@@ -545,6 +545,13 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // of the product are within the k_packing limits,
 // and that the degrees of the product monomials
 // are all computable without overflows.
+// NOTE: this may be sped up by using safe integral
+// arithmetics rather than mppp::integer. However,
+// we would need to deal with the fact that safe
+// arithmetics throws in case of overflows, whereas
+// here we want to return a boolean. Not sure if it
+// is worth it to change the safe arithmetics API
+// for this.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
 requires InputRange<R1> &&InputRange<R2> &&
@@ -599,15 +606,14 @@ template <typename R1, typename R2,
             minmax1.reserve(static_cast<decltype(minmax1.size())>(s_size));
             minmax2.reserve(static_cast<decltype(minmax2.size())>(s_size));
 
-            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2),
-                                     ::std::make_pair(::mppp::integer<1>{}, ::mppp::integer<1>{}),
-                                     ::std::make_pair(::mppp::integer<1>{}, ::mppp::integer<1>{}));
+            return ::std::make_tuple(::std::move(minmax1), ::std::move(minmax2), ::std::make_pair(int_t{}, int_t{}),
+                                     ::std::make_pair(int_t{}, int_t{}));
         } else {
             ::std::vector<value_type> max1, max2;
             max1.reserve(static_cast<decltype(max1.size())>(s_size));
             max2.reserve(static_cast<decltype(max2.size())>(s_size));
 
-            return ::std::make_tuple(::std::move(max1), ::std::move(max2), ::mppp::integer<1>{}, ::mppp::integer<1>{});
+            return ::std::make_tuple(::std::move(max1), ::std::move(max2), int_t{}, int_t{});
         }
     }();
 
@@ -685,7 +691,7 @@ template <typename R1, typename R2,
 
                 symbol_idx idx = 0;
                 value_type tmp;
-                ::mppp::integer<1> deg;
+                int_t deg;
                 for (const auto &n : cur._container()) {
                     k_unpacker<value_type> ku(n, psize);
 
@@ -751,7 +757,7 @@ template <typename R1, typename R2,
 
                             symbol_idx idx = 0;
                             value_type tmp;
-                            ::mppp::integer<1> deg;
+                            int_t deg;
                             for (const auto &n : m._container()) {
                                 k_unpacker<value_type> ku(n, psize);
 
