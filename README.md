@@ -6,7 +6,6 @@
 [![Code Coverage](https://img.shields.io/codecov/c/github/bluescarni/obake.svg?style=for-the-badge)](https://codecov.io/github/bluescarni/obake?branch=master)
 ![license](https://img.shields.io/badge/license-MPL2-blue.svg?style=for-the-badge)
 [![Anaconda-Server Badge](https://img.shields.io/conda/vn/conda-forge/obake.svg?style=for-the-badge)](https://anaconda.org/conda-forge/obake)
-[![Anaconda-Server Badge](https://img.shields.io/conda/vn/conda-forge/obake-devel.svg?style=for-the-badge)](https://anaconda.org/conda-forge/obake-devel)
 
 > [Obake (お化け)](https://en.wikipedia.org/wiki/Obake) [...] are a class of yōkai,
 > preternatural creatures in Japanese folklore.
