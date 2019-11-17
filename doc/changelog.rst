@@ -7,6 +7,9 @@ Changelog
 New
 ~~~
 
+- obake now respects the ``CMAKE_CXX_STANDARD``
+  variable, if set by the user
+  (`#92 <https://github.com/bluescarni/obake/pull/92>`__).
 - Implement explicit truncation based on the
   partial degree
   (`#91 <https://github.com/bluescarni/obake/pull/91>`__).
@@ -14,13 +17,16 @@ New
 Changes
 ~~~~~~~
 
-- obake now respects the ``CMAKE_CXX_STANDARD``
-  variable, if set by the user
-  (`#92 <https://github.com/bluescarni/obake/pull/92>`__).
+- Various improvements to the overflow checking
+  machinery for polynomial exponents
+  (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
 
 Fix
 ~~~
 
+- Fix an overflow detection bug in the dynamic packed
+  monomial class
+  (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
 - Many MSVC fixes/improvements, including support for
   the latest MSVC builds in C++20 mode with concepts
   (`#50 <https://github.com/bluescarni/obake/pull/50>`__).
