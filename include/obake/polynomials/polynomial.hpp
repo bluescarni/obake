@@ -253,10 +253,14 @@ inline auto poly_mul_impl_par_make_idx_vector(const V &v)
 // data used during polynomial multiplication. In untruncated
 // multiplication, an empty tuple will be returned, otherwise
 // a tuple of 2 vectors containing the (partial) degrees of the terms
-// in the input series will be returned. The degrees
-// are computed using the facilities in series.hpp.
+// in the input series will be returned.
 // The input series are of types T and U, while the terms
 // of the series are stored in the input vectors v1 and v2.
+// It is expected that the term degrees are computed via
+// the facilities from series.hpp.
+// NOTE: this function does not do any degree computation,
+// it just prepares variables of the correct type to hold
+// the degrees.
 template <typename T, typename U, typename V1, typename V2, typename... Args>
 inline auto poly_mul_impl_prepare_degree_data([[maybe_unused]] const V1 &v1, [[maybe_unused]] const V2 &v2,
                                               [[maybe_unused]] const symbol_set &ss,
