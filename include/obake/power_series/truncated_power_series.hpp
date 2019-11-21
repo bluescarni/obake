@@ -233,6 +233,16 @@ public:
         : truncated_power_series(ptag{}, ::std::forward<T>(x), l, s, ::std::is_same<U, p_degree_t>{})
     {
     }
+    // Generic assignment operator.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <TPSConstructible<K, C> T>
+#else
+    template <typename T, ::std::enable_if_t<is_tps_constructible_v<T, K, C>, int> = 0>
+#endif
+    truncated_power_series &operator=(T &&x)
+    {
+        return *this = truncated_power_series(::std::forward<T>(x));
+    }
 
     // The polynomial getters.
     poly_t &_poly() &

@@ -41,4 +41,8 @@ TEST_CASE("basic_test")
     std::cout << tps_t{45, 3} << '\n';
     std::cout << tps_t{45, 3u} << '\n';
     std::cout << tps_t{45, 3u, symbol_set{"x", "y", "z"}} << '\n';
+
+    tps_t a{45};
+    a = -42;
+    std::cout << a << '\n';
 }
