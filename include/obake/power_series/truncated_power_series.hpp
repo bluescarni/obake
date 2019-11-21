@@ -279,7 +279,6 @@ inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_seri
     os << "Rank            : " << series_rank<poly_t> << '\n';
     os << "Symbol set      : " << ::obake::detail::to_string(tps._poly().get_symbol_set()) << '\n';
     os << "Number of terms : " << tps._poly().size() << '\n';
-
     os << "Truncation      : ";
     struct trunc_stream_visitor : ::boost::static_visitor<> {
         trunc_stream_visitor(::std::ostream &s) : m_os(s) {}
@@ -299,6 +298,9 @@ inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_seri
     };
     ::boost::apply_visitor(trunc_stream_visitor{os}, tps._trunc());
     os << '\n';
+
+    // Print the terms.
+    ::obake::detail::series_stream_terms_impl<false>(os, tps._poly());
 
     return os;
 }
