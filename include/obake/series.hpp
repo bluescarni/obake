@@ -446,8 +446,11 @@ constexpr int series_generic_ctor_algorithm_impl()
                 // Construction from equal rank, different coefficient type. Requires
                 // to be able to construct C from the coefficient type of T.
                 // The construction argument will be a const reference or an rvalue
-                // reference, depending on whether T is a mutable rvalue reference or not.
-                using cf_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&,
+                // reference, depending on whether T && is a mutable rvalue reference or not.
+                // NOTE: we need to explicitly put T && here because this function
+                // is invoked with a type T which was deduced from a forwarding
+                // reference (T &&).
+                using cf_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
                                                        const series_cf_t<rT> &>;
                 return ::std::is_constructible_v<C, cf_conv_t> ? 2 : 0;
             } else {
@@ -457,8 +460,8 @@ constexpr int series_generic_ctor_algorithm_impl()
             // Construction from higher rank. Requires that
             // series_t can be constructed from the coefficient
             // type of T.
-            using series_conv_t
-                = ::std::conditional_t<is_mutable_rvalue_reference_v<T>, series_cf_t<rT> &&, const series_cf_t<rT> &>;
+            using series_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
+                                                       const series_cf_t<rT> &>;
             return ::std::is_constructible_v<series_t, series_conv_t> ? 3 : 0;
         }
     } else {
@@ -709,11 +712,11 @@ public:
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
 #endif
     explicit series(T &&x) : series()
     {
-        constexpr int algo = detail::series_generic_ctor_algorithm<T &&, K, C, Tag>;
+        constexpr int algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
         static_assert(algo > 0 && algo <= 3);
 
         if constexpr (algo == 1) {
@@ -836,7 +839,7 @@ public:
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
 #else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T &&, K, C, Tag>, int> = 0>
+    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
 #endif
     series &operator=(T &&x)
     {
