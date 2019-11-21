@@ -19,6 +19,7 @@
 #include <boost/variant/variant.hpp>
 
 #include <obake/config.hpp>
+#include <obake/detail/ss_func_forward.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/safe_cast.hpp>
@@ -303,17 +304,11 @@ inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_seri
 }
 
 template <typename K, typename C>
-inline auto degree(const truncated_power_series<K, C> &tps) -> decltype(::obake::degree(tps._poly()))
-{
-    return ::obake::degree(tps._poly());
-}
+inline auto degree(const truncated_power_series<K, C> &tps) OBAKE_SS_FORWARD_FUNCTION(::obake::degree(tps._poly()));
 
 template <typename K, typename C>
 inline auto p_degree(const truncated_power_series<K, C> &tps, const symbol_set &s)
-    -> decltype(::obake::p_degree(tps._poly(), s))
-{
-    return ::obake::p_degree(tps._poly(), s);
-}
+    OBAKE_SS_FORWARD_FUNCTION(::obake::p_degree(tps._poly(), s));
 
 } // namespace power_series
 
