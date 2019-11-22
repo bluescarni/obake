@@ -45,4 +45,6 @@ TEST_CASE("basic_test")
     tps_t a{45};
     a = -42;
     std::cout << a << '\n';
+
+    REQUIRE(std::is_nothrow_swappable_v<tps_t>);
 }

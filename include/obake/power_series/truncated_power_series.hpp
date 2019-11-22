@@ -10,6 +10,7 @@
 #define OBAKE_POWER_SERIES_TRUNCATED_POWER_SERIES_HPP
 
 #include <ostream>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -20,6 +21,7 @@
 
 #include <obake/config.hpp>
 #include <obake/detail/ss_func_forward.hpp>
+#include <obake/exceptions.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/safe_cast.hpp>
@@ -314,6 +316,42 @@ inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_seri
 
     return os;
 }
+
+// The swap primitive.
+template <typename K, typename C>
+inline void swap(truncated_power_series<K, C> &t1, truncated_power_series<K, C> &t2) noexcept
+{
+    using ::std::swap;
+    swap(t1._poly(), t2._poly());
+    swap(t1._trunc(), t2._trunc());
+}
+
+namespace detail
+{
+
+template <typename K, typename C>
+inline auto tps_merge_trunc(const truncated_power_series<K, C> &t1, const truncated_power_series<K, C> &t2)
+{
+    const auto &tr1 = t1._trunc();
+    const auto &tr2 = t2._trunc();
+
+    const auto w1 = tr1.which();
+    const auto w2 = tr1.which();
+
+    if (obake_unlikely(w1 != w2 && w1 != 0 && w1 != 0)) {
+        obake_throw(::std::invalid_argument, "");
+    }
+
+    if (w1 == 0) {
+        return tr2;
+    }
+
+    if (w2 == 0) {
+        return tr1;
+    }
+}
+
+} // namespace detail
 
 template <typename K, typename C>
 inline auto degree(const truncated_power_series<K, C> &tps) OBAKE_SS_FORWARD_FUNCTION(::obake::degree(tps._poly()));
