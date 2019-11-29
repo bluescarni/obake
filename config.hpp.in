@@ -88,9 +88,8 @@
 
 #endif
 
-// Temporary measure for MSVC versioning.
-// Language support is set to latest
-// on at least MSVC 16.4.0 preview 2.0.
+// Detect older versions of MSVC which do
+// not like inline constexpr lambdas.
 #if defined(_MSC_VER) && ((_MSVC_LANG <= 201703L) || (_MSC_FULL_VER <= 192428206))
 
 #define OBAKE_MSVC_LAMBDA_WORKAROUND
