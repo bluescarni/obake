@@ -84,7 +84,7 @@ constexpr auto hash_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct hash_msvc {
     template <typename T>

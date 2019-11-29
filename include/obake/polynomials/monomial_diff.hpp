@@ -73,7 +73,7 @@ constexpr auto monomial_diff_impl_with_ret_check(T &&x, const symbol_idx &idx, c
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct monomial_diff_msvc {
     template <typename T>

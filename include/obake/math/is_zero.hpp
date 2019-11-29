@@ -96,7 +96,7 @@ constexpr auto is_zero_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct is_zero_msvc {
     template <typename T>

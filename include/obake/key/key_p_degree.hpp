@@ -50,7 +50,7 @@ constexpr auto key_p_degree_impl(T &&x, const symbol_idx_set &si, const symbol_s
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct key_p_degree_msvc {
     template <typename T>

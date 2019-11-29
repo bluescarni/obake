@@ -64,7 +64,7 @@ constexpr auto monomial_pow_impl_with_ret_check(T &&x, U &&y, const symbol_set &
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct monomial_pow_msvc {
     template <typename T, typename U>
