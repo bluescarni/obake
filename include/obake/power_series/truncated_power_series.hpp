@@ -22,6 +22,8 @@
 #include <obake/config.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/exceptions.hpp>
+#include <obake/key/key_degree.hpp>
+#include <obake/key/key_p_degree.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/safe_cast.hpp>
@@ -37,8 +39,51 @@ namespace obake
 namespace power_series
 {
 
+// Coefficient type for a TPS:
+// - must satisfy is_cf,
+// - must not be with degree
+//   (via const lvalue).
+template <typename C>
+using is_tps_cf = ::std::conjunction<is_cf<C>, ::std::negation<is_with_degree<::std::add_lvalue_reference_t<const C>>>>;
+
+template <typename C>
+inline constexpr bool is_tps_cf_v = is_tps_cf<C>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename C>
+OBAKE_CONCEPT_DECL TPSCf = is_tps_cf_v<C>;
+
+#endif
+
+// Key type for a TPS:
+// - must satisfy is_key,
+// - must have a semi-regular (partial) key degree
+//   type (via const lvalue).
+template <typename K>
+using is_tps_key = ::std::conjunction<
+    is_key<K>,
+    // NOTE: nonesuch is not semi-regular, hence
+    // is_semi_regular takes also care of the detection.
+    is_semi_regular<detected_t<::obake::detail::key_degree_t, ::std::add_lvalue_reference_t<const K>>>,
+    is_semi_regular<detected_t<::obake::detail::key_p_degree_t, ::std::add_lvalue_reference_t<const K>>>>;
+
+template <typename K>
+inline constexpr bool is_tps_key_v = is_tps_key<K>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename K>
+OBAKE_CONCEPT_DECL TPSKey = is_tps_key_v<K>;
+
+#endif
+
 // Forward declaration.
-template <typename, typename>
+#if defined(OBAKE_HAVE_CONCEPTS)
+template <TPSKey K, TPSCf C>
+#else
+template <typename K, typename C, typename = ::std::enable_if_t<::std::conjunction_v<is_tps_key<K>, is_tps_cf<C>>>>
+#endif
 class truncated_power_series;
 
 namespace detail
@@ -49,6 +94,8 @@ namespace detail
 struct no_truncation {
 };
 
+// Implementation of the detection
+// of the power series class.
 template <typename T>
 struct is_truncated_power_series_impl : ::std::false_type {
 };
@@ -122,22 +169,18 @@ OBAKE_CONCEPT_DECL TPSConstructible = is_tps_constructible_v<T, K, C>;
 
 #endif
 
-// TODO type requirements for K and C:
-// - must be suitable for use in polynomial,
-// - poly_t must have total degree, and the degree
-//   type must be suitable for use in variant,
-// - same for the partial degree.
-// TODO fix the requirements in the fwd declaration
-// as well.
-template <typename K, typename C>
+#if defined(OBAKE_HAVE_CONCEPTS)
+template <TPSKey K, TPSCf C>
+#else
+template <typename K, typename C, typename>
+#endif
 class truncated_power_series
 {
 public:
     // Useful typedefs.
     using poly_t = polynomial<K, C>;
-    using degree_t = decltype(::obake::degree(::std::declval<const poly_t &>()));
-    using p_degree_t
-        = decltype(::obake::p_degree(::std::declval<const poly_t &>(), ::std::declval<const symbol_set &>()));
+    using degree_t = ::obake::detail::key_degree_t<const K &>;
+    using p_degree_t = ::obake::detail::key_p_degree_t<const K &>;
     // The truncation setting type.
     using trunc_t = ::boost::variant<detail::no_truncation, degree_t, ::std::tuple<p_degree_t, symbol_set>>;
 
@@ -279,7 +322,11 @@ private:
     trunc_t m_trunc;
 };
 
-template <typename K, typename C>
+template <typename K, typename C,
+          ::std::enable_if_t<
+              ::std::conjunction_v<is_stream_insertable<const typename truncated_power_series<K, C>::degree_t &>,
+                                   is_stream_insertable<const typename truncated_power_series<K, C>::p_degree_t &>>,
+              int> = 0>
 inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_series<K, C> &tps)
 {
     using tps_t = truncated_power_series<K, C>;
