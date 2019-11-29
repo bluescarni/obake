@@ -67,7 +67,7 @@ template <typename T, ::std::enable_if_t<is_iterator_v<detected_t<end_using_adl:
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct begin_msvc {
     template <typename T>

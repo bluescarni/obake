@@ -26,7 +26,7 @@ OBAKE_DLL_PUBLIC ::std::string stack_trace_impl(unsigned);
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct stack_trace_enabled_msvc {
     bool operator()() const

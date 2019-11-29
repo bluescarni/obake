@@ -50,7 +50,7 @@ constexpr auto key_is_compatible_impl(T &&x, const symbol_set &ss, priority_tag<
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct key_is_compatible_msvc {
     template <typename T>

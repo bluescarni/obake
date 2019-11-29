@@ -67,7 +67,7 @@ constexpr auto degree_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct degree_msvc {
     template <typename T>

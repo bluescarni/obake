@@ -69,7 +69,7 @@ constexpr auto truncate_p_degree_impl_with_ret_check(T &&x, U &&y, const symbol_
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct truncate_p_degree_msvc {
     template <typename T, typename U>

@@ -109,7 +109,7 @@ constexpr auto tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<0>
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct tex_stream_insert_msvc {
     template <typename T>
