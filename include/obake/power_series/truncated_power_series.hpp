@@ -9,6 +9,8 @@
 #ifndef OBAKE_POWER_SERIES_TRUNCATED_POWER_SERIES_HPP
 #define OBAKE_POWER_SERIES_TRUNCATED_POWER_SERIES_HPP
 
+#include <array>
+#include <cstddef>
 #include <ostream>
 #include <stdexcept>
 #include <tuple>
@@ -411,6 +413,52 @@ inline auto p_degree(const truncated_power_series<K, C> &tps, const symbol_set &
 
 template <typename K, typename C>
 using truncated_power_series = power_series::truncated_power_series<K, C>;
+
+namespace detail
+{
+
+// Implementation details for the tps factory.
+template <typename T, typename Poly, ::std::size_t N, ::std::size_t... Ns>
+inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_sequence<Ns...>)
+{
+    return ::std::array<T, N>{T(::std::move(::std::get<Ns>(a)))...};
+}
+
+template <typename T, typename Poly, ::std::size_t N>
+inline auto tps_poly_array_to_tps(::std::array<Poly, N> &&a)
+{
+    return detail::tps_poly_array_to_tps_impl<T>(::std::move(a), ::std::make_index_sequence<N>{});
+}
+
+template <typename T, typename... Args,
+          ::std::enable_if_t<power_series::detail::is_truncated_power_series_impl<T>::value, int> = 0>
+inline auto make_tps_impl(const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(args...));
+}
+
+} // namespace detail
+
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
+
+template <typename T>
+struct make_truncated_power_series_msvc {
+    template <typename... Args>
+    constexpr auto operator()(const Args &... args) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_tps_impl<T>(args...))
+};
+
+template <typename T>
+inline constexpr auto make_truncated_power_series = make_truncated_power_series_msvc<T>{};
+
+#else
+
+// tps creation functor.
+template <typename T>
+inline constexpr auto make_truncated_power_series
+    = [](const auto &... args) OBAKE_SS_FORWARD_LAMBDA(detail::make_tps_impl<T>(args...));
+
+#endif
 
 } // namespace obake
 
