@@ -171,6 +171,7 @@ OBAKE_CONCEPT_DECL TPSConstructible = is_tps_constructible_v<T, K, C>;
 
 #endif
 
+// TODO: truncate when constructing from non-tps objects.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <TPSKey K, TPSCf C>
 #else
@@ -324,11 +325,7 @@ private:
     trunc_t m_trunc;
 };
 
-template <typename K, typename C,
-          ::std::enable_if_t<
-              ::std::conjunction_v<is_stream_insertable<const typename truncated_power_series<K, C>::degree_t &>,
-                                   is_stream_insertable<const typename truncated_power_series<K, C>::p_degree_t &>>,
-              int> = 0>
+template <typename K, typename C>
 inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_series<K, C> &tps)
 {
     using tps_t = truncated_power_series<K, C>;
@@ -349,11 +346,20 @@ inline ::std::ostream &operator<<(::std::ostream &os, const truncated_power_seri
         }
         void operator()(const typename tps_t::degree_t &d) const
         {
-            m_os << d;
+            if constexpr (is_stream_insertable_v<const typename truncated_power_series<K, C>::degree_t &>) {
+                m_os << d;
+            } else {
+                m_os << "<unprintable degree type>";
+            }
         }
         void operator()(const ::std::tuple<typename tps_t::p_degree_t, symbol_set> &t) const
         {
-            m_os << ::std::get<0>(t) << ", " << ::obake::detail::to_string(::std::get<1>(t));
+            if constexpr (is_stream_insertable_v<const typename truncated_power_series<K, C>::p_degree_t &>) {
+                m_os << ::std::get<0>(t);
+            } else {
+                m_os << "<unprintable partial degree type>";
+            }
+            m_os << ", " << ::obake::detail::to_string(::std::get<1>(t));
         }
         ::std::ostream &m_os;
     };
@@ -421,7 +427,7 @@ namespace detail
 template <typename T, typename Poly, ::std::size_t N, ::std::size_t... Ns>
 inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_sequence<Ns...>)
 {
-    return ::std::array<T, N>{T(::std::move(::std::get<Ns>(a)))...};
+    return ::std::array<T, N>{T(::std::get<Ns>(::std::move(a)))...};
 }
 
 template <typename T, typename Poly, ::std::size_t N>
