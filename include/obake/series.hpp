@@ -4489,6 +4489,7 @@ inline void filter_impl(series<K, C, Tag> &s, const F &f)
     // NOTE: this can easily be parallelised.
     for (auto &table : s._get_s_table()) {
         const auto it_f = table.end();
+
         for (auto it = table.begin(); it != it_f;) {
             // NOTE: abseil's flat_hash_map returns void on erase(),
             // thus we need to increase 'it' before possibly erasing.

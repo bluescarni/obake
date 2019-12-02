@@ -2300,8 +2300,6 @@ namespace detail
 template <typename T, typename U>
 constexpr int poly_truncate_degree_algorithm_impl()
 {
-    // NOTE: T is always an lvalue reference when we use
-    // this function.
     if constexpr (!is_polynomial_v<::std::remove_reference_t<T>>) {
         // Not a mutable polynomial.
         return 0;
@@ -2364,8 +2362,6 @@ namespace detail
 template <typename T, typename U>
 constexpr int poly_truncate_p_degree_algorithm_impl()
 {
-    // NOTE: T is always an lvalue reference when we use
-    // this function.
     if constexpr (!is_polynomial_v<::std::remove_reference_t<T>>) {
         // Not a mutable polynomial.
         return 0;
