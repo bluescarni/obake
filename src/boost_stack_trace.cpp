@@ -14,11 +14,13 @@
 #include <utility>
 #include <vector>
 
-#if defined(_MSC_VER) && defined(__clang__)
+#if defined(_WIN32)
 
-#define BOOST_STACKTRACE_USE_NOOP
+// NOTE: setting the backend explicitly is needed for
+// proper support for clang-cl.
+#define BOOST_STACKTRACE_USE_WINDBG
 #include <boost/stacktrace.hpp>
-#undef BOOST_STACKTRACE_USE_NOOP
+#undef BOOST_STACKTRACE_USE_WINDBG
 
 #elif defined(__APPLE__)
 
