@@ -7,6 +7,9 @@ Changelog
 New
 ~~~
 
+- Implement a ``filtered()`` primitive to return
+  the filtered copy of a series
+  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
 - obake now respects the ``CMAKE_CXX_STANDARD``
   variable, if set by the user
   (`#92 <https://github.com/bluescarni/obake/pull/92>`__).
@@ -17,6 +20,9 @@ New
 Changes
 ~~~~~~~
 
+- **BREAKING**: the ``filter()`` and ``truncate_degree()``
+  functions now operate in-place
+  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
 - Various improvements to the overflow checking
   machinery for polynomial exponents
   (`#94 <https://github.com/bluescarni/obake/pull/94>`__).

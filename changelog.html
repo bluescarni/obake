@@ -180,6 +180,9 @@
 <div class="section" id="new">
 <h3>New<a class="headerlink" href="#new" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p>Implement a <code class="docutils literal notranslate"><span class="pre">filtered()</span></code> primitive to return
+the filtered copy of a series
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/98">#98</a>).</p></li>
 <li><p>obake now respects the <code class="docutils literal notranslate"><span class="pre">CMAKE_CXX_STANDARD</span></code>
 variable, if set by the user
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/92">#92</a>).</p></li>
@@ -191,6 +194,9 @@ partial degree
 <div class="section" id="changes">
 <h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p><strong>BREAKING</strong>: the <code class="docutils literal notranslate"><span class="pre">filter()</span></code> and <code class="docutils literal notranslate"><span class="pre">truncate_degree()</span></code>
+functions now operate in-place
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/98">#98</a>).</p></li>
 <li><p>Various improvements to the overflow checking
 machinery for polynomial exponents
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/94">#94</a>).</p></li>
