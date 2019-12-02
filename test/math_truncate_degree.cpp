@@ -45,19 +45,14 @@ namespace ns
 struct tr_00 {
 };
 
-tr_00 truncate_degree(const tr_00 &, int);
+void truncate_degree(tr_00 &, int);
+void truncate_degree(tr_00 &&, int);
 
 struct tr_01 {
 };
 
 // Enable only certain overloads.
-tr_01 truncate_degree(tr_01 &, int);
-
-struct tr_02 {
-};
-
-// Wrong return type.
-void truncate_degree(const tr_02 &, int);
+void truncate_degree(tr_01 &, int);
 
 struct tr_03 {
 };
@@ -68,9 +63,6 @@ int truncate_degree(const tr_03 &);
 } // namespace ns
 
 struct tr_ext {
-};
-
-struct notr_ext_00 {
 };
 
 struct notr_ext_01 {
@@ -88,18 +80,6 @@ inline constexpr auto truncate_degree<T, U, std::enable_if_t<is_same_cvr_v<T, tr
     = [](auto &&, auto &&) constexpr noexcept
 {
     return tr_ext{};
-};
-
-// Wrong return type.
-template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notr_ext_00> inline constexpr auto truncate_degree<T, U>
-#else
-inline constexpr auto truncate_degree<T, U, std::enable_if_t<is_same_cvr_v<T, notr_ext_00>>>
-#endif
-    = [](auto &&, auto &&) constexpr noexcept
-{
-    return 1;
 };
 
 // Wrong signature.
@@ -125,8 +105,8 @@ TEST_CASE("truncate_degree_custom")
 
     REQUIRE(is_degree_truncatable_v<ns::tr_00, int>);
     REQUIRE(is_degree_truncatable_v<ns::tr_00 &, int &>);
-    REQUIRE(is_degree_truncatable_v<const ns::tr_00 &, const int>);
-    REQUIRE(is_degree_truncatable_v<const ns::tr_00 &, int &>);
+    REQUIRE(!is_degree_truncatable_v<const ns::tr_00 &, const int>);
+    REQUIRE(!is_degree_truncatable_v<const ns::tr_00 &, int &>);
     REQUIRE(is_degree_truncatable_v<ns::tr_00, double>);
 
     REQUIRE(!is_degree_truncatable_v<ns::tr_01, int>);
@@ -135,8 +115,6 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(!is_degree_truncatable_v<const ns::tr_01 &, int &>);
     REQUIRE(!is_degree_truncatable_v<ns::tr_01, double>);
 
-    REQUIRE(!is_degree_truncatable_v<ns::tr_02, int>);
-
     REQUIRE(!is_degree_truncatable_v<ns::tr_03, int>);
 
     REQUIRE(is_degree_truncatable_v<tr_ext, int>);
@@ -144,12 +122,6 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(is_degree_truncatable_v<const tr_ext &, const int>);
     REQUIRE(is_degree_truncatable_v<const tr_ext &, int &>);
     REQUIRE(is_degree_truncatable_v<tr_ext, double>);
-
-    REQUIRE(!is_degree_truncatable_v<notr_ext_00, int>);
-    REQUIRE(!is_degree_truncatable_v<notr_ext_00 &, int &>);
-    REQUIRE(!is_degree_truncatable_v<const notr_ext_00 &, const int>);
-    REQUIRE(!is_degree_truncatable_v<const notr_ext_00 &, int &>);
-    REQUIRE(!is_degree_truncatable_v<notr_ext_00, double>);
 
     REQUIRE(!is_degree_truncatable_v<notr_ext_01, int>);
     REQUIRE(!is_degree_truncatable_v<notr_ext_01 &, int &>);
@@ -165,8 +137,8 @@ TEST_CASE("truncate_degree_custom")
 
     REQUIRE(DegreeTruncatable<ns::tr_00, int>);
     REQUIRE(DegreeTruncatable<ns::tr_00 &, int &>);
-    REQUIRE(DegreeTruncatable<const ns::tr_00 &, const int>);
-    REQUIRE(DegreeTruncatable<const ns::tr_00 &, int &>);
+    REQUIRE(!DegreeTruncatable<const ns::tr_00 &, const int>);
+    REQUIRE(!DegreeTruncatable<const ns::tr_00 &, int &>);
     REQUIRE(DegreeTruncatable<ns::tr_00, double>);
 
     REQUIRE(!DegreeTruncatable<ns::tr_01, int>);
@@ -175,8 +147,6 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(!DegreeTruncatable<const ns::tr_01 &, int &>);
     REQUIRE(!DegreeTruncatable<ns::tr_01, double>);
 
-    REQUIRE(!DegreeTruncatable<ns::tr_02, int>);
-
     REQUIRE(!DegreeTruncatable<ns::tr_03, int>);
 
     REQUIRE(DegreeTruncatable<tr_ext, int>);
@@ -184,12 +154,6 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(DegreeTruncatable<const tr_ext &, const int>);
     REQUIRE(DegreeTruncatable<const tr_ext &, int &>);
     REQUIRE(DegreeTruncatable<tr_ext, double>);
-
-    REQUIRE(!DegreeTruncatable<notr_ext_00, int>);
-    REQUIRE(!DegreeTruncatable<notr_ext_00 &, int &>);
-    REQUIRE(!DegreeTruncatable<const notr_ext_00 &, const int>);
-    REQUIRE(!DegreeTruncatable<const notr_ext_00 &, int &>);
-    REQUIRE(!DegreeTruncatable<notr_ext_00, double>);
 
     REQUIRE(!DegreeTruncatable<notr_ext_01, int>);
     REQUIRE(!DegreeTruncatable<notr_ext_01 &, int &>);
