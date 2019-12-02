@@ -19,6 +19,7 @@
 
 using namespace obake;
 
+// Small helper to ease testing below.
 template <typename P, typename... Args>
 inline auto tpd_copy(const P &p, const Args &... args)
 {

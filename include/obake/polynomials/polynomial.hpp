@@ -2336,6 +2336,8 @@ inline constexpr int poly_truncate_degree_algo = detail::poly_truncate_degree_al
 
 } // namespace detail
 
+// NOTE: perhaps we can extend the implementation in the future
+// to accept mutable rvalue references as well.
 template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &, U &&> != 0, int> = 0>
 inline void truncate_degree(T &x, U &&y_)
 {
@@ -2398,6 +2400,8 @@ inline constexpr int poly_truncate_p_degree_algo = detail::poly_truncate_p_degre
 
 } // namespace detail
 
+// NOTE: perhaps we can extend the implementation in the future
+// to accept mutable rvalue references as well.
 template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_p_degree_algo<T &, U &&> != 0, int> = 0>
 inline void truncate_p_degree(T &x, U &&y_, const symbol_set &s)
 {

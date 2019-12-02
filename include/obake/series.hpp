@@ -4520,6 +4520,8 @@ inline constexpr auto filter = filter_msvc{};
 // NOTE: do we need a concept/type trait for this? See also the testing.
 // NOTE: force const reference passing for f as a hint
 // that the implementation may be parallel.
+// NOTE: perhaps we could eventually change the implementation
+// to return a reference to s.
 inline constexpr auto filter =
     [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filter_impl(::std::forward<decltype(s)>(s), f));
 
