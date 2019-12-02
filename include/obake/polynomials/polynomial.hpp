@@ -2298,17 +2298,11 @@ namespace detail
 // NOTE: at this time, we support only truncation
 // based on key filtering.
 template <typename T, typename U>
-constexpr auto poly_truncate_degree_algorithm_impl()
+constexpr int poly_truncate_degree_algorithm_impl()
 {
-    using rT = remove_cvref_t<T>;
-
-    // Shortcut for signalling that the truncate_degree() implementation
-    // is not well-defined.
-    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
-
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
-        return failure;
+    if constexpr (!is_polynomial_v<::std::remove_reference_t<T>>) {
+        // Not a mutable polynomial.
+        return 0;
     } else {
         // Check if we can compute the degree of the terms via the default
         // implementation for series.
@@ -2322,11 +2316,7 @@ constexpr auto poly_truncate_degree_algorithm_impl()
             // ref vs rvalue).
             using deg_t = typename d_impl::template ret_t<T>;
 
-            if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t>) {
-                return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
-            } else {
-                return failure;
-            }
+            return is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t> ? 1 : 0;
         } else {
             // The key degree computation is not possible, or it
             // involves the coefficient in addition to the key.
@@ -2334,31 +2324,23 @@ constexpr auto poly_truncate_degree_algorithm_impl()
             // truncatable and the key does not support degree computation
             // may eventually be handled in a default series implementation
             // of truncate_degree().
-            return failure;
+            return 0;
         }
     }
 }
 
 template <typename T, typename U>
-inline constexpr auto poly_truncate_degree_algorithm = detail::poly_truncate_degree_algorithm_impl<T, U>();
-
-template <typename T, typename U>
-inline constexpr int poly_truncate_degree_algo = poly_truncate_degree_algorithm<T, U>.first;
-
-template <typename T, typename U>
-using poly_truncate_degree_ret_t = typename decltype(poly_truncate_degree_algorithm<T, U>.second)::type;
+inline constexpr int poly_truncate_degree_algo = detail::poly_truncate_degree_algorithm_impl<T, U>();
 
 } // namespace detail
 
-template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x, U &&y_)
+// NOTE: perhaps we can extend the implementation in the future
+// to accept mutable rvalue references as well.
+template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_degree_algo<T &, U &&> != 0, int> = 0>
+inline void truncate_degree(T &x, U &&y_)
 {
-    using ret_t = detail::poly_truncate_degree_ret_t<T &&, U &&>;
-    constexpr auto algo = detail::poly_truncate_degree_algo<T &&, U &&>;
-
     // Sanity checks.
-    static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
-    static_assert(algo == 1);
+    static_assert(detail::poly_truncate_degree_algo<T &, U &&> == 1);
 
     // Use the default functor for the extraction of the term degree.
     using d_impl = customisation::internal::series_default_degree_impl;
@@ -2366,9 +2348,8 @@ inline detail::poly_truncate_degree_ret_t<T &&, U &&> truncate_degree(T &&x, U &
     // Implement on top of filter().
     // NOTE: d_extractor will strip out the cvref
     // from T, thus we can just pass in T as-is.
-    return ::obake::filter(::std::forward<T>(x),
-                           [deg_ext = d_impl::d_extractor<T>{&x.get_symbol_set()},
-                            &y = ::std::as_const(y_)](const auto &t) { return !(y < deg_ext(t)); });
+    ::obake::filter(x, [deg_ext = d_impl::d_extractor<T>{&x.get_symbol_set()},
+                        &y = ::std::as_const(y_)](const auto &t) { return !(y < deg_ext(t)); });
 }
 
 namespace detail
@@ -2379,17 +2360,11 @@ namespace detail
 // NOTE: at this time, we support only truncation
 // based on key filtering.
 template <typename T, typename U>
-constexpr auto poly_truncate_p_degree_algorithm_impl()
+constexpr int poly_truncate_p_degree_algorithm_impl()
 {
-    using rT = remove_cvref_t<T>;
-
-    // Shortcut for signalling that the truncate_p_degree() implementation
-    // is not well-defined.
-    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
-
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
-        return failure;
+    if constexpr (!is_polynomial_v<::std::remove_reference_t<T>>) {
+        // Not a mutable polynomial.
+        return 0;
     } else {
         // Check if we can compute the p_degree of the terms via the default
         // implementation for series.
@@ -2403,11 +2378,7 @@ constexpr auto poly_truncate_p_degree_algorithm_impl()
             // ref vs rvalue).
             using deg_t = typename d_impl::template ret_t<T>;
 
-            if constexpr (is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t>) {
-                return ::std::make_pair(1, ::obake::detail::type_c<rT>{});
-            } else {
-                return failure;
-            }
+            return is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t> ? 1 : 0;
         } else {
             // The key partial degree computation is not possible, or it
             // involves the coefficient in addition to the key.
@@ -2415,31 +2386,23 @@ constexpr auto poly_truncate_p_degree_algorithm_impl()
             // truncatable and the key does not support partial degree computation
             // may eventually be handled in a default series implementation
             // of truncate_p_degree().
-            return failure;
+            return 0;
         }
     }
 }
 
 template <typename T, typename U>
-inline constexpr auto poly_truncate_p_degree_algorithm = detail::poly_truncate_p_degree_algorithm_impl<T, U>();
-
-template <typename T, typename U>
-inline constexpr int poly_truncate_p_degree_algo = poly_truncate_p_degree_algorithm<T, U>.first;
-
-template <typename T, typename U>
-using poly_truncate_p_degree_ret_t = typename decltype(poly_truncate_p_degree_algorithm<T, U>.second)::type;
+inline constexpr int poly_truncate_p_degree_algo = detail::poly_truncate_p_degree_algorithm_impl<T, U>();
 
 } // namespace detail
 
-template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_p_degree_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_truncate_p_degree_ret_t<T &&, U &&> truncate_p_degree(T &&x, U &&y_, const symbol_set &s)
+// NOTE: perhaps we can extend the implementation in the future
+// to accept mutable rvalue references as well.
+template <typename T, typename U, ::std::enable_if_t<detail::poly_truncate_p_degree_algo<T &, U &&> != 0, int> = 0>
+inline void truncate_p_degree(T &x, U &&y_, const symbol_set &s)
 {
-    using ret_t = detail::poly_truncate_p_degree_ret_t<T &&, U &&>;
-    constexpr auto algo = detail::poly_truncate_p_degree_algo<T &&, U &&>;
-
     // Sanity checks.
-    static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
-    static_assert(algo == 1);
+    static_assert(detail::poly_truncate_p_degree_algo<T &, U &&> == 1);
 
     // Use the default functor for the extraction of the term partial degree.
     using d_impl = customisation::internal::series_default_p_degree_impl;
@@ -2451,10 +2414,9 @@ inline detail::poly_truncate_p_degree_ret_t<T &&, U &&> truncate_p_degree(T &&x,
     // Implement on top of filter().
     // NOTE: d_extractor will strip out the cvref
     // from T, thus we can just pass in T as-is.
-    return ::obake::filter(::std::forward<T>(x),
-                           [deg_ext = d_impl::d_extractor<T>{&s, &si, &ss}, &y = ::std::as_const(y_)](const auto &t) {
-                               return !(y < deg_ext(t));
-                           });
+    ::obake::filter(x, [deg_ext = d_impl::d_extractor<T>{&s, &si, &ss}, &y = ::std::as_const(y_)](const auto &t) {
+        return !(y < deg_ext(t));
+    });
 }
 
 namespace detail

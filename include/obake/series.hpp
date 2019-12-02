@@ -4427,7 +4427,7 @@ using term_filter_return_t
 // of the coefficients, as done elsewhere (see rref cleaner).
 template <typename K, typename C, typename Tag, typename F,
           ::std::enable_if_t<::std::is_convertible_v<detected_t<term_filter_return_t, F, K, C, Tag>, bool>, int> = 0>
-inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
+inline series<K, C, Tag> filtered_impl(const series<K, C, Tag> &s, const F &f)
 {
     // Init the return value. Same symbol set
     // and same number of segments as s.
@@ -4460,6 +4460,54 @@ inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
 
 #if !defined(OBAKE_MSVC_SUPPORTED)
 
+struct filtered_msvc {
+    template <typename T, typename F>
+    constexpr auto operator()(T &&s, const F &f) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::filtered_impl(::std::forward<T>(s), f))
+};
+
+inline constexpr auto filtered = filtered_msvc{};
+
+#else
+
+// NOTE: do we need a concept/type trait for this? See also the testing.
+// NOTE: force const reference passing for f as a hint
+// that the implementation may be parallel.
+inline constexpr auto filtered =
+    [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filtered_impl(::std::forward<decltype(s)>(s), f));
+
+#endif
+
+namespace detail
+{
+
+template <typename K, typename C, typename Tag, typename F,
+          ::std::enable_if_t<::std::is_convertible_v<detected_t<term_filter_return_t, F, K, C, Tag>, bool>, int> = 0>
+inline void filter_impl(series<K, C, Tag> &s, const F &f)
+{
+    // Do the filtering table by table.
+    // NOTE: this can easily be parallelised.
+    for (auto &table : s._get_s_table()) {
+        const auto it_f = table.end();
+
+        for (auto it = table.begin(); it != it_f;) {
+            // NOTE: abseil's flat_hash_map returns void on erase(),
+            // thus we need to increase 'it' before possibly erasing.
+            // erase() does not cause rehash and thus will not invalidate
+            // any other iterator apart from the one being erased.
+            if (f(::std::as_const(*it))) {
+                ++it;
+            } else {
+                table.erase(it++);
+            }
+        }
+    }
+}
+
+} // namespace detail
+
+#if !defined(OBAKE_MSVC_SUPPORTED)
+
 struct filter_msvc {
     template <typename T, typename F>
     constexpr auto operator()(T &&s, const F &f) const
@@ -4473,6 +4521,8 @@ inline constexpr auto filter = filter_msvc{};
 // NOTE: do we need a concept/type trait for this? See also the testing.
 // NOTE: force const reference passing for f as a hint
 // that the implementation may be parallel.
+// NOTE: perhaps we could eventually change the implementation
+// to return a reference to s.
 inline constexpr auto filter =
     [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filter_impl(::std::forward<decltype(s)>(s), f));
 
