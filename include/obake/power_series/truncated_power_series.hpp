@@ -457,7 +457,32 @@ namespace detail
 template <typename T, typename Poly, ::std::size_t N, ::std::size_t... Ns>
 inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_sequence<Ns...>)
 {
+    // NOTE: here we are constructing a tps from a polynomial.
+    // The expression T(::std::get...) is a functional
+    // cast expression:
+    // https://en.cppreference.com/w/cpp/language/explicit_cast
+    // Which is ultimately equivalent to a static_cast:
+    // https://en.cppreference.com/w/cpp/language/static_cast
+    // The static cast corresponds to a direct initialization:
+    // https://en.cppreference.com/w/cpp/language/direct_initialization
+    // Overload resolution in this case *should* consider only tps'
+    // constructors:
+    // https://en.cppreference.com/w/cpp/language/overload_resolution
+    // (see "Initialization by constructor"). However, GCC 7
+    // issues a warning according to which the conversion operator
+    // of polynomial to tps is also being considered for
+    // overload resolution, but ultimately discarded.
+    // The warning is not there in later GCC versions or clang
+    // or MSVC, so I am not sure if there is anything to it
+    // or this is just noise.
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 7
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
     return ::std::array<T, N>{T(::std::get<Ns>(::std::move(a)))...};
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 7
+#pragma GCC diagnostic pop
+#endif
 }
 
 template <typename T, typename Poly, ::std::size_t N>
