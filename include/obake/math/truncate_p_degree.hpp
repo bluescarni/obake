@@ -54,19 +54,6 @@ template <typename T, typename U>
 constexpr auto truncate_p_degree_impl(T &&x, U &&y, const symbol_set &ss, priority_tag<0>)
     OBAKE_SS_FORWARD_FUNCTION(truncate_p_degree(::std::forward<T>(x), ::std::forward<U>(y), ss));
 
-// Machinery to enable the truncate_p_degree() implementation only if the return
-// type is the same as the input type (after cvref removal).
-template <typename T, typename U>
-using truncate_p_degree_impl_ret_t = decltype(detail::truncate_p_degree_impl(
-    ::std::declval<T>(), ::std::declval<U>(), ::std::declval<const symbol_set &>(), priority_tag<1>{}));
-
-template <
-    typename T, typename U,
-    ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, detected_t<truncate_p_degree_impl_ret_t, T, U>>, int> = 0>
-constexpr auto truncate_p_degree_impl_with_ret_check(T &&x, U &&y, const symbol_set &ss)
-    OBAKE_SS_FORWARD_FUNCTION(detail::truncate_p_degree_impl(::std::forward<T>(x), ::std::forward<U>(y), ss,
-                                                             priority_tag<1>{}));
-
 } // namespace detail
 
 #if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
@@ -74,16 +61,17 @@ constexpr auto truncate_p_degree_impl_with_ret_check(T &&x, U &&y, const symbol_
 struct truncate_p_degree_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::truncate_p_degree_impl_with_ret_check(::std::forward<T>(x),
-                                                                                       ::std::forward<U>(y), ss))
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::truncate_p_degree_impl(::std::forward<T>(x), ::std::forward<U>(y),
+                                                                             ss, detail::priority_tag<1>{})))
 };
 
 inline constexpr auto truncate_p_degree = truncate_p_degree_msvc{};
 
 #else
 
-inline constexpr auto truncate_p_degree = [](auto &&x, auto &&y, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
-    detail::truncate_p_degree_impl_with_ret_check(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss));
+inline constexpr auto truncate_p_degree =
+    [](auto &&x, auto &&y, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(void(detail::truncate_p_degree_impl(
+        ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss, detail::priority_tag<1>{})));
 
 #endif
 
