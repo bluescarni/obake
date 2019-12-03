@@ -46,6 +46,8 @@ TEST_CASE("basic_test")
     a = -42;
     std::cout << a << '\n';
 
+    std::cout << tps_t{45, -1} << '\n';
+
     REQUIRE(std::is_nothrow_swappable_v<tps_t>);
 
     auto [x, y, z] = make_truncated_power_series<tps_t>("x", "y", "z");

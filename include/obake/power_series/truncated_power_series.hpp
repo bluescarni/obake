@@ -171,7 +171,9 @@ OBAKE_CONCEPT_DECL TPSConstructible = is_tps_constructible_v<T, K, C>;
 
 #endif
 
-// TODO: truncate when constructing from non-tps objects.
+// TODO update the type requirements
+// so that truncate()'s implementation
+// is guaranteed to work.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <TPSKey K, TPSCf C>
 #else
@@ -195,6 +197,30 @@ public:
     truncated_power_series &operator=(truncated_power_series &&) = default;
 
 private:
+    // Explicitly truncate the polynomial
+    // to the current truncation level.
+    void truncate()
+    {
+        struct truncate_visitor : ::boost::static_visitor<> {
+            truncate_visitor(truncated_power_series &tps) : m_tps(tps) {}
+            void operator()(const detail::no_truncation &) const {}
+            void operator()(const degree_t &d) const
+            {
+                // NOTE: use specifically the implementations
+                // in the polynomials namespace, which we know
+                // use the machinery from series.hpp.
+                ::obake::polynomials::truncate_degree(m_tps.m_poly, d);
+            }
+            void operator()(const ::std::tuple<p_degree_t, symbol_set> &t) const
+            {
+                ::obake::polynomials::truncate_p_degree(m_tps.m_poly, ::std::get<0>(t), ::std::get<1>(t));
+            }
+            truncated_power_series &m_tps;
+        };
+
+        ::boost::apply_visitor(truncate_visitor{*this}, m_trunc);
+    }
+
     // A tag structure for use in private ctors.
     struct ptag {
     };
@@ -215,6 +241,7 @@ private:
     explicit truncated_power_series(ptag, T &&x, const U &l, ::std::true_type)
         : m_poly(::std::forward<T>(x)), m_trunc(l)
     {
+        truncate();
     }
     // Constructor from generic object and total degree truncation
     // represented as a type safely castable to degree_t.
@@ -222,6 +249,7 @@ private:
     explicit truncated_power_series(ptag, T &&x, const U &l, ::std::false_type)
         : m_poly(::std::forward<T>(x)), m_trunc(::obake::safe_cast<degree_t>(l))
     {
+        truncate();
     }
     // Constructor from generic object and partial degree truncation
     // represented as p_degree_t.
@@ -229,6 +257,7 @@ private:
     explicit truncated_power_series(ptag, T &&x, const U &l, const symbol_set &s, ::std::true_type)
         : m_poly(::std::forward<T>(x)), m_trunc(::std::make_tuple(l, s))
     {
+        truncate();
     }
     // Constructor from generic object and partial degree truncation
     // represented as a type safely castable to degree_t.
@@ -236,6 +265,7 @@ private:
     explicit truncated_power_series(ptag, T &&x, const U &l, const symbol_set &s, ::std::false_type)
         : m_poly(::std::forward<T>(x)), m_trunc(::std::make_tuple(::obake::safe_cast<p_degree_t>(l), s))
     {
+        truncate();
     }
 
 public:
