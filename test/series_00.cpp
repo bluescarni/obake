@@ -1289,37 +1289,6 @@ TEST_CASE("series_generic_assignment")
     REQUIRE(!std::is_assignable_v<s1_t, series<pm_t, rat_t, int>>);
 }
 
-TEST_CASE("series_conversion_operator")
-{
-    using pm_t = packed_monomial<int>;
-    using s1_t = series<pm_t, rat_t, void>;
-
-    s1_t s1{"3/4"};
-    REQUIRE(static_cast<rat_t>(s1) == rat_t{3, 4});
-    REQUIRE(static_cast<double>(s1) == 3 / 4.);
-
-    REQUIRE(static_cast<rat_t>(s1_t{}) == 0);
-    REQUIRE(static_cast<int>(s1_t{}) == 0);
-
-    s1 = s1_t{};
-    s1.set_n_segments(1);
-    s1.set_symbol_set(symbol_set{"x", "y", "z"});
-    s1.add_term(pm_t{1, 2, 3}, 1);
-    s1.add_term(pm_t{-1, -2, -3}, -1);
-    s1.add_term(pm_t{4, 5, 6}, 2);
-    s1.add_term(pm_t{7, 8, 9}, -2);
-    OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
-                                   "because the series does not consist of a single coefficient");
-
-    // Bug: conversion would succeed in case a single
-    // term with non-unitary key was present.
-    s1 = s1_t{};
-    s1.set_symbol_set(symbol_set{"x", "y", "z"});
-    s1.add_term(pm_t{1, 2, 3}, 1);
-    OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
-                                   "because the series does not consist of a single coefficient");
-}
-
 TEST_CASE("series_swap")
 {
     using pm_t = packed_monomial<int>;
