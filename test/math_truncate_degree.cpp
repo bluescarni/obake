@@ -16,6 +16,11 @@
 
 using namespace obake;
 
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 8
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-conversion"
+#endif
+
 TEST_CASE("truncate_degree_arith")
 {
     // Check type-traits/concepts.
@@ -162,3 +167,7 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(!DegreeTruncatable<notr_ext_01, double>);
 #endif
 }
+
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 8
+#pragma GCC diagnostic pop
+#endif
