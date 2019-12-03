@@ -438,12 +438,15 @@ inline auto tps_merge_trunc(const truncated_power_series<K, C> &t1, const trunca
 
 } // namespace detail
 
+// NOTE: in the implementation, make sure we use the
+// facilities from series.hpp for (partial) degree computation.
 template <typename K, typename C>
-inline auto degree(const truncated_power_series<K, C> &tps) OBAKE_SS_FORWARD_FUNCTION(::obake::degree(tps._poly()));
+inline auto degree(const truncated_power_series<K, C> &tps)
+    OBAKE_SS_FORWARD_FUNCTION(::obake::customisation::internal::series_default_degree_impl{}(tps._poly()));
 
 template <typename K, typename C>
 inline auto p_degree(const truncated_power_series<K, C> &tps, const symbol_set &s)
-    OBAKE_SS_FORWARD_FUNCTION(::obake::p_degree(tps._poly(), s));
+    OBAKE_SS_FORWARD_FUNCTION(::obake::customisation::internal::series_default_p_degree_impl{}(tps._poly(), s));
 
 } // namespace power_series
 
