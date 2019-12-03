@@ -855,10 +855,21 @@ public:
     {
         switch (size()) {
             case 0u:
+                // An empty series is a single-coefficient series
+                // equivalent to zero.
                 return T(0);
-            case 1u:
-                return T(cbegin()->second);
+            case 1u: {
+                // A single-term series is single-coefficient if the
+                // only key is unitary.
+                const auto it = cbegin();
+                if (obake_likely(::obake::key_is_one(it->first, m_symbol_set))) {
+                    return T(it->second);
+                }
+                [[fallthrough]];
+            }
             default:
+                // Multiple terms in the series, cannot be a
+                // single-coefficient series.
                 obake_throw(::std::invalid_argument,
                             "Cannot convert a series of type '" + ::obake::type_name<series>()
                                 + "' to on object of type '" + ::obake::type_name<T>()

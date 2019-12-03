@@ -1310,6 +1310,14 @@ TEST_CASE("series_conversion_operator")
     s1.add_term(pm_t{7, 8, 9}, -2);
     OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
                                    "because the series does not consist of a single coefficient");
+
+    // Bug: conversion would succeed in case a single
+    // term with non-unitary key was present.
+    s1 = s1_t{};
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
+                                   "because the series does not consist of a single coefficient");
 }
 
 TEST_CASE("series_swap")
