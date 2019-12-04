@@ -868,7 +868,8 @@ public:
                 [[fallthrough]];
             }
             default:
-                // Multiple terms in the series, cannot be a
+                // Multiple terms in the series, or we fell through
+                // from the previous case: cannot be a
                 // single-coefficient series.
                 obake_throw(::std::invalid_argument,
                             "Cannot convert a series of type '" + ::obake::type_name<series>()

@@ -7,6 +7,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <limits>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
@@ -14,9 +15,13 @@
 #include <mp++/rational.hpp>
 
 #include <obake/config.hpp>
+#include <obake/key/key_degree.hpp>
+#include <obake/math/degree.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
+#include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
@@ -133,4 +138,87 @@ TEST_CASE("series_div")
     REQUIRE(!is_compound_divisible_v<s11_t &, const s11_t &>);
     REQUIRE(!is_compound_divisible_v<s11_t &, const s1_t &>);
     REQUIRE(!is_compound_divisible_v<int &, const s1_t &>);
+}
+
+TEST_CASE("series_conversion_operator")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    s1_t s1{"3/4"};
+    REQUIRE(static_cast<rat_t>(s1) == rat_t{3, 4});
+    REQUIRE(static_cast<double>(s1) == 3 / 4.);
+
+    REQUIRE(static_cast<rat_t>(s1_t{}) == 0);
+    REQUIRE(static_cast<int>(s1_t{}) == 0);
+
+    s1 = s1_t{};
+    s1.set_n_segments(1);
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    s1.add_term(pm_t{-1, -2, -3}, -1);
+    s1.add_term(pm_t{4, 5, 6}, 2);
+    s1.add_term(pm_t{7, 8, 9}, -2);
+    OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
+                                   "because the series does not consist of a single coefficient");
+
+    // Bug: conversion would succeed in case a single
+    // term with non-unitary key was present.
+    s1 = s1_t{};
+    s1.set_symbol_set(symbol_set{"x", "y", "z"});
+    s1.add_term(pm_t{1, 2, 3}, 1);
+    OBAKE_REQUIRES_THROWS_CONTAINS((void)static_cast<rat_t>(s1), std::invalid_argument,
+                                   "because the series does not consist of a single coefficient");
+}
+
+template <typename T, typename F>
+using filtered_t = decltype(filtered(std::declval<T>(), std::declval<F>()));
+
+TEST_CASE("series_filtered_test")
+{
+    using pm_t = packed_monomial<int>;
+    using p1_t = polynomial<pm_t, rat_t>;
+
+    REQUIRE(filtered(p1_t{}, [](const auto &) { return true; }).empty());
+
+    p1_t tmp;
+    tmp.set_symbol_set(symbol_set{"a", "b", "c"});
+    tmp.set_n_segments(4);
+
+    auto tmp_f = filtered(tmp, [](const auto &) { return true; });
+    REQUIRE(tmp_f.empty());
+    REQUIRE(tmp_f.get_symbol_set() == symbol_set{"a", "b", "c"});
+    REQUIRE(tmp_f._get_s_table().size() == 16u);
+
+    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+    auto p = obake::pow(1 + x + y + z, 4);
+    auto pf = filtered(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 1; });
+    REQUIRE(obake::degree(pf) == 1);
+    pf = filtered(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 2; });
+    REQUIRE(obake::degree(pf) == 2);
+    pf = filtered(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 3; });
+    REQUIRE(obake::degree(pf) == 3);
+    REQUIRE(pf.get_symbol_set() == symbol_set{"x", "y", "z"});
+
+    REQUIRE(!is_detected_v<filtered_t, void, void>);
+    REQUIRE(!is_detected_v<filtered_t, void, int>);
+    REQUIRE(!is_detected_v<filtered_t, int, void>);
+    auto good_f = [](const auto &) { return true; };
+    REQUIRE(!is_detected_v<filtered_t, int, decltype(good_f)>);
+    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f)>);
+    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f) &>);
+    REQUIRE(is_detected_v<filtered_t, p1_t, const decltype(good_f) &>);
+    auto good_f1 = [](const auto &) { return 1; };
+    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f1)>);
+    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f1) &>);
+    REQUIRE(is_detected_v<filtered_t, p1_t, const decltype(good_f1) &>);
+    auto bad_f0 = []() { return true; };
+    REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f0)>);
+    auto bad_f1 = [](const auto &) {};
+    REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f1)>);
+    struct foo {
+    };
+    auto bad_f2 = [](const auto &) { return foo{}; };
+    REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f2)>);
 }

@@ -140,58 +140,6 @@ TEST_CASE("series_tex_stream_test")
 }
 
 template <typename T, typename F>
-using filtered_t = decltype(filtered(std::declval<T>(), std::declval<F>()));
-
-TEST_CASE("series_filtered_test")
-{
-    using pm_t = packed_monomial<int>;
-    using p1_t = polynomial<pm_t, rat_t>;
-
-    REQUIRE(filtered(p1_t{}, [](const auto &) { return true; }).empty());
-
-    p1_t tmp;
-    tmp.set_symbol_set(symbol_set{"a", "b", "c"});
-    tmp.set_n_segments(4);
-
-    auto tmp_f = filtered(tmp, [](const auto &) { return true; });
-    REQUIRE(tmp_f.empty());
-    REQUIRE(tmp_f.get_symbol_set() == symbol_set{"a", "b", "c"});
-    REQUIRE(tmp_f._get_s_table().size() == 16u);
-
-    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
-
-    auto p = obake::pow(1 + x + y + z, 4);
-    auto pf = filtered(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 1; });
-    REQUIRE(obake::degree(pf) == 1);
-    pf = filtered(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 2; });
-    REQUIRE(obake::degree(pf) == 2);
-    pf = filtered(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 3; });
-    REQUIRE(obake::degree(pf) == 3);
-    REQUIRE(pf.get_symbol_set() == symbol_set{"x", "y", "z"});
-
-    REQUIRE(!is_detected_v<filtered_t, void, void>);
-    REQUIRE(!is_detected_v<filtered_t, void, int>);
-    REQUIRE(!is_detected_v<filtered_t, int, void>);
-    auto good_f = [](const auto &) { return true; };
-    REQUIRE(!is_detected_v<filtered_t, int, decltype(good_f)>);
-    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f)>);
-    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f) &>);
-    REQUIRE(is_detected_v<filtered_t, p1_t, const decltype(good_f) &>);
-    auto good_f1 = [](const auto &) { return 1; };
-    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f1)>);
-    REQUIRE(is_detected_v<filtered_t, p1_t, decltype(good_f1) &>);
-    REQUIRE(is_detected_v<filtered_t, p1_t, const decltype(good_f1) &>);
-    auto bad_f0 = []() { return true; };
-    REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f0)>);
-    auto bad_f1 = [](const auto &) {};
-    REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f1)>);
-    struct foo {
-    };
-    auto bad_f2 = [](const auto &) { return foo{}; };
-    REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f2)>);
-}
-
-template <typename T, typename F>
 using filter_t = decltype(filter(std::declval<T>(), std::declval<F>()));
 
 TEST_CASE("series_filter_test")
