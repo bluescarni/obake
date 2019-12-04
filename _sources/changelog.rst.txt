@@ -30,6 +30,8 @@ Changes
 Fix
 ~~~
 
+- Fix a bug in the conversion operator for series
+  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
 - Fix an overflow detection bug in the dynamic packed
   monomial class
   (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
@@ -39,7 +41,8 @@ Fix
   Many thanks to `7ofNine <https://github.com/7ofNine>`__!
 - Various incremental build system fixes/improvements
   (`#90 <https://github.com/bluescarni/obake/pull/90>`__,
-  `#92 <https://github.com/bluescarni/obake/pull/92>`__).
+  `#92 <https://github.com/bluescarni/obake/pull/92>`__,
+  `#98 <https://github.com/bluescarni/obake/pull/98>`__).
 
 0.3 (31-10-2019)
 ----------------
