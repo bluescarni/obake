@@ -7,6 +7,9 @@ Changelog
 New
 ~~~
 
+- Implement a ``filtered()`` primitive to return
+  the filtered copy of a series
+  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
 - obake now respects the ``CMAKE_CXX_STANDARD``
   variable, if set by the user
   (`#92 <https://github.com/bluescarni/obake/pull/92>`__).
@@ -17,6 +20,9 @@ New
 Changes
 ~~~~~~~
 
+- **BREAKING**: the ``filter()`` and ``truncate_degree()``
+  functions now operate in-place
+  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
 - Various improvements to the overflow checking
   machinery for polynomial exponents
   (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
@@ -24,6 +30,8 @@ Changes
 Fix
 ~~~
 
+- Fix a bug in the conversion operator for series
+  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
 - Fix an overflow detection bug in the dynamic packed
   monomial class
   (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
@@ -33,7 +41,8 @@ Fix
   Many thanks to `7ofNine <https://github.com/7ofNine>`__!
 - Various incremental build system fixes/improvements
   (`#90 <https://github.com/bluescarni/obake/pull/90>`__,
-  `#92 <https://github.com/bluescarni/obake/pull/92>`__).
+  `#92 <https://github.com/bluescarni/obake/pull/92>`__,
+  `#98 <https://github.com/bluescarni/obake/pull/98>`__).
 
 0.3 (31-10-2019)
 ----------------

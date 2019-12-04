@@ -17,6 +17,11 @@
 
 using namespace obake;
 
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 8
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-conversion"
+#endif
+
 TEST_CASE("truncate_p_degree_arith")
 {
     // Check type-traits/concepts.
@@ -46,19 +51,14 @@ namespace ns
 struct tr_00 {
 };
 
-tr_00 truncate_p_degree(const tr_00 &, int, const symbol_set &);
+void truncate_p_degree(tr_00 &, int, const symbol_set &);
+void truncate_p_degree(tr_00 &&, int, const symbol_set &);
 
 struct tr_01 {
 };
 
 // Enable only certain overloads.
-tr_01 truncate_p_degree(tr_01 &, int, const symbol_set &);
-
-struct tr_02 {
-};
-
-// Wrong return type.
-void truncate_p_degree(const tr_02 &, int, const symbol_set &);
+void truncate_p_degree(tr_01 &, int, const symbol_set &);
 
 struct tr_03 {
 };
@@ -75,9 +75,6 @@ tr_04 truncate_p_degree(const tr_00 &, int, symbol_set &);
 } // namespace ns
 
 struct tr_ext {
-};
-
-struct notr_ext_00 {
 };
 
 struct notr_ext_01 {
@@ -100,18 +97,6 @@ inline constexpr auto truncate_p_degree<T, U, std::enable_if_t<is_same_cvr_v<T, 
     return tr_ext{};
 };
 
-// Wrong return type.
-template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notr_ext_00> inline constexpr auto truncate_p_degree<T, U>
-#else
-inline constexpr auto truncate_p_degree<T, U, std::enable_if_t<is_same_cvr_v<T, notr_ext_00>>>
-#endif
-    = [](auto &&, auto &&, const symbol_set &) constexpr noexcept
-{
-    return 1;
-};
-
 // Wrong signature.
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
@@ -124,6 +109,7 @@ inline constexpr auto truncate_p_degree<T, U, std::enable_if_t<is_same_cvr_v<T, 
     return 1;
 };
 
+// symbol_set non-const reference.
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, notr_ext_02> inline constexpr auto truncate_p_degree<T, U>
@@ -146,8 +132,8 @@ TEST_CASE("truncate_p_degree_custom")
 
     REQUIRE(is_p_degree_truncatable_v<ns::tr_00, int>);
     REQUIRE(is_p_degree_truncatable_v<ns::tr_00 &, int &>);
-    REQUIRE(is_p_degree_truncatable_v<const ns::tr_00 &, const int>);
-    REQUIRE(is_p_degree_truncatable_v<const ns::tr_00 &, int &>);
+    REQUIRE(!is_p_degree_truncatable_v<const ns::tr_00 &, const int>);
+    REQUIRE(!is_p_degree_truncatable_v<const ns::tr_00 &, int &>);
     REQUIRE(is_p_degree_truncatable_v<ns::tr_00, double>);
 
     REQUIRE(!is_p_degree_truncatable_v<ns::tr_01, int>);
@@ -155,8 +141,6 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(!is_p_degree_truncatable_v<const ns::tr_01 &, const int>);
     REQUIRE(!is_p_degree_truncatable_v<const ns::tr_01 &, int &>);
     REQUIRE(!is_p_degree_truncatable_v<ns::tr_01, double>);
-
-    REQUIRE(!is_p_degree_truncatable_v<ns::tr_02, int>);
 
     REQUIRE(!is_p_degree_truncatable_v<ns::tr_03, int>);
 
@@ -167,12 +151,6 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(is_p_degree_truncatable_v<const tr_ext &, const int>);
     REQUIRE(is_p_degree_truncatable_v<const tr_ext &, int &>);
     REQUIRE(is_p_degree_truncatable_v<tr_ext, double>);
-
-    REQUIRE(!is_p_degree_truncatable_v<notr_ext_00, int>);
-    REQUIRE(!is_p_degree_truncatable_v<notr_ext_00 &, int &>);
-    REQUIRE(!is_p_degree_truncatable_v<const notr_ext_00 &, const int>);
-    REQUIRE(!is_p_degree_truncatable_v<const notr_ext_00 &, int &>);
-    REQUIRE(!is_p_degree_truncatable_v<notr_ext_00, double>);
 
     REQUIRE(!is_p_degree_truncatable_v<notr_ext_01, int>);
     REQUIRE(!is_p_degree_truncatable_v<notr_ext_01 &, int &>);
@@ -194,8 +172,8 @@ TEST_CASE("truncate_p_degree_custom")
 
     REQUIRE(PDegreeTruncatable<ns::tr_00, int>);
     REQUIRE(PDegreeTruncatable<ns::tr_00 &, int &>);
-    REQUIRE(PDegreeTruncatable<const ns::tr_00 &, const int>);
-    REQUIRE(PDegreeTruncatable<const ns::tr_00 &, int &>);
+    REQUIRE(!PDegreeTruncatable<const ns::tr_00 &, const int>);
+    REQUIRE(!PDegreeTruncatable<const ns::tr_00 &, int &>);
     REQUIRE(PDegreeTruncatable<ns::tr_00, double>);
 
     REQUIRE(!PDegreeTruncatable<ns::tr_01, int>);
@@ -203,8 +181,6 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(!PDegreeTruncatable<const ns::tr_01 &, const int>);
     REQUIRE(!PDegreeTruncatable<const ns::tr_01 &, int &>);
     REQUIRE(!PDegreeTruncatable<ns::tr_01, double>);
-
-    REQUIRE(!PDegreeTruncatable<ns::tr_02, int>);
 
     REQUIRE(!PDegreeTruncatable<ns::tr_03, int>);
 
@@ -215,12 +191,6 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(PDegreeTruncatable<const tr_ext &, const int>);
     REQUIRE(PDegreeTruncatable<const tr_ext &, int &>);
     REQUIRE(PDegreeTruncatable<tr_ext, double>);
-
-    REQUIRE(!PDegreeTruncatable<notr_ext_00, int>);
-    REQUIRE(!PDegreeTruncatable<notr_ext_00 &, int &>);
-    REQUIRE(!PDegreeTruncatable<const notr_ext_00 &, const int>);
-    REQUIRE(!PDegreeTruncatable<const notr_ext_00 &, int &>);
-    REQUIRE(!PDegreeTruncatable<notr_ext_00, double>);
 
     REQUIRE(!PDegreeTruncatable<notr_ext_01, int>);
     REQUIRE(!PDegreeTruncatable<notr_ext_01 &, int &>);
@@ -235,3 +205,7 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(!PDegreeTruncatable<notr_ext_02, double>);
 #endif
 }
+
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 8
+#pragma GCC diagnostic pop
+#endif

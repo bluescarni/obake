@@ -855,10 +855,22 @@ public:
     {
         switch (size()) {
             case 0u:
+                // An empty series is a single-coefficient series
+                // equivalent to zero.
                 return T(0);
-            case 1u:
-                return T(cbegin()->second);
+            case 1u: {
+                // A single-term series is single-coefficient if the
+                // only key is unitary.
+                const auto it = cbegin();
+                if (obake_likely(::obake::key_is_one(it->first, m_symbol_set))) {
+                    return T(it->second);
+                }
+                [[fallthrough]];
+            }
             default:
+                // Multiple terms in the series, or we fell through
+                // from the previous case: cannot be a
+                // single-coefficient series.
                 obake_throw(::std::invalid_argument,
                             "Cannot convert a series of type '" + ::obake::type_name<series>()
                                 + "' to on object of type '" + ::obake::type_name<T>()
@@ -4430,7 +4442,7 @@ using term_filter_return_t
 // of the coefficients, as done elsewhere (see rref cleaner).
 template <typename K, typename C, typename Tag, typename F,
           ::std::enable_if_t<::std::is_convertible_v<detected_t<term_filter_return_t, F, K, C, Tag>, bool>, int> = 0>
-inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
+inline series<K, C, Tag> filtered_impl(const series<K, C, Tag> &s, const F &f)
 {
     // Init the return value. Same symbol set
     // and same number of segments as s.
@@ -4463,6 +4475,54 @@ inline series<K, C, Tag> filter_impl(const series<K, C, Tag> &s, const F &f)
 
 #if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
+struct filtered_msvc {
+    template <typename T, typename F>
+    constexpr auto operator()(T &&s, const F &f) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::filtered_impl(::std::forward<T>(s), f))
+};
+
+inline constexpr auto filtered = filtered_msvc{};
+
+#else
+
+// NOTE: do we need a concept/type trait for this? See also the testing.
+// NOTE: force const reference passing for f as a hint
+// that the implementation may be parallel.
+inline constexpr auto filtered =
+    [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filtered_impl(::std::forward<decltype(s)>(s), f));
+
+#endif
+
+namespace detail
+{
+
+template <typename K, typename C, typename Tag, typename F,
+          ::std::enable_if_t<::std::is_convertible_v<detected_t<term_filter_return_t, F, K, C, Tag>, bool>, int> = 0>
+inline void filter_impl(series<K, C, Tag> &s, const F &f)
+{
+    // Do the filtering table by table.
+    // NOTE: this can easily be parallelised.
+    for (auto &table : s._get_s_table()) {
+        const auto it_f = table.end();
+
+        for (auto it = table.begin(); it != it_f;) {
+            // NOTE: abseil's flat_hash_map returns void on erase(),
+            // thus we need to increase 'it' before possibly erasing.
+            // erase() does not cause rehash and thus will not invalidate
+            // any other iterator apart from the one being erased.
+            if (f(::std::as_const(*it))) {
+                ++it;
+            } else {
+                table.erase(it++);
+            }
+        }
+    }
+}
+
+} // namespace detail
+
+#if !defined(OBAKE_MSVC_SUPPORTED)
+
 struct filter_msvc {
     template <typename T, typename F>
     constexpr auto operator()(T &&s, const F &f) const
@@ -4476,6 +4536,8 @@ inline constexpr auto filter = filter_msvc{};
 // NOTE: do we need a concept/type trait for this? See also the testing.
 // NOTE: force const reference passing for f as a hint
 // that the implementation may be parallel.
+// NOTE: perhaps we could eventually change the implementation
+// to return a reference to s.
 inline constexpr auto filter =
     [](auto &&s, const auto &f) OBAKE_SS_FORWARD_LAMBDA(detail::filter_impl(::std::forward<decltype(s)>(s), f));
 

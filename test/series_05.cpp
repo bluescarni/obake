@@ -147,13 +147,15 @@ TEST_CASE("series_filter_test")
     using pm_t = packed_monomial<int>;
     using p1_t = polynomial<pm_t, rat_t>;
 
-    REQUIRE(filter(p1_t{}, [](const auto &) { return true; }).empty());
-
     p1_t tmp;
+    filter(tmp, [](const auto &) { return true; });
+    REQUIRE(tmp.empty());
+
     tmp.set_symbol_set(symbol_set{"a", "b", "c"});
     tmp.set_n_segments(4);
 
-    auto tmp_f = filter(tmp, [](const auto &) { return true; });
+    auto tmp_f(tmp);
+    filter(tmp_f, [](const auto &) { return true; });
     REQUIRE(tmp_f.empty());
     REQUIRE(tmp_f.get_symbol_set() == symbol_set{"a", "b", "c"});
     REQUIRE(tmp_f._get_s_table().size() == 16u);
@@ -161,11 +163,14 @@ TEST_CASE("series_filter_test")
     auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
 
     auto p = obake::pow(1 + x + y + z, 4);
-    auto pf = filter(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 1; });
+    auto pf(p);
+    filter(pf, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 1; });
     REQUIRE(obake::degree(pf) == 1);
-    pf = filter(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 2; });
+    pf = p;
+    filter(pf, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 2; });
     REQUIRE(obake::degree(pf) == 2);
-    pf = filter(p, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 3; });
+    pf = p;
+    filter(pf, [&ss = p.get_symbol_set()](const auto &t) { return obake::key_degree(t.first, ss) <= 3; });
     REQUIRE(obake::degree(pf) == 3);
     REQUIRE(pf.get_symbol_set() == symbol_set{"x", "y", "z"});
 
@@ -174,21 +179,33 @@ TEST_CASE("series_filter_test")
     REQUIRE(!is_detected_v<filter_t, int, void>);
     auto good_f = [](const auto &) { return true; };
     REQUIRE(!is_detected_v<filter_t, int, decltype(good_f)>);
-    REQUIRE(is_detected_v<filter_t, p1_t, decltype(good_f)>);
-    REQUIRE(is_detected_v<filter_t, p1_t, decltype(good_f) &>);
-    REQUIRE(is_detected_v<filter_t, p1_t, const decltype(good_f) &>);
+    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(good_f)>);
+    REQUIRE(!is_detected_v<filter_t, const p1_t &, decltype(good_f)>);
+    REQUIRE(is_detected_v<filter_t, p1_t &, decltype(good_f)>);
+    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(good_f) &>);
+    REQUIRE(!is_detected_v<filter_t, const p1_t &, decltype(good_f) &>);
+    REQUIRE(is_detected_v<filter_t, p1_t &, decltype(good_f) &>);
+    REQUIRE(!is_detected_v<filter_t, p1_t, const decltype(good_f) &>);
+    REQUIRE(!is_detected_v<filter_t, const p1_t &, const decltype(good_f) &>);
+    REQUIRE(is_detected_v<filter_t, p1_t &, const decltype(good_f) &>);
     auto good_f1 = [](const auto &) { return 1; };
-    REQUIRE(is_detected_v<filter_t, p1_t, decltype(good_f1)>);
-    REQUIRE(is_detected_v<filter_t, p1_t, decltype(good_f1) &>);
-    REQUIRE(is_detected_v<filter_t, p1_t, const decltype(good_f1) &>);
+    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(good_f1)>);
+    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(good_f1) &>);
+    REQUIRE(!is_detected_v<filter_t, p1_t, const decltype(good_f1) &>);
+    REQUIRE(!is_detected_v<filter_t, const p1_t &, decltype(good_f1)>);
+    REQUIRE(!is_detected_v<filter_t, const p1_t &, decltype(good_f1) &>);
+    REQUIRE(!is_detected_v<filter_t, const p1_t &, const decltype(good_f1) &>);
+    REQUIRE(is_detected_v<filter_t, p1_t &, decltype(good_f1)>);
+    REQUIRE(is_detected_v<filter_t, p1_t &, decltype(good_f1) &>);
+    REQUIRE(is_detected_v<filter_t, p1_t &, const decltype(good_f1) &>);
     auto bad_f0 = []() { return true; };
-    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(bad_f0)>);
+    REQUIRE(!is_detected_v<filter_t, p1_t &, decltype(bad_f0)>);
     auto bad_f1 = [](const auto &) {};
-    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(bad_f1)>);
+    REQUIRE(!is_detected_v<filter_t, p1_t &, decltype(bad_f1)>);
     struct foo {
     };
     auto bad_f2 = [](const auto &) { return foo{}; };
-    REQUIRE(!is_detected_v<filter_t, p1_t, decltype(bad_f2)>);
+    REQUIRE(!is_detected_v<filter_t, p1_t &, decltype(bad_f2)>);
 }
 
 template <typename T>

@@ -185,25 +185,44 @@ TEST_CASE("polynomial_truncate_degree")
     using ppoly_t = polynomial<pm_t, poly_t>;
 
     REQUIRE(!is_degree_truncatable_v<poly_t, void>);
-    REQUIRE(is_degree_truncatable_v<poly_t, int>);
-    REQUIRE(is_degree_truncatable_v<poly_t, int &>);
+    REQUIRE(!is_degree_truncatable_v<poly_t, int>);
+    REQUIRE(!is_degree_truncatable_v<poly_t, int &>);
     REQUIRE(is_degree_truncatable_v<poly_t &, int &>);
-    REQUIRE(is_degree_truncatable_v<const poly_t &, const int>);
-    REQUIRE(is_degree_truncatable_v<const poly_t, const int &>);
+    REQUIRE(!is_degree_truncatable_v<const poly_t &, const int>);
+    REQUIRE(!is_degree_truncatable_v<const poly_t, const int &>);
     // Mixed cf/key truncation not supported at this time.
-    REQUIRE(!is_degree_truncatable_v<ppoly_t, int>);
+    REQUIRE(!is_degree_truncatable_v<ppoly_t &, int>);
 
     auto [x, y, z] = make_polynomials<poly_t>("x", "y", "z");
 
     const auto p = x * y * z - 3 * x + 4 * x * y - z + 5;
+    auto pc(p);
+    truncate_degree(pc, 100);
+    REQUIRE(pc == p);
 
-    REQUIRE(truncate_degree(p, 100) == p);
-    REQUIRE(truncate_degree(p, 3) == p);
-    REQUIRE(truncate_degree(p, 2) == -3 * x + 4 * x * y - z + 5);
-    REQUIRE(truncate_degree(p, 1) == -3 * x - z + 5);
-    REQUIRE(truncate_degree(p, 0) == 5);
-    REQUIRE(truncate_degree(p, -1).empty());
-    REQUIRE(truncate_degree(p, -100).empty());
+    pc = p;
+    truncate_degree(pc, 3);
+    REQUIRE(pc == p);
+
+    pc = p;
+    truncate_degree(pc, 2);
+    REQUIRE(pc == -3 * x + 4 * x * y - z + 5);
+
+    pc = p;
+    truncate_degree(pc, 1);
+    REQUIRE(pc == -3 * x - z + 5);
+
+    pc = p;
+    truncate_degree(pc, 0);
+    REQUIRE(pc == 5);
+
+    pc = p;
+    truncate_degree(pc, -1);
+    REQUIRE(pc.empty());
+
+    pc = p;
+    truncate_degree(pc, -100);
+    REQUIRE(pc.empty());
 }
 
 // Exercise the segmented tables layout.
@@ -224,10 +243,11 @@ TEST_CASE("polynomial_truncate_degree_large")
         g *= tmp_g;
     }
 
-    const auto cmp = f * g;
+    auto cmp = f * g;
     const auto tcmp = truncated_mul(f, g, 50);
 
-    REQUIRE(truncate_degree(cmp, 50) == tcmp);
+    truncate_degree(cmp, 50);
+    REQUIRE(cmp == tcmp);
 }
 
 // A test for exercising rectangular multi-threaded multiplication.
