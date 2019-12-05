@@ -468,16 +468,27 @@ inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_s
     // https://en.cppreference.com/w/cpp/language/static_cast
     // The static cast corresponds to a direct initialization:
     // https://en.cppreference.com/w/cpp/language/direct_initialization
-    // Overload resolution in this case *should* consider only tps'
-    // constructors:
+    // In direct initialization, the constructor of T, if available
+    // has the precedence:
     // https://en.cppreference.com/w/cpp/language/overload_resolution
-    // (see "Initialization by constructor"). However, GCC 7
-    // issues a warning according to which the conversion operator
-    // of polynomial to tps is also being considered for
-    // overload resolution, but ultimately discarded.
+    // http://eel.is/c++draft/dcl.init
+    // (see "Initialization by constructor" and "direct-initialization").
+    // If the constructor of T is not available, then
+    // user-defined conversions are considered as part of
+    // the standard conversion sequence:
+    // http://eel.is/c++draft/conv
+    // http://eel.is/c++draft/class.conv
+    // Explicit user-defined conversions are considered
+    // (as well as implicit) because we are in a direct-initialization
+    // context.
+    //
+    // With that in mind, GCC 7 warns here about the fact that the
+    // conversion operator of polynomial to tps is also being
+    // considered, but ultimately discarded in favour of tps'
+    // constructor (as it should, according to my understanding).
     // The warning is not there in later GCC versions or clang
-    // or MSVC, so I am not sure if there is anything to it
-    // or this is just noise.
+    // or MSVC, so I *think* this is a warning issue in this
+    // specific GCC version.
 #if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 7
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
