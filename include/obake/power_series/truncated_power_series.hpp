@@ -468,7 +468,7 @@ inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_s
     // https://en.cppreference.com/w/cpp/language/static_cast
     // The static cast corresponds to a direct initialization:
     // https://en.cppreference.com/w/cpp/language/direct_initialization
-    // In direct initialization, the constructor of T, if available
+    // In direct initialization, the constructor of T, if available,
     // has the precedence:
     // https://en.cppreference.com/w/cpp/language/overload_resolution
     // http://eel.is/c++draft/dcl.init
