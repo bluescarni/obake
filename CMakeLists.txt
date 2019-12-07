@@ -280,7 +280,7 @@ install(EXPORT obake_export NAMESPACE obake:: DESTINATION "${OBAKE_INSTALL_LIBDI
 # Take care of versioning.
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" VERSION ${obake_VERSION}
-	COMPATIBILITY SameMajorVersion)
+	COMPATIBILITY SameMinorVersion)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 
 if(OBAKE_BUILD_TESTS)
