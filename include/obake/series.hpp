@@ -819,6 +819,14 @@ public:
             }
         }
     }
+    // Constructor from generic lower-rank object
+    // and symbol set. Equivalent to the generic ctor
+    // plus assignment of s to m_symbol_set.
+    template <typename T, ::std::enable_if_t<detail::series_generic_ctor_algorithm<T, K, C, Tag> == 1, int> = 0>
+    explicit series(T &&x, const symbol_set &s) : series(::std::forward<T>(x))
+    {
+        m_symbol_set = s;
+    }
 
     series &operator=(const series &) = default;
     series &operator=(series &&other) noexcept
