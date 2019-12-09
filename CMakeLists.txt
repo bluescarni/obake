@@ -149,7 +149,10 @@ endif()
 # so that we can re-use it in the config-file package
 # machinery below.
 set (_OBAKE_MIN_MPPP_VERSION 0.17)
-find_package(mp++ "${_OBAKE_MIN_MPPP_VERSION}" REQUIRED)
+find_package(mp++ REQUIRED)
+if(${mp++_VERSION} VERSION_LESS ${_OBAKE_MIN_MPPP_VERSION})
+    message(FATAL_ERROR "The minimum mp++ version required by obake is ${_OBAKE_MIN_MPPP_VERSION}, but version ${mp++_VERSION} was found instead.")
+endif()
 
 # abseil.
 find_package(absl REQUIRED)
@@ -279,8 +282,13 @@ DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 install(EXPORT obake_export NAMESPACE obake:: DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 # Take care of versioning.
 include(CMakePackageConfigHelpers)
-write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" VERSION ${obake_VERSION}
-	COMPATIBILITY SameMinorVersion)
+# NOTE: SameMinorVersion available only
+# since CMake 3.11.
+if(${CMAKE_VERSION} VERSION_LESS "3.11.0")
+    write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" COMPATIBILITY SameMajorVersion)
+else()
+    write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" COMPATIBILITY SameMinorVersion)
+endif()
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 
 if(OBAKE_BUILD_TESTS)

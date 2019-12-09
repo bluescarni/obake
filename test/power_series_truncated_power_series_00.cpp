@@ -51,4 +51,10 @@ TEST_CASE("basic_test")
     REQUIRE(std::is_nothrow_swappable_v<tps_t>);
 
     auto [x, y, z] = make_truncated_power_series<tps_t>("x", "y", "z");
+
+    std::cout << tps_t{45, symbol_set{"x", "y", "z"}} << '\n';
+    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2} << '\n';
+    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2l} << '\n';
+    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2, symbol_set{"x"}} << '\n';
+    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2l, symbol_set{"x"}} << '\n';
 }
