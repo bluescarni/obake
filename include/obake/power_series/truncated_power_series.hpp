@@ -251,6 +251,22 @@ private:
     {
         truncate();
     }
+    // Constructor from generic object, symbol set and total degree truncation
+    // represented as degree_t.
+    template <typename T, typename U>
+    explicit truncated_power_series(ptag, T &&x, const symbol_set &ss, const U &l, ::std::true_type)
+        : m_poly(::std::forward<T>(x), ss), m_trunc(::obake::safe_cast<degree_t>(l))
+    {
+        truncate();
+    }
+    // Constructor from generic object, symbol set and total degree truncation
+    // represented as a type safely castable to degree_t.
+    template <typename T, typename U>
+    explicit truncated_power_series(ptag, T &&x, const symbol_set &ss, const U &l, ::std::false_type)
+        : m_poly(::std::forward<T>(x), ss), m_trunc(::obake::safe_cast<degree_t>(l))
+    {
+        truncate();
+    }
     // Constructor from generic object and partial degree truncation
     // represented as p_degree_t.
     template <typename T, typename U>
@@ -264,6 +280,24 @@ private:
     template <typename T, typename U>
     explicit truncated_power_series(ptag, T &&x, const U &l, const symbol_set &s, ::std::false_type)
         : m_poly(::std::forward<T>(x)), m_trunc(::std::make_tuple(::obake::safe_cast<p_degree_t>(l), s))
+    {
+        truncate();
+    }
+    // Constructor from generic object, symbol set and partial degree truncation
+    // represented as p_degree_t.
+    template <typename T, typename U>
+    explicit truncated_power_series(ptag, T &&x, const symbol_set &ss, const U &l, const symbol_set &s,
+                                    ::std::true_type)
+        : m_poly(::std::forward<T>(x), ss), m_trunc(::std::make_tuple(l, s))
+    {
+        truncate();
+    }
+    // Constructor from generic object, symbol set and partial degree truncation
+    // represented as a type safely castable to degree_t.
+    template <typename T, typename U>
+    explicit truncated_power_series(ptag, T &&x, const symbol_set &ss, const U &l, const symbol_set &s,
+                                    ::std::false_type)
+        : m_poly(::std::forward<T>(x), ss), m_trunc(::std::make_tuple(::obake::safe_cast<p_degree_t>(l), s))
     {
         truncate();
     }
@@ -281,6 +315,14 @@ public:
         : truncated_power_series(ptag{}, ::std::forward<T>(x), is_cvr_truncated_power_series<T>{})
     {
     }
+    // Constructor from generic object and symbol set.
+    // NOTE: this forwards to the series ctor from generic object
+    // and symbol set, which is activated only if T is
+    // of a lower rank than the poly ranke (i.e., T must be rank 0).
+    template <typename T, ::std::enable_if_t<::std::is_constructible_v<poly_t, T, const symbol_set &>, int> = 0>
+    explicit truncated_power_series(T &&x, const symbol_set &ss) : m_poly(::std::forward<T>(x), ss)
+    {
+    }
     // Generic constructor with total degree truncation.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename T, typename U>
@@ -296,6 +338,21 @@ public:
         : truncated_power_series(ptag{}, ::std::forward<T>(x), l, ::std::is_same<U, degree_t>{})
     {
     }
+    // Generic constructor with symbol set and total degree truncation.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename T, typename U>
+    requires ::std::is_constructible_v<poly_t, T, const symbol_set &> && (SafelyCastable<const U &, degree_t> || ::std::is_same_v<U, degree_t>)
+#else
+    template <typename T, typename U,
+              ::std::enable_if_t<::std::conjunction_v<::std::is_constructible<poly_t, T, const symbol_set &>,
+                                                      ::std::disjunction<is_safely_castable<const U &, degree_t>,
+                                                                         ::std::is_same<U, degree_t>>>,
+                                 int> = 0>
+#endif
+        explicit truncated_power_series(T &&x, const symbol_set &ss, const U &l)
+        : truncated_power_series(ptag{}, ::std::forward<T>(x), ss,l, ::std::is_same<U, degree_t>{})
+    {
+    }
     // Generic constructor with partial degree truncation.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename T, typename U>
@@ -309,6 +366,21 @@ public:
 #endif
         explicit truncated_power_series(T &&x, const U &l, const symbol_set &s)
         : truncated_power_series(ptag{}, ::std::forward<T>(x), l, s, ::std::is_same<U, p_degree_t>{})
+    {
+    }
+    // Generic constructor with symbol set and partial degree truncation.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename T, typename U>
+    requires ::std::is_constructible_v<poly_t, T, const symbol_set &> && (SafelyCastable<const U &, p_degree_t> || ::std::is_same_v<U, p_degree_t>)
+#else
+    template <typename T, typename U,
+              ::std::enable_if_t<::std::conjunction_v<::std::is_constructible<poly_t, T, const symbol_set &>,
+                                                      ::std::disjunction<is_safely_castable<const U &, p_degree_t>,
+                                                                         ::std::is_same<U, p_degree_t>>>,
+                                 int> = 0>
+#endif
+        explicit truncated_power_series(T &&x, const symbol_set &ss, const U &l, const symbol_set &s)
+        : truncated_power_series(ptag{}, ::std::forward<T>(x), ss,l, s, ::std::is_same<U, p_degree_t>{})
     {
     }
     // Generic assignment operator.
