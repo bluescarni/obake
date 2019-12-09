@@ -463,7 +463,7 @@ struct poly_mul_impl_pair_transform {
 //   be performed in the computation of the polynomial product
 //   (which could be different from the product of the sizes of the
 //   factors due to truncation).
-// S1 and S2 are the types of the polyomials, x and y the polynomials
+// S1 and S2 are the types of the polynomials, x and y the polynomials
 // represented as vectors of terms. The extra arguments represent
 // the truncation limits.
 // Requires x and y not empty, y not shorter than x. The returned
