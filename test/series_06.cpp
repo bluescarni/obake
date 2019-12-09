@@ -11,8 +11,14 @@
 #include <type_traits>
 #include <utility>
 
+#include <mp++/config.hpp>
 #include <mp++/exceptions.hpp>
+#include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
+
+#if defined(MPPP_WITH_MPFR)
+#include <mp++/real.hpp>
+#endif
 
 #include <obake/config.hpp>
 #include <obake/key/key_degree.hpp>
@@ -27,6 +33,7 @@
 #include "catch.hpp"
 #include "test_utils.hpp"
 
+using int_t = mppp::integer<1>;
 using rat_t = mppp::rational<1>;
 
 using namespace obake;
@@ -221,4 +228,110 @@ TEST_CASE("series_filtered_test")
     };
     auto bad_f2 = [](const auto &) { return foo{}; };
     REQUIRE(!is_detected_v<filtered_t, p1_t, decltype(bad_f2)>);
+}
+
+TEST_CASE("series_generic_ctor_with_ss")
+{
+    using pm_t = packed_monomial<int>;
+    using s1_t = series<pm_t, rat_t, void>;
+    using s1_int_t = series<pm_t, int_t, void>;
+    using s2_t = series<pm_t, s1_t, void>;
+
+#if defined(MPPP_WITH_MPFR)
+    using s1_real_t = series<pm_t, mppp::real, void>;
+#endif
+
+    REQUIRE(!std::is_constructible_v<s1_t, void, void>);
+    REQUIRE(!std::is_constructible_v<s1_t, int, void>);
+    REQUIRE(!std::is_constructible_v<s1_t, void, int>);
+
+    // Constructability from non-series type.
+    REQUIRE(std::is_constructible_v<s1_t, int, symbol_set>);
+    REQUIRE(std::is_constructible_v<s1_t, int &, const symbol_set &>);
+    REQUIRE(std::is_constructible_v<s1_t, const int &, symbol_set &>);
+
+    s1_t s1{5, symbol_set{}};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s1 = s1_t{0., symbol_set{"x"}};
+    REQUIRE(s1.empty());
+    REQUIRE(s1.get_symbol_set() == symbol_set{"x"});
+
+    s1 = s1_t{"3/4", symbol_set{"x", "y"}};
+    REQUIRE(s1.size() == 1u);
+    REQUIRE(s1.get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{"x", "y"}));
+
+    s2_t s2{5, symbol_set{"x", "y"}};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{"x", "y"}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s2 = s2_t{0, symbol_set{"x", "y"}};
+    REQUIRE(s2.empty());
+    REQUIRE(s2.get_symbol_set() == symbol_set{"x", "y"});
+
+    s2 = s2_t{"3/4", symbol_set{"x", "y"}};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{"x", "y"}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    // Constructability from lower rank series.
+    REQUIRE(std::is_constructible_v<s2_t, s1_t, symbol_set>);
+    REQUIRE(std::is_constructible_v<s2_t, s1_t &, symbol_set &>);
+    REQUIRE(std::is_constructible_v<s2_t, const s1_t &, const symbol_set &>);
+
+    s2 = s2_t{s1_t{5}, symbol_set{"x", "y"}};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{"x", "y"}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == 5);
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+    s2 = s2_t{s1_t{0}, symbol_set{"x", "y"}};
+    REQUIRE(s2.empty());
+    REQUIRE(s2.get_symbol_set() == symbol_set{"x", "y"});
+
+    s2 = s2_t{s1_t{"3/4"}, symbol_set{"x", "y"}};
+    REQUIRE(s2.size() == 1u);
+    REQUIRE(s2.get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{"x", "y"}));
+    s1 = s2.begin()->second;
+    REQUIRE(s1.get_symbol_set() == symbol_set{});
+    REQUIRE(s1.begin()->second == rat_t{3, 4});
+    REQUIRE(s1.begin()->first == pm_t(symbol_set{}));
+
+#if defined(MPPP_WITH_MPFR)
+
+    // Verify that move construction moves.
+    mppp::real r{42};
+    s1_real_t s1r{std::move(r), symbol_set{"x", "y"}};
+    REQUIRE(r._get_mpfr_t()->_mpfr_d == nullptr);
+
+#endif
+
+    // Non-constructability from equal rank series.
+    REQUIRE(!std::is_constructible_v<s1_t, s1_int_t, symbol_set>);
+    REQUIRE(!std::is_constructible_v<s1_t, s1_int_t &, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<s1_t, const s1_int_t &, symbol_set &>);
+    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, int>, symbol_set>);
+
+    // Non-constructability from a series with higher rank.
+    REQUIRE(!std::is_constructible_v<s1_t, s2_t, symbol_set>);
+    REQUIRE(!std::is_constructible_v<s1_t, s2_t &, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<s1_t, const s2_t &, symbol_set &>);
 }
