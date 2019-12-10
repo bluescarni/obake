@@ -528,9 +528,13 @@ using truncated_power_series = power_series::truncated_power_series<K, C>;
 namespace detail
 {
 
-// Implementation details for the tps factory.
-template <typename T, typename Poly, ::std::size_t N, ::std::size_t... Ns>
-inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_sequence<Ns...>)
+// Implementation details for the tps creation function from generators.
+
+// This function will convert an array of polynomials into an array of tps
+// using tps' constructors. The input arguments args will be passed as additional
+// arguments to the constructors.
+template <typename T, typename Poly, ::std::size_t N, ::std::size_t... Ns, typename... Args>
+inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_sequence<Ns...>, const Args &... args)
 {
     // NOTE: here we are constructing a tps from a polynomial.
     // The expression T(::std::get...) is a functional
@@ -565,23 +569,88 @@ inline auto tps_poly_array_to_tps_impl(::std::array<Poly, N> &&a, ::std::index_s
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #endif
-    return ::std::array<T, N>{T(::std::get<Ns>(::std::move(a)))...};
+    return ::std::array<T, N>{T(::std::get<Ns>(::std::move(a)), args...)...};
 #if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 7
 #pragma GCC diagnostic pop
 #endif
 }
 
-template <typename T, typename Poly, ::std::size_t N>
-inline auto tps_poly_array_to_tps(::std::array<Poly, N> &&a)
+template <typename T, typename Poly, ::std::size_t N, typename... Args>
+inline auto tps_poly_array_to_tps(::std::array<Poly, N> &&a, const Args &... args)
 {
-    return detail::tps_poly_array_to_tps_impl<T>(::std::move(a), ::std::make_index_sequence<N>{});
+    return detail::tps_poly_array_to_tps_impl<T>(::std::move(a), ::std::make_index_sequence<N>{}, args...);
 }
 
+// Generators only.
 template <typename T, typename... Args,
-          ::std::enable_if_t<power_series::detail::is_truncated_power_series_impl<T>::value, int> = 0>
+          ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                                  make_polynomials_supported<typename T::poly_t, Args...>>,
+                             int> = 0>
 inline auto make_tps_impl(const Args &... args)
 {
     return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(args...));
+}
+
+// Symbol set + generators.
+template <typename T, typename... Args,
+          ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                                  make_polynomials_supported<typename T::poly_t, Args...>>,
+                             int> = 0>
+inline auto make_tps_impl(const symbol_set &s, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(s, args...));
+}
+
+// Total degree truncation + generators.
+template <
+    typename T, typename U, typename... Args,
+    ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                            make_polynomials_supported<typename T::poly_t, Args...>,
+                                            ::std::disjunction<is_safely_castable<const U &, typename T::degree_t>,
+                                                               ::std::is_same<U, typename T::degree_t>>>,
+                       int> = 0>
+inline auto make_tps_impl(const U &d, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(args...), d);
+}
+
+// Symbol set + total degree truncation + generators.
+template <
+    typename T, typename U, typename... Args,
+    ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                            make_polynomials_supported<typename T::poly_t, Args...>,
+                                            ::std::disjunction<is_safely_castable<const U &, typename T::degree_t>,
+                                                               ::std::is_same<U, typename T::degree_t>>>,
+                       int> = 0>
+inline auto make_tps_impl(const symbol_set &s, const U &d, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(s, args...), d);
+}
+
+// Partial degree truncation + generators.
+template <
+    typename T, typename U, typename... Args,
+    ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                            make_polynomials_supported<typename T::poly_t, Args...>,
+                                            ::std::disjunction<is_safely_castable<const U &, typename T::p_degree_t>,
+                                                               ::std::is_same<U, typename T::p_degree_t>>>,
+                       int> = 0>
+inline auto make_tps_impl(const U &d, const symbol_set &s, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(args...), d, s);
+}
+
+// Symbol set + partial degree truncation + generators.
+template <
+    typename T, typename U, typename... Args,
+    ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                            make_polynomials_supported<typename T::poly_t, Args...>,
+                                            ::std::disjunction<is_safely_castable<const U &, typename T::p_degree_t>,
+                                                               ::std::is_same<U, typename T::p_degree_t>>>,
+                       int> = 0>
+inline auto make_tps_impl(const symbol_set &ss, const U &d, const symbol_set &s, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(ss, args...), d, s);
 }
 
 } // namespace detail
