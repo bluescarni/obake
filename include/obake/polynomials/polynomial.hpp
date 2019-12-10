@@ -131,7 +131,11 @@ using make_polynomials_enabler
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
 inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &ss, const Args &... names)
 {
-    [[maybe_unused]] auto make_poly = [&ss](const auto &n) {
+    // Create a temp vector of ints which we will use to
+    // init the keys.
+    ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
+
+    [[maybe_unused]] auto make_poly = [&ss, &tmp](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
@@ -150,7 +154,6 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         retval.set_symbol_set(ss);
 
         // Try to locate s within the symbol set.
-        ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
         const auto it = ss.find(s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
             obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
@@ -168,6 +171,9 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         // iterator difference.
         ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
         retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
+
+        // Set back to zero the exponent that was previously set to 1.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
 
         return retval;
     };
@@ -457,7 +463,7 @@ struct poly_mul_impl_pair_transform {
 //   be performed in the computation of the polynomial product
 //   (which could be different from the product of the sizes of the
 //   factors due to truncation).
-// S1 and S2 are the types of the polyomials, x and y the polynomials
+// S1 and S2 are the types of the polynomials, x and y the polynomials
 // represented as vectors of terms. The extra arguments represent
 // the truncation limits.
 // Requires x and y not empty, y not shorter than x. The returned
