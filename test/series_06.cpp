@@ -24,6 +24,7 @@
 #include <obake/key/key_degree.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/series.hpp>
@@ -334,4 +335,15 @@ TEST_CASE("series_generic_ctor_with_ss")
     REQUIRE(!std::is_constructible_v<s1_t, s2_t, symbol_set>);
     REQUIRE(!std::is_constructible_v<s1_t, s2_t &, const symbol_set &>);
     REQUIRE(!std::is_constructible_v<s1_t, const s2_t &, symbol_set &>);
+}
+
+TEST_CASE("series_generic_ctor_with_ss_bug_00")
+{
+    // The constructor would not create a key
+    // compatible with the input symbol set.
+    using pm_t = d_packed_monomial<int, 8>;
+    using s1_t = series<pm_t, rat_t, void>;
+
+    REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}) == 42);
+    REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}).get_symbol_set() == symbol_set{"x", "y", "z"});
 }

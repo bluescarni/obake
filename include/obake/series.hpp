@@ -820,12 +820,19 @@ public:
         }
     }
     // Constructor from generic lower-rank object
-    // and symbol set. Equivalent to the generic ctor
-    // plus assignment of s to m_symbol_set.
+    // and symbol set.
     template <typename T, ::std::enable_if_t<detail::series_generic_ctor_algorithm<T, K, C, Tag> == 1, int> = 0>
-    explicit series(T &&x, const symbol_set &s) : series(::std::forward<T>(x))
+    explicit series(T &&x, const symbol_set &s) : m_s_table(1), m_log2_size(0), m_symbol_set(s)
     {
-        m_symbol_set = s;
+        // NOTE: this is identical to the generic ctor code, not sure if it's worth it
+        // to abstract it out in a separate function.
+        // NOTE: disable key compat and table size checks: the key must be compatible
+        // with the symbol set used for construction (key concept runtime requirement),
+        // and we have only 1 table, so no size check needed. Also, the new term
+        // will be unique by construction.
+        detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
+                                      detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
+            *this, m_s_table[0], K(::std::as_const(m_symbol_set)), ::std::forward<T>(x));
     }
 
     series &operator=(const series &) = default;
