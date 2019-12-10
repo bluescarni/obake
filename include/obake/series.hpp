@@ -3857,16 +3857,9 @@ constexpr auto series_default_degree_algorithm_impl()
                 // NOTE: check for addability using rvalues.
                 using degree_t = detected_t<detail::add_t, key_degree_t, cf_degree_t>;
 
-                if constexpr (::std::conjunction_v<
-                                  // NOTE: these take care of ensuring that degree_t is detected
-                                  // (because nonesuch is not lt-comparable etc.)
-                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  // NOTE: require a semi-regular type,
-                                  // it's just easier to reason about.
-                                  is_semi_regular<degree_t>>) {
-                    // degree_t is well defined, it supports operator<, it can be constructed from int,
-                    // it is returnable and semi-regular (hence, move-assignable).
+                // NOTE: the common reqs take care of ensuring that degree_t is detected
+                // (because nonesuch is not lt-comparable etc.).
+                if constexpr (series_default_degree_type_common_reqs_v<degree_t>) {
                     return ::std::make_pair(1, detail::type_c<degree_t>{});
                 } else {
                     return failure;
