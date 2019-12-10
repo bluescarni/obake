@@ -318,7 +318,7 @@ public:
     // Constructor from generic object and symbol set.
     // NOTE: this forwards to the series ctor from generic object
     // and symbol set, which is activated only if T is
-    // of a lower rank than the poly ranke (i.e., T must be rank 0).
+    // of a lower rank than the poly rank (i.e., T must be rank 0).
     template <typename T, ::std::enable_if_t<::std::is_constructible_v<poly_t, T, const symbol_set &>, int> = 0>
     explicit truncated_power_series(T &&x, const symbol_set &ss) : m_poly(::std::forward<T>(x), ss)
     {
