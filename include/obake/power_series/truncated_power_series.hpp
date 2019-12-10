@@ -45,6 +45,11 @@ namespace power_series
 // - must satisfy is_cf,
 // - must not be with degree
 //   (via const lvalue).
+// NOTE: the lack of a degree ensures
+// that the default series degree
+// machinery considers only the degree
+// of the key for the series degree
+// computation, truncation, etc.
 template <typename C>
 using is_tps_cf = ::std::conjunction<is_cf<C>, ::std::negation<is_with_degree<::std::add_lvalue_reference_t<const C>>>>;
 
@@ -60,15 +65,28 @@ OBAKE_CONCEPT_DECL TPSCf = is_tps_cf_v<C>;
 
 // Key type for a TPS:
 // - must satisfy is_key,
-// - must have a semi-regular (partial) key degree
-//   type (via const lvalue).
+// - must have a (partial) key degree
+//   type (via const lvalue) satisfying
+//   the requirements of the default
+//   (partial) degree machinery
+//   for series.
+// NOTE: the default series degree machinery
+// already checks that the degree is a
+// semi-regular type (which we want for use
+// in a variant, and for general copy/move
+// operations), and it also ensures
+// truncability via the polynomial implementation
+// (which we need to implement the truncate()
+// helper in tps).
 template <typename K>
-using is_tps_key = ::std::conjunction<
-    is_key<K>,
-    // NOTE: nonesuch is not semi-regular, hence
-    // is_semi_regular takes also care of the detection.
-    is_semi_regular<detected_t<::obake::detail::key_degree_t, ::std::add_lvalue_reference_t<const K>>>,
-    is_semi_regular<detected_t<::obake::detail::key_p_degree_t, ::std::add_lvalue_reference_t<const K>>>>;
+using is_tps_key
+    = ::std::conjunction<is_key<K>,
+                         // NOTE: nonesuch is not semi-regular, hence
+                         // the common reqs also take care of detection.
+                         ::obake::customisation::internal::series_default_degree_type_common_reqs<
+                             detected_t<::obake::detail::key_degree_t, ::std::add_lvalue_reference_t<const K>>>,
+                         ::obake::customisation::internal::series_default_degree_type_common_reqs<
+                             detected_t<::obake::detail::key_p_degree_t, ::std::add_lvalue_reference_t<const K>>>>;
 
 template <typename K>
 inline constexpr bool is_tps_key_v = is_tps_key<K>::value;
@@ -171,9 +189,6 @@ OBAKE_CONCEPT_DECL TPSConstructible = is_tps_constructible_v<T, K, C>;
 
 #endif
 
-// TODO update the type requirements
-// so that truncate()'s implementation
-// is guaranteed to work.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <TPSKey K, TPSCf C>
 #else
@@ -207,8 +222,10 @@ private:
             void operator()(const degree_t &d) const
             {
                 // NOTE: use specifically the implementations
-                // in the polynomials namespace, which we know
-                // use the machinery from series.hpp.
+                // in the polynomials namespace, which, in turn,
+                // we know use the machinery from series.hpp.
+                // NOTE: the requirements on coefficient/key types
+                // ensure that we can call these functions.
                 ::obake::polynomials::truncate_degree(m_tps.m_poly, d);
             }
             void operator()(const ::std::tuple<p_degree_t, symbol_set> &t) const
@@ -230,7 +247,8 @@ private:
         : m_poly(::std::forward<T>(x)._poly()), m_trunc(::std::forward<T>(x)._trunc())
     {
     }
-    // Constructor from generic object (forwarding constructor to the internal polynomial).
+    // Constructor from generic object (forwarding constructor to the internal polynomial),
+    // no truncation.
     template <typename T>
     explicit truncated_power_series(ptag, T &&x, ::std::false_type) : m_poly(::std::forward<T>(x))
     {
@@ -315,7 +333,7 @@ public:
         : truncated_power_series(ptag{}, ::std::forward<T>(x), is_cvr_truncated_power_series<T>{})
     {
     }
-    // Constructor from generic object and symbol set.
+    // Constructor from generic object and symbol set, no truncation.
     // NOTE: this forwards to the series ctor from generic object
     // and symbol set, which is activated only if T is
     // of a lower rank than the poly rank (i.e., T must be rank 0).
@@ -512,6 +530,8 @@ inline auto tps_merge_trunc(const truncated_power_series<K, C> &t1, const trunca
 
 // NOTE: in the implementation, make sure we use the
 // facilities from series.hpp for (partial) degree computation.
+// NOTE: the requirements on coefficient/key types
+// ensure that we can call these functions.
 template <typename K, typename C>
 inline auto degree(const truncated_power_series<K, C> &tps)
     OBAKE_SS_FORWARD_FUNCTION(::obake::customisation::internal::series_default_degree_impl{}(tps._poly()));
