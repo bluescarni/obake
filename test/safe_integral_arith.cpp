@@ -12,8 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <boost/algorithm/string/predicate.hpp>
-
 #include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/safe_integral_arith.hpp>
