@@ -45,6 +45,32 @@ TEST_CASE("basic_tests")
     using poly_t = tps_t::poly_t;
     using tps_t_d = truncated_power_series<packed_monomial<int>, double>;
 
+    // Concepts.
+    REQUIRE(power_series::is_tps_cf_v<int>);
+    REQUIRE(!power_series::is_tps_cf_v<void>);
+    // NOTE: not a tps cf because it has a degree.
+    REQUIRE(!power_series::is_tps_cf_v<poly_t>);
+    REQUIRE(power_series::is_tps_key_v<packed_monomial<int>>);
+    REQUIRE(!power_series::is_tps_key_v<void>);
+    REQUIRE(!power_series::is_cvr_truncated_power_series_v<void>);
+    REQUIRE(!power_series::is_cvr_truncated_power_series_v<poly_t>);
+    REQUIRE(power_series::is_cvr_truncated_power_series_v<tps_t>);
+    REQUIRE(power_series::is_cvr_truncated_power_series_v<tps_t &>);
+    REQUIRE(power_series::is_cvr_truncated_power_series_v<const tps_t &>);
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+    REQUIRE(power_series::TPSCf<int>);
+    REQUIRE(!power_series::TPSCf<void>);
+    REQUIRE(!power_series::TPSCf<poly_t>);
+    REQUIRE(power_series::TPSKey<packed_monomial<int>>);
+    REQUIRE(!power_series::TPSKey<void>);
+    REQUIRE(!power_series::CvrTruncatedPowerSeries<void>);
+    REQUIRE(!power_series::CvrTruncatedPowerSeries<poly_t>);
+    REQUIRE(power_series::CvrTruncatedPowerSeries<tps_t>);
+    REQUIRE(power_series::CvrTruncatedPowerSeries<tps_t &>);
+    REQUIRE(power_series::CvrTruncatedPowerSeries<const tps_t &>);
+#endif
+
     // Def ctor.
     tps_t t00;
     REQUIRE(t00._poly().empty());
@@ -433,4 +459,21 @@ TEST_CASE("make_tps_test")
     REQUIRE(!is_detected_v<make_tps_t, tps_t, int, const symbol_set &, std::string, std::string, void, std::string>);
     REQUIRE(!is_detected_v<make_tps_t, void, int, const symbol_set &, std::string, std::string>);
     REQUIRE(!is_detected_v<make_tps_t, tps_t, std::string, const symbol_set &, std::string, std::string>);
+}
+
+TEST_CASE("degree_tests")
+{
+    using tps_t = truncated_power_series<packed_monomial<int>, mppp::rational<1>>;
+    using poly_t = tps_t::poly_t;
+
+    REQUIRE(is_with_degree_v<const tps_t &>);
+    REQUIRE(is_with_p_degree_v<const tps_t &>);
+
+    REQUIRE(degree(tps_t{}) == 0);
+    REQUIRE(p_degree(tps_t{}, symbol_set{"x", "y"}) == 0);
+
+    REQUIRE(degree(make_truncated_power_series<tps_t>("x")[0]) == 1);
+    REQUIRE(degree(obake::pow(make_polynomials<poly_t>("x")[0], -10)) == -10);
+    REQUIRE(p_degree(make_truncated_power_series<tps_t>("x")[0], symbol_set{"x", "y", "z"}) == 1);
+    REQUIRE(p_degree(make_truncated_power_series<tps_t>("x")[0], symbol_set{"y", "z"}) == 0);
 }
