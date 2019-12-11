@@ -23,6 +23,7 @@
 
 #include <obake/config.hpp>
 #include <obake/detail/ss_func_forward.hpp>
+#include <obake/detail/type_c.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/key/key_degree.hpp>
 #include <obake/key/key_p_degree.hpp>
@@ -545,6 +546,56 @@ inline auto tps_merge_trunc(const truncated_power_series<K, C> &t1, const trunca
         return tr1;
     }
 }
+
+template <template <typename, typename> typename BinaryOp, typename T, typename U>
+constexpr auto tps_binary_op_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
+
+    if constexpr (!is_cvr_truncated_power_series_v<T> && !is_cvr_truncated_power_series_v<U>) {
+        // Non-tps operands, return failure.
+        return failure;
+    } else {
+        auto poly_ret_tc = []() {
+            if constexpr (is_cvr_truncated_power_series_v<T> && is_cvr_truncated_power_series_v<U>) {
+                // Both tps operands.
+                return ::obake::detail::type_c<detected_t<BinaryOp, decltype(::std::declval<T>()._poly()),
+                                                          decltype(::std::declval<U>()._poly())>>{};
+            } else if constexpr (is_cvr_truncated_power_series_v<T>) {
+                // Only first operand is a tps.
+                return ::obake::detail::type_c<detected_t<BinaryOp, decltype(::std::declval<T>()._poly()), U>>{};
+            } else {
+                // Only second operand is a tps.
+                return ::obake::detail::type_c<detected_t<BinaryOp, T, decltype(::std::declval<U>()._poly())>>{};
+            }
+        }();
+
+        using poly_ret_t = typename decltype(poly_ret_tc)::type;
+
+        if constexpr (is_polynomial_v<poly_ret_t>) {
+            using cf_t = series_cf_t<poly_ret_t>;
+            using key_t = series_key_t<poly_ret_t>;
+
+            if constexpr (is_tps_cf_v<cf_t> && is_tps_key_v<key_t>) {
+                return ::std::make_pair(1, ::obake::detail::type_c<truncated_power_series<key_t, cf_t>>{});
+            } else {
+                return failure;
+            }
+        } else {
+            return failure;
+        }
+    }
+}
+
+// Shortcuts.
+template <template <typename, typename> typename BinaryOp, typename T, typename U>
+inline constexpr auto tps_binary_op_algorithm = detail::tps_binary_op_algorithm_impl<BinaryOp, T, U>();
+
+template <template <typename, typename> typename BinaryOp, typename T, typename U>
+inline constexpr int tps_binary_op_algo = tps_binary_op_algorithm<BinaryOp, T, U>.first;
+
+template <template <typename, typename> typename BinaryOp, typename T, typename U>
+using tps_binary_op_ret_t = typename decltype(tps_binary_op_algorithm<BinaryOp, T, U>.second)::type;
 
 } // namespace detail
 
