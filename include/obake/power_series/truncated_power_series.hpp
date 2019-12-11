@@ -403,12 +403,16 @@ public:
     {
     }
     // Generic constructor with symbol set and partial degree truncation.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename T, typename U>
-    requires ::std::is_constructible_v<poly_t, T, const symbol_set &> && (SafelyCastable<const U &, p_degree_t> || ::std::is_same_v<U, p_degree_t>)
+    requires !CvrTruncatedPowerSeries<T> && ::std::is_constructible_v<poly_t, T, const symbol_set &> && (SafelyCastable<const U &, p_degree_t> || ::std::is_same_v<U, p_degree_t>)
 #else
     template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<::std::is_constructible<poly_t, T, const symbol_set &>,
+              ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_truncated_power_series<T>>,
+                                                      ::std::is_constructible<poly_t, T, const symbol_set &>,
                                                       ::std::disjunction<is_safely_castable<const U &, p_degree_t>,
                                                                          ::std::is_same<U, p_degree_t>>>,
                                  int> = 0>

@@ -9,6 +9,7 @@
 #include <obake/config.hpp>
 
 #include <initializer_list>
+#include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -17,6 +18,7 @@
 #include <string_view>
 #endif
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/variant/get.hpp>
 
 #include <mp++/rational.hpp>
@@ -175,31 +177,86 @@ TEST_CASE("basic_tests")
     REQUIRE(!std::is_constructible_v<tps_t, int, foo, const symbol_set &>);
 
     // Constructor from generic object + symbol set + partial degree truncation.
-#if 0
-    tps_t t00;
-    REQUIRE(t00._poly().empty());
-    REQUIRE(degree(t00) == 0);
-    REQUIRE(p_degree(t00, symbol_set{}) == 0);
+    tps_t t16{42, symbol_set{"x", "y"}, 4, symbol_set{"x"}};
+    REQUIRE(t16._poly() == 42);
+    REQUIRE(t16._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t16._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t16._trunc())) == 4);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t16._trunc())) == symbol_set{"x"});
+    tps_t t17{42, symbol_set{"x", "y"}, -1l, symbol_set{"x"}};
+    REQUIRE(t17._poly().empty());
+    REQUIRE(t17._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t17._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t17._trunc())) == -1);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t17._trunc())) == symbol_set{"x"});
+    REQUIRE(!std::is_constructible_v<tps_t, const poly_t &, const symbol_set &, int, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, int, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, void, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, foo, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, int, const symbol_set &, foo, const symbol_set &>);
 
-    std::cout << tps_t{45} << '\n';
-    std::cout << tps_t{45, 3} << '\n';
-    std::cout << tps_t{45, 3u} << '\n';
-    std::cout << tps_t{45, 3u, symbol_set{"x", "y", "z"}} << '\n';
+    // Generic assignment operator.
+    REQUIRE(!std::is_assignable_v<tps_t &, void>);
+    t00 = 41;
+    REQUIRE(t00._poly() == 41);
+    REQUIRE(t00._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t00._trunc().which() == 0);
 
-    tps_t a{45};
-    a = -42;
-    std::cout << a << '\n';
+    t00 = make_polynomials<poly_t>("x")[0];
+    REQUIRE(t00._poly() == make_polynomials<poly_t>("x")[0]);
+    REQUIRE(t00._poly().get_symbol_set() == symbol_set{"x"});
+    REQUIRE(t00._trunc().which() == 0);
 
-    std::cout << tps_t{45, -1} << '\n';
+    t00 = tps_t_d{42.};
+    REQUIRE(t00._poly() == 42);
+    REQUIRE(t00._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t00._trunc().which() == 0);
 
+    t00 = tps_t_d{42., 4, symbol_set{"x", "y"}};
+    REQUIRE(t00._poly() == 42);
+    REQUIRE(t00._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t00._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t00._trunc())) == 4);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t00._trunc())) == symbol_set{"x", "y"});
+
+    // Swapping.
     REQUIRE(std::is_nothrow_swappable_v<tps_t>);
+    t01 = tps_t_d{41., 3, symbol_set{"x", "y", "z"}};
+    using std::swap;
+    swap(t01, t00);
 
-    std::cout << tps_t{45, symbol_set{"x", "y", "z"}} << '\n';
-    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2} << '\n';
-    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2l} << '\n';
-    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2, symbol_set{"x"}} << '\n';
-    std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2l, symbol_set{"x"}} << '\n';
-#endif
+    REQUIRE(t01._poly() == 42);
+    REQUIRE(t01._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t01._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t01._trunc())) == 4);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t01._trunc())) == symbol_set{"x", "y"});
+    REQUIRE(t00._poly() == 41);
+    REQUIRE(t00._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t00._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t00._trunc())) == 3);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t00._trunc())) == symbol_set{"x", "y", "z"});
+
+    // Streaming.
+    std::ostringstream oss;
+    oss << t01;
+    auto str = oss.str();
+    REQUIRE(boost::contains(str, "4, {'x', 'y'}"));
+    oss.str("");
+    oss << tps_t{42};
+    str = oss.str();
+    REQUIRE(boost::contains(str, "None"));
+    oss.str("");
+    oss << tps_t{42, 32};
+    str = oss.str();
+    REQUIRE(boost::contains(str, "32"));
+    oss.str("");
+    oss << make_truncated_power_series<tps_t>(symbol_set{"x", "y", "z"}, "x")[0];
+    str = oss.str();
+    REQUIRE(boost::contains(str, "None"));
+    REQUIRE(boost::contains(str, "{'x', 'y', 'z'}"));
+    REQUIRE(boost::contains(str, "Truncation"));
+    REQUIRE(boost::contains(str, "Rank"));
+    REQUIRE(boost::contains(str, "Symbol set"));
 }
 
 template <typename T, typename... Args>
