@@ -23,6 +23,7 @@
 
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/power_series/truncated_power_series.hpp>
@@ -36,19 +37,149 @@ using namespace obake;
 struct foo {
 };
 
-TEST_CASE("basic_test")
+TEST_CASE("basic_tests")
 {
     using tps_t = truncated_power_series<packed_monomial<int>, mppp::rational<1>>;
+    using poly_t = tps_t::poly_t;
+    using tps_t_d = truncated_power_series<packed_monomial<int>, double>;
 
+    // Def ctor.
+    tps_t t00;
+    REQUIRE(t00._poly().empty());
+    REQUIRE(t00._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t00._trunc().which() == 0);
+
+    // Generic ctor from scalar.
+    tps_t t01{42};
+    REQUIRE(t01._poly() == 42);
+    REQUIRE(t01._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t01._trunc().which() == 0);
+    REQUIRE(!std::is_constructible_v<tps_t, void>);
+    REQUIRE(!std::is_constructible_v<tps_t, foo>);
+
+    // Generic ctor from other tps type.
+    tps_t t02{tps_t_d{42.}};
+    REQUIRE(t02._poly() == 42);
+    REQUIRE(t02._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t02._trunc().which() == 0);
+
+    // Generic ctor from other tps type.
+    tps_t t03{tps_t_d{42., 4}};
+    REQUIRE(t03._poly() == 42);
+    REQUIRE(t03._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t03._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t03._trunc()) == 4);
+
+    // Copy ctor.
+    tps_t t03_copy{t03};
+    REQUIRE(t03_copy._poly() == 42);
+    REQUIRE(t03_copy._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t03_copy._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t03_copy._trunc()) == 4);
+
+    // Move ctor.
+    tps_t t03_move{std::move(t03)};
+    REQUIRE(t03_move._poly() == 42);
+    REQUIRE(t03_move._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t03_move._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t03_move._trunc()) == 4);
+
+    // Generic ctor from other tps type, with partial trunc.
+    tps_t t04{tps_t_d{42., 4, symbol_set{"x", "y"}}};
+    REQUIRE(t04._poly() == 42);
+    REQUIRE(t04._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t04._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t04._trunc())) == 4);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t04._trunc())) == symbol_set{"x", "y"});
+
+    // Constructor from generic object + symbol set.
+    tps_t t05{42, symbol_set{"x", "y"}};
+    REQUIRE(t05._poly() == 42);
+    REQUIRE(t05._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t05._trunc().which() == 0);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, void, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, foo, const symbol_set &>);
+
+    // Constructor from generic object + total degree truncation.
+    tps_t t06{42, 4};
+    REQUIRE(t06._poly() == 42);
+    REQUIRE(t06._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t06._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t06._trunc()) == 4);
+    tps_t t07{42, -1l};
+    REQUIRE(t07._poly().empty());
+    REQUIRE(t07._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t07._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t07._trunc()) == -1);
+    tps_t t08{obake::pow(make_polynomials<poly_t>("x")[0], 2), 2u};
+    REQUIRE(t08._poly() == obake::pow(make_polynomials<poly_t>("x")[0], 2));
+    REQUIRE(t08._poly().get_symbol_set() == symbol_set{"x"});
+    REQUIRE(t08._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t08._trunc()) == 2);
+    tps_t t09{obake::pow(make_polynomials<poly_t>("x")[0], 2), 1ull};
+    REQUIRE(t09._poly().empty());
+    REQUIRE(t09._poly().get_symbol_set() == symbol_set{"x"});
+    REQUIRE(t09._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t09._trunc()) == 1);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, int>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, void>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, foo>);
+    REQUIRE(!std::is_constructible_v<tps_t, int, foo>);
+
+    // Constructor from generic object + symbol set + total degree truncation.
+    tps_t t10{42, symbol_set{"x", "y"}, 4};
+    REQUIRE(t10._poly() == 42);
+    REQUIRE(t10._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t10._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t10._trunc()) == 4);
+    tps_t t11{42, symbol_set{"x", "y"}, -1l};
+    REQUIRE(t11._poly().empty());
+    REQUIRE(t11._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t11._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t11._trunc()) == -1);
+    REQUIRE(!std::is_constructible_v<tps_t, const poly_t &, const symbol_set &, int>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, int>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, void>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, foo>);
+    REQUIRE(!std::is_constructible_v<tps_t, int, const symbol_set &, foo>);
+
+    // Constructor from generic object + partial degree truncation.
+    tps_t t12{42, 4, symbol_set{"x", "y"}};
+    REQUIRE(t12._poly() == 42);
+    REQUIRE(t12._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t12._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t12._trunc())) == 4);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t12._trunc())) == symbol_set{"x", "y"});
+    tps_t t13{42, -1l, symbol_set{"x", "y"}};
+    REQUIRE(t13._poly().empty());
+    REQUIRE(t13._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t13._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t13._trunc())) == -1);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t13._trunc())) == symbol_set{"x", "y"});
+    tps_t t14{obake::pow(make_polynomials<poly_t>("x")[0], 2), 2u, symbol_set{"x", "y"}};
+    REQUIRE(t14._poly() == obake::pow(make_polynomials<poly_t>("x")[0], 2));
+    REQUIRE(t14._poly().get_symbol_set() == symbol_set{"x"});
+    REQUIRE(t14._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t14._trunc())) == 2);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t14._trunc())) == symbol_set{"x", "y"});
+    tps_t t15{obake::pow(make_polynomials<poly_t>("x")[0], 2), 1ull, symbol_set{"x", "y"}};
+    REQUIRE(t15._poly().empty());
+    REQUIRE(t15._poly().get_symbol_set() == symbol_set{"x"});
+    REQUIRE(t15._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t15._trunc())) == 1);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t15._trunc())) == symbol_set{"x", "y"});
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, int, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, void, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, foo, const symbol_set &>);
+    REQUIRE(!std::is_constructible_v<tps_t, int, foo, const symbol_set &>);
+
+    // Constructor from generic object + symbol set + partial degree truncation.
+#if 0
     tps_t t00;
     REQUIRE(t00._poly().empty());
     REQUIRE(degree(t00) == 0);
     REQUIRE(p_degree(t00, symbol_set{}) == 0);
-
-    tps_t{45};
-    tps_t{std::string("423423")};
-
-    REQUIRE(!std::is_constructible_v<tps_t, foo>);
 
     std::cout << tps_t{45} << '\n';
     std::cout << tps_t{45, 3} << '\n';
@@ -68,6 +199,7 @@ TEST_CASE("basic_test")
     std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2l} << '\n';
     std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2, symbol_set{"x"}} << '\n';
     std::cout << tps_t{45, symbol_set{"x", "y", "z"}, 2l, symbol_set{"x"}} << '\n';
+#endif
 }
 
 template <typename T, typename... Args>

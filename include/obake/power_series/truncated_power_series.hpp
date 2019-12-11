@@ -334,35 +334,47 @@ public:
     {
     }
     // Constructor from generic object and symbol set, no truncation.
-    // NOTE: this forwards to the series ctor from generic object
-    // and symbol set, which is activated only if T is
-    // of a lower rank than the poly rank (i.e., T must be rank 0).
-    template <typename T, ::std::enable_if_t<::std::is_constructible_v<poly_t, T, const symbol_set &>, int> = 0>
+    // This will forward construction to the internal poly object.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
+    template <typename T,
+              ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_truncated_power_series<T>>,
+                                                      ::std::is_constructible<poly_t, T, const symbol_set &>>,
+                                 int> = 0>
     explicit truncated_power_series(T &&x, const symbol_set &ss) : m_poly(::std::forward<T>(x), ss)
     {
     }
     // Generic constructor with total degree truncation.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename T, typename U>
-    requires ::std::is_constructible_v<poly_t, T> && (SafelyCastable<const U &, degree_t> || ::std::is_same_v<U, degree_t>)
+    requires !CvrTruncatedPowerSeries<T> && ::std::is_constructible_v<poly_t, T> && (SafelyCastable<const U &, degree_t> || ::std::is_same_v<U, degree_t>)
 #else
     template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<::std::is_constructible<poly_t, T>,
-                                                      ::std::disjunction<is_safely_castable<const U &, degree_t>,
-                                                                         ::std::is_same<U, degree_t>>>,
-                                 int> = 0>
+              ::std::enable_if_t<
+                  ::std::conjunction_v<
+                      ::std::negation<is_cvr_truncated_power_series<T>>, ::std::is_constructible<poly_t, T>,
+                      ::std::disjunction<is_safely_castable<const U &, degree_t>, ::std::is_same<U, degree_t>>>,
+                  int> = 0>
 #endif
         explicit truncated_power_series(T &&x, const U &l)
         : truncated_power_series(ptag{}, ::std::forward<T>(x), l, ::std::is_same<U, degree_t>{})
     {
     }
     // Generic constructor with symbol set and total degree truncation.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename T, typename U>
-    requires ::std::is_constructible_v<poly_t, T, const symbol_set &> && (SafelyCastable<const U &, degree_t> || ::std::is_same_v<U, degree_t>)
+    requires !CvrTruncatedPowerSeries<T> && ::std::is_constructible_v<poly_t, T, const symbol_set &> && (SafelyCastable<const U &, degree_t> || ::std::is_same_v<U, degree_t>)
 #else
     template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<::std::is_constructible<poly_t, T, const symbol_set &>,
+              ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_truncated_power_series<T>>,
+                                                      ::std::is_constructible<poly_t, T, const symbol_set &>,
                                                       ::std::disjunction<is_safely_castable<const U &, degree_t>,
                                                                          ::std::is_same<U, degree_t>>>,
                                  int> = 0>
@@ -372,15 +384,19 @@ public:
     {
     }
     // Generic constructor with partial degree truncation.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <typename T, typename U>
-    requires ::std::is_constructible_v<poly_t, T> && (SafelyCastable<const U &, p_degree_t> || ::std::is_same_v<U, p_degree_t>)
+    requires !CvrTruncatedPowerSeries<T> && ::std::is_constructible_v<poly_t, T> && (SafelyCastable<const U &, p_degree_t> || ::std::is_same_v<U, p_degree_t>)
 #else
     template <typename T, typename U,
-              ::std::enable_if_t<::std::conjunction_v<::std::is_constructible<poly_t, T>,
-                                                      ::std::disjunction<is_safely_castable<const U &, p_degree_t>,
-                                                                         ::std::is_same<U, p_degree_t>>>,
-                                 int> = 0>
+              ::std::enable_if_t<
+                  ::std::conjunction_v<
+                      ::std::negation<is_cvr_truncated_power_series<T>>, ::std::is_constructible<poly_t, T>,
+                      ::std::disjunction<is_safely_castable<const U &, p_degree_t>, ::std::is_same<U, p_degree_t>>>,
+                  int> = 0>
 #endif
         explicit truncated_power_series(T &&x, const U &l, const symbol_set &s)
         : truncated_power_series(ptag{}, ::std::forward<T>(x), l, s, ::std::is_same<U, p_degree_t>{})
