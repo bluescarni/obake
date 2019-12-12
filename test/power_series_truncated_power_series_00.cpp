@@ -44,6 +44,7 @@ TEST_CASE("basic_tests")
     using tps_t = truncated_power_series<packed_monomial<int>, mppp::rational<1>>;
     using poly_t = tps_t::poly_t;
     using tps_t_d = truncated_power_series<packed_monomial<int>, double>;
+    using trunc_t = tps_t::trunc_t;
 
     // Concepts.
     REQUIRE(power_series::is_tps_cf_v<int>);
@@ -283,6 +284,55 @@ TEST_CASE("basic_tests")
     REQUIRE(boost::contains(str, "Truncation"));
     REQUIRE(boost::contains(str, "Rank"));
     REQUIRE(boost::contains(str, "Symbol set"));
+
+    // Constructor from generic object + trunc_t.
+    tps_t t18{42, trunc_t{}};
+    REQUIRE(t18._poly() == 42);
+    REQUIRE(t18._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t18._trunc().which() == 0);
+    tps_t t19{42, trunc_t{10}};
+    REQUIRE(t19._poly() == 42);
+    REQUIRE(t19._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t19._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t19._trunc()) == 10);
+    tps_t t20{42, trunc_t{std::make_tuple(9, symbol_set{"x", "y"})}};
+    REQUIRE(t20._poly() == 42);
+    REQUIRE(t20._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t20._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t20._trunc())) == 9);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t20._trunc())) == symbol_set{"x", "y"});
+    tps_t t21{42, trunc_t{-2}};
+    REQUIRE(t21._poly().empty());
+    REQUIRE(t21._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t21._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t21._trunc()) == -2);
+    tps_t t22{42, trunc_t{std::make_tuple(-1, symbol_set{"x", "y"})}};
+    REQUIRE(t22._poly().empty());
+    REQUIRE(t22._poly().get_symbol_set() == symbol_set{});
+    REQUIRE(t22._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t22._trunc())) == -1);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t22._trunc())) == symbol_set{"x", "y"});
+    tps_t t23{obake::pow(make_polynomials<poly_t>("x")[0], 2), trunc_t{std::make_tuple(2u, symbol_set{"x", "y"})}};
+    REQUIRE(t23._poly() == obake::pow(make_polynomials<poly_t>("x")[0], 2));
+    REQUIRE(t23._poly().get_symbol_set() == symbol_set{"x"});
+    REQUIRE(t23._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t23._trunc())) == 2);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t23._trunc())) == symbol_set{"x", "y"});
+
+    // Constructor from generic object + symbol set + trunc_t.
+    tps_t t24{42, symbol_set{"x", "y"}, trunc_t{std::make_tuple(4, symbol_set{"x"})}};
+    REQUIRE(t24._poly() == 42);
+    REQUIRE(t24._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t24._trunc().which() == 2);
+    REQUIRE(std::get<0>(boost::get<std::tuple<int, symbol_set>>(t24._trunc())) == 4);
+    REQUIRE(std::get<1>(boost::get<std::tuple<int, symbol_set>>(t24._trunc())) == symbol_set{"x"});
+    tps_t t25{42, symbol_set{"x", "y"}, trunc_t{-1}};
+    REQUIRE(t25._poly().empty());
+    REQUIRE(t25._poly().get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(t25._trunc().which() == 1);
+    REQUIRE(boost::get<int>(t25._trunc()) == -1);
+    REQUIRE(!std::is_constructible_v<tps_t, const poly_t &, const symbol_set &, const trunc_t &>);
+    REQUIRE(!std::is_constructible_v<tps_t, const tps_t &, const symbol_set &, const trunc_t &>);
 }
 
 template <typename T, typename... Args>

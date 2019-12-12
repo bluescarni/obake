@@ -346,6 +346,40 @@ public:
     explicit truncated_power_series(T &&x, const symbol_set &ss) : m_poly(::std::forward<T>(x), ss)
     {
     }
+    // Generic constructor with truncation described by a trunc_t object.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename T>
+    requires !CvrTruncatedPowerSeries<T> && ::std::is_constructible_v<poly_t, T>
+#else
+    template <typename T, ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_truncated_power_series<T>>,
+                                                                  ::std::is_constructible<poly_t, T>>,
+                                             int> = 0>
+#endif
+    explicit truncated_power_series(T &&x, const trunc_t &t) : m_poly(::std::forward<T>(x)), m_trunc(t)
+    {
+        truncate();
+    }
+    // Generic constructor with symbol set and truncation described by a trunc_t object.
+    // NOTE: explicitly disable the ctor in case T is a tps of some
+    // kind, so that we don't end up invoking any conversion operator
+    // that may be defined in tps.
+#if defined(OBAKE_HAVE_CONCEPTS)
+    template <typename T>
+    requires !CvrTruncatedPowerSeries<T> && ::std::is_constructible_v<poly_t, T, const symbol_set &>
+#else
+    template <typename T,
+              ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_truncated_power_series<T>>,
+                                                      ::std::is_constructible<poly_t, T, const symbol_set &>>,
+                                 int> = 0>
+#endif
+        explicit truncated_power_series(T &&x, const symbol_set &ss, const trunc_t &t)
+         : m_poly(::std::forward<T>(x), ss), m_trunc(t)
+    {
+        truncate();
+    }
     // Generic constructor with total degree truncation.
     // NOTE: explicitly disable the ctor in case T is a tps of some
     // kind, so that we don't end up invoking any conversion operator
@@ -430,7 +464,16 @@ public:
 #endif
     truncated_power_series &operator=(T &&x)
     {
+        // NOTE: see explanation in the polynomial
+        // factory function about this warning suppression.
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 7
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
         return *this = truncated_power_series(::std::forward<T>(x));
+#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ == 7
+#pragma GCC diagnostic pop
+#endif
     }
 
     // The polynomial getters.
