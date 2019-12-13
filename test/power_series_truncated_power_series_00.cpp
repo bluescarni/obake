@@ -341,6 +341,7 @@ using make_tps_t = decltype(make_truncated_power_series<T>(std::declval<Args>().
 TEST_CASE("make_tps_test")
 {
     using tps_t = truncated_power_series<packed_monomial<int>, mppp::rational<1>>;
+    using trunc_t = tps_t::trunc_t;
     using poly_t = typename tps_t::poly_t;
 
     // Generators only.
@@ -379,6 +380,55 @@ TEST_CASE("make_tps_test")
         REQUIRE(z._poly() == make_polynomials<poly_t>("z")[0]);
         REQUIRE(z._poly().get_symbol_set() == symbol_set{"x", "y", "z"});
         REQUIRE(z._trunc().which() == 0);
+    }
+
+    // Generators + trunc_t.
+    {
+        REQUIRE(make_truncated_power_series<tps_t>(trunc_t{3}).empty());
+
+        auto [x, y, z] = make_truncated_power_series<tps_t>(trunc_t{3}, "x", "y", "z");
+
+        REQUIRE(x._poly() == make_polynomials<poly_t>("x")[0]);
+        REQUIRE(x._poly().get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x._trunc().which() == 1);
+        REQUIRE(boost::get<int>(x._trunc()) == 3);
+
+        REQUIRE(y._poly() == make_polynomials<poly_t>("y")[0]);
+        REQUIRE(y._poly().get_symbol_set() == symbol_set{"y"});
+        REQUIRE(y._trunc().which() == 1);
+        REQUIRE(boost::get<int>(y._trunc()) == 3);
+
+        REQUIRE(z._poly() == make_polynomials<poly_t>("z")[0]);
+        REQUIRE(z._poly().get_symbol_set() == symbol_set{"z"});
+        REQUIRE(z._trunc().which() == 1);
+        REQUIRE(boost::get<int>(z._trunc()) == 3);
+    }
+
+    // Generators + symbol set + trunc_t.
+    {
+        REQUIRE(make_truncated_power_series<tps_t>(symbol_set{"x", "y", "z"}, trunc_t{3}).empty());
+
+#if defined(OBAKE_HAVE_STRING_VIEW)
+        auto [x, y, z] = make_truncated_power_series<tps_t>(symbol_set{"x", "y", "z"}, trunc_t{3},
+                                                            std::string_view{"x"}, "y", std::string_view{"z"});
+#else
+        auto [x, y, z] = make_truncated_power_series<tps_t>(symbol_set{"x", "y", "z"}, trunc_t{3}, "x", "y", "z");
+#endif
+
+        REQUIRE(x._poly() == make_polynomials<poly_t>("x")[0]);
+        REQUIRE(x._poly().get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(x._trunc().which() == 1);
+        REQUIRE(boost::get<int>(x._trunc()) == 3);
+
+        REQUIRE(y._poly() == make_polynomials<poly_t>("y")[0]);
+        REQUIRE(y._poly().get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(y._trunc().which() == 1);
+        REQUIRE(boost::get<int>(y._trunc()) == 3);
+
+        REQUIRE(z._poly() == make_polynomials<poly_t>("z")[0]);
+        REQUIRE(z._poly().get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(z._trunc().which() == 1);
+        REQUIRE(boost::get<int>(z._trunc()) == 3);
     }
 
     // Generators + total degree truncation.
@@ -493,6 +543,13 @@ TEST_CASE("make_tps_test")
     // Check SFINAEing.
     REQUIRE(!is_detected_v<make_tps_t, void>);
     REQUIRE(!is_detected_v<make_tps_t, int>);
+    REQUIRE(!is_detected_v<make_tps_t, void, trunc_t>);
+    REQUIRE(!is_detected_v<make_tps_t, void, trunc_t, symbol_set>);
+    REQUIRE(!is_detected_v<make_tps_t, tps_t, trunc_t, int>);
+    REQUIRE(!is_detected_v<make_tps_t, tps_t, trunc_t, symbol_set>);
+    REQUIRE(!is_detected_v<make_tps_t, tps_t, int, trunc_t>);
+    REQUIRE(!is_detected_v<make_tps_t, tps_t, trunc_t, int>);
+    REQUIRE(!is_detected_v<make_tps_t, tps_t, trunc_t, symbol_set>);
     REQUIRE(!is_detected_v<make_tps_t, tps_t, void>);
     REQUIRE(!is_detected_v<make_tps_t, tps_t, void, void>);
     REQUIRE(!is_detected_v<make_tps_t, tps_t, void, void, void>);

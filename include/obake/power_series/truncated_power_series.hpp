@@ -735,6 +735,26 @@ inline auto make_tps_impl(const symbol_set &s, const Args &... args)
     return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(s, args...));
 }
 
+// trunc_t object + generators.
+template <typename T, typename... Args,
+          ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                                  make_polynomials_supported<typename T::poly_t, Args...>>,
+                             int> = 0>
+inline auto make_tps_impl(const typename T::trunc_t &t, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(args...), t);
+}
+
+// Symbol set + trunc_t object + generators.
+template <typename T, typename... Args,
+          ::std::enable_if_t<::std::conjunction_v<power_series::detail::is_truncated_power_series_impl<T>,
+                                                  make_polynomials_supported<typename T::poly_t, Args...>>,
+                             int> = 0>
+inline auto make_tps_impl(const symbol_set &s, const typename T::trunc_t &t, const Args &... args)
+{
+    return detail::tps_poly_array_to_tps<T>(::obake::make_polynomials<typename T::poly_t>(s, args...), t);
+}
+
 // Total degree truncation + generators.
 template <
     typename T, typename U, typename... Args,
