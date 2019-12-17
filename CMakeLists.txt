@@ -235,16 +235,16 @@ target_link_libraries(obake PUBLIC
     TBB::tbb
 )
 if(OBAKE_WITH_LIBBACKTRACE)
-    target_link_libraries(obake PUBLIC libbacktrace::libbacktrace)
+    target_link_libraries(obake PRIVATE libbacktrace::libbacktrace)
 else()
     # NOTE: Boost stacktrace sometimes requires linking to the system
     # DL libs.
-    target_link_libraries(obake PUBLIC obake::dl)
+    target_link_libraries(obake PRIVATE obake::dl)
 endif()
 
 # Link to DbgEng on Windows.
 if(WIN32)
-    target_link_libraries(obake PUBLIC DbgEng::DbgEng)
+    target_link_libraries(obake PRIVATE DbgEng::DbgEng)
 endif()
 
 # Configure config.hpp.
