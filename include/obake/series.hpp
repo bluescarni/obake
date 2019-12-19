@@ -3802,6 +3802,26 @@ constexpr auto operator!=(T &&x, U &&y)
 namespace customisation::internal
 {
 
+// Common requirements for the degree type
+// in the default series degree computation.
+template <typename DegreeType>
+using series_default_degree_type_common_reqs = ::std::conjunction<
+    // Less-than comparable to find the maximum degree
+    // of the terms.
+    is_less_than_comparable<::std::add_lvalue_reference_t<const DegreeType>>,
+    // Ctible from int to init the degree
+    // of an empty series.
+    ::std::is_constructible<DegreeType, int>,
+    // Returnable.
+    is_returnable<DegreeType>,
+    // NOTE: require a semi-regular type,
+    // it's just easier to reason about.
+    is_semi_regular<DegreeType>>;
+
+template <typename DegreeType>
+inline constexpr bool series_default_degree_type_common_reqs_v
+    = series_default_degree_type_common_reqs<DegreeType>::value;
+
 // Metaprogramming to establish the algorithm/return
 // type of the default series degree computation. This is shared
 // between total and partial degree computation, since the
@@ -3837,16 +3857,9 @@ constexpr auto series_default_degree_algorithm_impl()
                 // NOTE: check for addability using rvalues.
                 using degree_t = detected_t<detail::add_t, key_degree_t, cf_degree_t>;
 
-                if constexpr (::std::conjunction_v<
-                                  // NOTE: these take care of ensuring that degree_t is detected
-                                  // (because nonesuch is not lt-comparable etc.)
-                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  // NOTE: require a semi-regular type,
-                                  // it's just easier to reason about.
-                                  is_semi_regular<degree_t>>) {
-                    // degree_t is well defined, it supports operator<, it can be constructed from int,
-                    // it is returnable and semi-regular (hence, move-assignable).
+                // NOTE: the common reqs take care of ensuring that degree_t is detected
+                // (because nonesuch is not lt-comparable etc.).
+                if constexpr (series_default_degree_type_common_reqs_v<degree_t>) {
                     return ::std::make_pair(1, detail::type_c<degree_t>{});
                 } else {
                     return failure;
@@ -3855,12 +3868,7 @@ constexpr auto series_default_degree_algorithm_impl()
                 // Only the coefficient is with degree.
                 using degree_t = DegreeT<const cf_t &>;
 
-                if constexpr (::std::conjunction_v<
-                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  // NOTE: require a semi-regular type,
-                                  // it's just easier to reason about.
-                                  is_semi_regular<degree_t>>) {
+                if constexpr (series_default_degree_type_common_reqs_v<degree_t>) {
                     // degree_t supports operator<, it can be constructed from int,
                     // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(2, detail::type_c<degree_t>{});
@@ -3871,12 +3879,7 @@ constexpr auto series_default_degree_algorithm_impl()
                 // Only the key is with degree.
                 using degree_t = KeyDegreeT<const key_t &>;
 
-                if constexpr (::std::conjunction_v<
-                                  is_less_than_comparable<::std::add_lvalue_reference_t<const degree_t>>,
-                                  ::std::is_constructible<degree_t, int>, is_returnable<degree_t>,
-                                  // NOTE: require a semi-regular type,
-                                  // it's just easier to reason about.
-                                  is_semi_regular<degree_t>>) {
+                if constexpr (series_default_degree_type_common_reqs_v<degree_t>) {
                     // degree_t supports operator<, it can be constructed from int,
                     // it is returnable and semi-regular (hence, move-assignable).
                     return ::std::make_pair(3, detail::type_c<degree_t>{});
