@@ -4539,7 +4539,7 @@ inline void filter_impl(series<K, C, Tag> &s, const F &f)
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct filter_msvc {
     template <typename T, typename F>

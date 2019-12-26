@@ -11,6 +11,8 @@
 
 #include <mp++/type_name.hpp>
 
+#include <obake/config.hpp>
+
 namespace obake
 {
 
