@@ -1011,11 +1011,11 @@ public:
     }
 
 private:
-    // A small helper to select the (const) iterator of s_table_type, depending on whether
+    // A small helper to select the (const) iterator of table_type, depending on whether
     // T is const or not. Used in the iterator implementation below.
     template <typename T>
-    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename s_table_type::value_type::const_iterator,
-                                            typename s_table_type::value_type::iterator>;
+    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename table_type::const_iterator,
+                                            typename table_type::iterator>;
 
     // NOTE: this is mostly taken from:
     // https://www.boost.org/doc/libs/1_70_0/libs/iterator/doc/iterator_facade.html
@@ -1040,7 +1040,7 @@ private:
         using s_table_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const s_table_type *, s_table_type *>;
 
     public:
-        // Defaul constructor.
+        // Default constructor.
         // NOTE: C++14 requires that all value-inited forward iterators
         // compare equal. This is guaranteed by this constructor, since
         // local_it_t is also a forward iterator which is default-inited.
