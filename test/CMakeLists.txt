@@ -15,7 +15,7 @@ set_property(TARGET obake_test PROPERTY CXX_EXTENSIONS NO)
 
 function(ADD_OBAKE_TESTCASE arg1)
   add_executable(${arg1} ${arg1}.cpp)
-  target_link_libraries(${arg1} obake obake_test)
+  target_link_libraries(${arg1} PRIVATE obake obake_test)
   target_compile_options(${arg1} PRIVATE
     "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"

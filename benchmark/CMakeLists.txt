@@ -1,6 +1,6 @@
 function(ADD_OBAKE_BENCHMARK arg1)
   add_executable(${arg1} ${arg1}.cpp)
-  target_link_libraries(${arg1} obake)
+  target_link_libraries(${arg1} PRIVATE obake)
   target_compile_options(${arg1} PRIVATE
     "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"

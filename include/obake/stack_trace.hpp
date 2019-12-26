@@ -12,6 +12,7 @@
 #include <atomic>
 #include <string>
 
+#include <obake/config.hpp>
 #include <obake/detail/visibility.hpp>
 
 namespace obake
