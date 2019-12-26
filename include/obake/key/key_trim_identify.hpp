@@ -51,7 +51,7 @@ constexpr auto key_trim_identify_impl(::std::vector<int> &v, T &&x, const symbol
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct key_trim_identify_msvc {
     template <typename T>

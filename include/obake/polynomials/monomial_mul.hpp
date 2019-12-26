@@ -52,7 +52,7 @@ constexpr auto monomial_mul_impl(T &&x, U &&y, V &&z, const symbol_set &ss, prio
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct monomial_mul_msvc {
     template <typename T, typename U, typename V>

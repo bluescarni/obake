@@ -129,7 +129,7 @@ constexpr auto negate_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(x =
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 namespace detail
 {

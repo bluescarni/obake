@@ -71,13 +71,7 @@ template <typename To, typename From,
 
 } // namespace detail
 
-// NOTE: at least some earlier versions of MSVC do not like the lambda
-// functor, so we just replace it with a regular functor. Need to check if this
-// has been fixed in MSVC 2019.
-// NOTE: it is important that this remains a function object, rather than
-// a function, so that the lookup rules are consistent with the lambda
-// function object implementation.
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 template <typename To>
 struct safe_cast_msvc {

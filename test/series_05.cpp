@@ -250,7 +250,7 @@ TEST_CASE("series_add_symbols_test")
     REQUIRE(is_detected_v<add_symbols_t, const p1_t &>);
 }
 
-#if defined(OBAKE_MSVC_SUPPORTED) || defined(__clang__)
+#if !defined(_MSC_VER) || defined(__clang__)
 
 TEST_CASE("series_s11n_test")
 {

@@ -123,7 +123,7 @@ constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<0>)
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct fma3_msvc {
     template <typename T, typename U, typename V>

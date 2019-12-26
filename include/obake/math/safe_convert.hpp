@@ -205,7 +205,7 @@ template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvr
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct safe_convert_msvc {
     template <typename T, typename U>

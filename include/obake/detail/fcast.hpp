@@ -19,11 +19,10 @@ namespace obake::detail
 // A filtering cast: if the input is a nonconst
 // rvalue reference, return it, otherwise transform
 // it into a const lvalue reference.
-
-#if !defined(OBAKE_MSVC_SUPPORTED) && !defined(__clang__)
-
 // NOTE: MSVC has some issue with the simpler
 // implementation below.
+
+#if defined(_MSC_VER) && !defined(__clang__)
 
 template <typename T>
 constexpr T &&fcast_impl(T &&x, ::std::true_type) noexcept

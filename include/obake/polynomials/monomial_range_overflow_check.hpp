@@ -51,7 +51,7 @@ constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set
 
 } // namespace detail
 
-#if !defined(OBAKE_MSVC_SUPPORTED)
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
 struct monomial_range_overflow_check_msvc {
     template <typename T, typename U>
