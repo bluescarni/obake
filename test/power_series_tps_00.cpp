@@ -23,4 +23,8 @@ TEST_CASE("tps_basic_tests")
     using tps_t = tps<packed_monomial<int>, mppp::rational<1>>;
 
     tps_t t00;
+    REQUIRE(t00.begin() == t00.end());
+    REQUIRE(t00.cbegin() == t00.end());
+    REQUIRE(t00.begin() == t00.cend());
+    REQUIRE(t00.cbegin() == t00.cend());
 }
