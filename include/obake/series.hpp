@@ -1068,12 +1068,6 @@ private:
             assert(local_it != (*s_table_ptr)[idx].end());
         }
 
-        // Default the copy/move ctors/assignment operators.
-        iterator_impl(const iterator_impl &) = default;
-        iterator_impl(iterator_impl &&) = default;
-        iterator_impl &operator=(const iterator_impl &) = default;
-        iterator_impl &operator=(iterator_impl &&) = default;
-
         // Implicit converting ctor from another specialisation. This is
         // used to construct a const iterator from a mutable one.
         template <typename U,
@@ -1089,6 +1083,12 @@ private:
             : m_s_table_ptr(other.m_s_table_ptr), m_idx(other.m_idx), m_local_it(other.m_local_it)
         {
         }
+
+        // Default the copy/move ctors/assignment operators.
+        iterator_impl(const iterator_impl &) = default;
+        iterator_impl(iterator_impl &&) = default;
+        iterator_impl &operator=(const iterator_impl &) = default;
+        iterator_impl &operator=(iterator_impl &&) = default;
 
         // Specialise the swap primitive.
         friend void swap(iterator_impl &it1, iterator_impl &it2) noexcept
@@ -1221,7 +1221,7 @@ private:
         }
 
         // NOTE: if all the tables are empty, m_idx is now
-        // set to the size of segmented table
+        // set to the size of the segmented table
         // and the local iterator stays in its value-inited
         // state. That is, retval becomes the end iterator.
         return retval;
