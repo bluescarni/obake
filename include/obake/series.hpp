@@ -1011,11 +1011,11 @@ public:
     }
 
 private:
-    // A small helper to select the (const) iterator of s_table_type, depending on whether
+    // A small helper to select the (const) iterator of table_type, depending on whether
     // T is const or not. Used in the iterator implementation below.
     template <typename T>
-    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename s_table_type::value_type::const_iterator,
-                                            typename s_table_type::value_type::iterator>;
+    using local_it_t = ::std::conditional_t<::std::is_const_v<T>, typename table_type::const_iterator,
+                                            typename table_type::iterator>;
 
     // NOTE: this is mostly taken from:
     // https://www.boost.org/doc/libs/1_70_0/libs/iterator/doc/iterator_facade.html
@@ -1040,7 +1040,7 @@ private:
         using s_table_ptr_t = ::std::conditional_t<::std::is_const_v<T>, const s_table_type *, s_table_type *>;
 
     public:
-        // Defaul constructor.
+        // Default constructor.
         // NOTE: C++14 requires that all value-inited forward iterators
         // compare equal. This is guaranteed by this constructor, since
         // local_it_t is also a forward iterator which is default-inited.
@@ -1068,12 +1068,6 @@ private:
             assert(local_it != (*s_table_ptr)[idx].end());
         }
 
-        // Default the copy/move ctors/assignment operators.
-        iterator_impl(const iterator_impl &) = default;
-        iterator_impl(iterator_impl &&) = default;
-        iterator_impl &operator=(const iterator_impl &) = default;
-        iterator_impl &operator=(iterator_impl &&) = default;
-
         // Implicit converting ctor from another specialisation. This is
         // used to construct a const iterator from a mutable one.
         template <typename U,
@@ -1089,6 +1083,12 @@ private:
             : m_s_table_ptr(other.m_s_table_ptr), m_idx(other.m_idx), m_local_it(other.m_local_it)
         {
         }
+
+        // Default the copy/move ctors/assignment operators.
+        iterator_impl(const iterator_impl &) = default;
+        iterator_impl(iterator_impl &&) = default;
+        iterator_impl &operator=(const iterator_impl &) = default;
+        iterator_impl &operator=(iterator_impl &&) = default;
 
         // Specialise the swap primitive.
         friend void swap(iterator_impl &it1, iterator_impl &it2) noexcept
@@ -1221,7 +1221,7 @@ private:
         }
 
         // NOTE: if all the tables are empty, m_idx is now
-        // set to the size of segmented table
+        // set to the size of the segmented table
         // and the local iterator stays in its value-inited
         // state. That is, retval becomes the end iterator.
         return retval;
