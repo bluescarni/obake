@@ -13,7 +13,7 @@ export PATH="$HOME/miniconda/bin:$PATH"
 conda config --add channels conda-forge --force
 conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel clang clangdev abseil-cpp"
 conda create -q -p $deps_dir -y $conda_pkgs
-conda activate $deps_dir
+source activate $deps_dir
 
 export CXX=clang++
 export CC=clang
