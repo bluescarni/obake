@@ -16,7 +16,7 @@ export PATH="$HOME/miniconda/bin:$PATH"
 conda config --add channels conda-forge --force
 conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel abseil-cpp backtrace sphinx sphinx_rtd_theme"
 conda create -q -p $deps_dir -y $conda_pkgs
-source activate $deps_dir
+conda activate $deps_dir
 
 # Create the build dir and cd into it.
 mkdir build
