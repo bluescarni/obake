@@ -1,8 +1,8 @@
 Changelog
 =========
 
-0.4 (unreleased)
-----------------
+0.4.0 (unreleased)
+------------------
 
 New
 ~~~
@@ -20,6 +20,11 @@ New
 Changes
 ~~~~~~~
 
+- Update Catch to the latest version, 2.11.1
+  (`#107 <https://github.com/bluescarni/obake/pull/107>`__).
+- **BREAKING**: functions and type traits dealing with
+  in-place arithmetic have been renamed
+  (`#106 <https://github.com/bluescarni/obake/pull/106>`__).
 - **BREAKING**: the ``filter()`` and ``truncate_degree()``
   functions now operate in-place
   (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
@@ -39,10 +44,16 @@ Fix
   the latest MSVC builds in C++20 mode with concepts
   (`#50 <https://github.com/bluescarni/obake/pull/50>`__).
   Many thanks to `7ofNine <https://github.com/7ofNine>`__!
-- Various incremental build system fixes/improvements
-  (`#90 <https://github.com/bluescarni/obake/pull/90>`__,
+- Various cleanups and build system fixes/improvements
+  (`#103 <https://github.com/bluescarni/obake/pull/103>`__,
+  `#100 <https://github.com/bluescarni/obake/pull/100>`__,
+  `#99 <https://github.com/bluescarni/obake/pull/99>`__,
+  `#98 <https://github.com/bluescarni/obake/pull/98>`__,
+  `#97 <https://github.com/bluescarni/obake/pull/97>`__,
+  `#96 <https://github.com/bluescarni/obake/pull/96>`__,
+  `#93 <https://github.com/bluescarni/obake/pull/93>`__,
   `#92 <https://github.com/bluescarni/obake/pull/92>`__,
-  `#98 <https://github.com/bluescarni/obake/pull/98>`__).
+  `#90 <https://github.com/bluescarni/obake/pull/90>`__).
 
 0.3 (31-10-2019)
 ----------------
@@ -61,7 +72,7 @@ Changes
 ~~~~~~~
 
 - Significant speedups (and small fixes) for the series
-  arithmetic compound operators
+  in-place arithmetic operators
   (`#85 <https://github.com/bluescarni/obake/pull/85>`__).
 - Speedups and simplifications in the dynamic packed monomial class
   (`#83 <https://github.com/bluescarni/obake/pull/83>`__).

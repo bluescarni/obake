@@ -141,11 +141,11 @@ TEST_CASE("series_div")
     REQUIRE(!is_detected_v<detail::div_t, s1_t, s2_t>);
     REQUIRE(!is_detected_v<detail::div_t, s11_t, s1_t>);
     REQUIRE(!is_detected_v<detail::div_t, s1_t, s11_t>);
-    REQUIRE(!is_compound_divisible_v<s1_t &, const s1_t &>);
-    REQUIRE(!is_compound_divisible_v<s1_t &, void>);
-    REQUIRE(!is_compound_divisible_v<s11_t &, const s11_t &>);
-    REQUIRE(!is_compound_divisible_v<s11_t &, const s1_t &>);
-    REQUIRE(!is_compound_divisible_v<int &, const s1_t &>);
+    REQUIRE(!is_in_place_divisible_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_in_place_divisible_v<s1_t &, void>);
+    REQUIRE(!is_in_place_divisible_v<s11_t &, const s11_t &>);
+    REQUIRE(!is_in_place_divisible_v<s11_t &, const s1_t &>);
+    REQUIRE(!is_in_place_divisible_v<int &, const s1_t &>);
 }
 
 TEST_CASE("series_conversion_operator")
