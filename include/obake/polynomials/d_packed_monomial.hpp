@@ -1,4 +1,4 @@
-// Copyright 2019 Francesco Biscani (bluescarni@gmail.com)::polynomials
+// Copyright 2019-2020 Francesco Biscani (bluescarni@gmail.com)::polynomials
 //
 // This file is part of the obake library.
 //
