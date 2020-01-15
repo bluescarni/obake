@@ -39,10 +39,16 @@ Fix
   the latest MSVC builds in C++20 mode with concepts
   (`#50 <https://github.com/bluescarni/obake/pull/50>`__).
   Many thanks to `7ofNine <https://github.com/7ofNine>`__!
-- Various incremental build system fixes/improvements
-  (`#90 <https://github.com/bluescarni/obake/pull/90>`__,
+- Various cleanups and build system fixes/improvements
+  (`#103 <https://github.com/bluescarni/obake/pull/103>`__,
+  `#100 <https://github.com/bluescarni/obake/pull/100>`__,
+  `#99 <https://github.com/bluescarni/obake/pull/99>`__,
+  `#98 <https://github.com/bluescarni/obake/pull/98>`__,
+  `#97 <https://github.com/bluescarni/obake/pull/97>`__,
+  `#96 <https://github.com/bluescarni/obake/pull/96>`__,
+  `#93 <https://github.com/bluescarni/obake/pull/93>`__,
   `#92 <https://github.com/bluescarni/obake/pull/92>`__,
-  `#98 <https://github.com/bluescarni/obake/pull/98>`__).
+  `#90 <https://github.com/bluescarni/obake/pull/90>`__).
 
 0.3 (31-10-2019)
 ----------------
