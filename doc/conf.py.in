@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'obake'
-copyright = '2019, Francesco Biscani'
+copyright = '2019-2020, Francesco Biscani'
 author = 'Francesco Biscani'
 
 # The short X.Y version
