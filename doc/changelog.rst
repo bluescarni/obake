@@ -20,6 +20,8 @@ New
 Changes
 ~~~~~~~
 
+- Update Catch to the latest version, 2.11.1
+  (`#107 <https://github.com/bluescarni/obake/pull/107>`__).
 - **BREAKING**: functions and type traits dealing with
   in-place arithmetic have been renamed
   (`#106 <https://github.com/bluescarni/obake/pull/106>`__).
