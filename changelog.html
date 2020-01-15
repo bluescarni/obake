@@ -194,6 +194,9 @@ partial degree
 <div class="section" id="changes">
 <h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p><strong>BREAKING</strong>: functions and type traits dealing with
+in-place arithmetic have been renamed
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/106">#106</a>).</p></li>
 <li><p><strong>BREAKING</strong>: the <code class="docutils literal notranslate"><span class="pre">filter()</span></code> and <code class="docutils literal notranslate"><span class="pre">truncate_degree()</span></code>
 functions now operate in-place
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/98">#98</a>).</p></li>
@@ -214,10 +217,16 @@ monomial class
 the latest MSVC builds in C++20 mode with concepts
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/50">#50</a>).
 Many thanks to <a class="reference external" href="https://github.com/7ofNine">7ofNine</a>!</p></li>
-<li><p>Various incremental build system fixes/improvements
-(<a class="reference external" href="https://github.com/bluescarni/obake/pull/90">#90</a>,
+<li><p>Various cleanups and build system fixes/improvements
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/103">#103</a>,
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/100">#100</a>,
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/99">#99</a>,
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/98">#98</a>,
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/97">#97</a>,
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/96">#96</a>,
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/93">#93</a>,
 <a class="reference external" href="https://github.com/bluescarni/obake/pull/92">#92</a>,
-<a class="reference external" href="https://github.com/bluescarni/obake/pull/98">#98</a>).</p></li>
+<a class="reference external" href="https://github.com/bluescarni/obake/pull/90">#90</a>).</p></li>
 </ul>
 </div>
 </div>
@@ -238,7 +247,7 @@ and C++ integrals
 <h3>Changes<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Significant speedups (and small fixes) for the series
-arithmetic compound operators
+in-place arithmetic operators
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/85">#85</a>).</p></li>
 <li><p>Speedups and simplifications in the dynamic packed monomial class
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/83">#83</a>).</p></li>
