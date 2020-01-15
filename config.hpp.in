@@ -14,6 +14,7 @@
 #define OBAKE_VERSION_STRING "@obake_VERSION@"
 #define OBAKE_VERSION_MAJOR @obake_VERSION_MAJOR@
 #define OBAKE_VERSION_MINOR @obake_VERSION_MINOR@
+#define OBAKE_VERSION_PATCH @obake_VERSION_PATCH@
 @OBAKE_ENABLE_LIBBACKTRACE@
 // clang-format on
 // End of defines instantiated by CMake.
