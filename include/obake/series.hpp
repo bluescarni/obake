@@ -116,10 +116,10 @@ template <typename T>
 using is_cf = ::std::conjunction<
     is_semi_regular<T>, is_zero_testable<::std::add_lvalue_reference_t<const T>>,
     is_stream_insertable_cf<::std::add_lvalue_reference_t<const T>>,
-    is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
-    is_compound_addable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
-    is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
-    is_compound_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
+    is_in_place_addable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
+    is_in_place_addable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
+    is_in_place_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_lvalue_reference_t<const T>>,
+    is_in_place_subtractable<::std::add_lvalue_reference_t<T>, ::std::add_rvalue_reference_t<T>>,
     is_negatable<::std::add_lvalue_reference_t<T>>>;
 
 template <typename T>
@@ -2629,14 +2629,14 @@ constexpr auto operator+(T &&x, U &&y)
 namespace customisation
 {
 
-// External customisation point for obake::series_compound_add().
+// External customisation point for obake::series_in_place_add().
 template <typename T, typename U
 #if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
           >
-inline constexpr auto series_compound_add = not_implemented;
+inline constexpr auto series_in_place_add = not_implemented;
 
 } // namespace customisation
 
@@ -2645,23 +2645,23 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
-constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<2>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::series_compound_add<T &&, U &&>)(::std::forward<T>(x),
+constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<2>)
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_in_place_add<T &&, U &&>)(::std::forward<T>(x),
                                                                                ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<1>)
-    OBAKE_SS_FORWARD_FUNCTION(series_compound_add(::std::forward<T>(x), ::std::forward<U>(y)));
+constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<1>)
+    OBAKE_SS_FORWARD_FUNCTION(series_in_place_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Meta-programming to establish the algorithm and return type
-// of the default implementation of series compound add/sub. It will return
+// of the default implementation of series in-place add/sub. It will return
 // a pair containing an integral value (1, 2 or 3) signalling the algorithm
 // to be used in the implementation, and a type_c wrapper representing
 // the return type of the operation. If the add/sub implementation is not
 // well-defined for the input types, it will return (0, void).
 template <bool Sign, typename T, typename U>
-constexpr auto series_default_compound_addsub_algorithm_impl()
+constexpr auto series_default_in_place_addsub_algorithm_impl()
 {
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -2675,7 +2675,7 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
 
     if constexpr (!rank_T) {
         // The lhs is not a series, return failure. This will disable
-        // the default series_compound_add/sub() implementations.
+        // the default series_in_place_add/sub() implementations.
         return failure;
     } else if constexpr (rank_T < rank_U) {
         // The rank of T is less than the rank of U.
@@ -2749,22 +2749,22 @@ constexpr auto series_default_compound_addsub_algorithm_impl()
 
 // Shortcuts.
 template <bool Sign, typename T, typename U>
-inline constexpr auto series_default_compound_addsub_algorithm
-    = detail::series_default_compound_addsub_algorithm_impl<Sign, T, U>();
+inline constexpr auto series_default_in_place_addsub_algorithm
+    = detail::series_default_in_place_addsub_algorithm_impl<Sign, T, U>();
 
 template <bool Sign, typename T, typename U>
-using series_default_compound_addsub_ret_t =
-    typename decltype(series_default_compound_addsub_algorithm<Sign, T, U>.second)::type;
+using series_default_in_place_addsub_ret_t =
+    typename decltype(series_default_in_place_addsub_algorithm<Sign, T, U>.second)::type;
 
-// Default implementation of the compound add/sub primitive for series.
+// Default implementation of the in-place add/sub primitive for series.
 template <bool Sign, typename T, typename U>
-inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_compound_addsub_impl(T &&x, U &&y)
+inline series_default_in_place_addsub_ret_t<Sign, T &&, U &&> series_default_in_place_addsub_impl(T &&x, U &&y)
 {
     using rT [[maybe_unused]] = remove_cvref_t<T>;
     using rU [[maybe_unused]] = remove_cvref_t<U>;
 
     // Determine the algorithm.
-    constexpr int algo = series_default_compound_addsub_algorithm<Sign, T &&, U &&>.first;
+    constexpr int algo = series_default_in_place_addsub_algorithm<Sign, T &&, U &&>.first;
     static_assert(algo > 0 && algo <= 3);
 
     if constexpr (algo == 1) {
@@ -2928,26 +2928,26 @@ inline series_default_compound_addsub_ret_t<Sign, T &&, U &&> series_default_com
 }
 
 template <typename T, typename U>
-inline constexpr int series_default_compound_add_algo = series_default_compound_addsub_algorithm<true, T, U>.first;
+inline constexpr int series_default_in_place_add_algo = series_default_in_place_addsub_algorithm<true, T, U>.first;
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_default_compound_add_algo<T &&, U &&> != 0, int> = 0>
-constexpr auto series_compound_add_impl(T &&x, U &&y, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_compound_addsub_impl<true>(::std::forward<T>(x),
+template <typename T, typename U, ::std::enable_if_t<series_default_in_place_add_algo<T &&, U &&> != 0, int> = 0>
+constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_in_place_addsub_impl<true>(::std::forward<T>(x),
                                                                                 ::std::forward<U>(y)));
 
 } // namespace detail
 
 #if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
-struct series_compound_add_msvc {
+struct series_in_place_add_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
         OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
-            detail::series_compound_add_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+            detail::series_in_place_add_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
 };
 
-inline constexpr auto series_compound_add = series_compound_add_msvc{};
+inline constexpr auto series_in_place_add = series_in_place_add_msvc{};
 
 #else
 
@@ -2961,8 +2961,8 @@ inline constexpr auto series_compound_add = series_compound_add_msvc{};
 // to the same series, as that may result in the original
 // series coefficient becoming zero after being moved-from.
 // This is a corner case, but perhaps we need to document it?
-inline constexpr auto series_compound_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
-    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_add_impl(
+inline constexpr auto series_in_place_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_in_place_add_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 #endif
@@ -2976,7 +2976,7 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator+=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::obake::series_compound_add(::std::forward<T>(x), ::std::forward<U>(y)));
+        OBAKE_SS_FORWARD_FUNCTION(::obake::series_in_place_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: if the lhs is not a series, just implement
 // on top of the binary operator.
@@ -3058,14 +3058,14 @@ constexpr auto operator-(T &&x, U &&y)
 namespace customisation
 {
 
-// External customisation point for obake::series_compound_sub().
+// External customisation point for obake::series_in_place_sub().
 template <typename T, typename U
 #if !defined(OBAKE_HAVE_CONCEPTS)
           ,
           typename = void
 #endif
           >
-inline constexpr auto series_compound_sub = not_implemented;
+inline constexpr auto series_in_place_sub = not_implemented;
 
 } // namespace customisation
 
@@ -3074,36 +3074,36 @@ namespace detail
 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
-constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<2>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::series_compound_sub<T &&, U &&>)(::std::forward<T>(x),
+constexpr auto series_in_place_sub_impl(T &&x, U &&y, priority_tag<2>)
+    OBAKE_SS_FORWARD_FUNCTION((customisation::series_in_place_sub<T &&, U &&>)(::std::forward<T>(x),
                                                                                ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
-constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<1>)
-    OBAKE_SS_FORWARD_FUNCTION(series_compound_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+constexpr auto series_in_place_sub_impl(T &&x, U &&y, priority_tag<1>)
+    OBAKE_SS_FORWARD_FUNCTION(series_in_place_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 template <typename T, typename U>
-inline constexpr int series_default_compound_sub_algo = series_default_compound_addsub_algorithm<false, T, U>.first;
+inline constexpr int series_default_in_place_sub_algo = series_default_in_place_addsub_algorithm<false, T, U>.first;
 
 // Lowest priority: the default implementation for series.
-template <typename T, typename U, ::std::enable_if_t<series_default_compound_sub_algo<T &&, U &&> != 0, int> = 0>
-constexpr auto series_compound_sub_impl(T &&x, U &&y, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_compound_addsub_impl<false>(::std::forward<T>(x),
+template <typename T, typename U, ::std::enable_if_t<series_default_in_place_sub_algo<T &&, U &&> != 0, int> = 0>
+constexpr auto series_in_place_sub_impl(T &&x, U &&y, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(detail::series_default_in_place_addsub_impl<false>(::std::forward<T>(x),
                                                                                  ::std::forward<U>(y)));
 
 } // namespace detail
 
 #if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
 
-struct series_compound_sub_msvc {
+struct series_in_place_sub_msvc {
     template <typename T, typename U>
     constexpr auto operator()(T &&x, U &&y) const
         OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
-            detail::series_compound_sub_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
+            detail::series_in_place_sub_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
 };
 
-inline constexpr auto series_compound_sub = series_compound_sub_msvc{};
+inline constexpr auto series_in_place_sub = series_in_place_sub_msvc{};
 
 #else
 
@@ -3117,8 +3117,8 @@ inline constexpr auto series_compound_sub = series_compound_sub_msvc{};
 // from the same series, as that may result in the original
 // series coefficient becoming zero after being moved-from.
 // This is a corner case, but perhaps we need to document it?
-inline constexpr auto series_compound_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
-    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_compound_sub_impl(
+inline constexpr auto series_in_place_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_in_place_sub_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 #endif
@@ -3132,7 +3132,7 @@ requires CvrSeries<T>
 template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
     constexpr auto operator-=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(::obake::series_compound_sub(::std::forward<T>(x), ::std::forward<U>(y)));
+        OBAKE_SS_FORWARD_FUNCTION(::obake::series_in_place_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: if the lhs is not a series, just implement
 // on top of the binary operator.
@@ -3218,7 +3218,7 @@ constexpr auto series_default_mul_algorithm_impl()
                 //   by a const reference to T.
                 if constexpr (::std::conjunction_v<
                                   ::std::is_constructible<ret_t, U>,
-                                  is_compound_multipliable<ret_cf_t &, ::std::add_lvalue_reference_t<const rT>>>) {
+                                  is_in_place_multipliable<ret_cf_t &, ::std::add_lvalue_reference_t<const rT>>>) {
                     return ::std::make_pair(1, type_c<ret_t>{});
                 } else {
                     return failure;
@@ -3233,7 +3233,7 @@ constexpr auto series_default_mul_algorithm_impl()
                 using ret_t = series<series_key_t<rT>, ret_cf_t, series_tag_t<rT>>;
                 if constexpr (::std::conjunction_v<
                                   ::std::is_constructible<ret_t, T>,
-                                  is_compound_multipliable<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
+                                  is_in_place_multipliable<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
                     return ::std::make_pair(2, type_c<ret_t>{});
                 } else {
                     return failure;
@@ -3453,7 +3453,7 @@ constexpr auto series_default_div_algorithm_impl()
             //   by a const reference to U.
             if constexpr (::std::conjunction_v<
                               ::std::is_constructible<ret_t, T>,
-                              is_compound_divisible<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
+                              is_in_place_divisible<ret_cf_t &, ::std::add_lvalue_reference_t<const rU>>>) {
                 return ::std::make_pair(1, type_c<ret_t>{});
             } else {
                 return failure;
@@ -4225,7 +4225,7 @@ constexpr auto series_default_evaluate_algorithm_impl()
 
             if constexpr (::std::conjunction_v<
                               // NOTE: these will also verify that ret_t is detected.
-                              is_compound_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                              is_in_place_addable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
                               ::std::is_constructible<ret_t, int>, is_returnable<ret_t>,
                               // NOTE: require a semi-regular type,
                               // it's just easier to reason about.
