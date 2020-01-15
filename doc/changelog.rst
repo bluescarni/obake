@@ -20,6 +20,9 @@ New
 Changes
 ~~~~~~~
 
+- **BREAKING**: functions and type traits dealing with
+  in-place arithmetic have been renamed
+  (`#106 <https://github.com/bluescarni/obake/pull/106>`__).
 - **BREAKING**: the ``filter()`` and ``truncate_degree()``
   functions now operate in-place
   (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
