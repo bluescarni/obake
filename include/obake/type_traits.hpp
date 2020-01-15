@@ -294,7 +294,7 @@ OBAKE_CONCEPT_DECL StringLike = is_string_like_v<T>;
 #endif
 
 // NOTE: the binary operators require symmetry, but
-// the compound operators do not. We should probably
+// the in-place operators do not. We should probably
 // resolve this inconsistency.
 namespace detail
 {
@@ -328,20 +328,20 @@ namespace detail
 {
 
 template <typename T, typename U>
-using compound_add_t = decltype(::std::declval<T>() += ::std::declval<U>());
+using in_place_add_t = decltype(::std::declval<T>() += ::std::declval<U>());
 
 }
 
 template <typename T, typename U>
-using is_compound_addable = is_detected<detail::compound_add_t, T, U>;
+using is_in_place_addable = is_detected<detail::in_place_add_t, T, U>;
 
 template <typename T, typename U>
-inline constexpr bool is_compound_addable_v = is_compound_addable<T, U>::value;
+inline constexpr bool is_in_place_addable_v = is_in_place_addable<T, U>::value;
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL CompoundAddable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL InPlaceAddable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) += ::std::forward<U>(y);
 };
@@ -431,20 +431,20 @@ namespace detail
 {
 
 template <typename T, typename U>
-using compound_sub_t = decltype(::std::declval<T>() -= ::std::declval<U>());
+using in_place_sub_t = decltype(::std::declval<T>() -= ::std::declval<U>());
 
 }
 
 template <typename T, typename U>
-using is_compound_subtractable = is_detected<detail::compound_sub_t, T, U>;
+using is_in_place_subtractable = is_detected<detail::in_place_sub_t, T, U>;
 
 template <typename T, typename U>
-inline constexpr bool is_compound_subtractable_v = is_compound_subtractable<T, U>::value;
+inline constexpr bool is_in_place_subtractable_v = is_in_place_subtractable<T, U>::value;
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL CompoundSubtractable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL InPlaceSubtractable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) -= ::std::forward<U>(y);
 };
@@ -534,20 +534,20 @@ namespace detail
 {
 
 template <typename T, typename U>
-using compound_mul_t = decltype(::std::declval<T>() *= ::std::declval<U>());
+using in_place_mul_t = decltype(::std::declval<T>() *= ::std::declval<U>());
 
 }
 
 template <typename T, typename U>
-using is_compound_multipliable = is_detected<detail::compound_mul_t, T, U>;
+using is_in_place_multipliable = is_detected<detail::in_place_mul_t, T, U>;
 
 template <typename T, typename U>
-inline constexpr bool is_compound_multipliable_v = is_compound_multipliable<T, U>::value;
+inline constexpr bool is_in_place_multipliable_v = is_in_place_multipliable<T, U>::value;
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL CompoundMultipliable = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL InPlaceMultipliable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) *= ::std::forward<U>(y);
 };
@@ -587,20 +587,20 @@ namespace detail
 {
 
 template <typename T, typename U>
-using compound_div_t = decltype(::std::declval<T>() /= ::std::declval<U>());
+using in_place_div_t = decltype(::std::declval<T>() /= ::std::declval<U>());
 
 }
 
 template <typename T, typename U>
-using is_compound_divisible = is_detected<detail::compound_div_t, T, U>;
+using is_in_place_divisible = is_detected<detail::in_place_div_t, T, U>;
 
 template <typename T, typename U>
-inline constexpr bool is_compound_divisible_v = is_compound_divisible<T, U>::value;
+inline constexpr bool is_in_place_divisible_v = is_in_place_divisible<T, U>::value;
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL CompoundDivisible = requires(T &&x, U &&y)
+OBAKE_CONCEPT_DECL InPlaceDivisible = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) /= ::std::forward<U>(y);
 };
@@ -1187,7 +1187,7 @@ using is_random_access_iterator = ::std::conjunction<
     // NOTE: as usual, check against an lvalue reference for n.
     // We'll do the same below as well.
     ::std::is_same<::std::add_lvalue_reference_t<T>,
-                   detected_t<detail::compound_add_t, ::std::add_lvalue_reference_t<T>,
+                   detected_t<detail::in_place_add_t, ::std::add_lvalue_reference_t<T>,
                               ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
     // a + n and n + a must be defined and return T.
     ::std::is_same<T,
@@ -1198,7 +1198,7 @@ using is_random_access_iterator = ::std::conjunction<
                                  ::std::add_lvalue_reference_t<const T>>>,
     // r -= n must be defined and return T &.
     ::std::is_same<::std::add_lvalue_reference_t<T>,
-                   detected_t<detail::compound_sub_t, ::std::add_lvalue_reference_t<T>,
+                   detected_t<detail::in_place_sub_t, ::std::add_lvalue_reference_t<T>,
                               ::std::add_lvalue_reference_t<const detected_t<detail::it_traits_difference_type, T>>>>,
     // a - n must be defined and return T.
     ::std::is_same<T,

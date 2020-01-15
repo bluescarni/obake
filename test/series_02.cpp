@@ -302,28 +302,28 @@ TEST_CASE("series_comparison")
     }
 }
 
-// Simple testing for compound add/sub, which are
+// Simple testing for in-place add/sub, which are
 // currently implemented in terms of the binary
 // operators.
-TEST_CASE("series_compound_add_sub")
+TEST_CASE("series_in_place_add_sub")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = polynomial<pm_t, rat_t>;
     using s11_t = polynomial<pm_t, s1_t>;
 
-    REQUIRE(!is_compound_addable_v<s1_t &, void>);
-    REQUIRE(!is_compound_subtractable_v<s1_t &, void>);
-    REQUIRE(!is_compound_addable_v<const s1_t &, int>);
-    REQUIRE(!is_compound_subtractable_v<const s1_t &, int>);
-    REQUIRE(!is_compound_addable_v<void, s1_t &>);
-    REQUIRE(!is_compound_subtractable_v<void, s1_t &>);
-    REQUIRE(!is_compound_addable_v<const int &, s1_t>);
-    REQUIRE(!is_compound_subtractable_v<const int &, s1_t>);
-    REQUIRE(!is_compound_addable_v<const s1_t &, s1_t>);
-    REQUIRE(!is_compound_addable_v<const s1_t &, s11_t>);
-    REQUIRE(!is_compound_addable_v<const s11_t &, s1_t>);
-    REQUIRE(!is_compound_subtractable_v<const s1_t &, s11_t>);
-    REQUIRE(!is_compound_subtractable_v<const s11_t &, s1_t>);
+    REQUIRE(!is_in_place_addable_v<s1_t &, void>);
+    REQUIRE(!is_in_place_subtractable_v<s1_t &, void>);
+    REQUIRE(!is_in_place_addable_v<const s1_t &, int>);
+    REQUIRE(!is_in_place_subtractable_v<const s1_t &, int>);
+    REQUIRE(!is_in_place_addable_v<void, s1_t &>);
+    REQUIRE(!is_in_place_subtractable_v<void, s1_t &>);
+    REQUIRE(!is_in_place_addable_v<const int &, s1_t>);
+    REQUIRE(!is_in_place_subtractable_v<const int &, s1_t>);
+    REQUIRE(!is_in_place_addable_v<const s1_t &, s1_t>);
+    REQUIRE(!is_in_place_addable_v<const s1_t &, s11_t>);
+    REQUIRE(!is_in_place_addable_v<const s11_t &, s1_t>);
+    REQUIRE(!is_in_place_subtractable_v<const s1_t &, s11_t>);
+    REQUIRE(!is_in_place_subtractable_v<const s11_t &, s1_t>);
 
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() += 1)>);
     REQUIRE(std::is_same_v<s1_t &, decltype(std::declval<s1_t &>() -= 1)>);
@@ -753,23 +753,23 @@ namespace ns
 
 // ADL-based customisation.
 template <typename K, typename C>
-series<K, C, tag00> &series_compound_add(series<K, C, tag00> &, const series<K, C, tag00> &);
+series<K, C, tag00> &series_in_place_add(series<K, C, tag00> &, const series<K, C, tag00> &);
 
 struct tag02 {
 };
 
 // Wrong ADL-based customisation.
 template <typename K, typename C>
-void series_compound_add(series<K, C, tag02> &, const series<K, C, tag02> &);
+void series_in_place_add(series<K, C, tag02> &, const series<K, C, tag02> &);
 
 } // namespace ns
 
-struct custom_compound_add {
+struct custom_in_place_add {
     template <typename T, typename U>
     T &operator()(T &, const U &) const;
 };
 
-struct wrong_custom_compound_add {
+struct wrong_custom_in_place_add {
     template <typename T, typename U>
     void operator()(T &, const U &) const;
 };
@@ -781,30 +781,30 @@ namespace obake::customisation
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_compound_add<T, U>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_in_place_add<T, U>
 #else
 inline constexpr auto
     series_add<T, U,
                std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
                                                    is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
 #endif
-    = custom_compound_add{};
+    = custom_in_place_add{};
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_compound_add<T, U>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_in_place_add<T, U>
 #else
 inline constexpr auto
     series_add<T, U,
                std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
                                                    is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
 #endif
-    = wrong_custom_compound_add{};
+    = wrong_custom_in_place_add{};
 
 } // namespace obake::customisation
 
-TEST_CASE("series_compound_add_custom")
+TEST_CASE("series_in_place_add_custom")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
@@ -812,11 +812,11 @@ TEST_CASE("series_compound_add_custom")
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
     using s2a_t = series<ns::pm_t, rat_t, ns::tag02>;
 
-    REQUIRE(is_compound_addable_v<s1_t &, const s1_t &>);
-    REQUIRE(!is_compound_addable_v<s1a_t &, const s1a_t &>);
+    REQUIRE(is_in_place_addable_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_in_place_addable_v<s1a_t &, const s1a_t &>);
 
-    REQUIRE(is_compound_addable_v<s2_t &, const s2_t &>);
-    REQUIRE(!is_compound_addable_v<s2a_t &, const s2a_t &>);
+    REQUIRE(is_in_place_addable_v<s2_t &, const s2_t &>);
+    REQUIRE(!is_in_place_addable_v<s2a_t &, const s2a_t &>);
 }
 
 namespace ns
@@ -824,20 +824,20 @@ namespace ns
 
 // ADL-based customisation.
 template <typename K, typename C>
-series<K, C, tag00> &series_compound_sub(series<K, C, tag00> &, const series<K, C, tag00> &);
+series<K, C, tag00> &series_in_place_sub(series<K, C, tag00> &, const series<K, C, tag00> &);
 
 // Wrong ADL-based customisation.
 template <typename K, typename C>
-void series_compound_sub(series<K, C, tag02> &, const series<K, C, tag02> &);
+void series_in_place_sub(series<K, C, tag02> &, const series<K, C, tag02> &);
 
 } // namespace ns
 
-struct custom_compound_sub {
+struct custom_in_place_sub {
     template <typename T, typename U>
     T &operator()(T &, const U &) const;
 };
 
-struct wrong_custom_compound_sub {
+struct wrong_custom_in_place_sub {
     template <typename T, typename U>
     void operator()(T &, const U &) const;
 };
@@ -849,30 +849,30 @@ namespace obake::customisation
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_compound_sub<T, U>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_in_place_sub<T, U>
 #else
 inline constexpr auto
     series_sub<T, U,
                std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
                                                    is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
 #endif
-    = custom_compound_sub{};
+    = custom_in_place_sub{};
 
 template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_compound_sub<T, U>
+    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_in_place_sub<T, U>
 #else
 inline constexpr auto
     series_sub<T, U,
                std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
                                                    is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
 #endif
-    = wrong_custom_compound_sub{};
+    = wrong_custom_in_place_sub{};
 
 } // namespace obake::customisation
 
-TEST_CASE("series_compound_sub_custom")
+TEST_CASE("series_in_place_sub_custom")
 {
     using pm_t = packed_monomial<int>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
@@ -880,9 +880,9 @@ TEST_CASE("series_compound_sub_custom")
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
     using s2a_t = series<ns::pm_t, rat_t, ns::tag02>;
 
-    REQUIRE(is_compound_subtractable_v<s1_t &, const s1_t &>);
-    REQUIRE(!is_compound_subtractable_v<s1a_t &, const s1a_t &>);
+    REQUIRE(is_in_place_subtractable_v<s1_t &, const s1_t &>);
+    REQUIRE(!is_in_place_subtractable_v<s1a_t &, const s1a_t &>);
 
-    REQUIRE(is_compound_subtractable_v<s2_t &, const s2_t &>);
-    REQUIRE(!is_compound_subtractable_v<s2a_t &, const s2a_t &>);
+    REQUIRE(is_in_place_subtractable_v<s2_t &, const s2_t &>);
+    REQUIRE(!is_in_place_subtractable_v<s2a_t &, const s2a_t &>);
 }

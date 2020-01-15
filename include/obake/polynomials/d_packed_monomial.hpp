@@ -1054,7 +1054,7 @@ constexpr auto dpm_key_evaluate_algorithm_impl()
         if constexpr (::std::conjunction_v<::std::is_constructible<ret_t, int>,
                                            // NOTE: we will be multiplying an
                                            // lvalue by an rvalue.
-                                           is_compound_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
+                                           is_in_place_multipliable<::std::add_lvalue_reference_t<ret_t>, ret_t>,
                                            is_semi_regular<ret_t>, is_returnable<ret_t>>) {
             return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
         } else {

@@ -61,7 +61,7 @@ Changes
 ~~~~~~~
 
 - Significant speedups (and small fixes) for the series
-  arithmetic compound operators
+  in-place arithmetic operators
   (`#85 <https://github.com/bluescarni/obake/pull/85>`__).
 - Speedups and simplifications in the dynamic packed monomial class
   (`#83 <https://github.com/bluescarni/obake/pull/83>`__).

@@ -1514,56 +1514,56 @@ TEST_CASE("stream_insertable")
 #endif
 }
 
-TEST_CASE("compound_addable")
+TEST_CASE("in_place_addable")
 {
-    REQUIRE(!is_compound_addable_v<void, void>);
-    REQUIRE(!is_compound_addable_v<void, int>);
-    REQUIRE(!is_compound_addable_v<int, void>);
+    REQUIRE(!is_in_place_addable_v<void, void>);
+    REQUIRE(!is_in_place_addable_v<void, int>);
+    REQUIRE(!is_in_place_addable_v<int, void>);
 
-    REQUIRE(is_compound_addable_v<int &, int>);
-    REQUIRE(is_compound_addable_v<int &, int &>);
-    REQUIRE(is_compound_addable_v<int &, const int &>);
-    REQUIRE(is_compound_addable_v<int &, int &&>);
+    REQUIRE(is_in_place_addable_v<int &, int>);
+    REQUIRE(is_in_place_addable_v<int &, int &>);
+    REQUIRE(is_in_place_addable_v<int &, const int &>);
+    REQUIRE(is_in_place_addable_v<int &, int &&>);
 
-    REQUIRE(!is_compound_addable_v<int &&, int>);
-    REQUIRE(!is_compound_addable_v<int &&, int &>);
-    REQUIRE(!is_compound_addable_v<int &&, const int &>);
-    REQUIRE(!is_compound_addable_v<int &&, int &&>);
+    REQUIRE(!is_in_place_addable_v<int &&, int>);
+    REQUIRE(!is_in_place_addable_v<int &&, int &>);
+    REQUIRE(!is_in_place_addable_v<int &&, const int &>);
+    REQUIRE(!is_in_place_addable_v<int &&, int &&>);
 
-    REQUIRE(!is_compound_addable_v<const int &, int>);
-    REQUIRE(!is_compound_addable_v<const int &, int &>);
-    REQUIRE(!is_compound_addable_v<const int &, const int &>);
-    REQUIRE(!is_compound_addable_v<const int &, int &&>);
+    REQUIRE(!is_in_place_addable_v<const int &, int>);
+    REQUIRE(!is_in_place_addable_v<const int &, int &>);
+    REQUIRE(!is_in_place_addable_v<const int &, const int &>);
+    REQUIRE(!is_in_place_addable_v<const int &, int &&>);
 
-    REQUIRE(!is_compound_addable_v<int, int>);
-    REQUIRE(!is_compound_addable_v<int, int &>);
-    REQUIRE(!is_compound_addable_v<int, const int &>);
-    REQUIRE(!is_compound_addable_v<int, int &&>);
+    REQUIRE(!is_in_place_addable_v<int, int>);
+    REQUIRE(!is_in_place_addable_v<int, int &>);
+    REQUIRE(!is_in_place_addable_v<int, const int &>);
+    REQUIRE(!is_in_place_addable_v<int, int &&>);
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!CompoundAddable<void, void>);
-    REQUIRE(!CompoundAddable<void, int>);
-    REQUIRE(!CompoundAddable<int, void>);
+    REQUIRE(!InPlaceAddable<void, void>);
+    REQUIRE(!InPlaceAddable<void, int>);
+    REQUIRE(!InPlaceAddable<int, void>);
 
-    REQUIRE(CompoundAddable<int &, int>);
-    REQUIRE(CompoundAddable<int &, int &>);
-    REQUIRE(CompoundAddable<int &, const int &>);
-    REQUIRE(CompoundAddable<int &, int &&>);
+    REQUIRE(InPlaceAddable<int &, int>);
+    REQUIRE(InPlaceAddable<int &, int &>);
+    REQUIRE(InPlaceAddable<int &, const int &>);
+    REQUIRE(InPlaceAddable<int &, int &&>);
 
-    REQUIRE(!CompoundAddable<int &&, int>);
-    REQUIRE(!CompoundAddable<int &&, int &>);
-    REQUIRE(!CompoundAddable<int &&, const int &>);
-    REQUIRE(!CompoundAddable<int &&, int &&>);
+    REQUIRE(!InPlaceAddable<int &&, int>);
+    REQUIRE(!InPlaceAddable<int &&, int &>);
+    REQUIRE(!InPlaceAddable<int &&, const int &>);
+    REQUIRE(!InPlaceAddable<int &&, int &&>);
 
-    REQUIRE(!CompoundAddable<const int &, int>);
-    REQUIRE(!CompoundAddable<const int &, int &>);
-    REQUIRE(!CompoundAddable<const int &, const int &>);
-    REQUIRE(!CompoundAddable<const int &, int &&>);
+    REQUIRE(!InPlaceAddable<const int &, int>);
+    REQUIRE(!InPlaceAddable<const int &, int &>);
+    REQUIRE(!InPlaceAddable<const int &, const int &>);
+    REQUIRE(!InPlaceAddable<const int &, int &&>);
 
-    REQUIRE(!CompoundAddable<int, int>);
-    REQUIRE(!CompoundAddable<int, int &>);
-    REQUIRE(!CompoundAddable<int, const int &>);
-    REQUIRE(!CompoundAddable<int, int &&>);
+    REQUIRE(!InPlaceAddable<int, int>);
+    REQUIRE(!InPlaceAddable<int, int &>);
+    REQUIRE(!InPlaceAddable<int, const int &>);
+    REQUIRE(!InPlaceAddable<int, int &&>);
 #endif
 }
 
@@ -1625,56 +1625,56 @@ TEST_CASE("is_subtractable")
 #endif
 }
 
-TEST_CASE("compound_subtractable")
+TEST_CASE("in_place_subtractable")
 {
-    REQUIRE(!is_compound_subtractable_v<void, void>);
-    REQUIRE(!is_compound_subtractable_v<void, int>);
-    REQUIRE(!is_compound_subtractable_v<int, void>);
+    REQUIRE(!is_in_place_subtractable_v<void, void>);
+    REQUIRE(!is_in_place_subtractable_v<void, int>);
+    REQUIRE(!is_in_place_subtractable_v<int, void>);
 
-    REQUIRE(is_compound_subtractable_v<int &, int>);
-    REQUIRE(is_compound_subtractable_v<int &, int &>);
-    REQUIRE(is_compound_subtractable_v<int &, const int &>);
-    REQUIRE(is_compound_subtractable_v<int &, int &&>);
+    REQUIRE(is_in_place_subtractable_v<int &, int>);
+    REQUIRE(is_in_place_subtractable_v<int &, int &>);
+    REQUIRE(is_in_place_subtractable_v<int &, const int &>);
+    REQUIRE(is_in_place_subtractable_v<int &, int &&>);
 
-    REQUIRE(!is_compound_subtractable_v<int &&, int>);
-    REQUIRE(!is_compound_subtractable_v<int &&, int &>);
-    REQUIRE(!is_compound_subtractable_v<int &&, const int &>);
-    REQUIRE(!is_compound_subtractable_v<int &&, int &&>);
+    REQUIRE(!is_in_place_subtractable_v<int &&, int>);
+    REQUIRE(!is_in_place_subtractable_v<int &&, int &>);
+    REQUIRE(!is_in_place_subtractable_v<int &&, const int &>);
+    REQUIRE(!is_in_place_subtractable_v<int &&, int &&>);
 
-    REQUIRE(!is_compound_subtractable_v<const int &, int>);
-    REQUIRE(!is_compound_subtractable_v<const int &, int &>);
-    REQUIRE(!is_compound_subtractable_v<const int &, const int &>);
-    REQUIRE(!is_compound_subtractable_v<const int &, int &&>);
+    REQUIRE(!is_in_place_subtractable_v<const int &, int>);
+    REQUIRE(!is_in_place_subtractable_v<const int &, int &>);
+    REQUIRE(!is_in_place_subtractable_v<const int &, const int &>);
+    REQUIRE(!is_in_place_subtractable_v<const int &, int &&>);
 
-    REQUIRE(!is_compound_subtractable_v<int, int>);
-    REQUIRE(!is_compound_subtractable_v<int, int &>);
-    REQUIRE(!is_compound_subtractable_v<int, const int &>);
-    REQUIRE(!is_compound_subtractable_v<int, int &&>);
+    REQUIRE(!is_in_place_subtractable_v<int, int>);
+    REQUIRE(!is_in_place_subtractable_v<int, int &>);
+    REQUIRE(!is_in_place_subtractable_v<int, const int &>);
+    REQUIRE(!is_in_place_subtractable_v<int, int &&>);
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!CompoundSubtractable<void, void>);
-    REQUIRE(!CompoundSubtractable<void, int>);
-    REQUIRE(!CompoundSubtractable<int, void>);
+    REQUIRE(!InPlaceSubtractable<void, void>);
+    REQUIRE(!InPlaceSubtractable<void, int>);
+    REQUIRE(!InPlaceSubtractable<int, void>);
 
-    REQUIRE(CompoundSubtractable<int &, int>);
-    REQUIRE(CompoundSubtractable<int &, int &>);
-    REQUIRE(CompoundSubtractable<int &, const int &>);
-    REQUIRE(CompoundSubtractable<int &, int &&>);
+    REQUIRE(InPlaceSubtractable<int &, int>);
+    REQUIRE(InPlaceSubtractable<int &, int &>);
+    REQUIRE(InPlaceSubtractable<int &, const int &>);
+    REQUIRE(InPlaceSubtractable<int &, int &&>);
 
-    REQUIRE(!CompoundSubtractable<int &&, int>);
-    REQUIRE(!CompoundSubtractable<int &&, int &>);
-    REQUIRE(!CompoundSubtractable<int &&, const int &>);
-    REQUIRE(!CompoundSubtractable<int &&, int &&>);
+    REQUIRE(!InPlaceSubtractable<int &&, int>);
+    REQUIRE(!InPlaceSubtractable<int &&, int &>);
+    REQUIRE(!InPlaceSubtractable<int &&, const int &>);
+    REQUIRE(!InPlaceSubtractable<int &&, int &&>);
 
-    REQUIRE(!CompoundSubtractable<const int &, int>);
-    REQUIRE(!CompoundSubtractable<const int &, int &>);
-    REQUIRE(!CompoundSubtractable<const int &, const int &>);
-    REQUIRE(!CompoundSubtractable<const int &, int &&>);
+    REQUIRE(!InPlaceSubtractable<const int &, int>);
+    REQUIRE(!InPlaceSubtractable<const int &, int &>);
+    REQUIRE(!InPlaceSubtractable<const int &, const int &>);
+    REQUIRE(!InPlaceSubtractable<const int &, int &&>);
 
-    REQUIRE(!CompoundSubtractable<int, int>);
-    REQUIRE(!CompoundSubtractable<int, int &>);
-    REQUIRE(!CompoundSubtractable<int, const int &>);
-    REQUIRE(!CompoundSubtractable<int, int &&>);
+    REQUIRE(!InPlaceSubtractable<int, int>);
+    REQUIRE(!InPlaceSubtractable<int, int &>);
+    REQUIRE(!InPlaceSubtractable<int, const int &>);
+    REQUIRE(!InPlaceSubtractable<int, int &&>);
 #endif
 }
 
@@ -1786,56 +1786,56 @@ TEST_CASE("is_multipliable")
 #endif
 }
 
-TEST_CASE("compound_multipliable")
+TEST_CASE("in_place_multipliable")
 {
-    REQUIRE(!is_compound_multipliable_v<void, void>);
-    REQUIRE(!is_compound_multipliable_v<void, int>);
-    REQUIRE(!is_compound_multipliable_v<int, void>);
+    REQUIRE(!is_in_place_multipliable_v<void, void>);
+    REQUIRE(!is_in_place_multipliable_v<void, int>);
+    REQUIRE(!is_in_place_multipliable_v<int, void>);
 
-    REQUIRE(is_compound_multipliable_v<int &, int>);
-    REQUIRE(is_compound_multipliable_v<int &, int &>);
-    REQUIRE(is_compound_multipliable_v<int &, const int &>);
-    REQUIRE(is_compound_multipliable_v<int &, int &&>);
+    REQUIRE(is_in_place_multipliable_v<int &, int>);
+    REQUIRE(is_in_place_multipliable_v<int &, int &>);
+    REQUIRE(is_in_place_multipliable_v<int &, const int &>);
+    REQUIRE(is_in_place_multipliable_v<int &, int &&>);
 
-    REQUIRE(!is_compound_multipliable_v<int &&, int>);
-    REQUIRE(!is_compound_multipliable_v<int &&, int &>);
-    REQUIRE(!is_compound_multipliable_v<int &&, const int &>);
-    REQUIRE(!is_compound_multipliable_v<int &&, int &&>);
+    REQUIRE(!is_in_place_multipliable_v<int &&, int>);
+    REQUIRE(!is_in_place_multipliable_v<int &&, int &>);
+    REQUIRE(!is_in_place_multipliable_v<int &&, const int &>);
+    REQUIRE(!is_in_place_multipliable_v<int &&, int &&>);
 
-    REQUIRE(!is_compound_multipliable_v<const int &, int>);
-    REQUIRE(!is_compound_multipliable_v<const int &, int &>);
-    REQUIRE(!is_compound_multipliable_v<const int &, const int &>);
-    REQUIRE(!is_compound_multipliable_v<const int &, int &&>);
+    REQUIRE(!is_in_place_multipliable_v<const int &, int>);
+    REQUIRE(!is_in_place_multipliable_v<const int &, int &>);
+    REQUIRE(!is_in_place_multipliable_v<const int &, const int &>);
+    REQUIRE(!is_in_place_multipliable_v<const int &, int &&>);
 
-    REQUIRE(!is_compound_multipliable_v<int, int>);
-    REQUIRE(!is_compound_multipliable_v<int, int &>);
-    REQUIRE(!is_compound_multipliable_v<int, const int &>);
-    REQUIRE(!is_compound_multipliable_v<int, int &&>);
+    REQUIRE(!is_in_place_multipliable_v<int, int>);
+    REQUIRE(!is_in_place_multipliable_v<int, int &>);
+    REQUIRE(!is_in_place_multipliable_v<int, const int &>);
+    REQUIRE(!is_in_place_multipliable_v<int, int &&>);
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!CompoundMultipliable<void, void>);
-    REQUIRE(!CompoundMultipliable<void, int>);
-    REQUIRE(!CompoundMultipliable<int, void>);
+    REQUIRE(!InPlaceMultipliable<void, void>);
+    REQUIRE(!InPlaceMultipliable<void, int>);
+    REQUIRE(!InPlaceMultipliable<int, void>);
 
-    REQUIRE(CompoundMultipliable<int &, int>);
-    REQUIRE(CompoundMultipliable<int &, int &>);
-    REQUIRE(CompoundMultipliable<int &, const int &>);
-    REQUIRE(CompoundMultipliable<int &, int &&>);
+    REQUIRE(InPlaceMultipliable<int &, int>);
+    REQUIRE(InPlaceMultipliable<int &, int &>);
+    REQUIRE(InPlaceMultipliable<int &, const int &>);
+    REQUIRE(InPlaceMultipliable<int &, int &&>);
 
-    REQUIRE(!CompoundMultipliable<int &&, int>);
-    REQUIRE(!CompoundMultipliable<int &&, int &>);
-    REQUIRE(!CompoundMultipliable<int &&, const int &>);
-    REQUIRE(!CompoundMultipliable<int &&, int &&>);
+    REQUIRE(!InPlaceMultipliable<int &&, int>);
+    REQUIRE(!InPlaceMultipliable<int &&, int &>);
+    REQUIRE(!InPlaceMultipliable<int &&, const int &>);
+    REQUIRE(!InPlaceMultipliable<int &&, int &&>);
 
-    REQUIRE(!CompoundMultipliable<const int &, int>);
-    REQUIRE(!CompoundMultipliable<const int &, int &>);
-    REQUIRE(!CompoundMultipliable<const int &, const int &>);
-    REQUIRE(!CompoundMultipliable<const int &, int &&>);
+    REQUIRE(!InPlaceMultipliable<const int &, int>);
+    REQUIRE(!InPlaceMultipliable<const int &, int &>);
+    REQUIRE(!InPlaceMultipliable<const int &, const int &>);
+    REQUIRE(!InPlaceMultipliable<const int &, int &&>);
 
-    REQUIRE(!CompoundMultipliable<int, int>);
-    REQUIRE(!CompoundMultipliable<int, int &>);
-    REQUIRE(!CompoundMultipliable<int, const int &>);
-    REQUIRE(!CompoundMultipliable<int, int &&>);
+    REQUIRE(!InPlaceMultipliable<int, int>);
+    REQUIRE(!InPlaceMultipliable<int, int &>);
+    REQUIRE(!InPlaceMultipliable<int, const int &>);
+    REQUIRE(!InPlaceMultipliable<int, int &&>);
 #endif
 }
 
@@ -1897,55 +1897,55 @@ TEST_CASE("is_divisible")
 #endif
 }
 
-TEST_CASE("compound_divisible")
+TEST_CASE("in_place_divisible")
 {
-    REQUIRE(!is_compound_divisible_v<void, void>);
-    REQUIRE(!is_compound_divisible_v<void, int>);
-    REQUIRE(!is_compound_divisible_v<int, void>);
+    REQUIRE(!is_in_place_divisible_v<void, void>);
+    REQUIRE(!is_in_place_divisible_v<void, int>);
+    REQUIRE(!is_in_place_divisible_v<int, void>);
 
-    REQUIRE(is_compound_divisible_v<int &, int>);
-    REQUIRE(is_compound_divisible_v<int &, int &>);
-    REQUIRE(is_compound_divisible_v<int &, const int &>);
-    REQUIRE(is_compound_divisible_v<int &, int &&>);
+    REQUIRE(is_in_place_divisible_v<int &, int>);
+    REQUIRE(is_in_place_divisible_v<int &, int &>);
+    REQUIRE(is_in_place_divisible_v<int &, const int &>);
+    REQUIRE(is_in_place_divisible_v<int &, int &&>);
 
-    REQUIRE(!is_compound_divisible_v<int &&, int>);
-    REQUIRE(!is_compound_divisible_v<int &&, int &>);
-    REQUIRE(!is_compound_divisible_v<int &&, const int &>);
-    REQUIRE(!is_compound_divisible_v<int &&, int &&>);
+    REQUIRE(!is_in_place_divisible_v<int &&, int>);
+    REQUIRE(!is_in_place_divisible_v<int &&, int &>);
+    REQUIRE(!is_in_place_divisible_v<int &&, const int &>);
+    REQUIRE(!is_in_place_divisible_v<int &&, int &&>);
 
-    REQUIRE(!is_compound_divisible_v<const int &, int>);
-    REQUIRE(!is_compound_divisible_v<const int &, int &>);
-    REQUIRE(!is_compound_divisible_v<const int &, const int &>);
-    REQUIRE(!is_compound_divisible_v<const int &, int &&>);
+    REQUIRE(!is_in_place_divisible_v<const int &, int>);
+    REQUIRE(!is_in_place_divisible_v<const int &, int &>);
+    REQUIRE(!is_in_place_divisible_v<const int &, const int &>);
+    REQUIRE(!is_in_place_divisible_v<const int &, int &&>);
 
-    REQUIRE(!is_compound_divisible_v<int, int>);
-    REQUIRE(!is_compound_divisible_v<int, int &>);
-    REQUIRE(!is_compound_divisible_v<int, const int &>);
-    REQUIRE(!is_compound_divisible_v<int, int &&>);
+    REQUIRE(!is_in_place_divisible_v<int, int>);
+    REQUIRE(!is_in_place_divisible_v<int, int &>);
+    REQUIRE(!is_in_place_divisible_v<int, const int &>);
+    REQUIRE(!is_in_place_divisible_v<int, int &&>);
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!CompoundDivisible<void, void>);
-    REQUIRE(!CompoundDivisible<void, int>);
-    REQUIRE(!CompoundDivisible<int, void>);
+    REQUIRE(!InPlaceDivisible<void, void>);
+    REQUIRE(!InPlaceDivisible<void, int>);
+    REQUIRE(!InPlaceDivisible<int, void>);
 
-    REQUIRE(CompoundDivisible<int &, int>);
-    REQUIRE(CompoundDivisible<int &, int &>);
-    REQUIRE(CompoundDivisible<int &, const int &>);
-    REQUIRE(CompoundDivisible<int &, int &&>);
+    REQUIRE(InPlaceDivisible<int &, int>);
+    REQUIRE(InPlaceDivisible<int &, int &>);
+    REQUIRE(InPlaceDivisible<int &, const int &>);
+    REQUIRE(InPlaceDivisible<int &, int &&>);
 
-    REQUIRE(!CompoundDivisible<int &&, int>);
-    REQUIRE(!CompoundDivisible<int &&, int &>);
-    REQUIRE(!CompoundDivisible<int &&, const int &>);
-    REQUIRE(!CompoundDivisible<int &&, int &&>);
+    REQUIRE(!InPlaceDivisible<int &&, int>);
+    REQUIRE(!InPlaceDivisible<int &&, int &>);
+    REQUIRE(!InPlaceDivisible<int &&, const int &>);
+    REQUIRE(!InPlaceDivisible<int &&, int &&>);
 
-    REQUIRE(!CompoundDivisible<const int &, int>);
-    REQUIRE(!CompoundDivisible<const int &, int &>);
-    REQUIRE(!CompoundDivisible<const int &, const int &>);
-    REQUIRE(!CompoundDivisible<const int &, int &&>);
+    REQUIRE(!InPlaceDivisible<const int &, int>);
+    REQUIRE(!InPlaceDivisible<const int &, int &>);
+    REQUIRE(!InPlaceDivisible<const int &, const int &>);
+    REQUIRE(!InPlaceDivisible<const int &, int &&>);
 
-    REQUIRE(!CompoundDivisible<int, int>);
-    REQUIRE(!CompoundDivisible<int, int &>);
-    REQUIRE(!CompoundDivisible<int, const int &>);
-    REQUIRE(!CompoundDivisible<int, int &&>);
+    REQUIRE(!InPlaceDivisible<int, int>);
+    REQUIRE(!InPlaceDivisible<int, int &>);
+    REQUIRE(!InPlaceDivisible<int, const int &>);
+    REQUIRE(!InPlaceDivisible<int, int &&>);
 #endif
 }
