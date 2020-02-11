@@ -23,9 +23,10 @@
 
 #endif
 
+#include <absl/base/attributes.h>
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
-#include <absl/hash/hash.h>
+#include <absl/numeric/int128.h>
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
