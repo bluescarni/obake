@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <mutex>
@@ -512,14 +513,33 @@ namespace detail
 //   through const lvalue ref;
 // - provide additional mixing.
 struct series_key_hasher {
-    static ::std::size_t hash_mixer(const ::std::size_t &h) noexcept
+    // NOTE: here we are duplicating a bit of internal
+    // abseil code for integral hash mixing, with the intent
+    // of avoiding the per-process seeding that abseil does.
+    // See here for the original code:
+    // https://github.com/abseil/abseil-cpp/blob/37dd2562ec830d547a1524bb306be313ac3f2556/absl/hash/internal/hash.h#L754
+    // If/when abseil starts supporting DLL builds, we can
+    // remove this code and switch back to using abseil's
+    // own hash machinery for mixing.
+    static constexpr ::std::uint64_t kMul
+        = sizeof(::std::size_t) == 4u ? ::std::uint64_t{0xcc9e2d51ull} : ::std::uint64_t{0x9ddfea08eb382d69ull};
+    ABSL_ATTRIBUTE_ALWAYS_INLINE static ::std::uint64_t Mix(::std::uint64_t state, ::std::uint64_t v)
     {
-        return ::absl::Hash<::std::size_t>{}(h);
+        using MultType = ::std::conditional_t<sizeof(::std::size_t) == 4u, ::std::uint64_t, ::absl::uint128>;
+        // We do the addition in 64-bit space to make sure the 128-bit
+        // multiplication is fast. If we were to do it as MultType the compiler has
+        // to assume that the high word is non-zero and needs to perform 2
+        // multiplications instead of one.
+        MultType m = state + v;
+        m *= kMul;
+        return static_cast<::std::uint64_t>(m ^ (m >> (sizeof(m) * 8 / 2)));
     }
     template <typename K>
     ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
     {
-        return series_key_hasher::hash_mixer(::obake::hash(k));
+        // NOTE: mix with a compile-time seed.
+        return static_cast<::std::size_t>(
+            series_key_hasher::Mix(15124392053943080205ull, static_cast<::std::uint64_t>(::obake::hash(k))));
     }
 };
 

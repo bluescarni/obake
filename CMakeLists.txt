@@ -228,12 +228,12 @@ target_link_libraries(obake PUBLIC
     mp++::mp++
     absl::flat_hash_map
     absl::flat_hash_set
-    absl::hash
     Boost::boost
     Boost::serialization
     Boost::disable_autolinking
     TBB::tbb
 )
+
 if(OBAKE_WITH_LIBBACKTRACE)
     target_link_libraries(obake PRIVATE libbacktrace::libbacktrace)
 else()
