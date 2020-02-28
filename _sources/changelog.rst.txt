@@ -36,7 +36,7 @@ Fix
 ~~~
 
 - Fix a bug in the conversion operator for series
-  (`#98 <https://github.com/bluescarni/obake/pull/98>`__).
+  (`#99 <https://github.com/bluescarni/obake/pull/99>`__).
 - Fix an overflow detection bug in the dynamic packed
   monomial class
   (`#94 <https://github.com/bluescarni/obake/pull/94>`__).
