@@ -10,7 +10,8 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O m
 export deps_dir=$HOME/local
 bash miniconda.sh -b -p $HOME/miniconda
 export PATH="$HOME/miniconda/bin:$PATH"
-conda config --add channels conda-forge --force
+conda config --add channels conda-forge
+conda config --set channel_priority strict
 # NOTE: the clang pins are hopefully temporary.
 conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel clang<10 clangdev<10 abseil-cpp"
 conda create -q -p $deps_dir -y $conda_pkgs
