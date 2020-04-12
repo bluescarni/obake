@@ -234,6 +234,7 @@ to add ``conda-forge`` to the channels:
 .. code-block:: console
 
    $ conda config --add channels conda-forge
+   $ conda config --set channel_priority strict
    $ conda install obake obake-devel
 
 Please refer to the `conda documentation <https://conda.io/en/latest/>`__ for instructions on how to setup and manage
