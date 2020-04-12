@@ -270,7 +270,7 @@ if(YACMA_COMPILER_IS_MSVC)
 	"${CMAKE_CURRENT_LIST_DIR}/include/obake/cf/cf_tex_stream_insert.hpp"
     )
 
-source_group(TREE "${CMAKE_CURRENT_LIST_DIR}/include/obake" PREFIX "Header Files" FILES ${OBAKE_HEADER_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/include/obake" PREFIX "Header Files" FILES ${OBAKE_HEADER_FILES})
 set(OBAKE_SRC_FILES ${OBAKE_SRC_FILES} ${OBAKE_HEADER_FILES})	
 	
 endif()
