@@ -121,11 +121,24 @@ template <typename T>
 constexpr auto negate_impl(T &&x, priority_tag<1>)
     OBAKE_SS_FORWARD_FUNCTION((customisation::internal::negate<T &&>)(::std::forward<T>(x)));
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4146)
+
+#endif
+
 // Lowest-priority: implementation based on unary minus + assignment.
 // NOTE: this must go into lowest priority, we want the ADL-based implementation to have
 // the precedence.
 template <typename T>
 constexpr auto negate_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(x = -::std::forward<T>(x));
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif
 
 } // namespace detail
 
