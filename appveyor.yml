@@ -15,7 +15,8 @@ install:
 - call "C:\\Miniconda36-x64\\Scripts\\activate.bat"
 - conda config --set always_yes yes
 - conda update -n base conda
-- conda config --add channels conda-forge --force
+- conda config --add channels conda-forge
+- conda config --set channel_priority strict
 - if [%BUILD_TYPE%]==[MSVC19_64] conda create --name obake cmake boost-cpp mpir mpfr tbb tbb-devel
 - if [%BUILD_TYPE%]==[MSVC15_clang_64] conda create --name obake "cmake<3.16" boost-cpp mppp tbb tbb-devel clangdev ninja abseil-cpp
 - call activate obake
