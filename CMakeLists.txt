@@ -195,6 +195,86 @@ else()
     set(OBAKE_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/boost_stack_trace.cpp" "${OBAKE_SRC_FILES}")
 endif()
 
+
+# Make obake header files accessible in Visual Studio IDE.
+if(YACMA_COMPILER_IS_MSVC)
+	set(OBAKE_HEADER_FILES
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/byte_size.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/exceptions.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/hash.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/k_packing.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/ranges.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/s11n.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/series.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/stack_trace.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/symbols.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/tex_stream_insert.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/type_name.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/type_traits.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/d_packed_monomial.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_diff.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_homomorphic_hash.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_integrate.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_mul.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_pow.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_range_overflow_check.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/monomial_subs.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/packed_monomial.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/polynomials/polynomial.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/degree.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/diff.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/evaluate.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/fma3.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/integrate.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/is_zero.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/negate.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/p_degree.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/pow.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/safe_cast.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/safe_convert.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/subs.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/trim.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/truncate_degree.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/math/truncate_p_degree.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_degree.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_evaluate.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_is_compatible.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_is_one.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_is_zero.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_merge_symbols.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_p_degree.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_stream_insert.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_tex_stream_insert.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_trim.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_trim_identify.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/abseil.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_flag_array.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_lock_guard.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/carray.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/fcast.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/hc.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/ignore.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/it_diff_check.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/limits.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/mppp_utils.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/not_implemented.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/priority_tag.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/safe_integral_arith.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/ss_func_forward.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/to_string.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/tuple_for_each.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/type_c.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/visibility.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/xoroshiro128_plus.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/cf/cf_stream_insert.hpp"
+	"${CMAKE_CURRENT_LIST_DIR}/include/obake/cf/cf_tex_stream_insert.hpp"
+    )
+
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/include/obake" PREFIX "Header Files" FILES ${OBAKE_HEADER_FILES})
+set(OBAKE_SRC_FILES ${OBAKE_SRC_FILES} ${OBAKE_HEADER_FILES})	
+	
+endif()
+
 add_library(obake SHARED "${OBAKE_SRC_FILES}")
 set_property(TARGET obake PROPERTY VERSION "5.0")
 set_property(TARGET obake PROPERTY SOVERSION 5)
