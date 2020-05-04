@@ -6,16 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <obake/polynomials/packed_monomial.hpp>
+#ifndef OBAKE_BENCHMARK_SPARSE_DENSE_OPTIONS_HPP
+#define OBAKE_BENCHMARK_SPARSE_DENSE_OPTIONS_HPP
 
-#include <mp++/integer.hpp>
+#include <tuple>
 
-#include "dense.hpp"
-
-using namespace obake;
-using namespace obake_benchmark;
-
-int main()
+namespace obake_benchmark
 {
-    dense_benchmark_4_vars<packed_monomial<unsigned long>, mppp::integer<2>>(30);
+
+std::tuple<int, int> sparse_dense_options(int, char **, int);
+
 }
+
+#endif
