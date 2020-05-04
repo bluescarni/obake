@@ -21,15 +21,15 @@ namespace po = boost::program_options;
 namespace obake_benchmark
 {
 
-std::tuple<int, int> sparse_dense_options(int argc, char **argv)
+std::tuple<int, int> sparse_dense_options(int argc, char **argv, int default_power)
 {
     int nthreads, power;
 
     po::options_description desc("Allowed options");
 
     desc.add_options()("help", "produce help message")("nthreads", po::value<int>(&nthreads)->default_value(0),
-                                                       "number of threads")(
-        "power", po::value<int>(&power)->default_value(12), "power of the exponentiation");
+                                                       "number of threads (0 will use all cores)")(
+        "power", po::value<int>(&power)->default_value(default_power), "power of the exponentiation");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);

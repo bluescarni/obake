@@ -14,7 +14,7 @@
 namespace obake_benchmark
 {
 
-std::tuple<int, int> sparse_dense_options(int, char **);
+std::tuple<int, int> sparse_dense_options(int, char **, int);
 
 }
 

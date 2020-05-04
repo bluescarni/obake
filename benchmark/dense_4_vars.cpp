@@ -14,11 +14,11 @@
 
 #include <tbb/global_control.h>
 
-#include <mp++/integer.hpp>
-
 #include <obake/polynomials/packed_monomial.hpp>
 
-#include "sparse.hpp"
+#include <mp++/integer.hpp>
+
+#include "dense.hpp"
 #include "sparse_dense_options.hpp"
 
 using namespace obake;
@@ -26,21 +26,18 @@ using namespace obake_benchmark;
 
 // The old benchmarks referred to these powers:
 //
-// - sparse01 -> 12
-// - sparse02 -> 16
-// - sparse03 -> 20
-// - sparse04 -> 25
+// - dense01 -> 30
 int main(int argc, char **argv)
 {
     try {
-        const auto [nthreads, power] = sparse_dense_options(argc, argv, 12);
+        const auto [nthreads, power] = sparse_dense_options(argc, argv, 30);
 
         std::optional<tbb::global_control> c;
         if (nthreads > 0) {
             c.emplace(tbb::global_control::max_allowed_parallelism, nthreads);
         }
 
-        sparse_benchmark<packed_monomial<std::uint64_t>, mppp::integer<2>>(power);
+        dense_benchmark_4_vars<packed_monomial<std::uint64_t>, mppp::integer<2>>(power);
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << '\n';
         return EXIT_FAILURE;
