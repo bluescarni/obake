@@ -11,10 +11,6 @@
 #include <exception>
 #include <iostream>
 #include <optional>
-#include <stdexcept>
-#include <string>
-
-#include <boost/program_options.hpp>
 
 #include <tbb/global_control.h>
 
@@ -23,8 +19,7 @@
 #include <obake/polynomials/packed_monomial.hpp>
 
 #include "sparse.hpp"
-
-namespace po = boost::program_options;
+#include "sparse_dense_options.hpp"
 
 using namespace obake;
 using namespace obake_benchmark;
@@ -37,33 +32,8 @@ using namespace obake_benchmark;
 // - sparse04 -> 25
 int main(int argc, char **argv)
 {
-    int nthreads, power;
-
-    po::options_description desc("Allowed options");
-
-    desc.add_options()("help", "produce help message")("nthreads", po::value<int>(&nthreads)->default_value(0),
-                                                       "number of threads")(
-        "power", po::value<int>(&power)->default_value(12), "power of the exponentiation");
-
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);
-
-    if (vm.count("help")) {
-        std::cout << desc << "\n";
-        return EXIT_SUCCESS;
-    }
-
     try {
-        if (nthreads < 0) {
-            throw std::invalid_argument("The number of threads must be non-negative, but it is "
-                                        + std::to_string(nthreads) + " instead");
-        }
-
-        if (power < 0) {
-            throw std::invalid_argument("The exponent must be non-negative, but it is " + std::to_string(power)
-                                        + " instead");
-        }
+        const auto [nthreads, power] = sparse_dense_options(argc, argv);
 
         std::optional<tbb::global_control> c;
         if (nthreads > 0) {

@@ -13,9 +13,25 @@ if(NOT TARGET Boost::program_options)
     )
 endif()
 
+add_library(obake_benchmark STATIC sparse_dense_options.cpp)
+target_link_libraries(obake_benchmark PRIVATE Boost::program_options)
+target_compile_options(obake_benchmark PRIVATE
+  "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
+  "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
+  "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
+)
+if(NOT CMAKE_CXX_STANDARD)
+  # The user did not provide the CMAKE_CXX_STANDARD variable,
+  # go with the default (C++17).
+  set_property(TARGET obake_benchmark PROPERTY CXX_STANDARD 17)
+endif()
+set_property(TARGET obake_benchmark PROPERTY CXX_STANDARD_REQUIRED YES)
+set_property(TARGET obake_benchmark PROPERTY CXX_EXTENSIONS NO)
+
 function(ADD_OBAKE_BENCHMARK arg1)
   add_executable(${arg1} ${arg1}.cpp)
-  target_link_libraries(${arg1} PRIVATE obake Boost::program_options)
+  target_link_libraries(${arg1} PRIVATE obake obake_benchmark)
   target_compile_options(${arg1} PRIVATE
     "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
