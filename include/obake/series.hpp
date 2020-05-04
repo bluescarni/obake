@@ -40,6 +40,7 @@
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 
 #include <mp++/integer.hpp>
 
@@ -963,6 +964,10 @@ public:
             ::tbb::parallel_for(::tbb::blocked_range<decltype(m_s_table.begin())>(m_s_table.begin(), m_s_table.end()),
                                 [](const auto &range) {
                                     for (auto &t : range) {
+                                        // NOTE: we should probably check if here
+                                        // it is more performant to move-assign a new
+                                        // table instead. That would ensure the bucket
+                                        // memory is freed as well.
                                         t.clear();
                                     }
                                 });
@@ -1954,23 +1959,42 @@ struct series_default_byte_size_impl {
             retval += sizeof(::std::string) + s.size();
         }
 
-        for (const auto &tab : x._get_s_table()) {
-            // Accumulate the byte size for all terms in the table
-            for (const auto &t : tab) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                const auto &k = t.first;
-                const auto &c = t.second;
+        // Helper to compute the byte size of a single table.
+        auto st_byte_size = [](const auto &tab) {
+            ::std::size_t ret = 0;
 
+            // Accumulate the byte size for all terms in the table
+            for (const auto &[k, c] : tab) {
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
-                retval += ::obake::byte_size(k) + ::obake::byte_size(c)
-                          + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
+                ret += ::obake::byte_size(k) + ::obake::byte_size(c)
+                       + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
             }
 
             // Add the space occupied by the unused slots.
             assert(tab.capacity() >= tab.size());
-            retval += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
+            ret += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
+
+            return ret;
+        };
+
+        if (x._get_s_table().size() > 1u) {
+            ::tbb::parallel_reduce(
+                ::tbb::blocked_range<decltype(x._get_s_table().begin())>(x._get_s_table().begin(),
+                                                                         x._get_s_table().end()),
+                retval,
+                [st_byte_size](const auto &r, ::std::size_t init) {
+                    for (const auto &tab : r) {
+                        init += st_byte_size(tab);
+                    }
+
+                    return init;
+                },
+                [](::std::size_t n1, ::std::size_t n2) { return n1 + n2; });
+        } else {
+            for (const auto &tab : x._get_s_table()) {
+                retval += st_byte_size(tab);
+            }
         }
 
         return retval;
