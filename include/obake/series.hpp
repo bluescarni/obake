@@ -1979,10 +1979,10 @@ struct series_default_byte_size_impl {
         };
 
         if (x._get_s_table().size() > 1u) {
-            ::tbb::parallel_reduce(
+            retval += ::tbb::parallel_reduce(
                 ::tbb::blocked_range<decltype(x._get_s_table().begin())>(x._get_s_table().begin(),
                                                                          x._get_s_table().end()),
-                retval,
+                ::std::size_t(0),
                 [st_byte_size](const auto &r, ::std::size_t init) {
                     for (const auto &tab : r) {
                         init += st_byte_size(tab);
