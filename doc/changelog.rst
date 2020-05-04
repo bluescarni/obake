@@ -1,6 +1,30 @@
 Changelog
 =========
 
+0.5.0 (unreleased)
+------------------
+
+New
+~~~
+
+- obake's header files are now visible in the project
+  files created by the MSVC CMake generators
+  (`#112 <https://github.com/bluescarni/obake/pull/112>`__).
+
+Changes
+~~~~~~~
+
+- Various simplifications and improvements to the benchmarks
+  (`#114 <https://github.com/bluescarni/obake/pull/114>`__).
+- Update Catch to the latest version, 2.12.1
+  (`#114 <https://github.com/bluescarni/obake/pull/114>`__).
+
+Fix
+~~~
+
+- Fix build issues with recent CMake versions
+  (`#111 <https://github.com/bluescarni/obake/pull/111>`__).
+
 0.4.0 (12-02-2020)
 ------------------
 
