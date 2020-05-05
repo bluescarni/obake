@@ -1457,9 +1457,9 @@ private:
             ar << tab.size();
 
             // Save separately key and coefficient.
-            for (const auto &t : tab) {
-                ar << t.first;
-                ar << t.second;
+            for (const auto &[k, c] : tab) {
+                ar << k;
+                ar << c;
             }
         }
     }
