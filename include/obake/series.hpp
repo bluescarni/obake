@@ -40,6 +40,7 @@
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 
 #include <mp++/integer.hpp>
 
@@ -960,12 +961,14 @@ public:
 
         if (m_s_table.size() > 1u) {
             // Clear the tables in parallel if there's more than 1.
-            ::tbb::parallel_for(::tbb::blocked_range<decltype(m_s_table.begin())>(m_s_table.begin(), m_s_table.end()),
-                                [](const auto &range) {
-                                    for (auto &t : range) {
-                                        t.clear();
-                                    }
-                                });
+            ::tbb::parallel_for(::tbb::blocked_range(m_s_table.begin(), m_s_table.end()), [](const auto &range) {
+                for (auto &t : range) {
+                    // NOTE: move assigning a new empty table
+                    // should ensure that the memory in t
+                    // is deallocated.
+                    t = table_type{};
+                }
+            });
         }
     }
 
@@ -1454,9 +1457,9 @@ private:
             ar << tab.size();
 
             // Save separately key and coefficient.
-            for (const auto &t : tab) {
-                ar << t.first;
-                ar << t.second;
+            for (const auto &[k, c] : tab) {
+                ar << k;
+                ar << c;
             }
         }
     }
@@ -1954,23 +1957,40 @@ struct series_default_byte_size_impl {
             retval += sizeof(::std::string) + s.size();
         }
 
-        for (const auto &tab : x._get_s_table()) {
-            // Accumulate the byte size for all terms in the table
-            for (const auto &t : tab) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                const auto &k = t.first;
-                const auto &c = t.second;
+        // Helper to compute the byte size of a single table.
+        auto st_byte_size = [](const auto &tab) {
+            ::std::size_t ret = 0;
 
+            // Accumulate the byte size for all terms in the table
+            for (const auto &[k, c] : tab) {
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
-                retval += ::obake::byte_size(k) + ::obake::byte_size(c)
-                          + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
+                ret += ::obake::byte_size(k) + ::obake::byte_size(c)
+                       + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
             }
 
             // Add the space occupied by the unused slots.
             assert(tab.capacity() >= tab.size());
-            retval += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
+            ret += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
+
+            return ret;
+        };
+
+        if (x._get_s_table().size() > 1u) {
+            retval += ::tbb::parallel_reduce(
+                ::tbb::blocked_range(x._get_s_table().begin(), x._get_s_table().end()), ::std::size_t(0),
+                [st_byte_size](const auto &r, ::std::size_t init) {
+                    for (const auto &tab : r) {
+                        init += st_byte_size(tab);
+                    }
+
+                    return init;
+                },
+                [](auto n1, auto n2) { return n1 + n2; });
+        } else {
+            for (const auto &tab : x._get_s_table()) {
+                retval += st_byte_size(tab);
+            }
         }
 
         return retval;
@@ -4037,7 +4057,7 @@ inline auto make_degree_vector(It begin, It end, const symbol_set &ss, bool para
         // thus it is def-constructible.
         retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
 
-        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+        ::tbb::parallel_for(::tbb::blocked_range(begin, end), [&retval, &d_ex, begin](const auto &range) {
             for (auto it = range.begin(); it != range.end(); ++it) {
                 retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
             }
@@ -4199,7 +4219,7 @@ inline auto make_p_degree_vector(It begin, It end, const symbol_set &ss, const s
         // thus it is def-constructible.
         retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
 
-        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+        ::tbb::parallel_for(::tbb::blocked_range(begin, end), [&retval, &d_ex, begin](const auto &range) {
             for (auto it = range.begin(); it != range.end(); ++it) {
                 retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
             }
