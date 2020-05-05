@@ -7,6 +7,9 @@ Changelog
 New
 ~~~
 
+- Parallelise the ``byte_size()`` implementation for series
+  types
+  (`#115 <https://github.com/bluescarni/obake/pull/115>`__).
 - obake's header files are now visible in the project
   files created by the MSVC CMake generators
   (`#112 <https://github.com/bluescarni/obake/pull/112>`__).
