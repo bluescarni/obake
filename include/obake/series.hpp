@@ -961,16 +961,14 @@ public:
 
         if (m_s_table.size() > 1u) {
             // Clear the tables in parallel if there's more than 1.
-            ::tbb::parallel_for(::tbb::blocked_range<decltype(m_s_table.begin())>(m_s_table.begin(), m_s_table.end()),
-                                [](const auto &range) {
-                                    for (auto &t : range) {
-                                        // NOTE: we should probably check if here
-                                        // it is more performant to move-assign a new
-                                        // table instead. That would ensure the bucket
-                                        // memory is freed as well.
-                                        t.clear();
-                                    }
-                                });
+            ::tbb::parallel_for(::tbb::blocked_range(m_s_table.begin(), m_s_table.end()), [](const auto &range) {
+                for (auto &t : range) {
+                    // NOTE: move assigning a new empty table
+                    // should ensure that the memory in t
+                    // is deallocated.
+                    t = table_type{};
+                }
+            });
         }
     }
 
@@ -1980,9 +1978,7 @@ struct series_default_byte_size_impl {
 
         if (x._get_s_table().size() > 1u) {
             retval += ::tbb::parallel_reduce(
-                ::tbb::blocked_range<decltype(x._get_s_table().begin())>(x._get_s_table().begin(),
-                                                                         x._get_s_table().end()),
-                ::std::size_t(0),
+                ::tbb::blocked_range(x._get_s_table().begin(), x._get_s_table().end()), ::std::size_t(0),
                 [st_byte_size](const auto &r, ::std::size_t init) {
                     for (const auto &tab : r) {
                         init += st_byte_size(tab);
@@ -1990,7 +1986,7 @@ struct series_default_byte_size_impl {
 
                     return init;
                 },
-                [](::std::size_t n1, ::std::size_t n2) { return n1 + n2; });
+                [](auto n1, auto n2) { return n1 + n2; });
         } else {
             for (const auto &tab : x._get_s_table()) {
                 retval += st_byte_size(tab);
@@ -4061,7 +4057,7 @@ inline auto make_degree_vector(It begin, It end, const symbol_set &ss, bool para
         // thus it is def-constructible.
         retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
 
-        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+        ::tbb::parallel_for(::tbb::blocked_range(begin, end), [&retval, &d_ex, begin](const auto &range) {
             for (auto it = range.begin(); it != range.end(); ++it) {
                 retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
             }
@@ -4223,7 +4219,7 @@ inline auto make_p_degree_vector(It begin, It end, const symbol_set &ss, const s
         // thus it is def-constructible.
         retval.resize(::obake::safe_cast<decltype(retval.size())>(end - begin));
 
-        ::tbb::parallel_for(::tbb::blocked_range<It>(begin, end), [&retval, &d_ex, begin](const auto &range) {
+        ::tbb::parallel_for(::tbb::blocked_range(begin, end), [&retval, &d_ex, begin](const auto &range) {
             for (auto it = range.begin(); it != range.end(); ++it) {
                 retval[static_cast<decltype(retval.size())>(it - begin)] = d_ex(*it);
             }
