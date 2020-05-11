@@ -25,7 +25,7 @@ Changes
 Fix
 ~~~
 
-- Fix build with GCC 10 in C++20 mode
+- Fix build failures with GCC 10 in C++20 mode
   (`#116 <https://github.com/bluescarni/obake/pull/116>`__).
 - Fix build issues with recent CMake versions
   (`#111 <https://github.com/bluescarni/obake/pull/111>`__).
