@@ -936,6 +936,9 @@ struct iter07 {
 OBAKE_DECL_ITT_SPEC(iter07, fake_it_traits_input<int>)
 
 // Broken input iterator: missing itt spec.
+// NOTE: this seems not to be broken any more
+// since C++20, where the iterator_traits specialisation
+// can be automatically-generated.
 struct iter08 {
     int &operator*() const;
     int *operator->() const;
@@ -1223,10 +1226,12 @@ TEST_CASE("iterators")
     REQUIRE(!is_input_iterator_v<iter08 &>);
     REQUIRE(!is_input_iterator_v<const iter08>);
 
-#if OBAKE_CPLUSPLUS > 201703L
     // C++20 dependent, different interfaces for iterators
     // (iterators don't need to provide explicit specialisations
     // of iterator_traits any more).
+    // NOTE: currently this is not handled by any released
+    // GCC version yet.
+#if OBAKE_CPLUSPLUS > 201703L && (!defined(__GNUC__) || __GNUC__ > 10)
     REQUIRE(is_iterator_v<iter08>);
 #else
     REQUIRE(!is_iterator_v<iter08>);

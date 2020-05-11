@@ -633,25 +633,7 @@ inline constexpr bool is_equality_comparable_v = is_equality_comparable<T, U>::v
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL EqualityComparable = requires(T &&x, U &&y)
-{
-    {
-        ::std::forward<T>(x) == ::std::forward<U>(y)
-    }
-    ->bool;
-    {
-        ::std::forward<U>(y) == ::std::forward<T>(x)
-    }
-    ->bool;
-    {
-        ::std::forward<T>(x) != ::std::forward<U>(y)
-    }
-    ->bool;
-    {
-        ::std::forward<U>(y) != ::std::forward<T>(x)
-    }
-    ->bool;
-};
+OBAKE_CONCEPT_DECL EqualityComparable = is_equality_comparable_v<T, U>;
 
 #endif
 
@@ -674,17 +656,7 @@ inline constexpr bool is_less_than_comparable_v = is_less_than_comparable<T, U>:
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL LessThanComparable = requires(T &&x, U &&y)
-{
-    {
-        ::std::forward<T>(x) < ::std::forward<U>(y)
-    }
-    ->bool;
-    {
-        ::std::forward<U>(y) < ::std::forward<T>(x)
-    }
-    ->bool;
-};
+OBAKE_CONCEPT_DECL LessThanComparable = is_less_than_comparable_v<T, U>;
 
 #endif
 
@@ -707,17 +679,7 @@ inline constexpr bool is_greater_than_comparable_v = is_greater_than_comparable<
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL GreaterThanComparable = requires(T &&x, U &&y)
-{
-    {
-        ::std::forward<T>(x) > ::std::forward<U>(y)
-    }
-    ->bool;
-    {
-        ::std::forward<U>(y) > ::std::forward<T>(x)
-    }
-    ->bool;
-};
+OBAKE_CONCEPT_DECL GreaterThanComparable = is_greater_than_comparable_v<T, U>;
 
 #endif
 
@@ -740,17 +702,7 @@ inline constexpr bool is_lte_comparable_v = is_lte_comparable<T, U>::value;
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL LTEComparable = requires(T &&x, U &&y)
-{
-    {
-        ::std::forward<T>(x) <= ::std::forward<U>(y)
-    }
-    ->bool;
-    {
-        ::std::forward<U>(y) <= ::std::forward<T>(x)
-    }
-    ->bool;
-};
+OBAKE_CONCEPT_DECL LTEComparable = is_lte_comparable_v<T, U>;
 
 #endif
 
@@ -773,17 +725,7 @@ inline constexpr bool is_gte_comparable_v = is_gte_comparable<T, U>::value;
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL GTEComparable = requires(T &&x, U &&y)
-{
-    {
-        ::std::forward<T>(x) >= ::std::forward<U>(y)
-    }
-    ->bool;
-    {
-        ::std::forward<U>(y) >= ::std::forward<T>(x)
-    }
-    ->bool;
-};
+OBAKE_CONCEPT_DECL GTEComparable = is_gte_comparable_v<T, U>;
 
 #endif
 

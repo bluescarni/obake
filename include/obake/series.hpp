@@ -1902,7 +1902,7 @@ struct series_default_negate_impl {
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires CvrSeries<T> && !::std::is_const_v<::std::remove_reference_t<T>> inline constexpr auto negate<T>
+    requires CvrSeries<T> && (!::std::is_const_v<::std::remove_reference_t<T>>)inline constexpr auto negate<T>
 #else
 inline constexpr auto negate<T, ::std::enable_if_t<::std::conjunction_v<
                                     is_cvr_series<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
@@ -3022,12 +3022,14 @@ template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 
 // on top of the binary operator.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires !CvrSeries<T> && CvrSeries<U>
+    requires(!CvrSeries<T>)
+    && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator+=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
+    constexpr auto operator+=(T &&x, U &&y)
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3178,12 +3180,14 @@ template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 
 // on top of the binary operator.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires !CvrSeries<T> && CvrSeries<U>
+    requires(!CvrSeries<T>)
+    && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator-=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
+    constexpr auto operator-=(T &&x, U &&y)
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3425,12 +3429,14 @@ template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires !CvrSeries<T> && CvrSeries<U>
+    requires(!CvrSeries<T>)
+    && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
+    constexpr auto operator*=(T &&x, U &&y)
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3614,12 +3620,14 @@ template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires !CvrSeries<T> && CvrSeries<U>
+    requires(!CvrSeries<T>)
+    && CvrSeries<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
 #endif
-    constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
+    constexpr auto operator/=(T &&x, U &&y)
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {

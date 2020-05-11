@@ -46,7 +46,7 @@ namespace detail
 // Implementation for C++ integrals.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-    requires Integral<T> && !::std::is_const_v<T> && Integral<U>
+    requires Integral<T> && (!::std::is_const_v<T>) && Integral<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>, is_integral<U>>,
@@ -122,7 +122,7 @@ inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-requires Integral<T> && !::std::is_const_v<T>
+requires Integral<T> && (!::std::is_const_v<T>)
 #else
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
@@ -157,7 +157,7 @@ inline bool safe_convert(::mppp::rational<SSize> &q, const ::mppp::integer<SSize
 // Implementations for C++ integrals - mppp::rational.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-    requires Integral<T> && !::std::is_const_v<T>
+    requires Integral<T> && (!::std::is_const_v<T>)
 #else
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
