@@ -6,6 +6,7 @@
 [![Code Coverage](https://img.shields.io/codecov/c/github/bluescarni/obake.svg?style=for-the-badge)](https://codecov.io/github/bluescarni/obake?branch=master)
 ![license](https://img.shields.io/badge/license-MPL2-blue.svg?style=for-the-badge)
 [![Anaconda-Server Badge](https://img.shields.io/conda/vn/conda-forge/obake.svg?style=for-the-badge)](https://anaconda.org/conda-forge/obake)
+[![DOI](https://zenodo.org/badge/175000968.svg)](https://zenodo.org/badge/latestdoi/175000968)
 
 > [Obake (お化け)](https://en.wikipedia.org/wiki/Obake) [...] are a class of yōkai,
 > preternatural creatures in Japanese folklore.
@@ -16,6 +17,10 @@ obake is a C++17 library for the symbolic manipulation of sparse polynomials
 and other closely-related mathematical objects (e.g., truncated power
 series, Poisson series, etc.). obake is the successor of the
 [piranha](https://github.com/bluescarni/piranha) project.
+
+If you are using obake as part of your research, teaching, or other activities, we would be grateful if you could star
+the repository and/or cite our work. The DOI of the latest version and other citation resources are available
+at [this link](https://doi.org/10.5281/zenodo.3820768).
 
 obake is under active development. Preliminary documentation
 (including installation instructions) is available
