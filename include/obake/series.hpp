@@ -1963,8 +1963,11 @@ struct series_default_byte_size_impl {
 
             // Accumulate the byte size for all terms in the table
             for (const auto &[k, c] : tab) {
+                // NOTE: GCC 7 gives an ICE on the assert.
+#if !defined(__GNUC__) || __GNUC__ > 7
                 // NOTE: account for possible padding in the series term class.
                 static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
+#endif
                 ret += ::obake::byte_size(k) + ::obake::byte_size(c)
                        + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
             }
