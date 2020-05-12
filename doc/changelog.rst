@@ -1,6 +1,15 @@
 Changelog
 =========
 
+0.6.0 (unreleased)
+------------------
+
+Fix
+~~~
+
+- Implement a workaround for a compiler bug in GCC 7
+  (`#117 <https://github.com/bluescarni/obake/pull/117>`__).
+
 0.5.0 (11-05-2020)
 ------------------
 
