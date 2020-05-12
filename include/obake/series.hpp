@@ -1938,6 +1938,25 @@ namespace customisation::internal
 {
 
 struct series_default_byte_size_impl {
+    // Helper to compute the byte size of a single table.
+    template <typename T, typename Tab>
+    static auto st_byte_size(const Tab &tab)
+    {
+        ::std::size_t ret = 0;
+
+        // Accumulate the byte size for all terms in the table
+        for (const auto &[k, c] : tab) {
+            // NOTE: account for possible padding in the series term class.
+            static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
+            ret += ::obake::byte_size(k) + ::obake::byte_size(c) + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
+        }
+
+        // Add the space occupied by the unused slots.
+        assert(tab.capacity() >= tab.size());
+        ret += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
+
+        return ret;
+    }
     template <typename T>
     ::std::size_t operator()(const T &x) const
     {
@@ -1957,34 +1976,12 @@ struct series_default_byte_size_impl {
             retval += sizeof(::std::string) + s.size();
         }
 
-        // Helper to compute the byte size of a single table.
-        auto st_byte_size = [](const auto &tab) {
-            ::std::size_t ret = 0;
-
-            // Accumulate the byte size for all terms in the table
-            for (const auto &[k, c] : tab) {
-                // NOTE: GCC 7 gives an ICE on the assert.
-#if !defined(__GNUC__) || __GNUC__ > 7
-                // NOTE: account for possible padding in the series term class.
-                static_assert(sizeof(k) + sizeof(c) <= sizeof(series_term_t<T>));
-#endif
-                ret += ::obake::byte_size(k) + ::obake::byte_size(c)
-                       + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
-            }
-
-            // Add the space occupied by the unused slots.
-            assert(tab.capacity() >= tab.size());
-            ret += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
-
-            return ret;
-        };
-
         if (x._get_s_table().size() > 1u) {
             retval += ::tbb::parallel_reduce(
                 ::tbb::blocked_range(x._get_s_table().begin(), x._get_s_table().end()), ::std::size_t(0),
-                [st_byte_size](const auto &r, ::std::size_t init) {
+                [](const auto &r, ::std::size_t init) {
                     for (const auto &tab : r) {
-                        init += st_byte_size(tab);
+                        init += series_default_byte_size_impl::st_byte_size<T>(tab);
                     }
 
                     return init;
@@ -1992,7 +1989,7 @@ struct series_default_byte_size_impl {
                 [](auto n1, auto n2) { return n1 + n2; });
         } else {
             for (const auto &tab : x._get_s_table()) {
-                retval += st_byte_size(tab);
+                retval += series_default_byte_size_impl::st_byte_size<T>(tab);
             }
         }
 
