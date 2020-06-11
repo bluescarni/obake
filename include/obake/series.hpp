@@ -656,12 +656,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
     } else {
         auto &to_table = to._get_s_table()[0];
 
-        for (auto &t : from._get_s_table()[0]) {
-            // NOTE: old clang does not like structured
-            // bindings in the for loop.
-            auto &k = t.first;
-            auto &c = t.second;
-
+        for (const auto &[k, c] : from._get_s_table()[0]) {
             // Compute the merged key.
             auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
 

@@ -7,6 +7,8 @@ Changelog
 Fix
 ~~~
 
+- Fix a bug in polynomial integration
+  (`#119 <https://github.com/bluescarni/obake/pull/119>`__).
 - Implement a workaround for a compiler bug in GCC 7
   (`#117 <https://github.com/bluescarni/obake/pull/117>`__).
 
