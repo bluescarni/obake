@@ -117,7 +117,7 @@ TEST_CASE("polynomial_truncate_p_degree_large")
 
 // See:
 // https://github.com/bluescarni/obake/issues/118
-TEST_CASE("integrate bug")
+TEST_CASE("bug #118")
 {
     using Polynomial = polynomial<packed_monomial<unsigned int>, mppp::rational<1>>;
 
