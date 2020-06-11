@@ -2794,7 +2794,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
     const auto &ss = x_.get_symbol_set();
 
     // Check if s is in the original symbol set.
-    const auto it_s = ss.find(s);
+    const auto it_s = ss.lower_bound(s);
     // Determine its index as well.
     const auto s_idx = ss.index_of(it_s);
     if (it_s == ss.cend() || *it_s != s) {

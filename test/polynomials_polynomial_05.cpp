@@ -9,7 +9,10 @@
 #include <initializer_list>
 
 #include <mp++/integer.hpp>
+#include <mp++/rational.hpp>
 
+#include <obake/math/integrate.hpp>
+#include <obake/math/subs.hpp>
 #include <obake/math/truncate_p_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
@@ -110,4 +113,26 @@ TEST_CASE("polynomial_truncate_p_degree_large")
     const auto tcmp = truncated_mul(f, g, 50, symbol_set{"x", "z", "u"});
 
     REQUIRE(tpd_copy(cmp, 50, symbol_set{"x", "z", "u"}) == tcmp);
+}
+
+// See:
+// https://github.com/bluescarni/obake/issues/118
+TEST_CASE("integrate bug")
+{
+    using Polynomial = polynomial<packed_monomial<unsigned int>, mppp::rational<1>>;
+
+    auto x = "x";
+    auto y = "e";
+
+    auto [p_x, p_y] = make_polynomials<Polynomial>(x, y);
+
+    auto x2y_version1 = integrate(p_x * p_x, y);
+    auto x2y_version2 = p_x * p_x * p_y;
+
+    REQUIRE(x2y_version1 == x2y_version2);
+
+    auto x2_version1 = subs(x2y_version1, symbol_map<Polynomial>{{y, Polynomial{1}}});
+    auto x2_version2 = subs(x2y_version2, symbol_map<Polynomial>{{y, Polynomial{1}}});
+
+    REQUIRE(x2_version1 == x2_version2);
 }
