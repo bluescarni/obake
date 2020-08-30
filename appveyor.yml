@@ -12,7 +12,7 @@ environment:
       BUILD_TYPE: MSVC19_64
 
 install:
-- call "C:\\Miniconda36-x64\\Scripts\\activate.bat"
+- call "C:\\Miniconda37-x64\\Scripts\\activate.bat"
 - conda config --set always_yes yes
 - conda update -n base conda
 - conda config --add channels conda-forge
@@ -24,7 +24,7 @@ install:
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 build_script:
-- set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\obake\Library
+- set CONDA_PREFIX_PATH=C:\Miniconda37-x64\envs\obake\Library
 - mkdir build
 - cd build
 
