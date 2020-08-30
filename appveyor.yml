@@ -18,7 +18,7 @@ install:
 - conda config --add channels conda-forge
 - conda config --set channel_priority strict
 - if [%BUILD_TYPE%]==[MSVC19_64] conda create --name obake cmake boost-cpp mpir mpfr tbb tbb-devel
-- if [%BUILD_TYPE%]==[MSVC17_clang_64] conda create --name obake "cmake<3.16" boost-cpp mppp tbb tbb-devel clangdev ninja abseil-cpp
+- if [%BUILD_TYPE%]==[MSVC17_clang_64] conda create --name obake cmake boost-cpp mppp tbb tbb-devel clangdev ninja abseil-cpp
 - call activate obake
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] clang-cl -v
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
