@@ -55,7 +55,7 @@ build_script:
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake .. -G "Visual Studio 16 2019" -A x64 -DOBAKE_BUILD_TESTS=yes
 - if [%BUILD_TYPE%]==[MSVC19_64] cmake --build . --config RelWithDebInfo
 
-- if [%BUILD_TYPE%]==[MSVC17_clang_64] cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DOBAKE_BUILD_TESTS=ON
+- if [%BUILD_TYPE%]==[MSVC17_clang_64] cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_PREFIX_PATH=%CONDA_PREFIX_PATH% -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX_PATH% -DOBAKE_BUILD_TESTS=ON -DBoost_NO_BOOST_CMAKE=ON
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] cmake --build . -- -v
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] cmake --build . --target install
 
