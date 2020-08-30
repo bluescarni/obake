@@ -21,7 +21,7 @@ install:
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] conda create --name obake "cmake<3.16" boost-cpp mppp tbb tbb-devel clangdev ninja abseil-cpp
 - call activate obake
 - if [%BUILD_TYPE%]==[MSVC17_clang_64] clang-cl -v
-- if [%BUILD_TYPE%]==[MSVC17_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\vsdevcmd"  amd64
+- if [%BUILD_TYPE%]==[MSVC17_clang_64] call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 build_script:
 - set CONDA_PREFIX_PATH=C:\Miniconda36-x64\envs\obake\Library
