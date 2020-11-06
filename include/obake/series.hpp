@@ -10,6 +10,7 @@
 #define OBAKE_SERIES_HPP
 
 #include <algorithm>
+#include <any>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -29,7 +30,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/any.hpp>
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/iterator/iterator_categories.hpp>
@@ -1586,12 +1586,12 @@ inline bool series_are_identical(const S &s1, const S &s2)
 // to store instances of this type as elements of another map.
 // NOTE: the key in this map is the base, the vectors
 // are the base raised to its natural powers. All these
-// boost::any will contain instances of the base type.
-using series_te_pow_map_t = ::std::unordered_map<::boost::any, ::std::vector<::boost::any>,
+// std::any will contain instances of the base type.
+using series_te_pow_map_t = ::std::unordered_map<::std::any, ::std::vector<::std::any>,
                                                  // Hashing functor.
-                                                 ::std::function<::std::size_t(const ::boost::any &)>,
+                                                 ::std::function<::std::size_t(const ::std::any &)>,
                                                  // Equality comparator.
-                                                 ::std::function<bool(const ::boost::any &, const ::boost::any &)>>;
+                                                 ::std::function<bool(const ::std::any &, const ::std::any &)>>;
 
 // Series pow cache. It maps a C++ series type, represented
 // as a type_index, to a series_te_pow_map_t map.
@@ -1620,14 +1620,14 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     // functors for use in series_te_pow_map_t.
     // They will be wrapped in a std::function.
     struct hasher {
-        ::std::size_t operator()(const ::boost::any &x) const
+        ::std::size_t operator()(const ::std::any &x) const
         {
             // Combine the hashes of all terms
             // via addition, so that their order
             // does not matter.
             ::std::size_t retval = 0;
 
-            for (const auto &t : ::boost::any_cast<const Base &>(x)) {
+            for (const auto &t : ::std::any_cast<const Base &>(x)) {
                 // NOTE: use the same hasher used in the implementation
                 // of series.
                 // NOTE: parallelisation opportunities here for
@@ -1640,7 +1640,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     };
 
     struct comparer {
-        bool operator()(const ::boost::any &x, const ::boost::any &y) const
+        bool operator()(const ::std::any &x, const ::std::any &y) const
         {
             // NOTE: need to use series_are_identical() (and not the comparison operator)
             // because the comparison operator does symbol merging, and thus it is
@@ -1649,8 +1649,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
             // NOTE: with these choices of hasher/comparer, the requirement that
             // cmp(a, b) == true -> hash(a) == hash(b) is always satisfied (even if, say,
             // the user customises series_equal_to()).
-            return internal::series_are_identical(::boost::any_cast<const Base &>(x),
-                                                  ::boost::any_cast<const Base &>(y));
+            return internal::series_are_identical(::std::any_cast<const Base &>(x), ::std::any_cast<const Base &>(y));
         }
     };
 
@@ -1664,7 +1663,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
 
     // Fetch a reference to the base and the corresponding
     // exponentiation vector.
-    const auto &b = ::boost::any_cast<const Base &>(it->first);
+    const auto &b = ::std::any_cast<const Base &>(it->first);
     auto &v = it->second;
 
     // If the exponentiation vector is empty, init it with
@@ -1679,13 +1678,13 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
 
     // Fill in the missing powers as needed.
     while (v.size() <= n) {
-        v.emplace_back(::boost::any_cast<const Base &>(v.back()) * b);
+        v.emplace_back(::std::any_cast<const Base &>(v.back()) * b);
     }
 
     // Return a copy of the desired power.
     // NOTE: returnability is guaranteed because
     // the return type is a series.
-    return ::boost::any_cast<const Base &>(v[static_cast<decltype(v.size())>(n)]);
+    return ::std::any_cast<const Base &>(v[static_cast<decltype(v.size())>(n)]);
 }
 
 // Metaprogramming to establish the algorithm/return
