@@ -3,14 +3,8 @@ trigger:
 
 jobs:
 
-  - job: 'vs2015_clang_release'
+  - job: 'vs2017_clang_release'
     pool:
-      # NOTE: this is the same image currently used by conda.
-      # Like conda, we'll be using vs2015, not vs2017. If we
-      # try to use the vs2015 image, we get some DLL errors
-      # related to dbgeng, which *I think* are due to the
-      # fact that the vs2015 image is using an older version of
-      # the OS.
       vmImage: 'vs2017-win2016'
     timeoutInMinutes: 360
     steps:
@@ -59,7 +53,7 @@ jobs:
       # Configure, build and test.
       - script: |
           setlocal EnableDelayedExpansion
-          call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86_amd64
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
           mkdir build
           cd build
           cmake .. -G Ninja ^
