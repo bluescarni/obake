@@ -53,7 +53,6 @@ jobs:
       # Configure, build and test.
       - script: |
           setlocal EnableDelayedExpansion
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
           mkdir build
           cd build
           cmake .. -G Ninja ^
