@@ -174,24 +174,28 @@ struct int00 {
 namespace obake::customisation
 {
 
-template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext00> inline constexpr auto negate<T>
+template <typename T>
+requires SameCvr<T, ext00>
 #else
-inline constexpr auto negate<T, std::enable_if_t<is_same_cvr_v<T, ext00>>>
+template <typename T, std::enable_if_t<is_same_cvr_v<T, ext00>, int> = 0>
 #endif
-    = [](auto &&) constexpr noexcept {};
+    void negate(negate_t, T &&)
+{
+}
 
 namespace internal
 {
 
-template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int00> inline constexpr auto negate<T>
+template <typename T>
+requires SameCvr<T, int00>
 #else
-inline constexpr auto negate<T, std::enable_if_t<is_same_cvr_v<T, int00>>>
+template <typename T, std::enable_if_t<is_same_cvr_v<T, int00>, int> = 0>
 #endif
-    = [](auto &&) constexpr noexcept {};
+    void negate(negate_t, T &&)
+{
+}
 
 } // namespace internal
 

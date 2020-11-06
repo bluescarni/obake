@@ -1533,42 +1533,6 @@ inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
 namespace customisation::internal
 {
 
-// Metaprogramming to establish the algorithm/return
-// type of the default series pow computation.
-template <typename T, typename U>
-constexpr auto series_default_pow_algorithm_impl()
-{
-    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
-
-    if constexpr (!is_cvr_series_v<T>) {
-        // The base is not a series type.
-        return failure;
-    } else {
-        // The coefficient type of T must be:
-        // - constructible from int,
-        // - exponentiable by U, with the return value a coefficient type
-        //   which is constructible from int.
-        // The exponent type must be zero-testable.
-        using rT = remove_cvref_t<T>;
-        using rU = remove_cvref_t<U>;
-        using cf_t = series_cf_t<rT>;
-        // NOTE: check exponentiability via const
-        // lvalue refs.
-        using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
-
-        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>,
-                                           // NOTE: these take care of ensuring that cf_pow_t
-                                           // is detected (nonesuch is not ctible from int,
-                                           // nor it is a coefficient).
-                                           is_cf<cf_pow_t>, ::std::is_constructible<cf_pow_t, int>,
-                                           is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
-            return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
-        } else {
-            return failure;
-        }
-    }
-}
-
 // Helper to compare series with identical symbol sets.
 // Two series are considered equal if they have the same
 // number of terms and if for each term in one series
@@ -1724,106 +1688,133 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     return ::boost::any_cast<const Base &>(v[static_cast<decltype(v.size())>(n)]);
 }
 
-// Default implementation of series exponentiation.
-struct series_default_pow_impl {
-    // A couple of handy shortcuts.
-    template <typename T, typename U>
-    static constexpr auto algo_ret = internal::series_default_pow_algorithm_impl<T, U>();
+// Metaprogramming to establish the algorithm/return
+// type of the default series pow computation.
+template <typename T, typename U>
+constexpr auto series_default_pow_algorithm_impl()
+{
+    [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, detail::type_c<void>{});
 
-    template <typename T, typename U>
-    static constexpr auto algo = series_default_pow_impl::algo_ret<T, U>.first;
-
-    template <typename T, typename U>
-    using ret_t = typename decltype(series_default_pow_impl::algo_ret<T, U>.second)::type;
-
-    // Implementation.
-    template <typename T, typename U>
-    ret_t<T &&, U &&> operator()(T &&b, U &&e_) const
-    {
-        // Sanity check.
-        static_assert(algo<T &&, U &&> != 0);
-
+    if constexpr (!is_cvr_series_v<T>) {
+        // The base is not a series type.
+        return failure;
+    } else {
+        // The coefficient type of T must be:
+        // - constructible from int,
+        // - exponentiable by U, with the return value a coefficient type
+        //   which is constructible from int.
+        // The exponent type must be zero-testable.
         using rT = remove_cvref_t<T>;
         using rU = remove_cvref_t<U>;
+        using cf_t = series_cf_t<rT>;
+        // NOTE: check exponentiability via const
+        // lvalue refs.
+        using cf_pow_t = detected_t<detail::pow_t, const cf_t &, ::std::add_lvalue_reference_t<const rU>>;
 
-        // Need only const access to the exponent.
-        const auto &e = ::std::as_const(e_);
-
-        if (b.is_single_cf()) {
-            // Single coefficient series: either empty (i.e., b is zero),
-            // or a single term with unitary key.
-            if (b.empty()) {
-                // Return 0**e.
-                const series_cf_t<rT> zero(0);
-                return ret_t<T &&, U &&>(::obake::pow(zero, e));
-            } else {
-                // Return the only coefficient raised to the exponent.
-                return ret_t<T &&, U &&>(::obake::pow(b.cbegin()->second, e));
-            }
-        }
-
-        // Handle the case of zero exponent: anything to the power
-        // of zero is 1.
-        if (::obake::is_zero(e)) {
-            // NOTE: construct directly from 1: 1 is rank 0,
-            // construction then forwards 1 to the construction
-            // of an internal coefficient.
-            return ret_t<T &&, U &&>(1);
-        }
-
-        // Let's determine if we can run exponentiation
-        // by repeated multiplications, backed by a cache:
-        // - e must be safely-convertible to unsigned,
-        // - T * T must be defined and return T (via const lvalue
-        //   references),
-        // - T must be the same as ret_t,
-        // - the coefficient of T must be
-        //   equality-comparable (for the pow cache to work).
-        // NOTE: the idea here is that, for ease of reasoning and
-        // implementation, we want the base type, its product type
-        // and the return type to be all the same.
-        if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
-                                           // NOTE: this also checks that mul_t is defined, as
-                                           // nonesuch is not a series type.
-                                           ::std::is_same<rT, detected_t<detail::mul_t, const rT &, const rT &>>,
-                                           ::std::is_same<rT, ret_t<T &&, U &&>>,
-                                           is_equality_comparable<const series_cf_t<rT> &>>) {
-            unsigned un;
-            if (obake_unlikely(!::obake::safe_convert(un, e))) {
-                if constexpr (is_stream_insertable_v<const rU &>) {
-                    // Provide better error message if U is ostreamable.
-                    ::std::ostringstream oss;
-                    static_cast<::std::ostream &>(oss) << e;
-                    obake_throw(::std::invalid_argument,
-                                "Invalid exponent for series exponentiation via repeated "
-                                "multiplications: the exponent ("
-                                    + oss.str() + ") cannot be converted into a non-negative integral value");
-                } else {
-                    obake_throw(::std::invalid_argument,
-                                "Invalid exponent for series exponentiation via repeated "
-                                "multiplications: the exponent cannot be converted into a non-negative integral value");
-                }
-            }
-
-            return internal::series_pow_from_cache(b, un);
+        if constexpr (::std::conjunction_v<::std::is_constructible<cf_t, int>,
+                                           // NOTE: these take care of ensuring that cf_pow_t
+                                           // is detected (nonesuch is not ctible from int,
+                                           // nor it is a coefficient).
+                                           is_cf<cf_pow_t>, ::std::is_constructible<cf_pow_t, int>,
+                                           is_zero_testable<::std::add_lvalue_reference_t<const rU>>>) {
+            return ::std::make_pair(1, detail::type_c<series<series_key_t<rT>, cf_pow_t, series_tag_t<rT>>>{});
         } else {
-            obake_throw(::std::invalid_argument,
-                        "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
-                            + "': the series does not consist of a single coefficient, "
-                              "and exponentiation via repeated multiplications is not possible (either because the "
-                              "exponent cannot be converted to a non-negative integral value, or because the "
-                              "series/coefficient types do not support the necessary operations)");
+            return failure;
         }
     }
-};
+}
 
 template <typename T, typename U>
+inline constexpr auto series_default_pow_algorithm = internal::series_default_pow_algorithm_impl<T, U>();
+
+template <typename T, typename U>
+inline constexpr int series_default_pow_algo = series_default_pow_algorithm<T, U>.first;
+
+template <typename T, typename U>
+using series_default_pow_ret_t = typename decltype(series_default_pow_algorithm<T, U>.second)::type;
+
+// Default implementation of series exponentiation.
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_pow_impl::algo<T, U> != 0) inline constexpr auto pow<T, U>
+template <typename T, typename U>
+requires(series_default_pow_algo<T &&, U &&> != 0)
 #else
-inline constexpr auto pow<T, U, ::std::enable_if_t<series_default_pow_impl::algo<T, U> != 0>>
+template <typename T, typename U, ::std::enable_if_t<series_default_pow_algo<T &&, U &&> != 0, int> = 0>
 #endif
-    = series_default_pow_impl{};
+    inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
+{
+    using ret_t = series_default_pow_ret_t<T &&, U &&>;
+
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
+
+    // Need only const access to the exponent.
+    const auto &e = ::std::as_const(e_);
+
+    if (b.is_single_cf()) {
+        // Single coefficient series: either empty (i.e., b is zero),
+        // or a single term with unitary key.
+        if (b.empty()) {
+            // Return 0**e.
+            const series_cf_t<rT> zero(0);
+            return ret_t(::obake::pow(zero, e));
+        } else {
+            // Return the only coefficient raised to the exponent.
+            return ret_t(::obake::pow(b.cbegin()->second, e));
+        }
+    }
+
+    // Handle the case of zero exponent: anything to the power
+    // of zero is 1.
+    if (::obake::is_zero(e)) {
+        // NOTE: construct directly from 1: 1 is rank 0,
+        // construction then forwards 1 to the construction
+        // of an internal coefficient.
+        return ret_t(1);
+    }
+
+    // Let's determine if we can run exponentiation
+    // by repeated multiplications, backed by a cache:
+    // - e must be safely-convertible to unsigned,
+    // - T * T must be defined and return T (via const lvalue
+    //   references),
+    // - T must be the same as ret_t,
+    // - the coefficient of T must be
+    //   equality-comparable (for the pow cache to work).
+    // NOTE: the idea here is that, for ease of reasoning and
+    // implementation, we want the base type, its product type
+    // and the return type to be all the same.
+    if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
+                                       // NOTE: this also checks that mul_t is defined, as
+                                       // nonesuch is not a series type.
+                                       ::std::is_same<rT, detected_t<detail::mul_t, const rT &, const rT &>>,
+                                       ::std::is_same<rT, ret_t>, is_equality_comparable<const series_cf_t<rT> &>>) {
+        unsigned un;
+        if (obake_unlikely(!::obake::safe_convert(un, e))) {
+            if constexpr (is_stream_insertable_v<const rU &>) {
+                // Provide better error message if U is ostreamable.
+                ::std::ostringstream oss;
+                static_cast<::std::ostream &>(oss) << e;
+                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
+                                                     "multiplications: the exponent ("
+                                                         + oss.str()
+                                                         + ") cannot be converted into a non-negative integral value");
+            } else {
+                obake_throw(::std::invalid_argument,
+                            "Invalid exponent for series exponentiation via repeated "
+                            "multiplications: the exponent cannot be converted into a non-negative integral value");
+            }
+        }
+
+        return internal::series_pow_from_cache(b, un);
+    } else {
+        obake_throw(::std::invalid_argument,
+                    "Cannot compute the power of a series of type '" + ::obake::type_name<rT>()
+                        + "': the series does not consist of a single coefficient, "
+                          "and exponentiation via repeated multiplications is not possible (either because the "
+                          "exponent cannot be converted to a non-negative integral value, or because the "
+                          "series/coefficient types do not support the necessary operations)");
+    }
+}
 
 } // namespace customisation::internal
 
@@ -1887,22 +1878,19 @@ inline remove_cvref_t<T> operator-(T &&x)
 namespace customisation::internal
 {
 
-struct series_default_negate_impl {
-    template <typename T>
-    void operator()(T &&x) const
-    {
-        detail::series_default_negate_impl(::std::forward<T>(x));
-    }
-};
-
-template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-    requires CvrSeries<T> && (!::std::is_const_v<::std::remove_reference_t<T>>)inline constexpr auto negate<T>
+template <typename T>
+requires CvrSeries<T> && (!::std::is_const_v<::std::remove_reference_t<T>>)
 #else
-inline constexpr auto negate<T, ::std::enable_if_t<::std::conjunction_v<
-                                    is_cvr_series<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>>>
+template <typename T,
+          ::std::enable_if_t<
+              ::std::conjunction_v<is_cvr_series<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>,
+              int> = 0>
 #endif
-    = series_default_negate_impl{};
+inline void negate(negate_t, T &&x)
+{
+    detail::series_default_negate_impl(::std::forward<T>(x));
+}
 
 } // namespace customisation::internal
 
