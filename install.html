@@ -194,7 +194,7 @@ tested in obake’s continuous integration setup:</p>
 <li><p>GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),</p></li>
 <li><p>Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),</p></li>
 <li><p>Visual Studio 2019 on Windows,</p></li>
-<li><p>Clang + Visual Studio 2015 on Windows
+<li><p>Clang + Visual Studio 2017 on Windows
 (via the <code class="docutils literal notranslate"><span class="pre">clang-cl</span></code> driver),</p></li>
 <li><p>Clang 9 on OSX.</p></li>
 </ul>
@@ -291,14 +291,9 @@ for obake’s build system to correctly locate the dependencies.</p>
 <li><p>Due to various compiler issues, only MSVC 2019 is currently able
 to compile obake.</p></li>
 <li><p>It is possible to use <code class="docutils literal notranslate"><span class="pre">clang-cl</span></code> to compile obake
-with earlier versions of MSVC (2017 and 2015). This means
+with MSVC 2017. This means
 that Clang will be used as a C/C++ compiler, while the
-C++ standard library will be the one supplied with MSVC. Be
-aware that the C++ library from MSVC 2015 is not
-fully C++17-compliant, and as a result
-certain features in obake will be disabled when using
-MSVC 2015 (these occurrences are detailed in the API
-documentation).</p></li>
+C++ standard library will be the one supplied with MSVC.</p></li>
 <li><p>When using Visual Studio, the obake library is compiled
 with the <code class="docutils literal notranslate"><span class="pre">NOMINMAX</span></code> and <code class="docutils literal notranslate"><span class="pre">WIN32_LEAN_AND_MEAN</span></code> definitions,
 and, if supported, with the <code class="docutils literal notranslate"><span class="pre">/permissive-</span></code> compiler flag.</p></li>
