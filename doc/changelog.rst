@@ -1,6 +1,19 @@
 Changelog
 =========
 
+0.7.0 (unreleased)
+------------------
+
+Changes
+~~~~~~~
+
+- When building on Windows with ``clang-cl``, obake
+  now requires at least MSVC 2017. As a result, various
+  limitations/workarounds originating from the need to support
+  the MSVC 2015 standard library have been removed
+  (`#122 <https://github.com/bluescarni/obake/pull/122>`__).
+
+
 0.6.0 (12-06-2020)
 ------------------
 
