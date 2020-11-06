@@ -9,6 +9,7 @@
 #ifndef OBAKE_K_PACKING_HPP
 #define OBAKE_K_PACKING_HPP
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <stdexcept>
@@ -16,7 +17,6 @@
 #include <type_traits>
 
 #include <obake/config.hpp>
-#include <obake/detail/carray.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/xoroshiro128_plus.hpp>
@@ -96,7 +96,7 @@ constexpr auto k_packing_compute_deltas()
     // with nonzero values. The other rows will be right-padded with zeroes
     // as the number of components decreases while the number of bits
     // for the deltas increases.
-    carray<carray<T, ncols>, nrows> retval{};
+    ::std::array<::std::array<T, ncols>, nrows> retval{};
 
     // Compile-time pseudo-random generator.
     // https://xkcd.com/221/
@@ -141,7 +141,7 @@ constexpr auto k_packing_compute_cvs()
     constexpr auto nrows = static_cast<::std::size_t>(bit_width - 3u);
     constexpr auto ncols = static_cast<::std::size_t>(bit_width / 3u + 1u);
 
-    carray<carray<T, ncols>, nrows> retval{};
+    ::std::array<::std::array<T, ncols>, nrows> retval{};
 
     constexpr auto deltas = detail::k_packing_compute_deltas<T>();
 
@@ -173,7 +173,7 @@ constexpr auto k_packing_compute_limits()
     constexpr auto deltas = detail::k_packing_compute_deltas<T>();
 
     if constexpr (is_signed_v<T>) {
-        carray<carray<carray<T, 2>, ncols>, nrows> retval{};
+        ::std::array<::std::array<::std::array<T, 2>, ncols>, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -197,7 +197,7 @@ constexpr auto k_packing_compute_limits()
 
         return retval;
     } else {
-        carray<carray<T, ncols>, nrows> retval{};
+        ::std::array<::std::array<T, ncols>, nrows> retval{};
 
         for (::std::size_t i = 0; i < nrows; ++i) {
             const auto cur_nbits = i + 3u;
@@ -234,7 +234,8 @@ constexpr auto k_packing_compute_encoded_limits()
     constexpr auto limits = detail::k_packing_compute_limits<T>();
 
     // Init the return value.
-    auto retval = ::std::conditional_t<is_signed_v<T>, carray<carray<T, 2>, nrows>, carray<T, nrows>>{};
+    auto retval
+        = ::std::conditional_t<is_signed_v<T>, ::std::array<::std::array<T, 2>, nrows>, ::std::array<T, nrows>>{};
 
     // Compute the min/max encoded values for all possible
     // vector sizes.
@@ -285,7 +286,7 @@ constexpr auto k_packing_compute_size_to_bits_table()
     // Number of rows: from vector size 1 to the max size (bit_width / 3u).
     constexpr auto nrows = static_cast<::std::size_t>(bit_width / 3u);
 
-    carray<unsigned, nrows> retval{};
+    ::std::array<unsigned, nrows> retval{};
 
     for (::std::size_t i = 0; i < nrows; ++i) {
         const auto cur_size = i + 1u;
