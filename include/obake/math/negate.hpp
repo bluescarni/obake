@@ -34,25 +34,15 @@ namespace customisation
 {
 
 // External customisation point for obake::negate().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto negate = not_implemented;
+struct negate_t {
+};
 
 namespace internal
 {
 
 // Internal customisation point for obake::negate().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto negate = not_implemented;
+struct negate_t {
+};
 
 } // namespace internal
 
@@ -110,7 +100,7 @@ inline void negate(::mppp::real &&r)
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto negate_impl(T &&x, priority_tag<3>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::negate<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(negate(customisation::negate_t{}, ::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
@@ -119,7 +109,7 @@ constexpr auto negate_impl(T &&x, priority_tag<2>) OBAKE_SS_FORWARD_FUNCTION(neg
 // Explicit override in the internal customisation namespace.
 template <typename T>
 constexpr auto negate_impl(T &&x, priority_tag<1>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::negate<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(negate(customisation::internal::negate_t{}, ::std::forward<T>(x)));
 
 #if defined(_MSC_VER) && !defined(__clang__)
 

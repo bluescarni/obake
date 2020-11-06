@@ -10,6 +10,7 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
@@ -68,7 +69,10 @@ TEST_CASE("series_pow_test")
     REQUIRE(obake::pow((x - y) * (x + y), 0) == 1);
 
     // Exponentiation via repeated multiplications.
-    customisation::internal::series_default_pow_impl impl;
+    auto impl = [](auto &&a, auto &&b) {
+        return customisation::internal::pow(customisation::internal::pow_t{}, std::forward<decltype(a)>(a),
+                                            std::forward<decltype(b)>(b));
+    };
 
     REQUIRE(impl(x - y, 1) == x - y);
     REQUIRE(impl(x - y, 2) == (x - y) * (x - y));

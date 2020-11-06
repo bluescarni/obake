@@ -131,7 +131,7 @@ using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T
 
 // Overload with a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &ss, const Args &... names)
+inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &ss, const Args &...names)
 {
     // Create a temp vector of ints which we will use to
     // init the keys.
@@ -185,7 +185,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
 
 // Overload without a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... names)
+inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &...names)
 {
     [[maybe_unused]] auto make_poly = [](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
@@ -216,7 +216,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &... na
 template <typename T>
 struct make_polynomials_msvc {
     template <typename... Args>
-    constexpr auto operator()(const Args &... args) const
+    constexpr auto operator()(const Args &...args) const
         OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_polynomials_impl<T>(args...))
 };
 
@@ -228,7 +228,7 @@ inline constexpr auto make_polynomials = make_polynomials_msvc<T>{};
 // Polynomial creation functor.
 template <typename T>
 inline constexpr auto make_polynomials
-    = [](const auto &... args) OBAKE_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
+    = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
 
 #endif
 
@@ -273,7 +273,7 @@ inline auto poly_mul_impl_par_make_idx_vector(const V &v)
 template <typename T, typename U, typename V1, typename V2, typename... Args>
 inline auto poly_mul_impl_prepare_degree_data([[maybe_unused]] const V1 &v1, [[maybe_unused]] const V2 &v2,
                                               [[maybe_unused]] const symbol_set &ss,
-                                              [[maybe_unused]] const Args &... args)
+                                              [[maybe_unused]] const Args &...args)
 {
     if constexpr (sizeof...(Args) == 0u) {
         // Untruncated case, return an empty tuple.
@@ -482,7 +482,7 @@ struct poly_mul_impl_pair_transform {
 // improve the situation.
 template <typename S1, typename S2, typename T1, typename T2, typename... Args>
 inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::std::vector<T2> &y, const symbol_set &ss,
-                                           const Args &... args)
+                                           const Args &...args)
 {
     // Preconditions.
     assert(!x.empty());
@@ -799,7 +799,7 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
 
 // The multi-threaded homomorphic implementation.
 template <typename Ret, typename T, typename U, typename... Args>
-inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &... args)
+inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args &...args)
 {
     using cf1_t = series_cf_t<T>;
     using cf2_t = series_cf_t<U>;
@@ -1616,7 +1616,7 @@ struct poly_mul_impl_ptr_extractor {
 // term by term, no parallelisation, no segmentation,
 // no copying of the operands, etc.
 template <typename Ret, typename T, typename U, typename... Args>
-inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args &... args)
+inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args &...args)
 {
     using ret_key_t = series_key_t<Ret>;
     using ret_cf_t = series_cf_t<Ret>;
@@ -1883,7 +1883,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 // Implementation of poly multiplication with identical symbol sets.
 // Requires that x is not longer than y.
 template <typename T, typename U, typename... Args>
-inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
+inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &...args)
 {
     using ret_t = poly_mul_ret_t<T &&, U &&>;
     using ret_key_t = series_key_t<ret_t>;
@@ -1960,7 +1960,7 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &... args)
 //   out data which we will be overwriting anyway;
 // - perhaps vector permutations could be done in parallel?
 template <typename T, typename U, typename... Args>
-inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
+inline auto poly_mul_impl(T &&x, U &&y, const Args &...args)
 {
     // Check the precondition.
     assert(x.size() <= y.size());
@@ -2022,7 +2022,7 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &... args)
 // Helper to ensure that poly_mul_impl() is called with the
 // shorter poly first, switching around the arguments if necessary.
 template <typename T, typename U, typename... Args>
-inline auto poly_mul_impl_switch(T &&x, U &&y, const Args &... args)
+inline auto poly_mul_impl_switch(T &&x, U &&y, const Args &...args)
 {
     if (x.size() <= y.size()) {
         return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), args...);
@@ -2130,7 +2130,7 @@ template <typename T, typename U>
 constexpr auto poly_pow_algorithm_impl()
 {
     if constexpr (is_polynomial_v<remove_cvref_t<T>>) {
-        return customisation::internal::series_default_pow_impl::algo<T, U>;
+        return customisation::internal::series_default_pow_algo<T, U>;
     } else {
         return 0;
     }
@@ -2142,9 +2142,9 @@ inline constexpr auto poly_pow_algo = detail::poly_pow_algorithm_impl<T, U>();
 } // namespace detail
 
 template <typename T, typename U, ::std::enable_if_t<detail::poly_pow_algo<T &&, U &&> != 0, int> = 0>
-inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T &&x, U &&y)
+inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
 {
-    using impl = customisation::internal::series_default_pow_impl;
+    using ret_t = customisation::internal::series_default_pow_ret_t<T &&, U &&>;
 
     using rT = remove_cvref_t<T>;
     using rU = remove_cvref_t<U>;
@@ -2159,7 +2159,7 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
             const auto &ss = x.get_symbol_set();
 
             // Build the return value.
-            impl::ret_t<T &&, U &&> retval;
+            ret_t retval;
             retval.set_symbol_set(ss);
             // NOTE: we do coefficient and monomial exponentiation using
             // const refs everywhere (thus, we ensure that y is not mutated
@@ -2174,12 +2174,14 @@ inline customisation::internal::series_default_pow_impl::ret_t<T &&, U &&> pow(T
         } else {
             // The polynomial is empty or it has more than 1 term, perfect forward to
             // the series implementation.
-            return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+            return customisation::internal::pow(customisation::internal::pow_t{}, ::std::forward<T>(x),
+                                                ::std::forward<U>(y));
         }
     } else {
         // Cannot do monomial exponentiation, perfect forward to
         // the series implementation.
-        return impl{}(::std::forward<T>(x), ::std::forward<U>(y));
+        return customisation::internal::pow(customisation::internal::pow_t{}, ::std::forward<T>(x),
+                                            ::std::forward<U>(y));
     }
 }
 

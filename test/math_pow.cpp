@@ -191,22 +191,22 @@ inline void non_constexpr() {}
 namespace obake::customisation
 {
 
-template <typename T, typename U>
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, foo0> &&SameCvr<U, foo0> inline constexpr auto pow<T, U>
+template <typename T, typename U>
+requires SameCvr<T, foo0> &&SameCvr<U, foo0>
 #else
-inline constexpr auto pow<T, U, std::enable_if_t<is_same_cvr_v<T, foo0> && is_same_cvr_v<U, foo0>>>
+template <typename T, typename U, std::enable_if_t<is_same_cvr_v<T, foo0> && is_same_cvr_v<U, foo0>, int> = 0>
 #endif
-    = [](auto &&, auto &&) constexpr noexcept
+    constexpr auto pow(pow_t, T &&, U &&) noexcept
 {
-    if constexpr (std::is_rvalue_reference_v<T> && std::is_rvalue_reference_v<U>) {
+    if constexpr (std::is_rvalue_reference_v<T &&> && std::is_rvalue_reference_v<U &&>) {
         return 1;
     } else {
         // Make some non-constexpr operation.
         non_constexpr();
         return 2;
     }
-};
+}
 
 } // namespace obake::customisation
 

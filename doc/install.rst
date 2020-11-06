@@ -33,7 +33,7 @@ tested in obake's continuous integration setup:
 * GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),
 * Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),
 * Visual Studio 2019 on Windows,
-* Clang + Visual Studio 2015 on Windows
+* Clang + Visual Studio 2017 on Windows
   (via the ``clang-cl`` driver),
 * Clang 9 on OSX.
 
@@ -149,14 +149,9 @@ Visual Studio:
 * Due to various compiler issues, only MSVC 2019 is currently able
   to compile obake.
 * It is possible to use ``clang-cl`` to compile obake
-  with earlier versions of MSVC (2017 and 2015). This means
+  with MSVC 2017. This means
   that Clang will be used as a C/C++ compiler, while the
-  C++ standard library will be the one supplied with MSVC. Be
-  aware that the C++ library from MSVC 2015 is not
-  fully C++17-compliant, and as a result
-  certain features in obake will be disabled when using
-  MSVC 2015 (these occurrences are detailed in the API
-  documentation).
+  C++ standard library will be the one supplied with MSVC.
 * When using Visual Studio, the obake library is compiled
   with the ``NOMINMAX`` and ``WIN32_LEAN_AND_MEAN`` definitions,
   and, if supported, with the ``/permissive-`` compiler flag.

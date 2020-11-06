@@ -205,16 +205,10 @@ struct is_zero_1 {
 namespace obake::customisation
 {
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, is_zero_1> inline constexpr auto is_zero<T>
-#else
-inline constexpr auto is_zero<T, std::enable_if_t<is_same_cvr_v<T, is_zero_1>>>
-#endif
-    = [](auto &&) constexpr noexcept
+constexpr auto is_zero(is_zero_t, const is_zero_1 &)
 {
     return true;
-};
+}
 
 } // namespace obake::customisation
 

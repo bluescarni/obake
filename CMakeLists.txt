@@ -250,7 +250,6 @@ if(YACMA_COMPILER_IS_MSVC)
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/abseil.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_flag_array.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_lock_guard.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/carray.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/fcast.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/hc.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/ignore.hpp"

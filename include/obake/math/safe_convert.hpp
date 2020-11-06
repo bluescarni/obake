@@ -30,13 +30,8 @@ namespace customisation
 {
 
 // External customisation point for obake::safe_convert().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto safe_convert = not_implemented;
+struct safe_convert_t {
+};
 
 } // namespace customisation
 
@@ -185,7 +180,8 @@ inline bool safe_convert(::mppp::rational<SSize> &q, const T &n)
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<2>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::safe_convert<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(safe_convert(customisation::safe_convert_t{}, ::std::forward<T>(x),
+                                           ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>

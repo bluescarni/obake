@@ -26,25 +26,15 @@ namespace customisation
 {
 
 // External customisation point for obake::pow().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto pow = not_implemented;
+struct pow_t {
+};
 
 namespace internal
 {
 
 // Internal customisation point for obake::pow().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto pow = not_implemented;
+struct pow_t {
+};
 
 } // namespace internal
 
@@ -91,7 +81,7 @@ inline auto pow(const T &x, const U &y) noexcept
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto pow_impl(T &&x, U &&y, priority_tag<2>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(pow(customisation::pow_t{}, ::std::forward<T>(x), ::std::forward<U>(y)));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
@@ -101,7 +91,7 @@ constexpr auto pow_impl(T &&x, U &&y, priority_tag<1>)
 // Lowest priority: override in the internal customisation namespace.
 template <typename T, typename U>
 constexpr auto pow_impl(T &&x, U &&y, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::pow<T &&, U &&>)(::std::forward<T>(x), ::std::forward<U>(y)));
+    OBAKE_SS_FORWARD_FUNCTION(pow(customisation::internal::pow_t{}, ::std::forward<T>(x), ::std::forward<U>(y)));
 
 } // namespace detail
 
