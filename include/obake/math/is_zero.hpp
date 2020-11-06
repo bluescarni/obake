@@ -34,25 +34,15 @@ namespace customisation
 {
 
 // External customisation point for obake::is_zero().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto is_zero = not_implemented;
+struct is_zero_t {
+};
 
 namespace internal
 {
 
 // Internal customisation point for obake::is_zero().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto is_zero = not_implemented;
+struct is_zero_t {
+};
 
 } // namespace internal
 
@@ -75,7 +65,7 @@ inline bool is_zero(const ::mppp::real &r)
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, priority_tag<3>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::is_zero<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(is_zero(customisation::is_zero_t{}, ::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
@@ -84,7 +74,7 @@ constexpr auto is_zero_impl(T &&x, priority_tag<2>) OBAKE_SS_FORWARD_FUNCTION(is
 // Explicit override in the internal customisation namespace.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, priority_tag<1>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::is_zero<T &&>)(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(is_zero(customisation::internal::is_zero_t{}, ::std::forward<T>(x)));
 
 // Lowest-priority: implementation based on the comparison operator and construction from the zero
 // integral constant.

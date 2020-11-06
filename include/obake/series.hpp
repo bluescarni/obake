@@ -274,7 +274,7 @@ enum class sat_assume_unique : bool { off, on };
 // Helper for inserting a term into a series table.
 template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
           sat_assume_unique AssumeUnique, typename S, typename Table, typename T, typename... Args>
-inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
+inline void series_add_term_table(S &s, Table &t, T &&key, Args &&...args)
 {
     // Determine the key/cf types.
     using key_type = series_key_t<::std::remove_reference_t<S>>;
@@ -392,7 +392,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&... args)
 // Helper for inserting a term into a series.
 template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
           sat_assume_unique AssumeUnique, typename S, typename T, typename... Args>
-inline void series_add_term(S &s, T &&key, Args &&... args)
+inline void series_add_term(S &s, T &&key, Args &&...args)
 {
     // Determine the key type.
     using key_type = series_key_t<::std::remove_reference_t<S>>;
@@ -1318,7 +1318,7 @@ public:
               typename T, typename... Args,
               ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, ::std::is_constructible<C, Args...>>, int> = 0>
 #endif
-        void add_term(T &&key, Args &&... args)
+        void add_term(T &&key, Args &&...args)
     {
         // NOTE: all checks enabled, don't assume uniqueness.
         detail::series_add_term<Sign, detail::sat_check_zero::on, detail::sat_check_compat_key::on,
@@ -1910,21 +1910,16 @@ inline constexpr auto negate<T, ::std::enable_if_t<::std::conjunction_v<
 namespace customisation::internal
 {
 
-struct series_default_is_zero_impl {
-    template <typename T>
-    bool operator()(const T &x) const
-    {
-        return x.empty();
-    }
-};
-
-template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires CvrSeries<T> inline constexpr auto is_zero<T>
+template <typename T>
+requires CvrSeries<T>
 #else
-inline constexpr auto is_zero<T, ::std::enable_if_t<is_cvr_series_v<T>>>
+template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 #endif
-    = series_default_is_zero_impl{};
+    inline bool is_zero(is_zero_t, const T &x)
+{
+    return x.empty();
+}
 
 } // namespace customisation::internal
 
