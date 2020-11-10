@@ -8,13 +8,21 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <functional>
 #include <initializer_list>
+#include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 #include <utility>
 
 #include <boost/container/container_fwd.hpp>
+#include <boost/container_hash/hash.hpp>
 
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
@@ -226,6 +234,65 @@ symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
     // Move seq into the return vale.
     symbol_idx_set retval;
     retval.adopt_sequence(::boost::container::ordered_unique_range_t{}, ::std::move(seq));
+
+    return retval;
+}
+
+namespace
+{
+
+struct ss_fw_storage_map {
+    ::std::unordered_map<::std::type_index,
+                         ::std::tuple<::std::unique_ptr<unsigned char[]>, ::std::function<void(void *)>>>
+        value;
+    ~ss_fw_storage_map()
+    {
+        for (auto &[_, tup] : value) {
+            std::cout << "Cleaning up storage\n";
+
+            ::std::get<1>(tup)(static_cast<void *>(::std::get<0>(tup).get()));
+        }
+    }
+};
+
+auto ss_fw_statics()
+{
+    static ::std::mutex ss_fw_mutex;
+    static ss_fw_storage_map ss_fw_map;
+
+    return ::std::make_tuple(::std::ref(ss_fw_mutex), ::std::ref(ss_fw_map));
+}
+
+} // namespace
+
+::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &tp, ::std::size_t s,
+                                              ::std::function<void(void *)> f)
+{
+    auto [ss_fw_mutex, ss_fw_map] = detail::ss_fw_statics();
+
+    ::std::lock_guard lock{ss_fw_mutex};
+
+    auto [it, new_object] = ss_fw_map.value.try_emplace(tp);
+
+    std::cout << "Looking up storage for " << it->first.name() << '\n';
+
+    if (new_object) {
+        std::cout << "No storage found, creating new\n";
+        // TODO exception safety in case of alloc failure.
+        ::std::get<0>(it->second) = ::std::unique_ptr<unsigned char[]>(new unsigned char[s]);
+        ::std::get<1>(it->second) = ::std::move(f);
+    }
+
+    return {::std::get<0>(it->second).get(), new_object};
+}
+
+::std::size_t ss_hasher::operator()(const symbol_set &ss) const
+{
+    ::std::size_t retval = 0;
+
+    for (const auto &s : ss) {
+        ::boost::hash_combine(retval, s);
+    }
 
     return retval;
 }

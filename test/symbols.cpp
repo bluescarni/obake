@@ -218,3 +218,17 @@ TEST_CASE("ss_s11n_test")
     REQUIRE(tmp == symbol_set{"x", "y", "z"});
     ss.str("");
 }
+
+TEST_CASE("flappo")
+{
+    detail::ss_fw bappo(symbol_set{"x", "y", "z"});
+    detail::ss_fw bappo2(symbol_set{"x", "y", "z"});
+    detail::ss_fw bappo3(symbol_set{"x", "y", "z"});
+
+    REQUIRE(&bappo.get() == &bappo2.get());
+    REQUIRE(&bappo.get() == &bappo3.get());
+
+    for (const auto &s : bappo.get()) {
+        std::cout << s << '\n';
+    }
+}

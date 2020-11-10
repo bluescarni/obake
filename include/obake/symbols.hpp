@@ -11,13 +11,23 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <functional>
+#include <new>
 #include <string>
 #include <tuple>
+#include <typeinfo>
 #include <utility>
 
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
+#include <boost/flyweight/flyweight.hpp>
+#include <boost/flyweight/hashed_factory.hpp>
+#include <boost/flyweight/holder_tag.hpp>
+#include <boost/flyweight/refcounted.hpp>
+#include <boost/flyweight/simple_locking.hpp>
+#include <boost/mpl/aux_/lambda_support.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/string.hpp>
 
@@ -186,5 +196,59 @@ struct tracking_level<::obake::symbol_set> : ::obake::detail::s11n_no_tracking<:
 } // namespace boost::serialization
 
 BOOST_SERIALIZATION_SPLIT_FREE(::obake::symbol_set)
+
+namespace obake::detail
+{
+
+OBAKE_DLL_PUBLIC ::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &, ::std::size_t,
+                                                               ::std::function<void(void *)>);
+
+template <typename C>
+struct symbol_set_holder_class : ::boost::flyweights::holder_marker {
+    static_assert(alignof(C) <= alignof(::std::max_align_t));
+
+    static C &impl()
+    {
+        auto [storage, new_object]
+            = detail::ss_fw_fetch_storage(typeid(C), sizeof(C), [](void *ptr) { static_cast<C *>(ptr)->~C(); });
+
+        if (new_object) {
+            try {
+                auto ptr = ::new (storage) C;
+
+                return *ptr;
+            } catch (...) {
+                // TODO: handle fatal error.
+            }
+        } else {
+            return *static_cast<C *>(storage);
+        }
+    }
+
+    static C &get()
+    {
+        static C &retval = symbol_set_holder_class<C>::impl();
+
+        return retval;
+    }
+
+    typedef symbol_set_holder_class type;
+    BOOST_MPL_AUX_LAMBDA_SUPPORT(1, symbol_set_holder_class, (C))
+};
+
+struct symbol_set_holder : ::boost::flyweights::holder_marker {
+    template <typename C>
+    struct apply {
+        typedef symbol_set_holder_class<C> type;
+    };
+};
+
+struct OBAKE_DLL_PUBLIC ss_hasher {
+    ::std::size_t operator()(const symbol_set &) const;
+};
+
+using ss_fw = ::boost::flyweight<symbol_set, ::boost::flyweights::hashed_factory<ss_hasher>, symbol_set_holder>;
+
+} // namespace obake::detail
 
 #endif
