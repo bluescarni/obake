@@ -9,8 +9,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdlib>
 #include <functional>
 #include <initializer_list>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -241,6 +243,12 @@ symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
 namespace
 {
 
+// Storage provider for the symbol_set flyweight machinery.
+// This is a dictionary mapping a C++ type T to a dynamically-allocated
+// array of uchars of size sizeof(T), and a type-erased function.
+// The array of uchars will be used to store a single instance of T,
+// while the function is used to invoke the destructor of the T
+// instance when the dict is being destroyed.
 struct ss_fw_storage_map {
     ::std::unordered_map<::std::type_index,
                          ::std::tuple<::std::unique_ptr<unsigned char[]>, ::std::function<void(void *)>>>
@@ -248,45 +256,63 @@ struct ss_fw_storage_map {
     ~ss_fw_storage_map()
     {
         for (auto &[_, tup] : value) {
-            std::cout << "Cleaning up storage\n";
-
             ::std::get<1>(tup)(static_cast<void *>(::std::get<0>(tup).get()));
         }
     }
 };
 
+// Helper to create on-demand the global
+// objects used in the symbol_set flyweight machinery.
 auto ss_fw_statics()
 {
-    static ::std::mutex ss_fw_mutex;
+    // Need a storage dict and a mutex to synchronize the
+    // access to it.
     static ss_fw_storage_map ss_fw_map;
+    static ::std::mutex ss_fw_mutex;
 
+    // NOTE: return a tuple of references.
     return ::std::make_tuple(::std::ref(ss_fw_mutex), ::std::ref(ss_fw_map));
 }
 
 } // namespace
 
+// Fetch storage for an instance of type tp, whose size is s, and with a cleanup
+// function f. The returned pointer will point to a chunk of either new or existing
+// storage, the boolean flag indicates whether new storage was allocated or not.
+// The function f will be used to destroy the instances stored in ss_fw_map upon
+// its destruction.
 ::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &tp, ::std::size_t s,
                                               ::std::function<void(void *)> f)
 {
+    // Fetch references to the global objects.
     auto [ss_fw_mutex, ss_fw_map] = detail::ss_fw_statics();
 
+    // Lock for multithreading safety.
     ::std::lock_guard lock{ss_fw_mutex};
 
-    auto [it, new_object] = ss_fw_map.value.try_emplace(tp);
-
-    std::cout << "Looking up storage for " << it->first.name() << '\n';
+    // Try to add a new entry for the type tp.
+    const auto [it, new_object] = ss_fw_map.value.try_emplace(tp);
 
     if (new_object) {
-        std::cout << "No storage found, creating new\n";
-        // TODO exception safety in case of alloc failure.
-        ::std::get<0>(it->second) = ::std::unique_ptr<unsigned char[]>(new unsigned char[s]);
+        // A new entry for tp was created. Allocate the storage
+        // and register the cleanup function.
+        try {
+            ::std::get<0>(it->second) = ::std::unique_ptr<unsigned char[]>(new unsigned char[s]);
+        } catch (...) {
+            // If memory allocation fails, erase the just-added entry
+            // before re-throwing.
+            ss_fw_map.value.erase(it);
+            throw;
+        }
         ::std::get<1>(it->second) = ::std::move(f);
     }
 
     return {::std::get<0>(it->second).get(), new_object};
 }
 
-::std::size_t ss_hasher::operator()(const symbol_set &ss) const
+// Hasher for symbol_set. It will combine the string hashes
+// via boost::hash_combine().
+::std::size_t ss_fw_hasher::operator()(const symbol_set &ss) const
 {
     ::std::size_t retval = 0;
 
@@ -295,6 +321,18 @@ auto ss_fw_statics()
     }
 
     return retval;
+}
+
+// Small helper to abort if we cannot default-construct
+// C in ss_fw_holder_class.
+void ss_fw_handle_fatal_error()
+{
+    ::std::cerr
+        << "Fatal error in the implementation of the symbol_set flyweight: the default-initialization of an object "
+           "in the holder class raised an exception"
+        << ::std::endl;
+
+    ::std::abort();
 }
 
 } // namespace obake::detail

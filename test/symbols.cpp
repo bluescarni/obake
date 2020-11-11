@@ -219,16 +219,12 @@ TEST_CASE("ss_s11n_test")
     ss.str("");
 }
 
-TEST_CASE("flappo")
+TEST_CASE("ss fw")
 {
-    detail::ss_fw bappo(symbol_set{"x", "y", "z"});
-    detail::ss_fw bappo2(symbol_set{"x", "y", "z"});
-    detail::ss_fw bappo3(symbol_set{"x", "y", "z"});
+    detail::ss_fw ssfw1(symbol_set{"x", "y", "z"});
+    detail::ss_fw ssfw2(symbol_set{"x", "y", "z"});
+    detail::ss_fw ssfw3(symbol_set{"x", "y", "z"});
 
-    REQUIRE(&bappo.get() == &bappo2.get());
-    REQUIRE(&bappo.get() == &bappo3.get());
-
-    for (const auto &s : bappo.get()) {
-        std::cout << s << '\n';
-    }
+    REQUIRE(&ssfw1.get() == &ssfw2.get());
+    REQUIRE(&ssfw2.get() == &ssfw3.get());
 }
