@@ -15,7 +15,8 @@ bash miniconda.sh -b -p $HOME/miniconda
 export PATH="$HOME/miniconda/bin:$PATH"
 conda config --add channels conda-forge
 conda config --set channel_priority strict
-conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel abseil-cpp backtrace sphinx sphinx_rtd_theme"
+conda_pkgs="cmake mppp boost-cpp tbb tbb-devel abseil-cpp backtrace sphinx pip"
+pip install --user sphinx-book-theme
 conda create -q -p $deps_dir -y $conda_pkgs
 source activate $deps_dir
 
