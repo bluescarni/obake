@@ -179,13 +179,13 @@ Building the documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 obake's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/>`_,
-and it uses a `custom theme <https://sphinx-rtd-theme.readthedocs.io/en/stable/>`_.
+and it uses a `custom theme <https://github.com/executablebooks/sphinx-book-theme>`_.
 Sphinx can typically be installed from a variety of package managers,
 while the custom theme can easily be installed with ``pip``:
 
 .. code-block:: console
 
-   $ pip install --user sphinx_rtd_theme
+   $ pip install --user sphinx-book-theme
 
 Before attempting to build the documentation, you must ensure
 to run CMake from the ``build`` directory at least once
