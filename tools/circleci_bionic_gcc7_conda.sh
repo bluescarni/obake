@@ -60,7 +60,7 @@ set -x
 cd obake_gh_pages
 git checkout -b gh-pages --track origin/gh-pages;
 git rm -fr *;
-mv ../doc/_build/html/* .;
+mv ../../doc/_build/html/* .;
 git add *;
 # We assume here that a failure in commit means that there's nothing
 # to commit.
