@@ -15,7 +15,8 @@ bash miniconda.sh -b -p $HOME/miniconda
 export PATH="$HOME/miniconda/bin:$PATH"
 conda config --add channels conda-forge
 conda config --set channel_priority strict
-conda_pkgs="cmake>=3.3 mppp boost-cpp tbb tbb-devel abseil-cpp backtrace sphinx sphinx_rtd_theme"
+conda_pkgs="cmake mppp boost-cpp tbb tbb-devel abseil-cpp backtrace sphinx pip"
+pip install --user sphinx-book-theme
 conda create -q -p $deps_dir -y $conda_pkgs
 source activate $deps_dir
 
@@ -49,7 +50,7 @@ if [[ "${CIRCLE_BRANCH}" != "master" ]]; then
 fi
 
 # Check out the gh_pages branch in a separate dir.
-cd ../..
+cd ../build
 git config --global push.default simple
 git config --global user.name "CircleCI"
 git config --global user.email "bluescarni@gmail.com"
@@ -59,7 +60,7 @@ set -x
 cd obake_gh_pages
 git checkout -b gh-pages --track origin/gh-pages;
 git rm -fr *;
-mv ../project/doc/_build/html/* .;
+mv ../doc/_build/html/* .;
 git add *;
 # We assume here that a failure in commit means that there's nothing
 # to commit.

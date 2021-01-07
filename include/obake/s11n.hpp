@@ -10,43 +10,13 @@
 #define OBAKE_S11N_HPP
 
 #include <boost/config.hpp>
-#include <boost/mpl/equal_to.hpp>
 #include <boost/mpl/greater.hpp>
 #include <boost/mpl/int.hpp>
 #include <boost/mpl/integral_c.hpp>
-#include <boost/serialization/binary_object.hpp>
-#include <boost/serialization/serialization.hpp>
 #include <boost/serialization/tracking.hpp>
 #include <boost/static_assert.hpp>
 
 #include <obake/config.hpp>
-
-#if defined(OBAKE_HAVE_GCC_INT128)
-
-// Implement serialisation for 128-bit integrals.
-namespace boost::serialization
-{
-
-template <class Archive>
-inline void serialize(Archive &ar, __uint128_t &n, unsigned)
-{
-    ar &serialization::make_binary_object(&n, sizeof(n));
-}
-
-template <class Archive>
-inline void serialize(Archive &ar, __int128_t &n, unsigned)
-{
-    ar &serialization::make_binary_object(&n, sizeof(n));
-}
-
-// Ensure that 128-bit integers are considered primitive types,
-// which also ensures that their address is never tracked.
-BOOST_STATIC_ASSERT((mpl::equal_to<implementation_level<__uint128_t>, mpl::int_<primitive_type>>::value));
-BOOST_STATIC_ASSERT((mpl::equal_to<implementation_level<__int128_t>, mpl::int_<primitive_type>>::value));
-
-} // namespace boost::serialization
-
-#endif
 
 namespace obake::detail
 {

@@ -12,10 +12,10 @@ matrix:
   include:
     - env: OBAKE_BUILD_TYPE="Debug"
       os: osx
-      osx_image: xcode10.3
+      osx_image: xcode11.6
     - env: OBAKE_BUILD_TYPE="Release"
       os: osx
-      osx_image: xcode10.3
+      osx_image: xcode11.6
 script:
     - mkdir build
     - cd build
