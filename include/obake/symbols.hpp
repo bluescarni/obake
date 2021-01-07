@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <functional>
 #include <new>
 #include <string>
 #include <tuple>
@@ -201,7 +200,7 @@ namespace obake::detail
 {
 
 OBAKE_DLL_PUBLIC ::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &, ::std::size_t,
-                                                               ::std::function<void(void *)>);
+                                                               void (*)(void *));
 
 OBAKE_DLL_PUBLIC [[noreturn]] void ss_fw_handle_fatal_error();
 
@@ -211,7 +210,7 @@ OBAKE_DLL_PUBLIC [[noreturn]] void ss_fw_handle_fatal_error();
 // https://www.boost.org/doc/libs/1_74_0/boost/flyweight/static_holder.hpp
 //
 // The reason for this custom holder is that, in the
-// presence of multiple DLLs using obake we, don't want to have
+// presence of multiple DLLs using obake, we don't want to have
 // multiple global factories for the symbol_set flyweight, which
 // would lead to crashes. That is, in this implementation the
 // get() function will always return the same object, which is

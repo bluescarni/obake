@@ -10,7 +10,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
-#include <functional>
 #include <initializer_list>
 #include <iostream>
 #include <memory>
@@ -250,9 +249,7 @@ namespace
 // while the function is used to invoke the destructor of the T
 // instance when the dict is being destroyed.
 struct ss_fw_storage_map {
-    ::std::unordered_map<::std::type_index,
-                         ::std::tuple<::std::unique_ptr<unsigned char[]>, ::std::function<void(void *)>>>
-        value;
+    ::std::unordered_map<::std::type_index, ::std::tuple<::std::unique_ptr<unsigned char[]>, void (*)(void *)>> value;
     ~ss_fw_storage_map()
     {
         for (auto &[_, tup] : value) {
@@ -281,8 +278,7 @@ auto ss_fw_statics()
 // storage, the boolean flag indicates whether new storage was allocated or not.
 // The function f will be used to destroy the instances stored in ss_fw_map upon
 // its destruction.
-::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &tp, ::std::size_t s,
-                                              ::std::function<void(void *)> f)
+::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &tp, ::std::size_t s, void (*f)(void *))
 {
     // Fetch references to the global objects.
     auto [ss_fw_mutex, ss_fw_map] = detail::ss_fw_statics();
