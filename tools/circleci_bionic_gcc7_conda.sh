@@ -50,7 +50,7 @@ if [[ "${CIRCLE_BRANCH}" != "master" ]]; then
 fi
 
 # Check out the gh_pages branch in a separate dir.
-cd ../build
+cd ../
 git config --global push.default simple
 git config --global user.name "CircleCI"
 git config --global user.email "bluescarni@gmail.com"
@@ -60,7 +60,7 @@ set -x
 cd obake_gh_pages
 git checkout -b gh-pages --track origin/gh-pages;
 git rm -fr *;
-mv ../../doc/_build/html/* .;
+mv ../doc/_build/html/* .;
 git add *;
 # We assume here that a failure in commit means that there's nothing
 # to commit.
