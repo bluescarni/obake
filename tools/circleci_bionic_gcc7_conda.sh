@@ -50,7 +50,7 @@ if [[ "${CIRCLE_BRANCH}" != "master" ]]; then
 fi
 
 # Check out the gh_pages branch in a separate dir.
-cd ../build
+cd ../
 git config --global push.default simple
 git config --global user.name "CircleCI"
 git config --global user.email "bluescarni@gmail.com"
