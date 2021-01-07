@@ -305,12 +305,14 @@ auto ss_fw_statics()
         // and register the cleanup function.
         try {
             ::std::get<0>(it->second) = ::std::unique_ptr<unsigned char[]>(new unsigned char[s]);
+            // LCOV_EXCL_START
         } catch (...) {
             // If memory allocation fails, erase the just-added entry
             // before re-throwing.
             ss_fw_map.value.erase(it);
             throw;
         }
+        // LCOV_EXCL_STOP
         ::std::get<1>(it->second) = ::std::move(f);
     }
 
@@ -330,6 +332,8 @@ auto ss_fw_statics()
     return retval;
 }
 
+// LCOV_EXCL_START
+
 // Small helper to abort if we cannot default-construct
 // C in ss_fw_holder_class.
 void ss_fw_handle_fatal_error()
@@ -341,5 +345,7 @@ void ss_fw_handle_fatal_error()
 
     ::std::abort();
 }
+
+// LCOV_EXCL_STOP
 
 } // namespace obake::detail

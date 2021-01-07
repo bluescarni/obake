@@ -235,11 +235,13 @@ struct ss_fw_holder_class : ::boost::flyweights::holder_marker {
                 auto ptr = ::new (storage) C;
 
                 return *ptr;
+                // LCOV_EXCL_START
             } catch (...) {
                 // If the default constructor of C throws, there's
                 // nothing we can do to recover.
                 detail::ss_fw_handle_fatal_error();
             }
+            // LCOV_EXCL_STOP
         } else {
             // An instance of C was already created earlier
             // (i.e., the first time impl() was called).
