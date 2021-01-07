@@ -203,7 +203,7 @@ namespace obake::detail
 OBAKE_DLL_PUBLIC ::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &, ::std::size_t,
                                                                void (*)(void *));
 
-OBAKE_DLL_PUBLIC [[noreturn]] void ss_fw_handle_fatal_error();
+[[noreturn]] OBAKE_DLL_PUBLIC void ss_fw_handle_fatal_error();
 
 // Implementation of a custom holder for the symbol_set flyweight. Largely lifted
 // from the default static_holder:
