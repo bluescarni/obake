@@ -23,7 +23,18 @@
 #include <utility>
 
 #include <boost/container/container_fwd.hpp>
+#include <boost/version.hpp>
+
+// NOTE: the header for hash_combine changed in version 1.67.
+#if (BOOST_VERSION / 100000 > 1) || (BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 >= 67)
+
 #include <boost/container_hash/hash.hpp>
+
+#else
+
+#include <boost/functional/hash.hpp>
+
+#endif
 
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
