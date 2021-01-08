@@ -218,3 +218,13 @@ TEST_CASE("ss_s11n_test")
     REQUIRE(tmp == symbol_set{"x", "y", "z"});
     ss.str("");
 }
+
+TEST_CASE("ss fw")
+{
+    detail::ss_fw ssfw1(symbol_set{"x", "y", "z"});
+    detail::ss_fw ssfw2(symbol_set{"x", "y", "z"});
+    detail::ss_fw ssfw3(symbol_set{"x", "y", "z"});
+
+    REQUIRE(&ssfw1.get() == &ssfw2.get());
+    REQUIRE(&ssfw2.get() == &ssfw3.get());
+}

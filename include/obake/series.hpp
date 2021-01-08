@@ -706,7 +706,13 @@ private:
 public:
     using size_type = typename table_type::size_type;
 
-    series() : m_s_table(1), m_log2_size(0) {}
+    series()
+        : m_s_table(1), m_log2_size(0),
+          // NOTE: construct m_symbol_set cheaply from
+          // a global object constructed from symbol_set{}.
+          m_symbol_set(detail::ss_fw_default())
+    {
+    }
     series(const series &) = default;
     series(series &&other) noexcept
         : m_s_table(::std::move(other.m_s_table)), m_log2_size(::std::move(other.m_log2_size)),
@@ -746,7 +752,7 @@ public:
             // will be unique by construction.
             detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
                                           detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-                *this, m_s_table[0], K(::std::as_const(m_symbol_set)), ::std::forward<T>(x));
+                *this, m_s_table[0], K(m_symbol_set.get()), ::std::forward<T>(x));
         } else if constexpr (algo == 2) {
             // Case 2: the series rank of T is equal to the series
             // rank of this series type, and the key and tag types
@@ -760,7 +766,7 @@ public:
             detail::series_rref_clearer<T> xc(::std::forward<T>(x));
 
             // Copy over the symbol set.
-            m_symbol_set = x.get_symbol_set();
+            m_symbol_set = x.get_symbol_set_fw();
 
             // Set the number of segments.
             const auto x_log2_size = x.get_s_size();
@@ -848,7 +854,7 @@ public:
         // will be unique by construction.
         detail::series_add_term_table<true, detail::sat_check_zero::on, detail::sat_check_compat_key::off,
                                       detail::sat_check_table_size::off, detail::sat_assume_unique::on>(
-            *this, m_s_table[0], K(::std::as_const(m_symbol_set)), ::std::forward<T>(x));
+            *this, m_s_table[0], K(m_symbol_set.get()), ::std::forward<T>(x));
     }
 
     series &operator=(const series &) = default;
@@ -893,7 +899,7 @@ public:
                 // A single-term series is single-coefficient if the
                 // only key is unitary.
                 const auto it = cbegin();
-                if (obake_likely(::obake::key_is_one(it->first, m_symbol_set))) {
+                if (obake_likely(::obake::key_is_one(it->first, m_symbol_set.get()))) {
                     return T(it->second);
                 }
                 [[fallthrough]];
@@ -936,9 +942,9 @@ public:
                 const auto &c = t.second;
 
                 // No zero terms.
-                assert(!::obake::key_is_zero(k, m_symbol_set) && !::obake::is_zero(c));
+                assert(!::obake::key_is_zero(k, m_symbol_set.get()) && !::obake::is_zero(c));
                 // No incompatible keys.
-                assert(::obake::key_is_compatible(k, m_symbol_set));
+                assert(::obake::key_is_compatible(k, m_symbol_set.get()));
             }
 
             // Check that, in a segmented table, all terms are in the table they
@@ -1022,7 +1028,7 @@ public:
             case 0u:
                 return true;
             case 1u:
-                return ::obake::key_is_one(cbegin()->first, m_symbol_set);
+                return ::obake::key_is_one(cbegin()->first, m_symbol_set.get());
             default:
                 return false;
         }
@@ -1275,9 +1281,23 @@ public:
 
     const symbol_set &get_symbol_set() const
     {
-        return m_symbol_set;
+        return m_symbol_set.get();
     }
     void set_symbol_set(const symbol_set &s)
+    {
+        if (obake_unlikely(!empty())) {
+            obake_throw(::std::invalid_argument, "A symbol set can be set only in an empty series, but this series has "
+                                                     + detail::to_string(size()) + " terms");
+        }
+
+        m_symbol_set = s;
+    }
+
+    const detail::ss_fw &get_symbol_set_fw() const
+    {
+        return m_symbol_set;
+    }
+    void set_symbol_set_fw(const detail::ss_fw &s)
     {
         if (obake_unlikely(!empty())) {
             obake_throw(::std::invalid_argument, "A symbol set can be set only in an empty series, but this series has "
@@ -1355,7 +1375,9 @@ public:
     void clear() noexcept
     {
         clear_terms();
-        m_symbol_set.clear();
+        // NOTE: cheap assignment via a ss_fw
+        // constructed from a symbol_set{}.
+        m_symbol_set = detail::ss_fw_default();
     }
 
 private:
@@ -1520,7 +1542,7 @@ private:
 private:
     s_table_type m_s_table;
     unsigned m_log2_size;
-    symbol_set m_symbol_set;
+    detail::ss_fw m_symbol_set;
 };
 
 // Free function implementation of the swapping primitive.
@@ -4490,7 +4512,7 @@ inline series<K, C, Tag> filtered_impl(const series<K, C, Tag> &s, const F &f)
     // Init the return value. Same symbol set
     // and same number of segments as s.
     series<K, C, Tag> retval;
-    retval.set_symbol_set(s.get_symbol_set());
+    retval.set_symbol_set_fw(s.get_symbol_set_fw());
     retval.set_n_segments(s.get_s_size());
 
     // Do the filtering table by table.

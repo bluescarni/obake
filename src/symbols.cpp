@@ -8,13 +8,33 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <cstdlib>
 #include <initializer_list>
+#include <iostream>
+#include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 #include <utility>
 
 #include <boost/container/container_fwd.hpp>
+#include <boost/version.hpp>
+
+// NOTE: the header for hash_combine changed in version 1.67.
+#if (BOOST_VERSION / 100000 > 1) || (BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 >= 67)
+
+#include <boost/container_hash/hash.hpp>
+
+#else
+
+#include <boost/functional/hash.hpp>
+
+#endif
 
 #include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
@@ -229,5 +249,103 @@ symbol_idx_set ss_intersect_idx(const symbol_set &s, const symbol_set &s_ref)
 
     return retval;
 }
+
+namespace
+{
+
+// Storage provider for the symbol_set flyweight machinery.
+// This is a dictionary mapping a C++ type T to a dynamically-allocated
+// array of uchars of size sizeof(T), and a type-erased function.
+// The array of uchars will be used to store a single instance of T,
+// while the function is used to invoke the destructor of the T
+// instance when the dict is being destroyed.
+struct ss_fw_storage_map {
+    ::std::unordered_map<::std::type_index, ::std::tuple<::std::unique_ptr<unsigned char[]>, void (*)(void *)>> value;
+    ~ss_fw_storage_map()
+    {
+        for (auto &[_, tup] : value) {
+            ::std::get<1>(tup)(static_cast<void *>(::std::get<0>(tup).get()));
+        }
+    }
+};
+
+// Helper to create on-demand the global
+// objects used in the symbol_set flyweight machinery.
+auto ss_fw_statics()
+{
+    // Need a storage dict and a mutex to synchronize the
+    // access to it.
+    static ss_fw_storage_map ss_fw_map;
+    static ::std::mutex ss_fw_mutex;
+
+    // NOTE: return a tuple of references.
+    return ::std::make_tuple(::std::ref(ss_fw_mutex), ::std::ref(ss_fw_map));
+}
+
+} // namespace
+
+// Fetch storage for an instance of type tp, whose size is s, and with a cleanup
+// function f. The returned pointer will point to a chunk of either new or existing
+// storage, the boolean flag indicates whether new storage was allocated or not.
+// The function f will be used to destroy the instances stored in ss_fw_map upon
+// its destruction.
+::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &tp, ::std::size_t s, void (*f)(void *))
+{
+    // Fetch references to the global objects.
+    auto [ss_fw_mutex, ss_fw_map] = detail::ss_fw_statics();
+
+    // Lock for multithreading safety.
+    ::std::lock_guard lock{ss_fw_mutex};
+
+    // Try to add a new entry for the type tp.
+    const auto [it, new_object] = ss_fw_map.value.try_emplace(tp);
+
+    if (new_object) {
+        // A new entry for tp was created. Allocate the storage
+        // and register the cleanup function.
+        try {
+            ::std::get<0>(it->second) = ::std::unique_ptr<unsigned char[]>(new unsigned char[s]);
+            // LCOV_EXCL_START
+        } catch (...) {
+            // If memory allocation fails, erase the just-added entry
+            // before re-throwing.
+            ss_fw_map.value.erase(it);
+            throw;
+        }
+        // LCOV_EXCL_STOP
+        ::std::get<1>(it->second) = ::std::move(f);
+    }
+
+    return {::std::get<0>(it->second).get(), new_object};
+}
+
+// Hasher for symbol_set. It will combine the string hashes
+// via boost::hash_combine().
+::std::size_t ss_fw_hasher::operator()(const symbol_set &ss) const
+{
+    ::std::size_t retval = 0;
+
+    for (const auto &s : ss) {
+        ::boost::hash_combine(retval, s);
+    }
+
+    return retval;
+}
+
+// LCOV_EXCL_START
+
+// Small helper to abort if we cannot default-construct
+// C in ss_fw_holder_class.
+void ss_fw_handle_fatal_error()
+{
+    ::std::cerr
+        << "Fatal error in the implementation of the symbol_set flyweight: the default-initialization of an object "
+           "in the holder class raised an exception"
+        << ::std::endl;
+
+    ::std::abort();
+}
+
+// LCOV_EXCL_STOP
 
 } // namespace obake::detail

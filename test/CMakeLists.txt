@@ -105,3 +105,24 @@ ADD_OBAKE_TESTCASE(type_traits)
 ADD_OBAKE_TESTCASE(stacktrace)
 ADD_OBAKE_TESTCASE(type_name)
 ADD_OBAKE_TESTCASE(xoroshiro128_plus)
+
+add_library(ss_fw_test_lib SHARED ss_fw_test_lib.cpp)
+target_compile_options(ss_fw_test_lib PRIVATE
+    "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
+    "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
+    "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
+)
+set_target_properties(ss_fw_test_lib PROPERTIES CXX_VISIBILITY_PRESET hidden)
+set_target_properties(ss_fw_test_lib PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
+set_property(TARGET ss_fw_test_lib PROPERTY CXX_STANDARD 17)
+set_property(TARGET ss_fw_test_lib PROPERTY CXX_STANDARD_REQUIRED YES)
+set_property(TARGET ss_fw_test_lib PROPERTY CXX_EXTENSIONS NO)
+target_include_directories(ss_fw_test_lib PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+target_link_libraries(ss_fw_test_lib PRIVATE obake)
+
+ADD_OBAKE_TESTCASE(ss_fw_test)
+target_link_libraries(ss_fw_test PRIVATE ss_fw_test_lib)

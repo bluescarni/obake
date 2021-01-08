@@ -137,7 +137,10 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
     // init the keys.
     ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
 
-    [[maybe_unused]] auto make_poly = [&ss, &tmp](const auto &n) {
+    // Create the fw version of the symbol set.
+    const detail::ss_fw ss_fw(ss);
+
+    [[maybe_unused]] auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
@@ -153,7 +156,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
 
         // Init the retval, assign the symbol set.
         T retval;
-        retval.set_symbol_set(ss);
+        retval.set_symbol_set_fw(ss_fw);
 
         // Try to locate s within the symbol set.
         const auto it = ss.find(s);
@@ -1894,7 +1897,7 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &...args)
 
     // Init the return value.
     ret_t retval;
-    retval.set_symbol_set(x.get_symbol_set());
+    retval.set_symbol_set_fw(x.get_symbol_set_fw());
 
     if (x.empty() || y.empty()) {
         // Exit early if either series is empty.
@@ -2155,19 +2158,16 @@ inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, 
             // The polynomial has a single term, we can proceed
             // with the monomial exponentiation.
 
-            // Cache the symbol set.
-            const auto &ss = x.get_symbol_set();
-
             // Build the return value.
             ret_t retval;
-            retval.set_symbol_set(ss);
+            retval.set_symbol_set_fw(x.get_symbol_set_fw());
             // NOTE: we do coefficient and monomial exponentiation using
             // const refs everywhere (thus, we ensure that y is not mutated
             // after one exponentiation). Regarding coefficient exponentiation,
             // we checked in the default implementation that it is supported
             // via const lvalue refs.
             const auto it = x.cbegin();
-            retval.add_term(::obake::monomial_pow(it->first, ::std::as_const(y), ss),
+            retval.add_term(::obake::monomial_pow(it->first, ::std::as_const(y), x.get_symbol_set()),
                             ::obake::pow(it->second, ::std::as_const(y)));
 
             return retval;
@@ -2266,7 +2266,7 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
 
     // Init a temp poly that we will use in the loop below.
     remove_cvref_t<T> tmp_poly;
-    tmp_poly.set_symbol_set(ss);
+    tmp_poly.set_symbol_set_fw(x.get_symbol_set_fw());
 
     // The return value (this will default-construct
     // an empty polynomial).
@@ -2535,6 +2535,7 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
 
     // Cache the symbol set.
     const auto &ss = x.get_symbol_set();
+    const auto &ss_fw = x.get_symbol_set_fw();
 
     // Determine the index of s in the symbol set.
     const auto idx = ss.index_of(ss.find(s));
@@ -2548,8 +2549,8 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         // These will represent the original monomial and its
         // derivative as series of type T (after cvref removal).
         remove_cvref_t<T> tmp_p1, tmp_p2;
-        tmp_p1.set_symbol_set(ss);
-        tmp_p2.set_symbol_set(ss);
+        tmp_p1.set_symbol_set_fw(ss_fw);
+        tmp_p2.set_symbol_set_fw(ss_fw);
 
         ret_t retval(0);
         for (const auto &t : x) {
@@ -2589,7 +2590,7 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         // and segmentation from x, and reserving
         // the same size as x.
         ret_t retval;
-        retval.set_symbol_set(ss);
+        retval.set_symbol_set_fw(ss_fw);
         retval.set_n_segments(x.get_s_size());
         retval.reserve(x.size());
 
@@ -2724,6 +2725,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
 
         // Cache the symbol set.
         const auto &ss = x.get_symbol_set();
+        const auto &ss_fw = x.get_symbol_set_fw();
         // idx has to be present.
         assert(idx != ss.size());
 
@@ -2738,7 +2740,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
             // This will represent the integral of the original monomial
             // as a series of type rT.
             rT tmp_p;
-            tmp_p.set_symbol_set(ss);
+            tmp_p.set_symbol_set_fw(ss_fw);
 
             // Produce retval by accumulation.
             ret_t retval(0);
@@ -2770,7 +2772,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
             // and segmentation from x, and reserving
             // the same size as x.
             ret_t retval;
-            retval.set_symbol_set(ss);
+            retval.set_symbol_set_fw(ss_fw);
             retval.set_n_segments(x.get_s_size());
             retval.reserve(x.size());
 

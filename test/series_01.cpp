@@ -68,6 +68,11 @@ TEST_CASE("series_set_symbol_set")
     s1 = s1_t{"3/4"};
     OBAKE_REQUIRES_THROWS_CONTAINS(s1.set_symbol_set(symbol_set{}), std::invalid_argument,
                                    "A symbol set can be set only in an empty series, but this series has 1 terms");
+
+    s1_t s1a;
+    s1a.set_symbol_set(symbol_set{"x", "y", "z"});
+    OBAKE_REQUIRES_THROWS_CONTAINS(s1.set_symbol_set_fw(s1a.get_symbol_set_fw()), std::invalid_argument,
+                                   "A symbol set can be set only in an empty series, but this series has 1 terms");
 }
 
 TEST_CASE("series_reserve")

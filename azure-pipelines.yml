@@ -39,48 +39,14 @@ jobs:
       # Note: conda activate doesn't work here, because it creates a new shell!
       - script: |
           conda install cmake ^
-                        mpir ^
-                        mpfr ^
+                        mppp ^
+                        abseil-cpp ^
                         tbb ^
                         tbb-devel ^
                         boost-cpp ^
                         python=3.6
           conda list
         displayName: "Install conda packages"
-
-      # Install mp++.
-      - script: |
-          setlocal EnableDelayedExpansion
-          git clone https://github.com/bluescarni/mppp.git
-          cd mppp
-          mkdir build
-          cd build
-          cmake .. -G "Visual Studio 16 2019" ^
-                   -DMPPP_WITH_MPFR=yes ^
-                   -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
-                   -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
-                   -DCMAKE_CXX_STANDARD=17
-          cmake --build . --config RelWithDebInfo --target install
-          cd ..
-          cd ..
-        displayName: "Install mp++"
-
-      # Install abseil.
-      - script: |
-          setlocal EnableDelayedExpansion
-          git clone https://github.com/abseil/abseil-cpp.git
-          cd abseil-cpp
-          git checkout 3c98fcc0461bd2a4b9c149d4748a7373a225cf4b
-          mkdir build
-          cd build
-          cmake .. -G "Visual Studio 16 2019" ^
-                   -DCMAKE_PREFIX_PATH=C:\tools\miniconda3\Library ^
-                   -DCMAKE_INSTALL_PREFIX=C:\tools\miniconda3\Library ^
-                   -DCMAKE_CXX_STANDARD=17
-          cmake --build . --config RelWithDebInfo --target install
-          cd ..
-          cd ..
-        displayName: "Install abseil"
 
       # Configure, build and test.
       - script: |
