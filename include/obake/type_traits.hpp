@@ -1214,6 +1214,10 @@ struct make_dependent {
 template <typename T, typename U>
 using make_dependent_t = typename make_dependent<T, U>::type;
 
+// Helper for making static_assert() always fire.
+template <typename, typename...>
+inline constexpr bool always_false_v = false;
+
 } // namespace detail
 
 } // namespace obake

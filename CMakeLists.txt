@@ -174,6 +174,9 @@ if(WIN32)
     find_package(DbgEng REQUIRED)
 endif()
 
+# fmt.
+find_package(fmt REQUIRED)
+
 # Wrap the CMAKE_DL_LIBS variable in an imported target.
 include(ObakeFindDl)
 
@@ -187,6 +190,7 @@ set(OBAKE_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/series.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/tex_stream_insert.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/kpack.cpp"
 )
 
 if(OBAKE_WITH_LIBBACKTRACE)
@@ -203,6 +207,7 @@ if(YACMA_COMPILER_IS_MSVC)
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/exceptions.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/hash.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/k_packing.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/include/obake/kpack.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/ranges.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/s11n.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/series.hpp"
@@ -310,6 +315,7 @@ target_link_libraries(obake PUBLIC
     Boost::serialization
     Boost::disable_autolinking
     TBB::tbb
+    fmt::fmt
 )
 
 if(OBAKE_WITH_LIBBACKTRACE)
