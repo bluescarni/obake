@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <initializer_list>
 #include <limits>
 #include <random>
@@ -37,7 +38,7 @@ TEST_CASE("series_lookup")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     for (auto s_idx : {0u, 1u, 2u, 4u}) {
@@ -117,7 +118,7 @@ TEST_CASE("series_lookup")
 
 TEST_CASE("series_comparison")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s2_t = series<pm_t, s1_t, void>;
 
@@ -307,7 +308,7 @@ TEST_CASE("series_comparison")
 // operators.
 TEST_CASE("series_in_place_add_sub")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = polynomial<pm_t, rat_t>;
     using s11_t = polynomial<pm_t, s1_t>;
 
@@ -582,7 +583,7 @@ struct foo {
 namespace ns
 {
 
-using pm_t = packed_monomial<int>;
+using pm_t = packed_monomial<std::int32_t>;
 
 // ADL-based customization.
 struct tag00 {
@@ -618,7 +619,7 @@ inline constexpr auto series_mul<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_
 // implementation.
 TEST_CASE("series_default_mul")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1d_t = series<pm_t, double, void>;
     using s2_t = series<pm_t, s1_t, void>;
@@ -715,7 +716,7 @@ TEST_CASE("series_default_mul")
 
 TEST_CASE("series_typedefs")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     REQUIRE(std::is_same_v<series_term_t<s1_t>, std::pair<const series_key_t<s1_t>, series_cf_t<s1_t>>>);
@@ -729,7 +730,7 @@ TEST_CASE("series_typedefs")
 
 TEST_CASE("series_clear_terms")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s;
@@ -806,7 +807,7 @@ inline constexpr auto
 
 TEST_CASE("series_in_place_add_custom")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
     using s1a_t = series<pm_t, rat_t, ns::tag02>;
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
@@ -874,7 +875,7 @@ inline constexpr auto
 
 TEST_CASE("series_in_place_sub_custom")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
     using s1a_t = series<pm_t, rat_t, ns::tag02>;
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;

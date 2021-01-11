@@ -7,6 +7,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <initializer_list>
 #include <limits>
@@ -52,7 +53,7 @@ TEST_CASE("cf_key_concepts")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
 
     REQUIRE(!is_cf_v<void>);
     REQUIRE(!is_key_v<void>);
@@ -91,7 +92,7 @@ TEST_CASE("cf_key_concepts")
 
 TEST_CASE("series_rank")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using series_t = series<pm_t, rat_t, void>;
     using series2_t = series<pm_t, series_t, void>;
 
@@ -112,7 +113,7 @@ TEST_CASE("series_rank")
 
 TEST_CASE("series_cf_key_tag_t")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using series_t = series<pm_t, rat_t, void>;
 
     REQUIRE(std::is_same_v<pm_t, series_key_t<series_t>>);
@@ -126,7 +127,7 @@ TEST_CASE("series_cf_key_tag_t")
 
 TEST_CASE("is_cvr_series")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using series_t = series<pm_t, rat_t, void>;
 
     REQUIRE(!is_cvr_series_v<void>);
@@ -152,7 +153,7 @@ TEST_CASE("is_cvr_series")
 
 TEST_CASE("add_term_primitives")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     using detail::sat_assume_unique;
@@ -910,7 +911,7 @@ TEST_CASE("add_term_primitives")
 
 TEST_CASE("series_basic")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using series_t = series<pm_t, rat_t, void>;
 
     // Default construction.
@@ -1082,7 +1083,7 @@ TEST_CASE("series_basic")
 
 TEST_CASE("series_generic_ctor")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1_int_t = series<pm_t, int_t, void>;
     using s1_double_t = series<pm_t, double, void>;
@@ -1250,7 +1251,7 @@ TEST_CASE("series_generic_assignment")
 {
     // Just a couple of simple tests, this is implemented
     // on top of the generic ctor.
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1_int_t = series<pm_t, int_t, void>;
     using s2_t = series<pm_t, s1_t, void>;
@@ -1291,7 +1292,7 @@ TEST_CASE("series_generic_assignment")
 
 TEST_CASE("series_swap")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     REQUIRE(std::is_nothrow_swappable_v<s1_t>);
@@ -1325,7 +1326,7 @@ TEST_CASE("series_swap")
 
 TEST_CASE("series_is_single_cf")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     REQUIRE(s1_t{}.is_single_cf());
@@ -1343,7 +1344,7 @@ TEST_CASE("series_is_single_cf")
 
 TEST_CASE("series_iterators")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using it_t = decltype(std::declval<s1_t &>().begin());
     using cit_t = decltype(std::declval<s1_t &>().cbegin());

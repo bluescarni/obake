@@ -8,6 +8,7 @@
 
 #include <bitset>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <iostream>
 #include <iterator>
@@ -28,7 +29,6 @@
 #include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
-#include <obake/k_packing.hpp>
 #include <obake/key/key_degree.hpp>
 #include <obake/key/key_is_compatible.hpp>
 #include <obake/key/key_is_one.hpp>
@@ -36,6 +36,7 @@
 #include <obake/key/key_merge_symbols.hpp>
 #include <obake/key/key_p_degree.hpp>
 #include <obake/key/key_stream_insert.hpp>
+#include <obake/kpack.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
 #include <obake/polynomials/monomial_pow.hpp>
@@ -50,11 +51,10 @@
 
 using namespace obake;
 
-using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
-// NOTE: clang + ubsan fail to compile with 128bit integers in this test.
-#if defined(OBAKE_HAVE_GCC_INT128) && !defined(OBAKE_TEST_CLANG_UBSAN)
+using int_types = std::tuple<std::int32_t, std::uint32_t
+#if defined(OBAKE_PACKABLE_INT64)
                              ,
-                             __int128_t, __uint128_t
+                             std::int64_t, std::uint64_t
 #endif
                              >;
 
@@ -76,7 +76,7 @@ TEST_CASE("ctor_test")
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
-        using kp_t = k_packer<int_t>;
+        using kp_t = kpacker<int_t>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_semi_regular_v<pm_t>);
@@ -251,7 +251,7 @@ TEST_CASE("key_is_compatible_test")
 
         if constexpr (is_signed_v<int_t>) {
             // Test with a symbol set with maximum size.
-            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
+            const auto max_ss_size = detail::kpack_max_size<int_t>();
 
             symbol_set s;
             for (auto i = 0u; i < max_ss_size; ++i) {
@@ -265,62 +265,50 @@ TEST_CASE("key_is_compatible_test")
             // Test with extremal packed values.
             pm_t p;
             // Size 1.
-            p._set_value(detail::limits_min<int_t>);
+            p._set_value(detail::kpack_get_lims<int_t>(1).first);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
-            p._set_value(detail::limits_max<int_t>);
+            p._set_value(detail::kpack_get_lims<int_t>(1).second);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
 
             // Size 2.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
-                p._set_value(e_lim[0]);
+                const auto lims = detail::kpack_get_klims<int_t>(2);
+                p._set_value(lims.first);
                 REQUIRE(key_is_compatible(p, symbol_set{"a", "b"}));
-                p._set_value(e_lim[1]);
+                p._set_value(lims.second);
                 REQUIRE(key_is_compatible(p, symbol_set{"a", "b"}));
             }
 
             // Size 3.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
-                p._set_value(e_lim[0]);
+                const auto lims = detail::kpack_get_klims<int_t>(3);
+                p._set_value(lims.first);
                 REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
-                p._set_value(e_lim[1]);
+                p._set_value(lims.second);
                 REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
             }
 
             // Try to go out of the limits, if possible.
             // Size 2.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
-                if (e_lim[0] > detail::limits_min<int_t>) {
-                    p._set_value(e_lim[0] - int_t(1));
-                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
-                }
-                if (e_lim[1] < detail::limits_max<int_t>) {
-                    p._set_value(e_lim[1] + int_t(1));
-                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
-                }
+                const auto lims = detail::kpack_get_klims<int_t>(2);
+                p._set_value(lims.first - int_t(1));
+                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
+                p._set_value(lims.second + int_t(1));
+                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
             }
 
             // Size 3.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
-                if (e_lim[0] > detail::limits_min<int_t>) {
-                    p._set_value(e_lim[0] - int_t(1));
-                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
-                }
-                if (e_lim[1] < detail::limits_max<int_t>) {
-                    p._set_value(e_lim[1] + int_t(1));
-                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
-                }
+                const auto lims = detail::kpack_get_klims<int_t>(3);
+                p._set_value(lims.first - int_t(1));
+                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
+                p._set_value(lims.second + int_t(1));
+                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
             }
         } else {
             // Test with a symbol set with maximum size.
-            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
+            const auto max_ss_size = detail::kpack_max_size<int_t>();
 
             symbol_set s;
             for (auto i = 0u; i < max_ss_size; ++i) {
@@ -334,46 +322,38 @@ TEST_CASE("key_is_compatible_test")
             // Test with extremal packed values.
             pm_t p;
             // Size 1.
-            p._set_value(detail::limits_min<int_t>);
+            p._set_value(detail::kpack_get_lims<int_t>(1).first);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
-            p._set_value(detail::limits_max<int_t>);
+            p._set_value(detail::kpack_get_lims<int_t>(1).first);
             REQUIRE(key_is_compatible(p, symbol_set{"a"}));
 
             // Size 2.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
-                p._set_value(e_lim);
+                const auto lims = detail::kpack_get_klims<int_t>(2);
+                p._set_value(lims.second);
                 REQUIRE(key_is_compatible(p, symbol_set{"a", "b"}));
             }
 
             // Size 3.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
-                p._set_value(e_lim);
+                const auto lims = detail::kpack_get_klims<int_t>(3);
+                p._set_value(lims.second);
                 REQUIRE(key_is_compatible(p, symbol_set{"a", "b", "c"}));
             }
 
             // Try to go out of the limits, if possible.
             // Size 2.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 2u];
-                if (e_lim < detail::limits_max<int_t>) {
-                    p._set_value(e_lim + int_t(1));
-                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
-                }
+                const auto lims = detail::kpack_get_klims<int_t>(2);
+                p._set_value(lims.second + int_t(1));
+                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b"}));
             }
 
             // Size 3.
             {
-                const auto &e_lim = std::get<3>(
-                    detail::k_packing_data<int_t>)[static_cast<unsigned>(detail::limits_digits<int_t>) / 3u - 3u];
-                if (e_lim < detail::limits_max<int_t>) {
-                    p._set_value(e_lim + int_t(1));
-                    REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
-                }
+                const auto lims = detail::kpack_get_klims<int_t>(2);
+                p._set_value(lims.second + int_t(1));
+                REQUIRE(!key_is_compatible(p, symbol_set{"a", "b", "c"}));
             }
         }
     });
@@ -562,62 +542,17 @@ TEST_CASE("monomial_range_overflow_check")
         }
 
         // Check overflow now.
-        // Get the delta bit width corresponding to a vector size of 3.
-        const auto nbits = detail::k_packing_size_to_bits<int_t>(3u);
-        // Get the limits of the component at index 2.
-        const auto &lims = detail::k_packing_get_climits<int_t>(nbits, 2);
+        const auto lims = detail::kpack_get_lims<int_t>(3);
         if constexpr (is_signed_v<int_t>) {
-            v1.emplace_back(pm_t{int_t(0), int_t(4), lims[0]});
+            v1.emplace_back(pm_t{int_t(0), int_t(4), lims.first});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
             v1.pop_back();
 
-            v1.emplace_back(pm_t{int_t(0), int_t(4), lims[1]});
+            v1.emplace_back(pm_t{int_t(0), int_t(4), lims.second});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
             v1.pop_back();
         } else {
-            v1.emplace_back(pm_t{int_t(0), int_t(4), lims});
-            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
-        }
-
-        // Special-casing for size 1.
-        v1.clear();
-        v2.clear();
-        ss = symbol_set{"x"};
-
-        v1.emplace_back(pm_t{1});
-        v2.emplace_back(pm_t{2});
-        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
-        v1.emplace_back(pm_t{4});
-        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
-        v1.emplace_back(pm_t{2});
-        v1.emplace_back(pm_t{2});
-        v1.emplace_back(pm_t{0});
-        v2.emplace_back(pm_t{2});
-        v2.emplace_back(pm_t{1});
-        v2.emplace_back(pm_t{0});
-        REQUIRE(monomial_range_overflow_check(v1, v2, ss));
-
-        if constexpr (is_signed_v<int_t>) {
-            v1.emplace_back(pm_t{-2});
-            v1.emplace_back(pm_t{2});
-            v1.emplace_back(pm_t{0});
-            v2.emplace_back(pm_t{-2});
-            v2.emplace_back(pm_t{1});
-            v2.emplace_back(pm_t{0});
-            REQUIRE(monomial_range_overflow_check(v1, v2, ss));
-        }
-
-        // Overflow check.
-        if constexpr (is_signed_v<int_t>) {
-            v1.emplace_back(pm_t{detail::limits_min<int_t>});
-            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
-            v1.pop_back();
-
-            v1.emplace_back(pm_t{detail::limits_max<int_t>});
-            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
-            v1.pop_back();
-        } else {
-            v1.emplace_back(pm_t{detail::limits_max<int_t>});
+            v1.emplace_back(pm_t{int_t(0), int_t(4), lims.second});
             REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
         }
 
@@ -690,82 +625,6 @@ TEST_CASE("homomorphic_hash")
                 REQUIRE(h1 + h2 == h3);
             }
         }
-
-#if defined(OBAKE_HAVE_GCC_INT128)
-        if constexpr (std::is_same_v<int_t, __uint128_t>) {
-            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
-            const auto nbits = detail::k_packing_size_to_bits<int_t>(max_ss_size);
-
-            std::vector<int_t> v1, v2, v3;
-            v1.resize(max_ss_size);
-            v2.resize(max_ss_size);
-            v3.resize(max_ss_size);
-
-            for (auto i = 0u; i < max_ss_size; ++i) {
-                v1[i] = detail::k_packing_get_climits<int_t>(nbits, i) / 2u;
-                v2[i] = detail::k_packing_get_climits<int_t>(nbits, i) / 2u;
-                v3[i] = v1[i] + v2[i];
-            }
-
-            const auto h1 = hash(pm_t(v1));
-            const auto h2 = hash(pm_t(v2));
-            const auto h3 = hash(pm_t(v3));
-
-            REQUIRE(h1 + h2 == h3);
-        }
-
-        if constexpr (std::is_same_v<int_t, __int128_t>) {
-            const auto max_ss_size = detail::k_packing_get_max_size<int_t>();
-            const auto nbits = detail::k_packing_size_to_bits<int_t>(max_ss_size);
-
-            std::vector<int_t> v1, v2, v3;
-            v1.resize(max_ss_size);
-            v2.resize(max_ss_size);
-            v3.resize(max_ss_size);
-
-            {
-                for (auto i = 0u; i < max_ss_size; ++i) {
-                    v1[i] = detail::k_packing_get_climits<int_t>(nbits, i)[0] / 2u;
-                    v2[i] = detail::k_packing_get_climits<int_t>(nbits, i)[0] / 2u;
-                    v3[i] = v1[i] + v2[i];
-                }
-
-                const auto h1 = hash(pm_t(v1));
-                const auto h2 = hash(pm_t(v2));
-                const auto h3 = hash(pm_t(v3));
-
-                REQUIRE(h1 + h2 == h3);
-            }
-
-            {
-                for (auto i = 0u; i < max_ss_size; ++i) {
-                    v1[i] = detail::k_packing_get_climits<int_t>(nbits, i)[1] / 2u;
-                    v2[i] = detail::k_packing_get_climits<int_t>(nbits, i)[1] / 2u;
-                    v3[i] = v1[i] + v2[i];
-                }
-
-                const auto h1 = hash(pm_t(v1));
-                const auto h2 = hash(pm_t(v2));
-                const auto h3 = hash(pm_t(v3));
-
-                REQUIRE(h1 + h2 == h3);
-            }
-
-            {
-                for (auto i = 0u; i < max_ss_size; ++i) {
-                    v1[i] = detail::k_packing_get_climits<int_t>(nbits, i)[0] / 2u;
-                    v2[i] = detail::k_packing_get_climits<int_t>(nbits, i)[1] / 2u;
-                    v3[i] = v1[i] + v2[i];
-                }
-
-                const auto h1 = hash(pm_t(v1));
-                const auto h2 = hash(pm_t(v2));
-                const auto h3 = hash(pm_t(v3));
-
-                REQUIRE(h1 + h2 == h3);
-            }
-        }
-#endif
     });
 }
 
@@ -884,11 +743,9 @@ TEST_CASE("monomial_pow_test")
             "value");
 
         // Check overflows, both in the single exponent exponentiation and in the coding limits.
-        OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_max<int_t>}, 2, symbol_set{"x"}),
-                                       std::overflow_error, "");
-
-        // Get the delta bit width corresponding to a vector size of 2.
-        const auto nbits = detail::k_packing_size_to_bits<int_t>(2u);
+        OBAKE_REQUIRES_THROWS_CONTAINS(
+            monomial_pow(pm_t{detail::kpack_get_lims<int_t>(1).second}, 1000, symbol_set{"x"}), std::overflow_error,
+            "");
 
         if constexpr (is_signed_v<int_t>) {
             REQUIRE(monomial_pow(pm_t{-1}, 0, symbol_set{"x"}) == pm_t{0});
@@ -904,23 +761,24 @@ TEST_CASE("monomial_pow_test")
             REQUIRE(monomial_pow(pm_t{1, -2, 3}, -2, symbol_set{"x", "y", "z"}) == pm_t{-2, 4, -6});
             REQUIRE(monomial_pow(pm_t{1, -2, 3}, mppp::integer<2>{-4}, symbol_set{"x", "y", "z"}) == pm_t{-4, 8, -12});
 
-            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::limits_min<int_t>}, 2, symbol_set{"x"}),
-                                           std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(
+                monomial_pow(pm_t{detail::kpack_get_lims<int_t>(1).second}, 2, symbol_set{"x"}), std::overflow_error,
+                "");
 
-            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[0],
-                                                             detail::k_packing_get_climits<int_t>(nbits, 1)[0]},
-                                                        2, symbol_set{"x", "y"}),
-                                           std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(
+                monomial_pow(pm_t{detail::kpack_get_lims<int_t>(2).first, detail::kpack_get_lims<int_t>(2).first}, 2,
+                             symbol_set{"x", "y"}),
+                std::overflow_error, "");
 
-            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0)[1],
-                                                             detail::k_packing_get_climits<int_t>(nbits, 1)[1]},
-                                                        2, symbol_set{"x", "y"}),
-                                           std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(
+                monomial_pow(pm_t{detail::kpack_get_lims<int_t>(2).second, detail::kpack_get_lims<int_t>(2).second}, 2,
+                             symbol_set{"x", "y"}),
+                std::overflow_error, "");
         } else {
-            OBAKE_REQUIRES_THROWS_CONTAINS(monomial_pow(pm_t{detail::k_packing_get_climits<int_t>(nbits, 0),
-                                                             detail::k_packing_get_climits<int_t>(nbits, 1)},
-                                                        2, symbol_set{"x", "y"}),
-                                           std::overflow_error, "");
+            OBAKE_REQUIRES_THROWS_CONTAINS(
+                monomial_pow(pm_t{detail::kpack_get_lims<int_t>(2).second, detail::kpack_get_lims<int_t>(2).second}, 2,
+                             symbol_set{"x", "y"}),
+                std::overflow_error, "");
         }
     });
 }

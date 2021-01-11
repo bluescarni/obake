@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
@@ -45,7 +46,7 @@ struct foo {
 namespace ns
 {
 
-using pm_t = packed_monomial<int>;
+using pm_t = packed_monomial<std::int32_t>;
 
 // ADL-based customization.
 struct tag00 {
@@ -82,7 +83,7 @@ TEST_CASE("series_div_customisation")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
 
     REQUIRE(series<pm_t, rat_t, ns::tag00>{} / series<pm_t, rat_t, ns::tag00>{});
     REQUIRE(!(ns::s1_t{} / ns::s1_t{}));
@@ -95,7 +96,7 @@ TEST_CASE("series_div_customisation")
 
 TEST_CASE("series_div")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = polynomial<pm_t, rat_t>;
     using s11_t = polynomial<pm_t, s1_t>;
     using s2_t = polynomial<pm_t, double>;
@@ -150,7 +151,7 @@ TEST_CASE("series_div")
 
 TEST_CASE("series_conversion_operator")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1{"3/4"};
@@ -184,7 +185,7 @@ using filtered_t = decltype(filtered(std::declval<T>(), std::declval<F>()));
 
 TEST_CASE("series_filtered_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, rat_t>;
 
     REQUIRE(filtered(p1_t{}, [](const auto &) { return true; }).empty());
@@ -233,7 +234,7 @@ TEST_CASE("series_filtered_test")
 
 TEST_CASE("series_generic_ctor_with_ss")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1_int_t = series<pm_t, int_t, void>;
     using s2_t = series<pm_t, s1_t, void>;

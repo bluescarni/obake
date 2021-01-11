@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <iterator>
 #include <ostream>
@@ -36,7 +37,7 @@
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
 #include <obake/exceptions.hpp>
-#include <obake/k_packing.hpp>
+#include <obake/kpack.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
@@ -53,9 +54,9 @@ namespace polynomials
 {
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-template <KPackable T>
+template <kpackable T>
 #else
-template <typename T, typename = ::std::enable_if_t<is_k_packable_v<T>>>
+template <typename T, typename = ::std::enable_if_t<is_kpackable_v<T>>>
 #endif
 class packed_monomial
 {
@@ -84,7 +85,7 @@ public:
 #endif
         constexpr explicit packed_monomial(It it, unsigned n)
     {
-        k_packer<T> kp(n);
+        kpacker<T> kp(n);
         for (auto i = 0u; i < n; ++i, ++it) {
             kp << ::obake::safe_cast<T>(*it);
         }
@@ -97,7 +98,7 @@ private:
     template <typename It>
     constexpr explicit packed_monomial(fwd_it_ctor_tag, It b, It e)
     {
-        k_packer<T> kp(::obake::safe_cast<unsigned>(::std::distance(b, e)));
+        kpacker<T> kp(::obake::safe_cast<unsigned>(::std::distance(b, e)));
         for (; b != e; ++b) {
             kp << ::obake::safe_cast<T>(*b);
         }
@@ -223,28 +224,19 @@ inline bool key_is_compatible(const packed_monomial<T> &m, const symbol_set &s)
         return m.get_value() == T(0);
     }
 
-    if (s_size == 1u) {
-        // For unitary packing, all possible
-        // values for T are allowed.
-        return true;
-    }
-
-    // For non-unitary packing, we have to check that:
+    // We have to check that:
     // - the size of the symbol set is not too large,
     // - the current encoded value is within the limits.
-    if (s_size > ::obake::detail::k_packing_get_max_size<T>()) {
+    if (s_size > ::obake::detail::kpack_max_size<T>()) {
         return false;
     }
 
-    // The size of the symbol set is at least 2 and within the
+    // The size of the symbol set is within the
     // limits. Check the encoded value.
     // NOTE: static cast is fine, s_size is within the limits.
-    const auto &e_lim = ::obake::detail::k_packing_get_elimits<T>(static_cast<unsigned>(s_size));
-    if constexpr (is_signed_v<T>) {
-        return m.get_value() >= e_lim[0] && m.get_value() <= e_lim[1];
-    } else {
-        return m.get_value() <= e_lim;
-    }
+    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<T>(static_cast<unsigned>(s_size));
+
+    return m.get_value() >= klim_min && m.get_value() <= klim_max;
 }
 
 // Implementation of stream insertion.
@@ -257,7 +249,7 @@ inline void key_stream_insert(::std::ostream &os, const packed_monomial<T> &m, c
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
     bool wrote_something = false;
-    k_unpacker<T> ku(m.get_value(), s_size);
+    kunpacker<T> ku(m.get_value(), s_size);
     T tmp;
 
     for (const auto &var : s) {
@@ -306,7 +298,7 @@ inline void key_tex_stream_insert(::std::ostream &os, const packed_monomial<T> &
 
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
-    k_unpacker<T> ku(m.get_value(), s_size);
+    kunpacker<T> ku(m.get_value(), s_size);
     T tmp;
     // Go through a multiprecision integer for the stream
     // insertion. This allows us not to care about potential
@@ -385,8 +377,8 @@ inline packed_monomial<T> key_merge_symbols(const packed_monomial<T> &m, const s
     // Init the unpacker and the packer.
     // NOTE: we know s.size() is small enough thanks to the
     // assertion at the beginning.
-    k_unpacker<T> ku(m.get_value(), static_cast<unsigned>(s.size()));
-    k_packer<T> kp(::obake::safe_cast<unsigned>(merged_size));
+    kunpacker<T> ku(m.get_value(), static_cast<unsigned>(s.size()));
+    kpacker<T> kp(::obake::safe_cast<unsigned>(merged_size));
 
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
@@ -531,8 +523,8 @@ template <typename R1, typename R2,
         assert(polynomials::key_is_compatible(init1, ss));
         assert(polynomials::key_is_compatible(init2, ss));
 
-        k_unpacker<value_type> ku1(init1.get_value(), s_size);
-        k_unpacker<value_type> ku2(init2.get_value(), s_size);
+        kunpacker<value_type> ku1(init1.get_value(), s_size);
+        kunpacker<value_type> ku2(init2.get_value(), s_size);
         value_type tmp;
         for (auto i = 0u; i < s_size; ++i) {
             ku1 >> tmp;
@@ -561,7 +553,7 @@ template <typename R1, typename R2,
 
                 assert(polynomials::key_is_compatible(cur, ss));
 
-                k_unpacker<value_type> ku(cur.get_value(), s_size);
+                kunpacker<value_type> ku(cur.get_value(), s_size);
                 value_type tmp;
                 for (auto i = 0u; i < s_size; ++i) {
                     ku >> tmp;
@@ -600,7 +592,7 @@ template <typename R1, typename R2,
                         for (const auto &m : range) {
                             assert(polynomials::key_is_compatible(m, ss));
 
-                            k_unpacker<value_type> ku(m.get_value(), s_size);
+                            kunpacker<value_type> ku(m.get_value(), s_size);
                             value_type tmp;
                             for (auto i = 0u; i < s_size; ++i) {
                                 ku >> tmp;
@@ -646,23 +638,12 @@ template <typename R1, typename R2,
 
     // Now add the limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
-
-    // Fetch the delta bit width from the size.
-    const auto nbits = ::obake::detail::k_packing_size_to_bits<value_type>(s_size);
+    const auto [lim_min, lim_max] = ::obake::detail::kpack_get_lims<value_type>(s_size);
 
     if constexpr (is_signed_v<value_type>) {
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
-
-            // NOTE: need to special-case s_size == 1, in which case
-            // the component limits are the full numerical range of the type.
-            const auto lim_min
-                = s_size == 1u ? ::obake::detail::limits_min<value_type>
-                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[0];
-            const auto lim_max
-                = s_size == 1u ? ::obake::detail::limits_max<value_type>
-                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i))[1];
 
             // NOTE: an overflow condition will likely result in an exception
             // or some other error handling. Optimise for the non-overflow case.
@@ -673,11 +654,6 @@ template <typename R1, typename R2,
     } else {
         for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
             const auto add_max = int_t{limits1[i]} + limits2[i];
-
-            // NOTE: like above, special-case s_size == 1.
-            const auto lim_max
-                = s_size == 1u ? ::obake::detail::limits_max<value_type>
-                               : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i));
 
             if (obake_unlikely(add_max > lim_max)) {
                 return false;
@@ -699,7 +675,7 @@ inline T key_degree(const packed_monomial<T> &p, const symbol_set &ss)
     const auto s_size = static_cast<unsigned>(ss.size());
 
     T retval(0), tmp;
-    k_unpacker<T> ku(p.get_value(), s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
         retval += tmp;
@@ -720,7 +696,7 @@ inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, con
     const auto s_size = static_cast<unsigned>(ss.size());
 
     T retval(0), tmp;
-    k_unpacker<T> ku(p.get_value(), s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
     auto si_it = si.begin();
     const auto si_it_end = si.end();
     for (auto i = 0u; i < s_size && si_it != si_it_end; ++i) {
@@ -776,8 +752,8 @@ inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, 
     }();
 
     // Unpack, multiply in arbitrary-precision arithmetic, re-pack.
-    k_unpacker<T> ku(p.get_value(), s_size);
-    k_packer<T> kp(s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
+    kpacker<T> kp(s_size);
     T tmp;
     remove_cvref_t<decltype(exp)> tmp_int;
     for (auto i = 0u; i < s_size; ++i) {
@@ -850,7 +826,7 @@ inline detail::pm_key_evaluate_ret_t<T, U> key_evaluate(const packed_monomial<T>
 
     // Init the return value and the unpacking machinery.
     detail::pm_key_evaluate_ret_t<T, U> retval(1);
-    k_unpacker<T> ku(p.get_value(), s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
     T tmp;
     // Accumulate the result.
     for (const auto &pr : sm) {
@@ -896,8 +872,8 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
 
     // Init the return value and the (un)packing machinery.
     detail::pm_monomial_subs_ret_t<T, U> retval(1);
-    k_unpacker<T> ku(p.get_value(), s_size);
-    k_packer<T> kp(s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
+    kpacker<T> kp(s_size);
     T tmp;
     auto sm_it = sm.cbegin();
     const auto sm_end = sm.cend();
@@ -939,7 +915,7 @@ inline void key_trim_identify(::std::vector<int> &v, const packed_monomial<T> &p
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
 
-    k_unpacker<T> ku(p.get_value(), s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
     T tmp;
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
@@ -967,8 +943,8 @@ inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx
     // NOTE: because we assume compatibility, the static cast is safe.
     const auto s_size = static_cast<unsigned>(ss.size());
 
-    k_unpacker<T> ku(p.get_value(), s_size);
-    k_packer<T> kp(static_cast<unsigned>(s_size - si.size()));
+    kunpacker<T> ku(p.get_value(), s_size);
+    kpacker<T> kp(static_cast<unsigned>(s_size - si.size()));
     T tmp;
     auto si_it = si.cbegin();
     const auto si_end = si.cend();
@@ -1003,8 +979,8 @@ inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T>
     const auto s_size = static_cast<unsigned>(ss.size());
 
     // Init the (un)packing machinery.
-    k_unpacker<T> ku(p.get_value(), s_size);
-    k_packer<T> kp(s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
+    kpacker<T> kp(s_size);
     T tmp, ret_exp(0);
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
@@ -1015,14 +991,9 @@ inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T>
             // NOTE: if the exponent is zero, ret_exp will remain to
             // its initial value (0) and the output monomial
             // will be the same as p.
-            if (obake_unlikely(tmp == ::obake::detail::limits_min<T>)) {
-                obake_throw(::std::overflow_error,
-                            "Overflow detected while computing the derivative of a packed monomial: the exponent of "
-                            "the variable with respect to which the differentiation is being taken ('"
-                                + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too small ("
-                                + ::obake::detail::to_string(tmp)
-                                + "), and taking the derivative would generate a negative overflow");
-            }
+            // NOTE: no need for overflow checking here
+            // due to the way we create the kpack deltas
+            // and consequently the limits.
             ret_exp = tmp--;
         }
 
@@ -1046,8 +1017,8 @@ inline ::std::pair<T, packed_monomial<T>> monomial_integrate(const packed_monomi
     const auto s_size = static_cast<unsigned>(ss.size());
 
     // Init the (un)packing machinery.
-    k_unpacker<T> ku(p.get_value(), s_size);
-    k_packer<T> kp(s_size);
+    kunpacker<T> ku(p.get_value(), s_size);
+    kpacker<T> kp(s_size);
     T tmp, ret_exp(0);
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
@@ -1064,14 +1035,9 @@ inline ::std::pair<T, packed_monomial<T>> monomial_integrate(const packed_monomi
                 }
             }
 
-            if (obake_unlikely(tmp == ::obake::detail::limits_max<T>)) {
-                obake_throw(::std::overflow_error,
-                            "Overflow detected while computing the integral of a packed monomial: the exponent of "
-                            "the integration variable ('"
-                                + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too large ("
-                                + ::obake::detail::to_string(tmp)
-                                + "), and the computation would generate a positive overflow");
-            }
+            // NOTE: no need for overflow checking here
+            // due to the way we create the kpack deltas
+            // and consequently the limits.
             ret_exp = ++tmp;
         }
 

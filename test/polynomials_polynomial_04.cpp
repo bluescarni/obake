@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <initializer_list>
 #include <stdexcept>
 #include <tuple>
@@ -14,6 +15,7 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
+#include <obake/config.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/math/diff.hpp>
 #include <obake/math/integrate.hpp>
@@ -27,12 +29,20 @@
 
 using namespace obake;
 
+using exp_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    std::int64_t
+#else
+    std::int32_t
+#endif
+    ;
+
 TEST_CASE("polynomial_diff")
 {
     detail::tuple_for_each(std::make_tuple(1, mppp::integer<1>{}), [](auto n) {
         using cf_t = decltype(n);
 
-        using pm_t = packed_monomial<long long>;
+        using pm_t = packed_monomial<exp_t>;
         using poly_t = polynomial<pm_t, cf_t>;
 
         REQUIRE(is_differentiable_v<poly_t>);
@@ -67,16 +77,16 @@ TEST_CASE("polynomial_diff")
         REQUIRE(diff(p, "aa") == 0);
 
         // Verify the return types (for the int coefficient case,
-        // we will have type promotion due to the long long exponents).
+        // we will have type promotion due to the exp_t exponents).
         if constexpr (std::is_same_v<int, cf_t>) {
-            REQUIRE(std::is_same_v<decltype(diff(p, "x")), polynomial<pm_t, long long>>);
+            REQUIRE(std::is_same_v<decltype(diff(p, "x")), polynomial<pm_t, exp_t>>);
         } else {
             REQUIRE(std::is_same_v<decltype(diff(p, "x")), poly_t>);
         }
     });
 
     // Recursive poly test.
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using p1_t = polynomial<pm_t, mppp::integer<1>>;
     using p11_t = polynomial<pm_t, p1_t>;
 
@@ -102,7 +112,7 @@ TEST_CASE("polynomial_integrate")
     detail::tuple_for_each(std::make_tuple(1, mppp::rational<1>{}), [](auto n) {
         using cf_t = decltype(n);
 
-        using pm_t = packed_monomial<long long>;
+        using pm_t = packed_monomial<exp_t>;
         using poly_t = polynomial<pm_t, cf_t>;
 
         {
@@ -141,9 +151,9 @@ TEST_CASE("polynomial_integrate")
             REQUIRE(integrate(p, "zz") == p * zz);
 
             // Verify the return types (for the int coefficient case,
-            // we will have type promotion due to the long long exponents).
+            // we will have type promotion due to the exp_t exponents).
             if constexpr (std::is_same_v<int, cf_t>) {
-                REQUIRE(std::is_same_v<decltype(integrate(p, "x")), polynomial<pm_t, long long>>);
+                REQUIRE(std::is_same_v<decltype(integrate(p, "x")), polynomial<pm_t, exp_t>>);
             } else {
                 REQUIRE(std::is_same_v<decltype(integrate(p, "x")), poly_t>);
             }
@@ -180,7 +190,7 @@ TEST_CASE("polynomial_integrate")
 
 TEST_CASE("polynomial_truncate_degree")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
     using ppoly_t = polynomial<pm_t, poly_t>;
 
@@ -228,7 +238,7 @@ TEST_CASE("polynomial_truncate_degree")
 // Exercise the segmented tables layout.
 TEST_CASE("polynomial_truncate_degree_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
@@ -253,7 +263,7 @@ TEST_CASE("polynomial_truncate_degree_large")
 // A test for exercising rectangular multi-threaded multiplication.
 TEST_CASE("polynomial_hm_mt_rectangular_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>(symbol_set{"x", "y", "z", "t", "u"}, "x", "y", "z", "t", "u");

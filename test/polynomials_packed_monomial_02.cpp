@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <initializer_list>
 #include <list>
 #include <random>
@@ -19,8 +20,8 @@
 #include <obake/config.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
-#include <obake/k_packing.hpp>
 #include <obake/key/key_tex_stream_insert.hpp>
+#include <obake/kpack.hpp>
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/s11n.hpp>
@@ -33,11 +34,10 @@ static std::mt19937 rng;
 
 using namespace obake;
 
-using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
-// NOTE: clang + ubsan fail to compile with 128bit integers in this test.
-#if defined(OBAKE_HAVE_GCC_INT128) && !defined(OBAKE_TEST_CLANG_UBSAN)
+using int_types = std::tuple<std::int32_t, std::uint32_t
+#if defined(OBAKE_PACKABLE_INT64)
                              ,
-                             __int128_t, __uint128_t
+                             std::int64_t, std::uint64_t
 #endif
                              >;
 
@@ -204,9 +204,6 @@ TEST_CASE("mt_overflow_check_test")
             using pm_t = packed_monomial<int_t>;
 
             for (auto vs : {3u, 4u, 5u, 6u}) {
-                // Get the delta bit width corresponding to a vector size of vs.
-                const auto nbits = detail::k_packing_size_to_bits<int_t>(vs);
-
                 symbol_set ss;
                 for (auto j = 0u; j < vs; ++j) {
                     ss.insert(ss.end(), "x_" + detail::to_string(j));
@@ -220,15 +217,9 @@ TEST_CASE("mt_overflow_check_test")
                 std::vector<int_t> tmp(vs);
                 for (auto i = 0u; i < 6000u; ++i) {
                     for (auto j = 0u; j < vs; ++j) {
-                        // Get the limits of the component at index j.
-                        const auto &lims = detail::k_packing_get_climits<int_t>(nbits, j);
-                        if constexpr (is_signed_v<int_t>) {
-                            tmp[j] = idist(rng,
-                                           typename std::uniform_int_distribution<int_t>::param_type{lims[0], lims[1]});
-                        } else {
-                            tmp[j]
-                                = idist(rng, typename std::uniform_int_distribution<int_t>::param_type{int_t(0), lims});
-                        }
+                        const auto lims = detail::kpack_get_lims<int_t>(vs);
+                        tmp[j] = idist(
+                            rng, typename std::uniform_int_distribution<int_t>::param_type{lims.first, lims.second});
                         v1.emplace_back(tmp);
                         l1.emplace_back(tmp);
                     }
@@ -245,21 +236,13 @@ TEST_CASE("mt_overflow_check_test")
 
                 // Add monomials with maximal exponents.
                 for (auto j = 0u; j < vs; ++j) {
-                    const auto &lims = detail::k_packing_get_climits<int_t>(nbits, j);
-                    if constexpr (is_signed_v<int_t>) {
-                        tmp[j] = lims[1];
-                    } else {
-                        tmp[j] = lims;
-                    }
+                    const auto lims = detail::kpack_get_lims<int_t>(vs);
+                    tmp[j] = lims.second;
                 }
                 v2[0] = pm_t(tmp);
                 for (auto j = 0u; j < vs; ++j) {
-                    const auto &lims = detail::k_packing_get_climits<int_t>(nbits, j);
-                    if constexpr (is_signed_v<int_t>) {
-                        tmp[j] = lims[1];
-                    } else {
-                        tmp[j] = lims;
-                    }
+                    const auto lims = detail::kpack_get_lims<int_t>(vs);
+                    tmp[j] = lims.second;
                 }
                 v1.emplace_back(tmp);
                 l1.emplace_back(tmp);
