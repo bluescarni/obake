@@ -17,14 +17,14 @@ jobs:
     - run:
         name: Build and test
         command: bash ./tools/circleci_focal_gcc9_coverage.sh
-  focal_clang9_ubsan:
+  focal_gcc9_ubsan:
     docker:
     - image: circleci/buildpack-deps:focal
     steps:
     - checkout
     - run:
         name: Build and test
-        command: bash ./tools/circleci_focal_clang9_ubsan.sh
+        command: bash ./tools/circleci_focal_gcc9_ubsan.sh
   bionic_gcc7_asan:
     docker:
     - image: circleci/buildpack-deps:bionic
@@ -40,5 +40,5 @@ workflows:
     jobs:
     - bionic_gcc7_conda
     - focal_gcc9_coverage
-    - focal_clang9_ubsan
+    - focal_gcc9_ubsan
     - bionic_gcc7_asan
