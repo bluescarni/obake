@@ -7,16 +7,21 @@ set -x
 set -e
 
 # Core deps.
-sudo apt-get install build-essential cmake libgmp-dev libmpfr-dev wget curl libboost-dev libboost-serialization-dev libtbb-dev
+sudo apt-get install build-essential
+
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+export deps_dir=$HOME/local
+bash miniconda.sh -b -p $HOME/miniconda
+export PATH="$HOME/miniconda/bin:$PATH"
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+conda_pkgs="cmake mppp boost-cpp tbb tbb-devel abseil-cpp backtrace fmt"
+conda create -q -p $deps_dir -y $conda_pkgs
+source activate $deps_dir
 
 # Create the build dir and cd into it.
 mkdir build
 cd build
-
-# Download and install mppp and abseil
-export MPPP_WITH_QUADMATH=YES
-bash ../tools/circleci_install_mppp.sh
-bash ../tools/circleci_install_abseil.sh
 
 # GCC build.
 cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DOBAKE_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts --coverage" -DOBAKE_WITH_LIBBACKTRACE=YES -DBoost_NO_BOOST_CMAKE=ON
