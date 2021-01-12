@@ -157,7 +157,7 @@ namespace detail
 // NOTE: unsigned conversion is ok as the array sizes
 // are always a fraction of a bit size.
 template <typename T>
-inline unsigned kpack_max_size()
+constexpr unsigned kpack_max_size()
 {
     auto ret = ::std::size(kpack_data<T>::deltas);
 
