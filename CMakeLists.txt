@@ -206,7 +206,6 @@ if(YACMA_COMPILER_IS_MSVC)
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/byte_size.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/exceptions.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/hash.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/include/obake/k_packing.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/kpack.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/ranges.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/s11n.hpp"

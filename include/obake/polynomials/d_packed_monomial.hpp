@@ -522,7 +522,7 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // NOTE: this assumes that all the monomials in the 2 ranges
 // are compatible with ss.
 // NOTE: this will check both that the components
-// of the product are within the k_packing limits,
+// of the product are within the kpack limits,
 // and that the degrees of the product monomials
 // are all computable without overflows.
 // NOTE: this may be sped up by using safe integral
