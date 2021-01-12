@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <type_traits>
@@ -23,6 +24,10 @@ namespace detail
 // NOTE: make extra sure that (u)int32_t are not short integer types.
 static_assert(::std::is_same_v<remove_cvref_t<decltype(::std::int32_t() * ::std::int32_t())>, ::std::int32_t>);
 static_assert(::std::is_same_v<remove_cvref_t<decltype(::std::uint32_t() * ::std::uint32_t())>, ::std::uint32_t>);
+
+// Run the same check on std::size_t. Ensuring it's not a short type greatly
+// simplifies hashing & co.
+static_assert(::std::is_same_v<remove_cvref_t<decltype(::std::size_t() * ::std::size_t())>, ::std::size_t>);
 
 const ::std::int32_t kpack_data<::std::int32_t>::deltas[10]
     = {2147483647ll, 46337ll, 1289ll, 211ll, 71ll, 31ll, 19ll, 13ll, 7ll, 7ll};
