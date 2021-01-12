@@ -7,6 +7,17 @@ Changelog
 Changes
 ~~~~~~~
 
+- **BREAKING**: the implementation of ``packed_monomial`` and
+  ``d_packed_monomial`` has changed: now when specifying the desired
+  exponent type, only ``std::(u)int32_t`` and ``std::(u)int64_t``
+  are supported, and using other integral types (e.g., ``long``,
+  ``unsigned long long``, etc.) may lead to compile-time errors,
+  depending on how ``std::(u)int32_t`` and ``std::(u)int64_t``
+  are implemented on the target platform
+  (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
+- Adopt a flyweight pattern for the representation of
+  symbol sets in series
+  (`#124 <https://github.com/bluescarni/obake/pull/124>`__).
 - When building on Windows with ``clang-cl``, obake
   now requires at least MSVC 2017. As a result, various
   limitations/workarounds originating from the need to support

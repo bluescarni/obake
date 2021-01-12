@@ -76,6 +76,10 @@ struct OBAKE_DLL_PUBLIC kpack_data<::std::int32_t> {
     // The coded value limits in absolute value, one for each size.
     static const ::std::int32_t klims[10];
     // The data necessary to divide by constants.
+    // NOTE: it seems like the first shift value we produce
+    // in divcnst is always 1. If we can prove that this is always
+    // ensured, perhaps we can reduce the tuple size and hard-code
+    // 1 in the unpacking code.
     static const ::std::tuple<std::uint32_t, unsigned, unsigned> divcnst[10][11];
 };
 
