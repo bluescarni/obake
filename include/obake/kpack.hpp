@@ -342,6 +342,7 @@ public:
         // Fetch the data necessary for division and remainder.
         const auto [mp_d, sh1_d, sh2_d] = detail::kpack_data<T>::divcnst[m_size - 1u][m_index];
         const auto [mp_r, sh1_r, sh2_r] = detail::kpack_data<T>::divcnst[m_size - 1u][m_index + 1u];
+        // NOTE: if mprime ends up being zero, it means we read into the wrong indices into divcnst.
         assert(mp_d != 0u);
         assert(mp_r != 0u);
 
