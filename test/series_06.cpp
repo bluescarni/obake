@@ -149,10 +149,13 @@ TEST_CASE("series_div")
     REQUIRE(!is_in_place_divisible_v<int &, const s1_t &>);
 }
 
+struct tag {
+};
+
 TEST_CASE("series_conversion_operator")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1{"3/4"};
     REQUIRE(static_cast<rat_t>(s1) == rat_t{3, 4});
@@ -235,12 +238,12 @@ TEST_CASE("series_filtered_test")
 TEST_CASE("series_generic_ctor_with_ss")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1_int_t = series<pm_t, int_t, void>;
-    using s2_t = series<pm_t, s1_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1_int_t = series<pm_t, int_t, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
 
 #if defined(MPPP_WITH_MPFR)
-    using s1_real_t = series<pm_t, mppp::real, void>;
+    using s1_real_t = series<pm_t, mppp::real, tag>;
 #endif
 
     REQUIRE(!std::is_constructible_v<s1_t, void, void>);
@@ -330,7 +333,7 @@ TEST_CASE("series_generic_ctor_with_ss")
     REQUIRE(!std::is_constructible_v<s1_t, s1_int_t, symbol_set>);
     REQUIRE(!std::is_constructible_v<s1_t, s1_int_t &, const symbol_set &>);
     REQUIRE(!std::is_constructible_v<s1_t, const s1_int_t &, symbol_set &>);
-    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, int>, symbol_set>);
+    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, tag>, symbol_set>);
 
     // Non-constructability from a series with higher rank.
     REQUIRE(!std::is_constructible_v<s1_t, s2_t, symbol_set>);
@@ -343,7 +346,7 @@ TEST_CASE("series_generic_ctor_with_ss_bug_00")
     // The constructor would not create a key
     // compatible with the input symbol set.
     using pm_t = d_packed_monomial<int, 8>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}) == 42);
     REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}).get_symbol_set() == symbol_set{"x", "y", "z"});

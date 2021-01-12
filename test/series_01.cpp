@@ -42,12 +42,15 @@ std::mt19937 rng;
 
 const auto ntrials = 200;
 
+struct tag {
+};
+
 TEST_CASE("series_is_single_cf")
 {
     obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(s1_t{}.is_single_cf());
     REQUIRE(s1_t{"3/4"}.is_single_cf());
@@ -60,7 +63,7 @@ TEST_CASE("series_is_single_cf")
 TEST_CASE("series_set_symbol_set")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1;
     s1.set_symbol_set(symbol_set{"x", "y", "z"});
@@ -79,7 +82,7 @@ TEST_CASE("series_set_symbol_set")
 TEST_CASE("series_reserve")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1;
     s1.reserve(42);
@@ -108,7 +111,7 @@ TEST_CASE("series_reserve")
 TEST_CASE("series_set_n_segments")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1;
     s1.set_n_segments(0);
@@ -126,7 +129,7 @@ TEST_CASE("series_set_n_segments")
 TEST_CASE("series_clear")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1;
     s1.set_n_segments(2);
@@ -144,7 +147,7 @@ TEST_CASE("series_clear")
 TEST_CASE("series_unary_plus")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1{"3/4"};
     auto s1_c(+s1);
@@ -161,7 +164,7 @@ TEST_CASE("series_unary_plus")
 TEST_CASE("series_unary_minus")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1{"3/4"};
     auto s1_c(-s1);
@@ -178,7 +181,7 @@ TEST_CASE("series_unary_minus")
 TEST_CASE("series_negate")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1{"3/4"};
     const auto &ptr = &(s1.begin()->second);
@@ -196,7 +199,7 @@ TEST_CASE("series_negate")
 TEST_CASE("series_is_zero")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(is_zero(s1_t{}));
     REQUIRE(is_zero(s1_t{0}));
@@ -211,8 +214,8 @@ TEST_CASE("series_is_zero")
 TEST_CASE("series_stream_insert_default_impl")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s2_t = series<pm_t, s1_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
 
     std::ostringstream oss;
 
@@ -353,11 +356,11 @@ struct foo {
 TEST_CASE("series_add")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1a_t = series<pm_t, double, void>;
-    using s2_t = series<pm_t, s1_t, void>;
-    using s2a_t = series<pm_t, s1a_t, void>;
-    using s3_t = series<pm_t, s2_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1a_t = series<pm_t, double, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
+    using s2a_t = series<pm_t, s1a_t, tag>;
+    using s3_t = series<pm_t, s2_t, tag>;
 
     REQUIRE(!is_addable_v<s1_t, void>);
     REQUIRE(!is_addable_v<void, s1_t>);
@@ -848,11 +851,11 @@ TEST_CASE("series_add")
 TEST_CASE("series_sub")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1a_t = series<pm_t, double, void>;
-    using s2_t = series<pm_t, s1_t, void>;
-    using s2a_t = series<pm_t, s1a_t, void>;
-    using s3_t = series<pm_t, s2_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1a_t = series<pm_t, double, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
+    using s2a_t = series<pm_t, s1a_t, tag>;
+    using s3_t = series<pm_t, s2_t, tag>;
 
     REQUIRE(!is_subtractable_v<s1_t, void>);
     REQUIRE(!is_subtractable_v<void, s1_t>);

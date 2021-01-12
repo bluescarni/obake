@@ -30,6 +30,7 @@
 #include <boost/iterator/permutation_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <boost/serialization/tracking.hpp>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -66,6 +67,7 @@
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/ranges.hpp>
+#include <obake/s11n.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -78,9 +80,21 @@ namespace polynomials
 
 // The polynomial tag.
 struct tag {
+    template <typename Archive>
+    void serialize(Archive &, unsigned)
+    {
+    }
 };
 
 } // namespace polynomials
+
+} // namespace obake
+
+// Disable tracking for the polynomial tag.
+BOOST_CLASS_TRACKING(::obake::polynomials::tag, ::boost::serialization::track_never)
+
+namespace obake
+{
 
 template <typename K, typename C>
 using polynomial = series<K, C, polynomials::tag>;

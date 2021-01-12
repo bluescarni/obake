@@ -134,11 +134,27 @@ OBAKE_CONCEPT_DECL Cf = is_cf_v<T>;
 
 #endif
 
+// A series tag must be a semi-regular class.
+// NOTE: semi-regular already includes swappability.
+template <typename T>
+using is_series_tag = ::std::conjunction<::std::is_class<T>, is_semi_regular<T>>;
+
+template <typename T>
+inline constexpr bool is_series_tag_v = is_series_tag<T>::value;
+
+#if defined(OBAKE_HAVE_CONCEPTS)
+
+template <typename T>
+OBAKE_CONCEPT_DECL series_tag = is_series_tag_v<T>;
+
+#endif
+
 // Forward declaration.
 #if defined(OBAKE_HAVE_CONCEPTS)
-template <Key, Cf, typename>
+template <Key, Cf, series_tag>
 #else
-template <typename K, typename C, typename, typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>>>>
+template <typename K, typename C, typename Tag,
+          typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>, is_series_tag<Tag>>>>
 #endif
 class series;
 
@@ -716,7 +732,7 @@ public:
     series(const series &) = default;
     series(series &&other) noexcept
         : m_s_table(::std::move(other.m_s_table)), m_log2_size(::std::move(other.m_log2_size)),
-          m_symbol_set(::std::move(other.m_symbol_set))
+          m_tag(::std::move(other.m_tag)), m_symbol_set(::std::move(other.m_symbol_set))
     {
 #if !defined(NDEBUG)
         // In debug mode, clear the other segmented table
@@ -864,6 +880,7 @@ public:
         // correctly by the members.
         m_s_table = ::std::move(other.m_s_table);
         m_log2_size = ::std::move(other.m_log2_size);
+        m_tag = ::std::move(other.m_tag);
         m_symbol_set = ::std::move(other.m_symbol_set);
 
 #if !defined(NDEBUG)
@@ -980,6 +997,7 @@ public:
 
         swap(m_s_table, other.m_s_table);
         swap(m_log2_size, other.m_log2_size);
+        swap(m_tag, other.m_tag);
         swap(m_symbol_set, other.m_symbol_set);
     }
 
@@ -1361,7 +1379,8 @@ public:
     }
 
     // Remove all the terms in the series.
-    // The number of segments and the symbol set will be kept intact.
+    // The number of segments, the symbol set and
+    // the tag will be kept intact.
     void clear_terms() noexcept
     {
         for (auto &t : m_s_table) {
@@ -1372,9 +1391,13 @@ public:
     // Clear the series.
     // This will remove all the terms and symbols.
     // The number of segments will be kept intact.
+    // The tag will be reset to a def-constructed value.
     void clear() noexcept
     {
         clear_terms();
+
+        m_tag = Tag{};
+
         // NOTE: cheap assignment via a ss_fw
         // constructed from a symbol_set{}.
         m_symbol_set = detail::ss_fw_default();
@@ -1462,12 +1485,23 @@ public:
         return oss.str();
     }
 
+    // Tag access.
+    Tag &tag()
+    {
+        return m_tag;
+    }
+    const Tag &base() const
+    {
+        return m_tag;
+    }
+
 private:
     // Serialisation.
     template <class Archive>
     void save(Archive &ar, unsigned) const
     {
         ar << m_log2_size;
+        ar << m_tag;
         ar << m_symbol_set;
 
         for (const auto &tab : m_s_table) {
@@ -1491,6 +1525,9 @@ private:
             unsigned log2_size;
             ar >> log2_size;
             set_n_segments(log2_size);
+
+            // Recover the tag.
+            ar >> m_tag;
 
             // Recover the symbol set.
             ar >> m_symbol_set;
@@ -1542,6 +1579,7 @@ private:
 private:
     s_table_type m_s_table;
     unsigned m_log2_size;
+    Tag m_tag;
     detail::ss_fw m_symbol_set;
 };
 
@@ -1560,10 +1598,21 @@ namespace customisation::internal
 // number of terms and if for each term in one series
 // an equal term exists in the other series (term equality
 // is tested by comparing both the coefficient and the key).
+// NOTE: in this helper, T and U may have different coefficient
+// types, but rank, key and tag are the same.
 template <typename T, typename U>
 inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
 {
     assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+
+    static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
+
+    // Compare the tags, if possible.
+    if constexpr (is_equality_comparable_v<const series_tag_t<T> &>) {
+        if (lhs.tag() != rhs.tag()) {
+            return false;
+        }
+    }
 
     // If the series have different sizes,
     // they cannot be equal.
@@ -1578,12 +1627,7 @@ inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
     // codepaths for single table layout, same
     // n segments, etc. Keep it in mind for
     // future optimisations.
-    for (const auto &t : lhs) {
-        // NOTE: old clang does not like structured
-        // bindings in the for loop.
-        const auto &k = t.first;
-        const auto &c = t.second;
-
+    for (const auto &[k, c] : lhs) {
         const auto it = rhs.find(k);
         if (it == rhs_end || c != it->second) {
             return false;
@@ -1644,12 +1688,22 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     struct hasher {
         ::std::size_t operator()(const ::std::any &x) const
         {
+            const auto &bcast = ::std::any_cast<const Base &>(x);
+
+            // Init retval with the hash of the tag, if available,
+            // zero otherwise.
+            ::std::size_t retval = [&bcast]() {
+                if constexpr (is_hashable_v<const series_tag_t<Base> &>) {
+                    return ::obake::hash(bcast.tag());
+                } else {
+                    return 0;
+                }
+            }();
+
             // Combine the hashes of all terms
             // via addition, so that their order
             // does not matter.
-            ::std::size_t retval = 0;
-
-            for (const auto &t : ::std::any_cast<const Base &>(x)) {
+            for (const auto &t : bcast) {
                 // NOTE: use the same hasher used in the implementation
                 // of series.
                 // NOTE: parallelisation opportunities here for
@@ -1992,6 +2046,16 @@ struct series_default_byte_size_impl {
             }
         }
 
+        // Finally, add the contribution from the tag, if available.
+        if constexpr (is_size_measurable_v<const series_tag_t<T> &>) {
+            retval += ::obake::byte_size(x.base());
+            // NOTE: because the sizeof() of the tag was counted
+            // in sizeof(T), remove it from the total because
+            // it is (presumably) being counted in the tag's byte_size()
+            // implementation.
+            retval -= sizeof(series_tag_t<T>);
+        }
+
         return retval;
     }
 };
@@ -2216,6 +2280,11 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
     os << "Rank            : " << series_rank<series_t> << '\n';
     os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
     os << "Number of terms : " << s.size() << '\n';
+
+    // Stream out the tag, if supported.
+    if constexpr (is_stream_insertable_v<const series_tag_t<remove_cvref_t<T>> &>) {
+        os << ::std::as_const(s).tag() << '\n';
+    }
 
     series_stream_terms_impl<false>(os, s);
 }

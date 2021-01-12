@@ -34,12 +34,15 @@ std::mt19937 rng;
 
 const auto ntrials = 200;
 
+struct tag {
+};
+
 TEST_CASE("series_lookup")
 {
     obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     for (auto s_idx : {0u, 1u, 2u, 4u}) {
         s1_t s1;
@@ -119,8 +122,8 @@ TEST_CASE("series_lookup")
 TEST_CASE("series_comparison")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s2_t = series<pm_t, s1_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
 
     REQUIRE(!is_equality_comparable_v<s1_t, void>);
     REQUIRE(!is_equality_comparable_v<void, s1_t>);
@@ -620,10 +623,10 @@ inline constexpr auto series_mul<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_
 TEST_CASE("series_default_mul")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1d_t = series<pm_t, double, void>;
-    using s2_t = series<pm_t, s1_t, void>;
-    using s2d_t = series<pm_t, s1d_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1d_t = series<pm_t, double, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
+    using s2d_t = series<pm_t, s1d_t, tag>;
 
     REQUIRE(!is_multipliable_v<s1_t, void>);
     REQUIRE(!is_multipliable_v<void, s1_t>);
@@ -717,10 +720,10 @@ TEST_CASE("series_default_mul")
 TEST_CASE("series_typedefs")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(std::is_same_v<series_term_t<s1_t>, std::pair<const series_key_t<s1_t>, series_cf_t<s1_t>>>);
-    REQUIRE(std::is_same_v<series_tag_t<s1_t>, void>);
+    REQUIRE(std::is_same_v<series_tag_t<s1_t>, tag>);
 
     REQUIRE(!is_detected_v<series_term_t, void>);
     REQUIRE(!is_detected_v<series_key_t, int>);
@@ -731,7 +734,7 @@ TEST_CASE("series_typedefs")
 TEST_CASE("series_clear_terms")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s;
     s.set_n_segments(4);

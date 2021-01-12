@@ -33,12 +33,15 @@ using rat_t = mppp::rational<1>;
 
 using namespace obake;
 
+struct tag {
+};
+
 TEST_CASE("series_pow_test")
 {
     obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
     using p1_t = polynomial<pm_t, rat_t>;
 
     REQUIRE(is_exponentiable_v<s1_t, int>);
@@ -47,9 +50,9 @@ TEST_CASE("series_pow_test")
     REQUIRE(!is_exponentiable_v<s1_t, void>);
     REQUIRE(!is_exponentiable_v<int, s1_t>);
 
-    REQUIRE(std::is_same_v<series<pm_t, rat_t, void>, decltype(obake::pow(s1_t{}, 0))>);
-    REQUIRE(std::is_same_v<series<pm_t, double, void>, decltype(obake::pow(s1_t{}, 0.))>);
-    REQUIRE(std::is_same_v<series<pm_t, float, void>, decltype(obake::pow(s1_t{}, 0.f))>);
+    REQUIRE(std::is_same_v<series<pm_t, rat_t, tag>, decltype(obake::pow(s1_t{}, 0))>);
+    REQUIRE(std::is_same_v<series<pm_t, double, tag>, decltype(obake::pow(s1_t{}, 0.))>);
+    REQUIRE(std::is_same_v<series<pm_t, float, tag>, decltype(obake::pow(s1_t{}, 0.f))>);
 
     // Test single_cf() implementation.
     REQUIRE(obake::pow(s1_t{}, 10) == 0);
