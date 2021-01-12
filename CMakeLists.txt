@@ -191,6 +191,7 @@ set(OBAKE_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/symbols.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/tex_stream_insert.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/kpack.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/polynomials/packed_monomial.cpp"
 )
 
 if(OBAKE_WITH_LIBBACKTRACE)
