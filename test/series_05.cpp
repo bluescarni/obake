@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <sstream>
 #include <utility>
 
@@ -35,7 +36,7 @@ using namespace obake;
 
 TEST_CASE("series_tex_stream_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, rat_t>;
     using p11_t = polynomial<pm_t, p1_t>;
     using p2_t = polynomial<pm_t, int_t>;
@@ -144,7 +145,7 @@ using filter_t = decltype(filter(std::declval<T>(), std::declval<F>()));
 
 TEST_CASE("series_filter_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, rat_t>;
 
     p1_t tmp;
@@ -213,7 +214,7 @@ using add_symbols_t = decltype(add_symbols(std::declval<T>(), std::declval<const
 
 TEST_CASE("series_add_symbols_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, rat_t>;
 
     REQUIRE(add_symbols(p1_t{}, symbol_set{}).empty());
@@ -254,7 +255,7 @@ TEST_CASE("series_add_symbols_test")
 
 TEST_CASE("series_s11n_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, double>;
 
     REQUIRE(boost::serialization::tracking_level<p1_t>::value == boost::serialization::track_never);
@@ -309,7 +310,7 @@ TEST_CASE("series_s11n_test")
 
 TEST_CASE("series_table_stats_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, double>;
 
     REQUIRE(!boost::contains(p1_t{}.table_stats(), "Average terms per table"));

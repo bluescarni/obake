@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <iostream>
 #include <limits>
@@ -19,16 +20,15 @@
 #include <vector>
 
 #include <obake/config.hpp>
-#include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
-#include <obake/k_packing.hpp>
 #include <obake/key/key_is_compatible.hpp>
 #include <obake/key/key_is_one.hpp>
 #include <obake/key/key_is_zero.hpp>
 #include <obake/key/key_stream_insert.hpp>
 #include <obake/key/key_tex_stream_insert.hpp>
+#include <obake/kpack.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_name.hpp>
@@ -39,21 +39,18 @@
 
 using namespace obake;
 
-using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
-// NOTE: clang + ubsan fail to compile with 128bit integers in this test.
-#if defined(OBAKE_HAVE_GCC_INT128) && !defined(OBAKE_TEST_CLANG_UBSAN)
+using int_types = std::tuple<std::int32_t, std::uint32_t
+#if defined(OBAKE_PACKABLE_INT64)
                              ,
-                             __int128_t, __uint128_t
+                             std::int64_t, std::uint64_t
 #endif
                              >;
 
-// The bit widths over which we will be testing for type T.
+// The packed sizes over which we will be testing for type T.
 template <typename T>
-using bits_widths = std::tuple<std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, 6>,
-#if !defined(_MSC_VER) || defined(__clang__)
-                               std::integral_constant<unsigned, detail::limits_digits<T> / 2>,
-#endif
-                               std::integral_constant<unsigned, detail::limits_digits<T>>>;
+using psizes
+    = std::tuple<std::integral_constant<unsigned, 1>, std::integral_constant<unsigned, 2>,
+                 std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, detail::kpack_max_size<T>()>>;
 
 std::mt19937 rng;
 
@@ -64,7 +61,7 @@ TEST_CASE("basic_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
             using c_t = typename pm_t::container_t;
@@ -79,14 +76,15 @@ TEST_CASE("basic_test")
             // Ctor from symbol set.
             REQUIRE(pm_t{symbol_set{}}._container().empty());
             REQUIRE(pm_t{symbol_set{"x"}}._container() == c_t{0});
-            if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
+            if constexpr (bw == 1u) {
                 // With full width, we need an element in the container per symbol.
                 REQUIRE(pm_t{symbol_set{"x", "y"}}._container() == c_t{0, 0});
                 REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container() == c_t{0, 0, 0});
-            } else if constexpr (bw == 3u) {
-                // With 3 bits of width, we can pack into a single value.
-                REQUIRE(pm_t{symbol_set{"x", "y"}}._container() == c_t{0});
-                REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container() == c_t{0});
+            } else {
+                REQUIRE(pm_t{symbol_set{"x", "y"}}._container()
+                        == c_t(polynomials::detail::dpm_nexpos_to_vsize<pm_t>(2u)));
+                REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container()
+                        == c_t(polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u)));
             }
 
             // Constructors from iterators.
@@ -98,27 +96,23 @@ TEST_CASE("basic_test")
 
             REQUIRE(pm_t(arr, 1)._container() == c_t{1});
             REQUIRE(pm_t(arr, arr + 1)._container() == c_t{1});
-            if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
+            if constexpr (bw == 1u) {
                 REQUIRE(pm_t(arr, 3)._container() == c_t{1, 1, 1});
                 REQUIRE(pm_t(arr, arr + 3)._container() == c_t{1, 1, 1});
-            } else if constexpr (bw == 3u) {
-                REQUIRE(pm_t(arr, 3)._container().size() == 1u);
-                REQUIRE(pm_t(arr, arr + 3)._container().size() == 1u);
+            } else {
+                REQUIRE(pm_t(arr, 3)._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
+                REQUIRE(pm_t(arr, arr + 3)._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
             }
 
             // Try the init list ctor as well.
-            if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
+            if constexpr (bw == 1u) {
                 REQUIRE(pm_t{1, 1, 1}._container() == c_t{1, 1, 1});
-            } else if constexpr (bw == 3u) {
-                REQUIRE(pm_t{1, 1, 1}._container().size() == 1u);
+            } else {
+                REQUIRE(pm_t{1, 1, 1}._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
             }
 
             // Random testing.
-            if constexpr (bw >= 6u
-#if defined(OBAKE_HAVE_GCC_INT128)
-                          && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>
-#endif
-            ) {
+            if constexpr (bw <= 3u) {
                 using idist_t = std::uniform_int_distribution<detail::make_dependent_t<int_t, decltype(b)>>;
                 using param_t = typename idist_t::param_type;
                 idist_t dist;
@@ -126,7 +120,7 @@ TEST_CASE("basic_test")
                 c_t tmp, cmp;
                 int_t tmp_n;
 
-                for (auto i = 0u; i < 100u; ++i) {
+                for (auto i = 0u; i < 1000u; ++i) {
                     tmp.resize(i);
 
                     for (auto j = 0u; j < i; ++j) {
@@ -143,7 +137,7 @@ TEST_CASE("basic_test")
                     // Unpack it into cmp.
                     cmp.clear();
                     for (const auto &n : pm._container()) {
-                        k_unpacker<int_t> ku(n, pm.psize);
+                        kunpacker<int_t> ku(n, pm.psize);
                         for (auto j = 0u; j < pm.psize; ++j) {
                             ku >> tmp_n;
                             cmp.push_back(tmp_n);
@@ -161,7 +155,7 @@ TEST_CASE("basic_test")
 
                     cmp.clear();
                     for (const auto &n : pm._container()) {
-                        k_unpacker<int_t> ku(n, pm.psize);
+                        kunpacker<int_t> ku(n, pm.psize);
                         for (auto j = 0u; j < pm.psize; ++j) {
                             ku >> tmp_n;
                             cmp.push_back(tmp_n);
@@ -178,7 +172,7 @@ TEST_CASE("basic_test")
 
                     cmp.clear();
                     for (const auto &n : pm._container()) {
-                        k_unpacker<int_t> ku(n, pm.psize);
+                        kunpacker<int_t> ku(n, pm.psize);
                         for (auto j = 0u; j < pm.psize; ++j) {
                             ku >> tmp_n;
                             cmp.push_back(tmp_n);
@@ -200,7 +194,7 @@ TEST_CASE("key_is_zero_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -218,7 +212,7 @@ TEST_CASE("key_is_one_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -237,7 +231,7 @@ TEST_CASE("hash_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -248,11 +242,7 @@ TEST_CASE("hash_test")
             REQUIRE(hash(pm_t{}) == 0u);
 
             // Generate and print a few random hashes.
-            if constexpr (bw == 6u
-#if defined(OBAKE_HAVE_GCC_INT128)
-                          && !std::is_same_v<__int128_t, int_t> && !std::is_same_v<__uint128_t, int_t>
-#endif
-            ) {
+            if constexpr (bw <= 3u) {
                 using idist_t = std::uniform_int_distribution<detail::make_dependent_t<int_t, decltype(b)>>;
                 using param_t = typename idist_t::param_type;
                 idist_t dist;
@@ -270,7 +260,7 @@ TEST_CASE("hash_test")
                         }
                     }
 
-                    std::cout << "Hash for type " << type_name<int_t>() << ", bit width " << bw << ", size " << i
+                    std::cout << "Hash for type " << type_name<int_t>() << ", packed size " << bw << ", size " << i
                               << ": "
                               << std::bitset<std::numeric_limits<std::size_t>::digits>(
                                      hash(pm_t(tmp.begin(), tmp.end())))
@@ -286,7 +276,7 @@ TEST_CASE("compatibility_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -323,31 +313,19 @@ TEST_CASE("compatibility_test")
                 REQUIRE(key_is_compatible(pm_t(tmp2), tmp_ss2));
             }
 
-            if constexpr (psize > 1u) {
-                // Try with values exceeding the encoded limits.
-                constexpr auto &e_lim = detail::k_packing_get_elimits<int_t>(psize);
+            // Try with values exceeding the encoded limits.
+            const auto [klim_min, klim_max] = detail::kpack_get_klims<int_t>(psize);
 
-                pm_t tmp_pm;
+            pm_t tmp_pm;
 
-                if constexpr (is_signed_v<int_t>) {
-                    if constexpr (e_lim[0] > detail::limits_min<int_t>) {
-                        tmp_pm._container().push_back(detail::limits_min<int_t>);
-                        REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
-                        tmp_pm._container().clear();
-                    }
-                    if constexpr (e_lim[1] < detail::limits_max<int_t>) {
-                        tmp_pm._container().push_back(detail::limits_max<int_t>);
-                        REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
-                        tmp_pm._container().clear();
-                    }
-                } else {
-                    if constexpr (e_lim < detail::limits_max<int_t>) {
-                        tmp_pm._container().push_back(detail::limits_max<int_t>);
-                        REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
-                        tmp_pm._container().clear();
-                    }
-                }
+            if constexpr (is_signed_v<int_t>) {
+                tmp_pm._container().push_back(klim_min - int_t(1));
+                REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
+                tmp_pm._container().clear();
             }
+            tmp_pm._container().push_back(klim_max + int_t(1));
+            REQUIRE(!key_is_compatible(tmp_pm, symbol_set{"x"}));
+            tmp_pm._container().clear();
         });
     });
 }
@@ -357,7 +335,7 @@ TEST_CASE("stream_insert_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -366,7 +344,7 @@ TEST_CASE("stream_insert_test")
             REQUIRE(is_stream_insertable_key_v<pm_t &&>);
             REQUIRE(is_stream_insertable_key_v<const pm_t &>);
 
-            if constexpr (bw > 3u) {
+            if constexpr (bw <= 3u) {
                 auto oss_wrap = [](const pm_t &p, const symbol_set &s) {
                     std::ostringstream oss;
                     key_stream_insert(oss, p, s);
@@ -427,7 +405,7 @@ TEST_CASE("tex_stream_insert_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -436,7 +414,7 @@ TEST_CASE("tex_stream_insert_test")
             REQUIRE(is_tex_stream_insertable_key_v<const pm_t &>);
             REQUIRE(is_tex_stream_insertable_key_v<const pm_t>);
 
-            if constexpr (bw > 3u) {
+            if constexpr (bw <= 3u) {
                 std::ostringstream oss;
 
                 key_tex_stream_insert(oss, pm_t{}, symbol_set{});

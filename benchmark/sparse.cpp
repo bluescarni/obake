@@ -16,6 +16,7 @@
 
 #include <mp++/integer.hpp>
 
+#include <obake/config.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 
 #include "sparse.hpp"
@@ -40,7 +41,14 @@ int main(int argc, char **argv)
             c.emplace(tbb::global_control::max_allowed_parallelism, nthreads);
         }
 
-        sparse_benchmark<packed_monomial<std::uint64_t>, mppp::integer<2>>(power);
+        sparse_benchmark<packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+                             std::uint64_t
+#else
+                             std::uint32_t
+#endif
+                             >,
+                         mppp::integer<2>>(power);
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << '\n';
         return EXIT_FAILURE;

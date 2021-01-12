@@ -8,6 +8,7 @@
 
 #include <obake/config.hpp>
 
+#include <cstdint>
 #include <initializer_list>
 #include <stdexcept>
 #include <string>
@@ -22,8 +23,8 @@
 
 #include <mp++/integer.hpp>
 
-#include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
+#include <obake/kpack.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/symbols.hpp>
@@ -34,9 +35,17 @@
 
 using namespace obake;
 
+using exp_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    std::int64_t
+#else
+    std::int32_t
+#endif
+    ;
+
 TEST_CASE("make_polynomials_test")
 {
-    using poly_t = polynomial<packed_monomial<long long>, double>;
+    using poly_t = polynomial<packed_monomial<exp_t>, double>;
 
     obake_test::disable_slow_stack_traces();
 
@@ -91,7 +100,7 @@ TEST_CASE("make_polynomials_test")
 
 TEST_CASE("is_polynomial_test")
 {
-    using poly_t = polynomial<packed_monomial<long long>, double>;
+    using poly_t = polynomial<packed_monomial<exp_t>, double>;
 
     REQUIRE(is_polynomial_v<poly_t>);
     REQUIRE(!is_polynomial_v<void>);
@@ -114,11 +123,13 @@ TEST_CASE("is_polynomial_test")
 #endif
 }
 
+#if defined(OBAKE_PACKABLE_INT64)
+
 TEST_CASE("polynomial_mul_detail_test")
 {
-    using p1_t = polynomial<packed_monomial<long long>, double>;
-    using p2_t = polynomial<packed_monomial<int>, double>;
-    using p3_t = polynomial<packed_monomial<long long>, float>;
+    using p1_t = polynomial<packed_monomial<exp_t>, double>;
+    using p2_t = polynomial<packed_monomial<std::int32_t>, double>;
+    using p3_t = polynomial<packed_monomial<exp_t>, float>;
 
     REQUIRE(polynomials::detail::poly_mul_algo<void, void> == 0);
     REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<void, void>>);
@@ -134,9 +145,11 @@ TEST_CASE("polynomial_mul_detail_test")
     REQUIRE(std::is_same_v<p1_t, polynomials::detail::poly_mul_ret_t<p3_t, p1_t>>);
 }
 
+#endif
+
 TEST_CASE("polynomial_mul_simple_test")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
 
@@ -167,8 +180,8 @@ TEST_CASE("polynomial_mul_simple_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_max<long long>}, 1);
-        b.add_term(pm_t{detail::limits_max<long long>}, 1);
+        a.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).second}, 1);
+        b.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).second}, 1);
 
         OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error,
@@ -178,8 +191,8 @@ TEST_CASE("polynomial_mul_simple_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_min<long long>}, 1);
-        b.add_term(pm_t{detail::limits_min<long long>}, 1);
+        a.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).first}, 1);
+        b.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).first}, 1);
 
         OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_simple(retval, a, b), std::overflow_error,
@@ -189,7 +202,7 @@ TEST_CASE("polynomial_mul_simple_test")
 
 TEST_CASE("polynomial_mul_mt_hm_test")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
 
@@ -220,8 +233,8 @@ TEST_CASE("polynomial_mul_mt_hm_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_max<long long>}, 1);
-        b.add_term(pm_t{detail::limits_max<long long>}, 1);
+        a.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).second}, 1);
+        b.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).second}, 1);
 
         OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error,
@@ -231,8 +244,8 @@ TEST_CASE("polynomial_mul_mt_hm_test")
         a.set_symbol_set(symbol_set{"a"});
         b.clear();
         b.set_symbol_set(symbol_set{"a"});
-        a.add_term(pm_t{detail::limits_min<long long>}, 1);
-        b.add_term(pm_t{detail::limits_min<long long>}, 1);
+        a.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).first}, 1);
+        b.add_term(pm_t{detail::kpack_get_lims<exp_t>(1).first}, 1);
 
         OBAKE_REQUIRES_THROWS_CONTAINS(
             polynomials::detail::poly_mul_impl_mt_hm(retval, a, b), std::overflow_error,
@@ -240,13 +253,15 @@ TEST_CASE("polynomial_mul_mt_hm_test")
     });
 }
 
+#if defined(OBAKE_PACKABLE_INT64)
+
 TEST_CASE("polynomial_mul_general_test")
 {
     // General test cases.
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using p1_t = polynomial<pm_t, mppp::integer<1>>;
     using p2_t = polynomial<pm_t, double>;
-    using p3_t = polynomial<packed_monomial<long>, mppp::integer<1>>;
+    using p3_t = polynomial<packed_monomial<std::int32_t>, mppp::integer<1>>;
     using p11_t = polynomial<pm_t, p1_t>;
     using p22_t = polynomial<pm_t, p2_t>;
 
@@ -392,9 +407,11 @@ TEST_CASE("polynomial_mul_general_test")
     }
 }
 
+#endif
+
 TEST_CASE("polynomial_mul_larger_mt_hm_test")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
 
     using cf_types = std::tuple<double, mppp::integer<1>>;
 

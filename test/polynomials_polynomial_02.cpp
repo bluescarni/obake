@@ -6,14 +6,16 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <stdexcept>
 
 #include <mp++/exceptions.hpp>
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
+#include <obake/config.hpp>
 #include <obake/detail/limits.hpp>
-#include <obake/k_packing.hpp>
+#include <obake/kpack.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
@@ -25,11 +27,19 @@
 
 using namespace obake;
 
+using exp_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    std::int64_t
+#else
+    std::int32_t
+#endif
+    ;
+
 TEST_CASE("polynomial_mul_simple_test_p_truncated")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z] = make_polynomials<poly_t>(symbol_set{"x", "y", "z"}, "x", "y", "z");
@@ -128,7 +138,7 @@ TEST_CASE("polynomial_mul_simple_test_p_truncated")
 
 TEST_CASE("polynomial_mul_simple_test_p_truncated_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
@@ -171,7 +181,7 @@ TEST_CASE("polynomial_mul_simple_test_p_truncated_large")
 
 TEST_CASE("polynomial_mul_mt_hm_test_p_truncated")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z] = make_polynomials<poly_t>(symbol_set{"x", "y", "z"}, "x", "y", "z");
@@ -270,7 +280,7 @@ TEST_CASE("polynomial_mul_mt_hm_test_p_truncated")
 
 TEST_CASE("polynomial_mul_mt_hm_test_p_truncated_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
@@ -318,7 +328,7 @@ TEST_CASE("polynomial_mul_mt_hm_test_p_truncated_large")
 
 TEST_CASE("polynomial_pow_test")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::rational<1>>;
     using poly2_t = polynomial<pm_t, double>;
 
@@ -344,14 +354,11 @@ TEST_CASE("polynomial_pow_test")
 
     auto [a, b] = make_polynomials<poly2_t>("a", "b");
 
-    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a, detail::limits_max<long long>), std::overflow_error, "");
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a, detail::limits_max<exp_t>), std::overflow_error, "");
 
-    // Get the delta bit width corresponding to a vector size of 2.
-    const auto nbits = detail::k_packing_size_to_bits<long long>(2u);
-
-    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[0]),
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a * b * b, detail::kpack_get_lims<exp_t>(2).first),
                                    std::overflow_error, "");
-    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a * b * b, detail::k_packing_get_climits<long long>(nbits, 0)[1]),
+    OBAKE_REQUIRES_THROWS_CONTAINS(obake::pow(a * a * b * b, detail::kpack_get_lims<exp_t>(2).second),
                                    std::overflow_error, "");
 
     OBAKE_REQUIRES_THROWS_CONTAINS(

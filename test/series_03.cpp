@@ -6,13 +6,14 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <stdexcept>
 #include <type_traits>
 
 #include <mp++/rational.hpp>
 
 #include <obake/byte_size.hpp>
-#include <obake/detail/limits.hpp>
+#include <obake/kpack.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
@@ -33,7 +34,7 @@ TEST_CASE("series_byte_size")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1;
@@ -64,7 +65,7 @@ TEST_CASE("series_byte_size")
 
 TEST_CASE("series_degree")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = polynomial<pm_t, rat_t>;
     using s11_t = polynomial<pm_t, s1_t>;
 
@@ -125,11 +126,15 @@ TEST_CASE("series_degree")
 #if !defined(_MSC_VER) || defined(__clang__)
     {
         // Overflow checking.
-        auto [x] = make_polynomials<s1_t>("x");
-        auto [y] = make_polynomials<s11_t>("y");
+        using pa_t = packed_monomial<std::uint32_t>;
+        using sa_t = polynomial<pa_t, rat_t>;
+        using saa_t = polynomial<pa_t, sa_t>;
 
-        x = obake::pow(x, detail::limits_max<int>);
-        y = obake::pow(y, detail::limits_max<int>);
+        auto [x] = make_polynomials<sa_t>("x");
+        auto [y] = make_polynomials<saa_t>("y");
+
+        x = obake::pow(x, detail::kpack_get_lims<std::uint32_t>(1).second);
+        y = obake::pow(y, detail::kpack_get_lims<std::uint32_t>(1).second);
 
         OBAKE_REQUIRES_THROWS_CONTAINS(degree(x * y), std::overflow_error, "Overflow error in an integral ");
     }
@@ -138,7 +143,7 @@ TEST_CASE("series_degree")
 
 TEST_CASE("series_p_degree")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = polynomial<pm_t, rat_t>;
     using s11_t = polynomial<pm_t, s1_t>;
 
@@ -292,16 +297,20 @@ TEST_CASE("series_p_degree")
 #if !defined(_MSC_VER) || defined(__clang__)
     {
         // Overflow checking.
-        auto [x] = make_polynomials<s1_t>("x");
-        auto [y] = make_polynomials<s11_t>("y");
+        using pa_t = packed_monomial<std::uint32_t>;
+        using sa_t = polynomial<pa_t, rat_t>;
+        using saa_t = polynomial<pa_t, sa_t>;
 
-        x = obake::pow(x, detail::limits_max<int>);
-        y = obake::pow(y, detail::limits_max<int>);
+        auto [x] = make_polynomials<sa_t>("x");
+        auto [y] = make_polynomials<saa_t>("y");
+
+        x = obake::pow(x, detail::kpack_get_lims<std::uint32_t>(1).second);
+        y = obake::pow(y, detail::kpack_get_lims<std::uint32_t>(1).second);
 
         OBAKE_REQUIRES_THROWS_CONTAINS(p_degree(x * y, symbol_set{"x", "y"}), std::overflow_error,
                                        "Overflow error in an integral ");
-        REQUIRE(p_degree(x * y, symbol_set{"x"}) == detail::limits_max<int>);
-        REQUIRE(p_degree(x * y, symbol_set{"y"}) == detail::limits_max<int>);
+        REQUIRE(p_degree(x * y, symbol_set{"x"}) == detail::kpack_get_lims<std::uint32_t>(1).second);
+        REQUIRE(p_degree(x * y, symbol_set{"y"}) == detail::kpack_get_lims<std::uint32_t>(1).second);
     }
 #endif
 }

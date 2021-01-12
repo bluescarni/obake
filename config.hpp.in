@@ -97,4 +97,13 @@
 
 #endif
 
+// For packing 64-bit values, we need 128-bit multiplication.
+// This requires either 128-bit integer types, or compiler intrinsics.
+// NOTE: _WIN64 should catch also 64-bit arm.
+#if defined(OBAKE_HAVE_GCC_INT128) || (defined(_MSC_VER) && defined(_WIN64))
+
+#define OBAKE_PACKABLE_INT64
+
+#endif
+
 #endif

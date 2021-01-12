@@ -7,6 +7,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <cmath>
+#include <cstdint>
 #include <initializer_list>
 #include <stdexcept>
 #include <type_traits>
@@ -36,7 +37,7 @@ TEST_CASE("series_pow_test")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using p1_t = polynomial<pm_t, rat_t>;
 
@@ -115,7 +116,7 @@ TEST_CASE("series_pow_test")
 
 TEST_CASE("series_evaluate_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, rat_t>;
     using p2_t = polynomial<pm_t, mppp::integer<1>>;
 
@@ -196,7 +197,7 @@ TEST_CASE("series_evaluate_test")
 
 TEST_CASE("series_trim_test")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using p1_t = polynomial<pm_t, rat_t>;
 
     REQUIRE(is_trimmable_v<p1_t>);

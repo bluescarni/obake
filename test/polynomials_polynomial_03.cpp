@@ -6,12 +6,14 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <initializer_list>
 #include <type_traits>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
+#include <obake/config.hpp>
 #include <obake/math/subs.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
@@ -25,7 +27,13 @@ TEST_CASE("polynomial_subs_test")
 {
     using int1_t = mppp::integer<1>;
     using rat1_t = mppp::rational<1>;
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+        std::uint64_t
+#else
+        std::uint32_t
+#endif
+        >;
     using poly_t = polynomial<pm_t, int1_t>;
     using poly2_t = polynomial<pm_t, double>;
     using poly3_t = polynomial<pm_t, rat1_t>;

@@ -6,8 +6,10 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <iostream>
 
+#include <obake/config.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
@@ -42,7 +44,14 @@ auto truncated_pow(const T &x, unsigned n, unsigned limit)
 
 int main()
 {
-    using p_type = polynomial<packed_monomial<unsigned long long>, double>;
+    using p_type = polynomial<packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+                                  std::uint64_t
+#else
+                                  std::uint32_t
+#endif
+                                  >,
+                              double>;
 
     auto polys = make_polynomials<p_type>("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10");
 

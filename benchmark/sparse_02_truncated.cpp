@@ -12,6 +12,7 @@
 
 #include <mp++/integer.hpp>
 
+#include <obake/config.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
@@ -26,8 +27,14 @@ int main()
     const auto n = 16;
     try {
 
-        auto [x, y, z, t, u]
-            = make_polynomials<polynomial<packed_monomial<std::uint64_t>, mppp::integer<2>>>("x", "y", "z", "t", "u");
+        auto [x, y, z, t, u] = make_polynomials<polynomial<packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+                                                               std::uint64_t
+#else
+                                                               std::uint32_t
+#endif
+                                                               >,
+                                                           mppp::integer<2>>>("x", "y", "z", "t", "u");
 
         auto f = (x + y + z * z * 2 + t * t * t * 3 + u * u * u * u * u * 5 + 1);
         const auto tmp_f(f);
@@ -39,7 +46,15 @@ int main()
             g *= tmp_g;
         }
 
-        polynomial<packed_monomial<std::uint64_t>, mppp::integer<2>> ret;
+        polynomial<packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+                       std::uint64_t
+#else
+                       std::uint32_t
+#endif
+                       >,
+                   mppp::integer<2>>
+            ret;
         {
             simple_timer t;
             ret = truncated_mul(f, g, 300);

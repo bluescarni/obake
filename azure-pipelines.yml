@@ -41,6 +41,7 @@ jobs:
           conda install cmake ^
                         mppp ^
                         abseil-cpp ^
+                        fmt ^
                         tbb ^
                         tbb-devel ^
                         boost-cpp ^

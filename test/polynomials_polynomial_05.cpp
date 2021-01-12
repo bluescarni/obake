@@ -6,11 +6,13 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <initializer_list>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
+#include <obake/config.hpp>
 #include <obake/math/integrate.hpp>
 #include <obake/math/subs.hpp>
 #include <obake/math/truncate_p_degree.hpp>
@@ -22,9 +24,17 @@
 
 using namespace obake;
 
+using exp_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    std::int64_t
+#else
+    std::int32_t
+#endif
+    ;
+
 // Small helper to ease testing below.
 template <typename P, typename... Args>
-inline auto tpd_copy(const P &p, const Args &... args)
+inline auto tpd_copy(const P &p, const Args &...args)
 {
     auto pc(p);
     truncate_p_degree(pc, args...);
@@ -33,7 +43,7 @@ inline auto tpd_copy(const P &p, const Args &... args)
 
 TEST_CASE("polynomial_truncate_p_degree")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
     using ppoly_t = polynomial<pm_t, poly_t>;
 
@@ -94,7 +104,7 @@ TEST_CASE("polynomial_truncate_p_degree")
 // Exercise the segmented tables layout.
 TEST_CASE("polynomial_truncate_p_degree_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
@@ -119,7 +129,7 @@ TEST_CASE("polynomial_truncate_p_degree_large")
 // https://github.com/bluescarni/obake/issues/118
 TEST_CASE("bug #118")
 {
-    using Polynomial = polynomial<packed_monomial<unsigned int>, mppp::rational<1>>;
+    using Polynomial = polynomial<packed_monomial<std::uint32_t>, mppp::rational<1>>;
 
     auto x = "x";
     auto y = "e";

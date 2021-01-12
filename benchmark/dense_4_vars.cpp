@@ -14,6 +14,7 @@
 
 #include <tbb/global_control.h>
 
+#include <obake/config.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 
 #include <mp++/integer.hpp>
@@ -37,7 +38,14 @@ int main(int argc, char **argv)
             c.emplace(tbb::global_control::max_allowed_parallelism, nthreads);
         }
 
-        dense_benchmark_4_vars<packed_monomial<std::uint64_t>, mppp::integer<2>>(power);
+        dense_benchmark_4_vars<packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+                                   std::uint64_t
+#else
+                                   std::uint32_t
+#endif
+                                   >,
+                               mppp::integer<2>>(power);
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << '\n';
         return EXIT_FAILURE;

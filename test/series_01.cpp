@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <initializer_list>
 #include <ostream>
 #include <random>
@@ -45,7 +46,7 @@ TEST_CASE("series_is_single_cf")
 {
     obake_test::disable_slow_stack_traces();
 
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     REQUIRE(s1_t{}.is_single_cf());
@@ -58,7 +59,7 @@ TEST_CASE("series_is_single_cf")
 
 TEST_CASE("series_set_symbol_set")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1;
@@ -77,7 +78,7 @@ TEST_CASE("series_set_symbol_set")
 
 TEST_CASE("series_reserve")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1;
@@ -106,7 +107,7 @@ TEST_CASE("series_reserve")
 
 TEST_CASE("series_set_n_segments")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1;
@@ -124,7 +125,7 @@ TEST_CASE("series_set_n_segments")
 
 TEST_CASE("series_clear")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1;
@@ -142,7 +143,7 @@ TEST_CASE("series_clear")
 
 TEST_CASE("series_unary_plus")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1{"3/4"};
@@ -159,7 +160,7 @@ TEST_CASE("series_unary_plus")
 
 TEST_CASE("series_unary_minus")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1{"3/4"};
@@ -176,7 +177,7 @@ TEST_CASE("series_unary_minus")
 
 TEST_CASE("series_negate")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     s1_t s1{"3/4"};
@@ -194,7 +195,7 @@ TEST_CASE("series_negate")
 
 TEST_CASE("series_is_zero")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
 
     REQUIRE(is_zero(s1_t{}));
@@ -209,7 +210,7 @@ TEST_CASE("series_is_zero")
 
 TEST_CASE("series_stream_insert_default_impl")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s2_t = series<pm_t, s1_t, void>;
 
@@ -295,7 +296,7 @@ TEST_CASE("series_stream_insert_default_impl")
 namespace ns
 {
 
-using pm_t = packed_monomial<int>;
+using pm_t = packed_monomial<std::int32_t>;
 
 // ADL-based customization.
 struct tag00 {
@@ -329,7 +330,7 @@ inline constexpr auto series_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, 
 
 TEST_CASE("series_stream_insert_customization")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
 
     std::ostringstream oss;
@@ -351,7 +352,7 @@ struct foo {
 
 TEST_CASE("series_add")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1a_t = series<pm_t, double, void>;
     using s2_t = series<pm_t, s1_t, void>;
@@ -846,7 +847,7 @@ TEST_CASE("series_add")
 
 TEST_CASE("series_sub")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, void>;
     using s1a_t = series<pm_t, double, void>;
     using s2_t = series<pm_t, s1_t, void>;
@@ -1379,7 +1380,7 @@ inline constexpr auto
 
 TEST_CASE("series_add_custom")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
 
@@ -1430,7 +1431,7 @@ inline constexpr auto
 
 TEST_CASE("series_sub_custom")
 {
-    using pm_t = packed_monomial<int>;
+    using pm_t = packed_monomial<std::int32_t>;
     using s1_t = series<pm_t, rat_t, ns::tag00>;
     using s2_t = series<ns::pm_t, rat_t, ns::tag01>;
 

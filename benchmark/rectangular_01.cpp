@@ -6,8 +6,10 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
 #include <iostream>
 
+#include <obake/config.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
@@ -21,7 +23,14 @@ using namespace obake_benchmark;
 // Meant to test sparse multiplication where series have very different sizes.
 int main()
 {
-    using p_type = polynomial<packed_monomial<unsigned long long>, double>;
+    using p_type = polynomial<packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+                                  std::uint64_t
+#else
+                                  std::uint32_t
+#endif
+                                  >,
+                              double>;
 
     auto [x, y, z] = make_polynomials<p_type>("x", "y", "z");
 

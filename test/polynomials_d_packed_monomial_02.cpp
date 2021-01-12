@@ -7,6 +7,7 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <cmath>
+#include <cstdint>
 #include <initializer_list>
 #include <sstream>
 #include <stdexcept>
@@ -23,7 +24,6 @@
 
 #include <obake/byte_size.hpp>
 #include <obake/config.hpp>
-#include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/key/key_evaluate.hpp>
@@ -42,21 +42,18 @@
 
 using namespace obake;
 
-using int_types = std::tuple<int, unsigned, long, unsigned long, long long, unsigned long long
-// NOTE: clang + ubsan fail to compile with 128bit integers in this test.
-#if defined(OBAKE_HAVE_GCC_INT128) && !defined(OBAKE_TEST_CLANG_UBSAN)
+using int_types = std::tuple<std::int32_t, std::uint32_t
+#if defined(OBAKE_PACKABLE_INT64)
                              ,
-                             __int128_t, __uint128_t
+                             std::int64_t, std::uint64_t
 #endif
                              >;
 
-// The bit widths over which we will be testing for type T.
+// The packed sizes over which we will be testing for type T.
 template <typename T>
-using bits_widths = std::tuple<std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, 6>,
-#if !defined(_MSC_VER) || defined(__clang__)
-                               std::integral_constant<unsigned, detail::limits_digits<T> / 2>,
-#endif
-                               std::integral_constant<unsigned, detail::limits_digits<T>>>;
+using psizes
+    = std::tuple<std::integral_constant<unsigned, 1>, std::integral_constant<unsigned, 2>,
+                 std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, detail::kpack_max_size<T>()>>;
 
 TEST_CASE("byte_size_test")
 {
@@ -65,7 +62,7 @@ TEST_CASE("byte_size_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -87,7 +84,7 @@ TEST_CASE("key_evaluate_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -99,7 +96,7 @@ TEST_CASE("key_evaluate_test")
             REQUIRE(!is_evaluable_key_v<const pm_t, void>);
             REQUIRE(std::is_same_v<double, decltype(key_evaluate(pm_t{}, symbol_idx_map<double>{}, symbol_set{}))>);
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 REQUIRE(key_evaluate(pm_t{}, symbol_idx_map<double>{}, symbol_set{}) == 1.);
                 REQUIRE(key_evaluate(pm_t{2}, symbol_idx_map<double>{{0, 3.5}}, symbol_set{"x"}) == std::pow(3.5, 2.));
                 REQUIRE(key_evaluate(pm_t{2, 3}, symbol_idx_map<double>{{0, 3.5}, {1, -4.6}}, symbol_set{"x", "y"})
@@ -148,7 +145,7 @@ TEST_CASE("monomial_subs_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -165,7 +162,7 @@ TEST_CASE("monomial_subs_test")
             REQUIRE(std::is_same_v<std::pair<double, pm_t>,
                                    decltype(monomial_subs(pm_t{}, symbol_idx_map<double>{}, symbol_set{}))>);
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 REQUIRE(monomial_subs(pm_t{}, symbol_idx_map<mppp::integer<1>>{}, symbol_set{})
                         == std::make_pair(mppp::integer<1>{1}, pm_t{}));
                 REQUIRE(monomial_subs(pm_t{1, 2, 3}, symbol_idx_map<mppp::integer<1>>{}, symbol_set{"x", "y", "z"})
@@ -218,7 +215,7 @@ TEST_CASE("key_trim_identify_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -227,7 +224,7 @@ TEST_CASE("key_trim_identify_test")
             REQUIRE(is_trim_identifiable_key_v<const pm_t &>);
             REQUIRE(is_trim_identifiable_key_v<const pm_t>);
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 std::vector<int> v;
                 key_trim_identify(v, pm_t{}, symbol_set{});
                 REQUIRE(v.empty());
@@ -281,7 +278,7 @@ TEST_CASE("key_trim_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -290,7 +287,7 @@ TEST_CASE("key_trim_test")
             REQUIRE(is_trimmable_key_v<const pm_t &>);
             REQUIRE(is_trimmable_key_v<const pm_t>);
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 REQUIRE(key_trim(pm_t{}, symbol_idx_set{}, symbol_set{}) == pm_t{});
                 REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{}, symbol_set{"x", "y", "z"}) == pm_t{1, 2, 3});
                 REQUIRE(key_trim(pm_t{1, 2, 3}, symbol_idx_set{0}, symbol_set{"x", "y", "z"}) == pm_t{2, 3});
@@ -310,7 +307,7 @@ TEST_CASE("monomial_diff_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
@@ -320,7 +317,7 @@ TEST_CASE("monomial_diff_test")
             REQUIRE(is_differentiable_monomial_v<const pm_t>);
             REQUIRE(std::is_same_v<decltype(monomial_diff(pm_t{}, 0, symbol_set{})), std::pair<int_t, pm_t>>);
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 REQUIRE(monomial_diff(pm_t{0}, 0, symbol_set{"x"}) == std::make_pair(int_t(0), pm_t{0}));
                 REQUIRE(monomial_diff(pm_t{1}, 0, symbol_set{"x"}) == std::make_pair(int_t(1), pm_t{0}));
                 REQUIRE(monomial_diff(pm_t{2}, 0, symbol_set{"x"}) == std::make_pair(int_t(2), pm_t{1}));
@@ -355,18 +352,6 @@ TEST_CASE("monomial_diff_test")
                             == std::make_pair(int_t(-2), pm_t{-3, -3}));
                     REQUIRE(monomial_diff(pm_t{-3, -3}, 1, symbol_set{"x", "y"})
                             == std::make_pair(int_t(-3), pm_t{-3, -4}));
-
-                    if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
-                        // Overflow checking.
-                        OBAKE_REQUIRES_THROWS_CONTAINS(
-                            monomial_diff(pm_t{detail::limits_min<int_t>}, 0, symbol_set{"x"}), std::overflow_error,
-                            "Overflow detected while computing the derivative of a dynamic packed monomial: the "
-                            "exponent "
-                            "of "
-                            "the variable with respect to which the differentiation is being taken ('x') is too small ("
-                                + detail::to_string(detail::limits_min<int_t>)
-                                + "), and taking the derivative would generate a negative overflow");
-                    }
                 }
             }
         });
@@ -378,11 +363,11 @@ TEST_CASE("monomial_integrate_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 REQUIRE(is_integrable_monomial_v<pm_t>);
                 REQUIRE(is_integrable_monomial_v<pm_t &>);
                 REQUIRE(is_integrable_monomial_v<const pm_t &>);
@@ -418,16 +403,6 @@ TEST_CASE("monomial_integrate_test")
                 REQUIRE(monomial_integrate(pm_t{1, 2, 3}, 2, symbol_set{"x", "y", "z"})
                         == std::make_pair(int_t(4), pm_t{1, 2, 4}));
 
-                // Overflow checking.
-                if constexpr (bw == static_cast<unsigned>(detail::limits_digits<int_t>)) {
-                    OBAKE_REQUIRES_THROWS_CONTAINS(
-                        monomial_integrate(pm_t{detail::limits_max<int_t>}, 0, symbol_set{"x"}), std::overflow_error,
-                        "Overflow detected while computing the integral of a dynamic packed monomial: the exponent of "
-                        "the integration variable ('x') is too large ("
-                            + detail::to_string(detail::limits_max<int_t>)
-                            + "), and the computation would generate a positive overflow");
-                }
-
                 if constexpr (is_signed_v<int_t>) {
                     REQUIRE(monomial_integrate(pm_t{-2}, 0, symbol_set{"x"}) == std::make_pair(int_t(-1), pm_t{-1}));
                     REQUIRE(monomial_integrate(pm_t{-3}, 0, symbol_set{"x"}) == std::make_pair(int_t(-2), pm_t{-2}));
@@ -454,13 +429,13 @@ TEST_CASE("s11n_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-        detail::tuple_for_each(bits_widths<int_t>{}, [](auto b) {
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
             using pm_t = d_packed_monomial<int_t, bw>;
 
             REQUIRE(boost::serialization::tracking_level<pm_t>::value == boost::serialization::track_never);
 
-            if constexpr (bw >= 6u) {
+            if constexpr (bw <= 3u) {
                 std::stringstream ss;
                 pm_t tmp;
 

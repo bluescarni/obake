@@ -6,6 +6,8 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstdint>
+
 #include <mp++/integer.hpp>
 
 #include <obake/math/degree.hpp>
@@ -17,9 +19,17 @@
 
 using namespace obake;
 
+using exp_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    std::int64_t
+#else
+    std::int32_t
+#endif
+    ;
+
 TEST_CASE("polynomial_mul_simple_test_truncated")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z] = make_polynomials<poly_t>(symbol_set{"x", "y", "z"}, "x", "y", "z");
@@ -73,7 +83,7 @@ TEST_CASE("polynomial_mul_simple_test_truncated")
 
 TEST_CASE("polynomial_mul_simple_test_truncated_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
@@ -120,7 +130,7 @@ TEST_CASE("polynomial_mul_simple_test_truncated_large")
 
 TEST_CASE("polynomial_mul_mt_hm_test_truncated")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z] = make_polynomials<poly_t>(symbol_set{"x", "y", "z"}, "x", "y", "z");
@@ -174,7 +184,7 @@ TEST_CASE("polynomial_mul_mt_hm_test_truncated")
 
 TEST_CASE("polynomial_mul_mt_hm_test_truncated_large")
 {
-    using pm_t = packed_monomial<long long>;
+    using pm_t = packed_monomial<exp_t>;
     using poly_t = polynomial<pm_t, mppp::integer<1>>;
 
     auto [x, y, z, t, u] = make_polynomials<poly_t>("x", "y", "z", "t", "u");
