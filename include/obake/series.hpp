@@ -1692,7 +1692,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
 
             // Init retval with the hash of the tag, if available,
             // zero otherwise.
-            ::std::size_t retval = [&bcast]() {
+            auto retval = [&bcast]() -> ::std::size_t {
                 if constexpr (is_hashable_v<const series_tag_t<Base> &>) {
                     return ::obake::hash(bcast.tag());
                 } else {
