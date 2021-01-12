@@ -39,7 +39,7 @@
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
 #include <obake/exceptions.hpp>
-#include <obake/k_packing.hpp>
+#include <obake/kpack.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/math/safe_convert.hpp>
@@ -72,25 +72,22 @@ constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
 } // namespace detail
 
 // Dynamic packed monomial.
+// NOTE: concept checking on PSize instead of static assert?
+// Probably need to make kpack_max_size() public for that.
 #if defined(OBAKE_HAVE_CONCEPTS)
-template <KPackable T, unsigned NBits>
-    requires(NBits >= 3u)
-    && (NBits <= static_cast<unsigned>(::obake::detail::limits_digits<T>))
+template <kpackable T, unsigned PSize>
 #else
-template <typename T, unsigned NBits,
-          typename = ::std::enable_if_t<is_k_packable_v<T> && (NBits >= 3u)
-                                        && (NBits <= static_cast<unsigned>(::obake::detail::limits_digits<T>))>>
+template <typename T, unsigned PSize, typename = ::std::enable_if_t<is_kpackable_v<T>>>
 #endif
-        class d_packed_monomial
+class d_packed_monomial
 {
+    static_assert(PSize > 0u && PSize <= ::obake::detail::kpack_max_size<T>());
+
     friend class ::boost::serialization::access;
 
 public:
-    // Alias for NBits.
-    static constexpr unsigned nbits = NBits;
-
-    // The number of exponents to be packed into each T instance.
-    static constexpr unsigned psize = static_cast<unsigned>(::obake::detail::limits_digits<T>) / NBits;
+    // Alias for PSize
+    static constexpr unsigned psize = PSize;
 
     // Alias for T.
     using value_type = T;
@@ -127,7 +124,7 @@ public:
 
         ::std::size_t counter = 0;
         for (auto &out : m_container) {
-            k_packer<T> kp(psize);
+            kpacker<T> kp(psize);
 
             // Keep packing until we get to psize or we have
             // exhausted the input values.
@@ -142,11 +139,12 @@ public:
 private:
     struct input_it_ctor_tag {
     };
+    // Implementation of the ctor from input iterators.
     template <typename It>
     explicit d_packed_monomial(input_it_ctor_tag, It b, It e)
     {
         while (b != e) {
-            k_packer<T> kp(psize);
+            kpacker<T> kp(psize);
 
             for (auto j = 0u; j < psize && b != e; ++j, ++b) {
                 kp << ::obake::safe_cast<T>(*b);
@@ -240,35 +238,35 @@ private:
 };
 
 // Implementation of key_is_zero(). A monomial is never zero.
-template <typename T, unsigned NBits>
-inline bool key_is_zero(const d_packed_monomial<T, NBits> &, const symbol_set &)
+template <typename T, unsigned PSize>
+inline bool key_is_zero(const d_packed_monomial<T, PSize> &, const symbol_set &)
 {
     return false;
 }
 
 // Implementation of key_is_one(). A monomial is one if all its exponents are zero.
-template <typename T, unsigned NBits>
-inline bool key_is_one(const d_packed_monomial<T, NBits> &d, const symbol_set &)
+template <typename T, unsigned PSize>
+inline bool key_is_one(const d_packed_monomial<T, PSize> &d, const symbol_set &)
 {
     return ::std::all_of(d._container().cbegin(), d._container().cend(), [](const T &n) { return n == T(0); });
 }
 
 // Comparisons.
-template <typename T, unsigned NBits>
-inline bool operator==(const d_packed_monomial<T, NBits> &d1, const d_packed_monomial<T, NBits> &d2)
+template <typename T, unsigned PSize>
+inline bool operator==(const d_packed_monomial<T, PSize> &d1, const d_packed_monomial<T, PSize> &d2)
 {
     return d1._container() == d2._container();
 }
 
-template <typename T, unsigned NBits>
-inline bool operator!=(const d_packed_monomial<T, NBits> &d1, const d_packed_monomial<T, NBits> &d2)
+template <typename T, unsigned PSize>
+inline bool operator!=(const d_packed_monomial<T, PSize> &d1, const d_packed_monomial<T, PSize> &d2)
 {
     return !(d1 == d2);
 }
 
 // Hash implementation.
-template <typename T, unsigned NBits>
-inline ::std::size_t hash(const d_packed_monomial<T, NBits> &d)
+template <typename T, unsigned PSize>
+inline ::std::size_t hash(const d_packed_monomial<T, PSize> &d)
 {
     // NOTE: the idea is that we will mix the individual
     // hashes for every pack of exponents via addition.
@@ -280,15 +278,15 @@ inline ::std::size_t hash(const d_packed_monomial<T, NBits> &d)
 }
 
 // Symbol set compatibility implementation.
-template <typename T, unsigned NBits>
-inline bool key_is_compatible(const d_packed_monomial<T, NBits> &d, const symbol_set &s)
+template <typename T, unsigned PSize>
+inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol_set &s)
 {
     const auto s_size = s.size();
     const auto &c = d._container();
 
     // Determine the size the container must have in order
     // to be able to represent s_size exponents.
-    const auto exp_size = detail::dpm_nexpos_to_vsize<d_packed_monomial<T, NBits>>(s_size);
+    const auto exp_size = detail::dpm_nexpos_to_vsize<d_packed_monomial<T, PSize>>(s_size);
 
     // Check if c has the expected size.
     if (c.size() != exp_size) {
@@ -296,38 +294,23 @@ inline bool key_is_compatible(const d_packed_monomial<T, NBits> &d, const symbol
     }
 
     // We need to check if the encoded values in the container
-    // are within the limits. If NBits is maximal,
-    // we don't need any checking as all encoded
-    // values representable by T are allowed.
-    if constexpr (NBits == ::obake::detail::limits_digits<T>) {
-        return true;
-    } else {
-        // Fetch the elimits corresponding to a packing size of psize.
-        const auto &e_lim = ::obake::detail::k_packing_get_elimits<T>(d_packed_monomial<T, NBits>::psize);
-        for (const auto &n : c) {
-            if constexpr (is_signed_v<T>) {
-                if (n < e_lim[0] || n > e_lim[1]) {
-                    return false;
-                }
-            } else {
-                if (n > e_lim) {
-                    return false;
-                }
-            }
+    // are within the limits.
+    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<T>(PSize);
+    for (const auto &n : c) {
+        if (n < klim_min || n > klim_max) {
+            return false;
         }
-
-        return true;
     }
+
+    return true;
 }
 
 // Implementation of stream insertion.
 // NOTE: requires that d is compatible with s.
-template <typename T, unsigned NBits>
-inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBits> &d, const symbol_set &s)
+template <typename T, unsigned PSize>
+inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSize> &d, const symbol_set &s)
 {
     assert(polynomials::key_is_compatible(d, s));
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto &c = d._container();
     auto s_it = s.cbegin();
@@ -336,9 +319,9 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBi
     T tmp;
     bool wrote_something = false;
     for (const auto &n : c) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && s_it != s_end; ++j, ++s_it) {
+        for (auto j = 0u; j < PSize && s_it != s_end; ++j, ++s_it) {
             ku >> tmp;
 
             if (tmp != T(0)) {
@@ -374,12 +357,10 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBi
 
 // Implementation of tex stream insertion.
 // NOTE: requires that d is compatible with s.
-template <typename T, unsigned NBits>
-inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T, NBits> &d, const symbol_set &s)
+template <typename T, unsigned PSize>
+inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSize> &d, const symbol_set &s)
 {
     assert(polynomials::key_is_compatible(d, s));
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto &c = d._container();
     auto s_it = s.cbegin();
@@ -396,9 +377,9 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     // below.
     ::mppp::integer<1> tmp_mp;
     for (const auto &n : c) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && s_it != s_end; ++j, ++s_it) {
+        for (auto j = 0u; j < PSize && s_it != s_end; ++j, ++s_it) {
             // Extract the current exponent into
             // tmp_mp.
             ku >> tmp;
@@ -446,16 +427,14 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
 
 // Implementation of symbols merging.
 // NOTE: requires that m is compatible with s, and ins_map consistent with s.
-template <typename T, unsigned NBits>
-inline d_packed_monomial<T, NBits> key_merge_symbols(const d_packed_monomial<T, NBits> &d,
+template <typename T, unsigned PSize>
+inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, PSize> &d,
                                                      const symbol_idx_map<symbol_set> &ins_map, const symbol_set &s)
 {
     assert(polynomials::key_is_compatible(d, s));
     // The last element of the insertion map must be at most s.size(), which means that there
     // are symbols to be appended at the end.
     assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto &c = d._container();
     symbol_idx idx = 0;
@@ -466,13 +445,14 @@ inline d_packed_monomial<T, NBits> key_merge_symbols(const d_packed_monomial<T, 
     // NOTE: store the merged monomial in a temporary vector and then pack it
     // at the end.
     // NOTE: perhaps we could use a small_vector here with a static size
-    // equal to psize, for the case in which everything fits in a single
+    // equal to PSize, for the case in which everything fits in a single
     // packed value.
+    // NOTE: perhaps better to make this a thread local variable.
     ::std::vector<T> tmp_v;
     for (const auto &n : c) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
             if (map_it != map_end && map_it->first == idx) {
                 // We reached an index at which we need to
                 // insert new elements. Insert as many
@@ -496,14 +476,14 @@ inline d_packed_monomial<T, NBits> key_merge_symbols(const d_packed_monomial<T, 
         assert(map_it + 1 == map_end);
     }
 
-    return d_packed_monomial<T, NBits>(tmp_v);
+    return d_packed_monomial<T, PSize>(tmp_v);
 }
 
 // Implementation of monomial_mul().
 // NOTE: requires a, b and out to be compatible with ss.
-template <typename T, unsigned NBits>
-inline void monomial_mul(d_packed_monomial<T, NBits> &out, const d_packed_monomial<T, NBits> &a,
-                         const d_packed_monomial<T, NBits> &b, [[maybe_unused]] const symbol_set &ss)
+template <typename T, unsigned PSize>
+inline void monomial_mul(d_packed_monomial<T, PSize> &out, const d_packed_monomial<T, PSize> &a,
+                         const d_packed_monomial<T, PSize> &b, [[maybe_unused]] const symbol_set &ss)
 {
     // Verify the inputs.
     assert(polynomials::key_is_compatible(a, ss));
@@ -529,8 +509,8 @@ template <typename, typename>
 struct same_d_packed_monomial : ::std::false_type {
 };
 
-template <typename T, unsigned NBits>
-struct same_d_packed_monomial<d_packed_monomial<T, NBits>, d_packed_monomial<T, NBits>> : ::std::true_type {
+template <typename T, unsigned PSize>
+struct same_d_packed_monomial<d_packed_monomial<T, PSize>, d_packed_monomial<T, PSize>> : ::std::true_type {
 };
 
 template <typename T, typename U>
@@ -640,7 +620,7 @@ template <typename R1, typename R2,
         value_type tmp1, tmp2;
 
         for (decltype(c1.size()) i = 0; i < c1.size(); ++i) {
-            k_unpacker<value_type> ku1(c1[i], psize), ku2(c2[i], psize);
+            kunpacker<value_type> ku1(c1[i], psize), ku2(c2[i], psize);
 
             for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                 ku1 >> tmp1;
@@ -693,7 +673,7 @@ template <typename R1, typename R2,
                 value_type tmp;
                 int_t deg;
                 for (const auto &n : cur._container()) {
-                    k_unpacker<value_type> ku(n, psize);
+                    kunpacker<value_type> ku(n, psize);
 
                     for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                         ku >> tmp;
@@ -759,7 +739,7 @@ template <typename R1, typename R2,
                             value_type tmp;
                             int_t deg;
                             for (const auto &n : m._container()) {
-                                k_unpacker<value_type> ku(n, psize);
+                                kunpacker<value_type> ku(n, psize);
 
                                 for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
                                     ku >> tmp;
@@ -834,26 +814,14 @@ template <typename R1, typename R2,
         serial_impl();
     }
 
-    // Fetch the nbits value for pm_t.
-    constexpr auto nbits = pm_t::nbits;
-
     // Now add the component limits via interval arithmetics
     // and check for overflow. Use mppp::integer for the check.
+    const auto [lim_min, lim_max] = ::obake::detail::kpack_get_lims<value_type>(psize);
+
     for (decltype(limits1.size()) i = 0; i < s_size; ++i) {
         if constexpr (is_signed_v<value_type>) {
             const auto add_min = int_t{limits1[i].first} + limits2[i].first;
             const auto add_max = int_t{limits1[i].second} + limits2[i].second;
-
-            // NOTE: need to special-case nbits == bit width, in which case
-            // the component limits are the full numerical range of the type.
-            const auto lim_min
-                = nbits == static_cast<unsigned>(::obake::detail::limits_digits<value_type>)
-                      ? ::obake::detail::limits_min<value_type>
-                      : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i % psize))[0];
-            const auto lim_max
-                = nbits == static_cast<unsigned>(::obake::detail::limits_digits<value_type>)
-                      ? ::obake::detail::limits_max<value_type>
-                      : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i % psize))[1];
 
             // NOTE: an overflow condition will likely result in an exception
             // or some other error handling. Optimise for the non-overflow case.
@@ -862,12 +830,6 @@ template <typename R1, typename R2,
             }
         } else {
             const auto add_max = int_t{limits1[i]} + limits2[i];
-
-            // NOTE: like above, special-case nbits == bit width.
-            const auto lim_max
-                = nbits == static_cast<unsigned>(::obake::detail::limits_digits<value_type>)
-                      ? ::obake::detail::limits_max<value_type>
-                      : ::obake::detail::k_packing_get_climits<value_type>(nbits, static_cast<unsigned>(i % psize));
 
             if (obake_unlikely(add_max > lim_max)) {
                 return false;
@@ -898,21 +860,19 @@ template <typename R1, typename R2,
 
 // Implementation of key_degree().
 // NOTE: this assumes that d is compatible with ss.
-template <typename T, unsigned NBits>
-inline T key_degree(const d_packed_monomial<T, NBits> &d, const symbol_set &ss)
+template <typename T, unsigned PSize>
+inline T key_degree(const d_packed_monomial<T, PSize> &d, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto s_size = ss.size();
 
     symbol_idx idx = 0;
     T tmp, retval(0);
     for (const auto &n : d._container()) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
             retval = ::obake::detail::safe_int_add(retval, tmp);
         }
@@ -923,13 +883,11 @@ inline T key_degree(const d_packed_monomial<T, NBits> &d, const symbol_set &ss)
 
 // Implementation of key_p_degree().
 // NOTE: this assumes that d and si are compatible with ss.
-template <typename T, unsigned NBits>
-inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set &si, const symbol_set &ss)
+template <typename T, unsigned PSize>
+inline T key_p_degree(const d_packed_monomial<T, PSize> &d, const symbol_idx_set &si, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     assert(si.empty() || *(si.end() - 1) < ss.size());
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto s_size = ss.size();
 
@@ -938,9 +896,9 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
     auto si_it = si.begin();
     const auto si_it_end = si.end();
     for (const auto &n : d._container()) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size && si_it != si_it_end; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size && si_it != si_it_end; ++j, ++idx) {
             ku >> tmp;
 
             if (idx == *si_it) {
@@ -957,11 +915,11 @@ inline T key_p_degree(const d_packed_monomial<T, NBits> &d, const symbol_idx_set
 
 // Monomial exponentiation.
 // NOTE: this assumes that d is compatible with ss.
-template <typename T, unsigned NBits, typename U,
+template <typename T, unsigned PSize, typename U,
           ::std::enable_if_t<::std::disjunction_v<::obake::detail::is_mppp_integer<U>,
                                                   is_safely_convertible<const U &, ::mppp::integer<1> &>>,
                              int> = 0>
-inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits> &d, const U &n, const symbol_set &ss)
+inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize> &d, const U &n, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
 
@@ -991,13 +949,11 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
         }
     }();
 
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
-
     const auto s_size = ss.size();
 
     // Prepare the return value.
     const auto &c_in = d._container();
-    d_packed_monomial<T, NBits> retval;
+    d_packed_monomial<T, PSize> retval;
     auto &c_out = retval._container();
     c_out.reserve(c_in.size());
 
@@ -1006,10 +962,10 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
     symbol_idx idx = 0;
     remove_cvref_t<decltype(exp)> tmp_int;
     for (const auto &np : c_in) {
-        k_unpacker<T> ku(np, psize);
-        k_packer<T> kp(psize);
+        kunpacker<T> ku(np, PSize);
+        kpacker<T> kp(PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
             tmp_int = tmp;
             tmp_int *= exp;
@@ -1028,8 +984,8 @@ inline d_packed_monomial<T, NBits> monomial_pow(const d_packed_monomial<T, NBits
 // dynamic or static storage is being used.
 // Thus, this function will slightly overestimate
 // the actual byte size of d.
-template <typename T, unsigned NBits>
-inline ::std::size_t byte_size(const d_packed_monomial<T, NBits> &d)
+template <typename T, unsigned PSize>
+inline ::std::size_t byte_size(const d_packed_monomial<T, PSize> &d)
 {
     return sizeof(d) + d._container().capacity() * sizeof(T);
 }
@@ -1080,16 +1036,14 @@ using dpm_key_evaluate_ret_t = typename decltype(dpm_key_evaluate_algorithm<T, U
 // Evaluation of a dynamic packed monomial.
 // NOTE: this requires that d is compatible with ss,
 // and that sm is consistent with ss.
-template <typename T, unsigned NBits, typename U, ::std::enable_if_t<detail::dpm_key_evaluate_algo<T, U> != 0, int> = 0>
-inline detail::dpm_key_evaluate_ret_t<T, U> key_evaluate(const d_packed_monomial<T, NBits> &d,
+template <typename T, unsigned PSize, typename U, ::std::enable_if_t<detail::dpm_key_evaluate_algo<T, U> != 0, int> = 0>
+inline detail::dpm_key_evaluate_ret_t<T, U> key_evaluate(const d_packed_monomial<T, PSize> &d,
                                                          const symbol_idx_map<U> &sm, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     // sm and ss must have the same size, and the last element
     // of sm must have an index equal to the last index of ss.
     assert(sm.size() == ss.size() && (sm.empty() || (sm.cend() - 1)->first == ss.size() - 1u));
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     // Init the return value.
     detail::dpm_key_evaluate_ret_t<T, U> retval(1);
@@ -1098,9 +1052,9 @@ inline detail::dpm_key_evaluate_ret_t<T, U> key_evaluate(const d_packed_monomial
     const auto sm_end = sm.end();
     // Accumulate the result.
     for (const auto &n : d._container()) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && sm_it != sm_end; ++j, ++sm_it) {
+        for (auto j = 0u; j < PSize && sm_it != sm_end; ++j, ++sm_it) {
             ku >> tmp;
             retval *= ::obake::pow(sm_it->second, ::std::as_const(tmp));
         }
@@ -1130,23 +1084,21 @@ using dpm_monomial_subs_ret_t = typename decltype(dpm_key_evaluate_algorithm<T, 
 // Substitution of symbols in a dynamic packed monomial.
 // NOTE: this requires that d is compatible with ss,
 // and that sm is consistent with ss.
-template <typename T, unsigned NBits, typename U,
+template <typename T, unsigned PSize, typename U,
           ::std::enable_if_t<detail::dpm_monomial_subs_algo<T, U> != 0, int> = 0>
-inline ::std::pair<detail::dpm_monomial_subs_ret_t<T, U>, d_packed_monomial<T, NBits>>
-monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm, const symbol_set &ss)
+inline ::std::pair<detail::dpm_monomial_subs_ret_t<T, U>, d_packed_monomial<T, PSize>>
+monomial_subs(const d_packed_monomial<T, PSize> &d, const symbol_idx_map<U> &sm, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     // sm must not be larger than ss, and the last element
     // of sm must have an index smaller than the size of ss.
     assert(sm.size() <= ss.size() && (sm.empty() || (sm.cend() - 1)->first < ss.size()));
 
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
-
     const auto s_size = ss.size();
 
     // Init the return values.
     const auto &in_c = d._container();
-    d_packed_monomial<T, NBits> out_dpm;
+    d_packed_monomial<T, PSize> out_dpm;
     auto &out_c = out_dpm._container();
     out_c.reserve(in_c.size());
     detail::dpm_monomial_subs_ret_t<T, U> retval(1);
@@ -1156,10 +1108,10 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
     const auto sm_end = sm.end();
     T tmp;
     for (const auto &n : in_c) {
-        k_unpacker<T> ku(n, psize);
-        k_packer<T> kp(psize);
+        kunpacker<T> ku(n, PSize);
+        kpacker<T> kp(PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
 
             if (sm_it != sm_end && sm_it->first == idx) {
@@ -1191,22 +1143,20 @@ monomial_subs(const d_packed_monomial<T, NBits> &d, const symbol_idx_map<U> &sm,
 // Identify non-trimmable exponents in d.
 // NOTE: this requires that d is compatible with ss,
 // and that v has the same size as ss.
-template <typename T, unsigned NBits>
-inline void key_trim_identify(::std::vector<int> &v, const d_packed_monomial<T, NBits> &d, const symbol_set &ss)
+template <typename T, unsigned PSize>
+inline void key_trim_identify(::std::vector<int> &v, const d_packed_monomial<T, PSize> &d, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     assert(v.size() == ss.size());
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto s_size = ss.size();
 
     T tmp;
     symbol_idx idx = 0;
     for (const auto &n : d._container()) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
 
             if (tmp != T(0)) {
@@ -1222,16 +1172,14 @@ inline void key_trim_identify(::std::vector<int> &v, const d_packed_monomial<T, 
 // specifed by si.
 // NOTE: this requires that d is compatible with ss,
 // and that si is consistent with ss.
-template <typename T, unsigned NBits>
-inline d_packed_monomial<T, NBits> key_trim(const d_packed_monomial<T, NBits> &d, const symbol_idx_set &si,
+template <typename T, unsigned PSize>
+inline d_packed_monomial<T, PSize> key_trim(const d_packed_monomial<T, PSize> &d, const symbol_idx_set &si,
                                             const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     // NOTE: si cannot be larger than ss, and its last element must be smaller
     // than the size of ss.
     assert(si.size() <= ss.size() && (si.empty() || *(si.cend() - 1) < ss.size()));
-
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
 
     const auto s_size = ss.size();
 
@@ -1243,6 +1191,7 @@ inline d_packed_monomial<T, NBits> key_trim(const d_packed_monomial<T, NBits> &d
     // NOTE: here we also know that the output number of exponents is
     // s_size - si.size(), thus we can probably pre-allocate storage
     // in tmp_v and/or the output monomial.
+    // NOTE: perhaps better to make this a thread local variable.
     ::std::vector<T> tmp_v;
 
     symbol_idx idx = 0;
@@ -1250,9 +1199,9 @@ inline d_packed_monomial<T, NBits> key_trim(const d_packed_monomial<T, NBits> &d
     auto si_it = si.cbegin();
     const auto si_end = si.cend();
     for (const auto &n : d._container()) {
-        k_unpacker<T> ku(n, psize);
+        kunpacker<T> ku(n, PSize);
 
-        for (auto j = 0u; j < psize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
             ku >> tmp;
 
             if (si_it != si_end && *si_it == idx) {
@@ -1267,36 +1216,34 @@ inline d_packed_monomial<T, NBits> key_trim(const d_packed_monomial<T, NBits> &d
     }
     assert(si_it == si_end);
 
-    return d_packed_monomial<T, NBits>(tmp_v);
+    return d_packed_monomial<T, PSize>(tmp_v);
 }
 
 // Monomial differentiation.
 // NOTE: this requires that d is compatible with ss,
 // and idx is within ss.
-template <typename T, unsigned NBits>
-inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_monomial<T, NBits> &d,
+template <typename T, unsigned PSize>
+inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_diff(const d_packed_monomial<T, PSize> &d,
                                                                  const symbol_idx &idx, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     assert(idx < ss.size());
 
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
-
     const auto s_size = ss.size();
 
     // Init the return value.
     const auto &in_c = d._container();
-    d_packed_monomial<T, NBits> out_dpm;
+    d_packed_monomial<T, PSize> out_dpm;
     auto &out_c = out_dpm._container();
     out_c.reserve(in_c.size());
 
     symbol_idx i = 0;
     T tmp, ret_exp(0);
     for (const auto &n : in_c) {
-        k_unpacker<T> ku(n, psize);
-        k_packer<T> kp(psize);
+        kunpacker<T> ku(n, PSize);
+        kpacker<T> kp(PSize);
 
-        for (auto j = 0u; j < psize && i < s_size; ++j, ++i) {
+        for (auto j = 0u; j < PSize && i < s_size; ++j, ++i) {
             ku >> tmp;
 
             if (i == idx && tmp != T(0)) {
@@ -1305,15 +1252,9 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_
                 // NOTE: if the exponent is zero, ret_exp will remain to
                 // its initial value (0) and the output monomial
                 // will be the same as p.
-                if (obake_unlikely(tmp == ::obake::detail::limits_min<T>)) {
-                    obake_throw(::std::overflow_error,
-                                "Overflow detected while computing the derivative of a dynamic packed monomial: the "
-                                "exponent of "
-                                "the variable with respect to which the differentiation is being taken ('"
-                                    + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too small ("
-                                    + ::obake::detail::to_string(tmp)
-                                    + "), and taking the derivative would generate a negative overflow");
-                }
+                // NOTE: no need for overflow checking here
+                // due to the way we create the kpack deltas
+                // and consequently the limits.
                 ret_exp = tmp--;
             }
 
@@ -1329,30 +1270,28 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_diff(const d_packed_
 // Monomial integration.
 // NOTE: this requires that d is compatible with ss,
 // and idx is within ss.
-template <typename T, unsigned NBits>
-inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_packed_monomial<T, NBits> &d,
+template <typename T, unsigned PSize>
+inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_packed_monomial<T, PSize> &d,
                                                                       const symbol_idx &idx, const symbol_set &ss)
 {
     assert(polynomials::key_is_compatible(d, ss));
     assert(idx < ss.size());
 
-    constexpr auto psize = d_packed_monomial<T, NBits>::psize;
-
     const auto s_size = ss.size();
 
     // Init the return value.
     const auto &in_c = d._container();
-    d_packed_monomial<T, NBits> out_dpm;
+    d_packed_monomial<T, PSize> out_dpm;
     auto &out_c = out_dpm._container();
     out_c.reserve(in_c.size());
 
     symbol_idx i = 0;
     T tmp, ret_exp(0);
     for (const auto &n : in_c) {
-        k_unpacker<T> ku(n, psize);
-        k_packer<T> kp(psize);
+        kunpacker<T> ku(n, PSize);
+        kpacker<T> kp(PSize);
 
-        for (auto j = 0u; j < psize && i < s_size; ++j, ++i) {
+        for (auto j = 0u; j < PSize && i < s_size; ++j, ++i) {
             ku >> tmp;
 
             if (i == idx) {
@@ -1368,15 +1307,9 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_pa
                     }
                 }
 
-                if (obake_unlikely(tmp == ::obake::detail::limits_max<T>)) {
-                    obake_throw(
-                        ::std::overflow_error,
-                        "Overflow detected while computing the integral of a dynamic packed monomial: the exponent of "
-                        "the integration variable ('"
-                            + *ss.nth(static_cast<decltype(ss.size())>(i)) + "') is too large ("
-                            + ::obake::detail::to_string(tmp)
-                            + "), and the computation would generate a positive overflow");
-                }
+                // NOTE: no need for overflow checking here
+                // due to the way we create the kpack deltas
+                // and consequently the limits.
                 ret_exp = ++tmp;
             }
 
@@ -1394,12 +1327,12 @@ inline ::std::pair<T, d_packed_monomial<T, NBits>> monomial_integrate(const d_pa
 } // namespace polynomials
 
 // Lift to the obake namespace.
-template <typename T, unsigned NBits>
-using d_packed_monomial = polynomials::d_packed_monomial<T, NBits>;
+template <typename T, unsigned PSize>
+using d_packed_monomial = polynomials::d_packed_monomial<T, PSize>;
 
 // Specialise monomial_has_homomorphic_hash.
-template <typename T, unsigned NBits>
-inline constexpr bool monomial_hash_is_homomorphic<d_packed_monomial<T, NBits>> = true;
+template <typename T, unsigned PSize>
+inline constexpr bool monomial_hash_is_homomorphic<d_packed_monomial<T, PSize>> = true;
 
 } // namespace obake
 
@@ -1407,9 +1340,9 @@ namespace boost::serialization
 {
 
 // Disable tracking for d_packed_monomial.
-template <typename T, unsigned NBits>
-struct tracking_level<::obake::d_packed_monomial<T, NBits>>
-    : ::obake::detail::s11n_no_tracking<::obake::d_packed_monomial<T, NBits>> {
+template <typename T, unsigned PSize>
+struct tracking_level<::obake::d_packed_monomial<T, PSize>>
+    : ::obake::detail::s11n_no_tracking<::obake::d_packed_monomial<T, PSize>> {
 };
 
 } // namespace boost::serialization

@@ -26,7 +26,6 @@
 #include <mp++/rational.hpp>
 
 #include <obake/config.hpp>
-#include <obake/detail/limits.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
 #include <obake/key/key_degree.hpp>
