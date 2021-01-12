@@ -1,14 +1,14 @@
 version: 2
 
 jobs:
-  bionic_gcc7_conda:
+  bionic_gcc7_docs:
     docker:
     - image: circleci/buildpack-deps:bionic
     steps:
     - checkout
     - run:
         name: Build and test
-        command: bash ./tools/circleci_bionic_gcc7_conda.sh
+        command: bash ./tools/circleci_bionic_gcc7_docs.sh
   focal_gcc9_coverage:
     docker:
     - image: circleci/buildpack-deps:focal
@@ -38,7 +38,7 @@ workflows:
   version: 2
   all_builds:
     jobs:
-    - bionic_gcc7_conda
+    - bionic_gcc7_docs
     - focal_gcc9_coverage
     - focal_gcc9_ubsan
     - bionic_gcc7_asan
