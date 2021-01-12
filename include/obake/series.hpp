@@ -696,7 +696,7 @@ inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol
 
 // NOTE: document that moved-from series are destructible and assignable.
 #if defined(OBAKE_HAVE_CONCEPTS)
-template <Key K, Cf C, typename Tag>
+template <Key K, Cf C, series_tag Tag>
 #else
 template <typename K, typename C, typename Tag, typename>
 #endif
@@ -1696,6 +1696,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
                 if constexpr (is_hashable_v<const series_tag_t<Base> &>) {
                     return ::obake::hash(bcast.tag());
                 } else {
+                    detail::ignore(bcast);
                     return 0;
                 }
             }();
