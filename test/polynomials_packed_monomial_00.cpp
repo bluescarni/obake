@@ -210,9 +210,6 @@ TEST_CASE("hash_test")
         REQUIRE(hash(pm_t{4, 5, 6}) == static_cast<std::size_t>(pm_t{4, 5, 6}.get_value()));
 
         // Print a few randomly-generated hash values.
-#if defined(OBAKE_HAVE_GCC_INT128)
-        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
-#endif
         {
             std::uniform_int_distribution<int_t> idist;
             std::cout << "Int type: " << type_name<int_t>() << '\n';
@@ -574,7 +571,7 @@ TEST_CASE("monomial_range_overflow_check")
     });
 }
 
-const int ntrials = 100;
+const int ntrials = 10000;
 
 TEST_CASE("homomorphic_hash")
 {
@@ -594,9 +591,6 @@ TEST_CASE("homomorphic_hash")
         REQUIRE(!HomomorphicallyHashableMonomial<const pm_t &>);
 #endif
 
-#if defined(OBAKE_HAVE_GCC_INT128)
-        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>)
-#endif
         {
             std::vector<int_t> v1, v2, v3;
             v1.resize(6u);

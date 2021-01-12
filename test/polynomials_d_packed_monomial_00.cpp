@@ -20,7 +20,6 @@
 #include <vector>
 
 #include <obake/config.hpp>
-#include <obake/detail/limits.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>

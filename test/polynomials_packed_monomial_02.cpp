@@ -197,63 +197,56 @@ TEST_CASE("mt_overflow_check_test")
     detail::tuple_for_each(int_types{}, [](const auto &n) {
         using int_t = remove_cvref_t<decltype(n)>;
 
-#if defined(OBAKE_HAVE_GCC_INT128)
-        if constexpr (!std::is_same_v<int_t, __int128_t> && !std::is_same_v<int_t, __uint128_t>) {
-#endif
+        using pm_t = packed_monomial<int_t>;
 
-            using pm_t = packed_monomial<int_t>;
-
-            for (auto vs : {3u, 4u, 5u, 6u}) {
-                symbol_set ss;
-                for (auto j = 0u; j < vs; ++j) {
-                    ss.insert(ss.end(), "x_" + detail::to_string(j));
-                }
-
-                // Randomly generate a bunch of monomials with
-                // exponents within the limits for the given vector size.
-                std::vector<pm_t> v1;
-                std::list<pm_t> l1;
-                std::uniform_int_distribution<int_t> idist;
-                std::vector<int_t> tmp(vs);
-                for (auto i = 0u; i < 6000u; ++i) {
-                    for (auto j = 0u; j < vs; ++j) {
-                        const auto lims = detail::kpack_get_lims<int_t>(vs);
-                        tmp[j] = idist(
-                            rng, typename std::uniform_int_distribution<int_t>::param_type{lims.first, lims.second});
-                        v1.emplace_back(tmp);
-                        l1.emplace_back(tmp);
-                    }
-                }
-                // Create a range containing a single
-                // unitary monomial. This will never
-                // overflow when multiplied by v1/l1.
-                std::vector<pm_t> v2(1, pm_t{ss});
-
-                REQUIRE(monomial_range_overflow_check(v1, v2, ss));
-                REQUIRE(monomial_range_overflow_check(v2, v1, ss));
-                REQUIRE(monomial_range_overflow_check(l1, v2, ss));
-                REQUIRE(monomial_range_overflow_check(v2, l1, ss));
-
-                // Add monomials with maximal exponents.
-                for (auto j = 0u; j < vs; ++j) {
-                    const auto lims = detail::kpack_get_lims<int_t>(vs);
-                    tmp[j] = lims.second;
-                }
-                v2[0] = pm_t(tmp);
-                for (auto j = 0u; j < vs; ++j) {
-                    const auto lims = detail::kpack_get_lims<int_t>(vs);
-                    tmp[j] = lims.second;
-                }
-                v1.emplace_back(tmp);
-                l1.emplace_back(tmp);
-
-                REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
-                REQUIRE(!monomial_range_overflow_check(l1, v2, ss));
-                REQUIRE(!monomial_range_overflow_check(v2, v1, ss));
-                REQUIRE(!monomial_range_overflow_check(v2, l1, ss));
+        for (auto vs : {3u, 4u, 5u, 6u}) {
+            symbol_set ss;
+            for (auto j = 0u; j < vs; ++j) {
+                ss.insert(ss.end(), "x_" + detail::to_string(j));
             }
-#if defined(OBAKE_HAVE_GCC_INT128)
+
+            // Randomly generate a bunch of monomials with
+            // exponents within the limits for the given vector size.
+            std::vector<pm_t> v1;
+            std::list<pm_t> l1;
+            std::uniform_int_distribution<int_t> idist;
+            std::vector<int_t> tmp(vs);
+            for (auto i = 0u; i < 6000u; ++i) {
+                for (auto j = 0u; j < vs; ++j) {
+                    const auto lims = detail::kpack_get_lims<int_t>(vs);
+                    tmp[j] = idist(rng,
+                                   typename std::uniform_int_distribution<int_t>::param_type{lims.first, lims.second});
+                    v1.emplace_back(tmp);
+                    l1.emplace_back(tmp);
+                }
+            }
+            // Create a range containing a single
+            // unitary monomial. This will never
+            // overflow when multiplied by v1/l1.
+            std::vector<pm_t> v2(1, pm_t{ss});
+
+            REQUIRE(monomial_range_overflow_check(v1, v2, ss));
+            REQUIRE(monomial_range_overflow_check(v2, v1, ss));
+            REQUIRE(monomial_range_overflow_check(l1, v2, ss));
+            REQUIRE(monomial_range_overflow_check(v2, l1, ss));
+
+            // Add monomials with maximal exponents.
+            for (auto j = 0u; j < vs; ++j) {
+                const auto lims = detail::kpack_get_lims<int_t>(vs);
+                tmp[j] = lims.second;
+            }
+            v2[0] = pm_t(tmp);
+            for (auto j = 0u; j < vs; ++j) {
+                const auto lims = detail::kpack_get_lims<int_t>(vs);
+                tmp[j] = lims.second;
+            }
+            v1.emplace_back(tmp);
+            l1.emplace_back(tmp);
+
+            REQUIRE(!monomial_range_overflow_check(v1, v2, ss));
+            REQUIRE(!monomial_range_overflow_check(l1, v2, ss));
+            REQUIRE(!monomial_range_overflow_check(v2, v1, ss));
+            REQUIRE(!monomial_range_overflow_check(v2, l1, ss));
         }
-#endif
     });
 }
