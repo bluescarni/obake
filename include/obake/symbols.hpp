@@ -12,10 +12,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <new>
 #include <string>
 #include <tuple>
-#include <typeinfo>
 #include <utility>
 
 #include <boost/container/container_fwd.hpp>
@@ -23,14 +21,13 @@
 #include <boost/container/flat_set.hpp>
 #include <boost/flyweight/flyweight.hpp>
 #include <boost/flyweight/hashed_factory.hpp>
-#include <boost/flyweight/holder_tag.hpp>
 #include <boost/flyweight/refcounted.hpp>
 #include <boost/flyweight/serialize.hpp>
 #include <boost/flyweight/simple_locking.hpp>
-#include <boost/mpl/aux_/lambda_support.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/string.hpp>
 
+#include <obake/detail/fw_utils.hpp>
 #include <obake/detail/visibility.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/s11n.hpp>
@@ -200,81 +197,13 @@ BOOST_SERIALIZATION_SPLIT_FREE(::obake::symbol_set)
 namespace obake::detail
 {
 
-OBAKE_DLL_PUBLIC ::std::pair<void *, bool> ss_fw_fetch_storage(const ::std::type_info &, ::std::size_t,
-                                                               void (*)(void *));
-
-[[noreturn]] OBAKE_DLL_PUBLIC void ss_fw_handle_fatal_error();
-
-// Implementation of a custom holder for the symbol_set flyweight. Largely lifted
-// from the default static_holder:
-//
-// https://www.boost.org/doc/libs/1_74_0/boost/flyweight/static_holder.hpp
-//
-// The reason for this custom holder is that, in the
-// presence of multiple DLLs using obake, we don't want to have
-// multiple global factories for the symbol_set flyweight, which
-// would lead to crashes. That is, in this implementation the
-// get() function will always return the same object, which is
-// managed by a type-erased storage provider defined in symbols.cpp,
-// even when get() is being invoked from multiple independent DLLs.
-template <typename C>
-struct ss_fw_holder_class : ::boost::flyweights::holder_marker {
-    // Ensure we don't try to use this with over-aligned classes.
-    static_assert(alignof(C) <= alignof(::std::max_align_t));
-
-    static C &impl()
-    {
-        // Try to fetch new or existing storage for an instance of type C.
-        auto [storage, new_object]
-            = detail::ss_fw_fetch_storage(typeid(C), sizeof(C), [](void *ptr) { static_cast<C *>(ptr)->~C(); });
-
-        if (new_object) {
-            try {
-                // New storage was allocated, need to create
-                // a new object in it.
-                auto ptr = ::new (storage) C;
-
-                return *ptr;
-                // LCOV_EXCL_START
-            } catch (...) {
-                // If the default constructor of C throws, there's
-                // nothing we can do to recover.
-                detail::ss_fw_handle_fatal_error();
-            }
-            // LCOV_EXCL_STOP
-        } else {
-            // An instance of C was already created earlier
-            // (i.e., the first time impl() was called).
-            // Return a reference to it.
-            return *static_cast<C *>(storage);
-        }
-    }
-
-    static C &get()
-    {
-        static C &retval = ss_fw_holder_class<C>::impl();
-
-        return retval;
-    }
-
-    typedef ss_fw_holder_class type;
-    BOOST_MPL_AUX_LAMBDA_SUPPORT(1, ss_fw_holder_class, (C))
-};
-
-struct ss_fw_holder : ::boost::flyweights::holder_marker {
-    template <typename C>
-    struct apply {
-        typedef ss_fw_holder_class<C> type;
-    };
-};
-
 // Hasher for symbol_set.
 struct OBAKE_DLL_PUBLIC ss_fw_hasher {
     ::std::size_t operator()(const symbol_set &) const;
 };
 
-// Definition of the flyweight.
-using ss_fw = ::boost::flyweight<symbol_set, ::boost::flyweights::hashed_factory<ss_fw_hasher>, ss_fw_holder>;
+// Definition of the symbol_set flyweight.
+using ss_fw = ::boost::flyweight<symbol_set, ::boost::flyweights::hashed_factory<ss_fw_hasher>, fw_holder>;
 
 // NOTE: this helper returns a copy of a global thread-local
 // ss_fw object constructed from an empty symbol_set. This is used, e.g.,

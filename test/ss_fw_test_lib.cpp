@@ -17,5 +17,5 @@ __attribute__((visibility("default")))
 #endif
     std::string *get_test_address()
 {
-    return &::obake::detail::ss_fw_holder_class<std::string>::get();
+    return &::obake::detail::fw_holder_class<std::string>::get();
 }

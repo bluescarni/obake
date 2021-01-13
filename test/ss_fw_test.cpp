@@ -20,5 +20,5 @@ TEST_CASE("ss fw storage address")
 {
     get_test_address()->resize(500);
 
-    REQUIRE(get_test_address() == &detail::ss_fw_holder_class<std::string>::get());
+    REQUIRE(get_test_address() == &detail::fw_holder_class<std::string>::get());
 }
