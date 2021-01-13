@@ -898,10 +898,6 @@ public:
         return *this = series(::std::forward<T>(x));
     }
 
-    // NOTE: the conversion operator currently only
-    // converts to zero-rank objects. Perhaps in the future
-    // we can enable more general conversion in the same
-    // spirit as the generic ctor.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConvertible<C> T>
 #else
