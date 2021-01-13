@@ -457,7 +457,9 @@ constexpr int series_generic_ctor_algorithm_impl()
             return ::std::is_constructible_v<C, T> ? 1 : 0;
         } else if constexpr (series_rank<rT> == series_rank<series_t>) {
             if constexpr (::std::is_same_v<series_key_t<rT>, K>) {
-                // Construction from equal rank and same key. Requires
+                // Construction from equal rank and same key (but at least
+                // one of cf and tag must differ, otherwise we are in a
+                // copy/move situation). Requires
                 // to be able to construct C from the coefficient type of T.
                 // The construction argument will be a const reference or an rvalue
                 // reference, depending on whether T && is a mutable rvalue reference or not.
