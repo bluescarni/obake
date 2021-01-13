@@ -1490,7 +1490,7 @@ public:
     {
         return m_tag;
     }
-    const Tag &base() const
+    const Tag &tag() const
     {
         return m_tag;
     }
@@ -2064,7 +2064,7 @@ struct series_default_byte_size_impl {
 
         // Finally, add the contribution from the tag, if available.
         if constexpr (is_size_measurable_v<const series_tag_t<T> &>) {
-            retval += ::obake::byte_size(x.base());
+            retval += ::obake::byte_size(x.tag());
             // NOTE: because the sizeof() of the tag was counted
             // in sizeof(T), remove it from the total because
             // it is (presumably) being counted in the tag's byte_size()
