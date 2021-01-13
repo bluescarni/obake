@@ -30,12 +30,15 @@ using rat_t = mppp::rational<1>;
 
 using namespace obake;
 
+struct tag {
+};
+
 TEST_CASE("series_byte_size")
 {
     obake_test::disable_slow_stack_traces();
 
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1;
     s1.set_symbol_set(symbol_set{"x", "y"});

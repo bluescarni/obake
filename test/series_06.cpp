@@ -6,11 +6,21 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <limits>
+#include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/vector.hpp>
 
 #include <mp++/config.hpp>
 #include <mp++/exceptions.hpp>
@@ -22,12 +32,14 @@
 #endif
 
 #include <obake/config.hpp>
+#include <obake/hash.hpp>
 #include <obake/key/key_degree.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
+#include <obake/s11n.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -149,10 +161,13 @@ TEST_CASE("series_div")
     REQUIRE(!is_in_place_divisible_v<int &, const s1_t &>);
 }
 
+struct tag {
+};
+
 TEST_CASE("series_conversion_operator")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     s1_t s1{"3/4"};
     REQUIRE(static_cast<rat_t>(s1) == rat_t{3, 4});
@@ -235,12 +250,12 @@ TEST_CASE("series_filtered_test")
 TEST_CASE("series_generic_ctor_with_ss")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1_int_t = series<pm_t, int_t, void>;
-    using s2_t = series<pm_t, s1_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1_int_t = series<pm_t, int_t, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
 
 #if defined(MPPP_WITH_MPFR)
-    using s1_real_t = series<pm_t, mppp::real, void>;
+    using s1_real_t = series<pm_t, mppp::real, tag>;
 #endif
 
     REQUIRE(!std::is_constructible_v<s1_t, void, void>);
@@ -330,7 +345,7 @@ TEST_CASE("series_generic_ctor_with_ss")
     REQUIRE(!std::is_constructible_v<s1_t, s1_int_t, symbol_set>);
     REQUIRE(!std::is_constructible_v<s1_t, s1_int_t &, const symbol_set &>);
     REQUIRE(!std::is_constructible_v<s1_t, const s1_int_t &, symbol_set &>);
-    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, int>, symbol_set>);
+    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, tag>, symbol_set>);
 
     // Non-constructability from a series with higher rank.
     REQUIRE(!std::is_constructible_v<s1_t, s2_t, symbol_set>);
@@ -342,9 +357,128 @@ TEST_CASE("series_generic_ctor_with_ss_bug_00")
 {
     // The constructor would not create a key
     // compatible with the input symbol set.
-    using pm_t = d_packed_monomial<int, 8>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using pm_t = d_packed_monomial<std::int32_t, 8>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}) == 42);
     REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}).get_symbol_set() == symbol_set{"x", "y", "z"});
+}
+
+namespace ns
+{
+
+struct tag_00 {
+    std::vector<int> vec = {1, 2, 3, 4, 5};
+    template <typename Archive>
+    void serialize(Archive &ar, unsigned)
+    {
+        ar &vec;
+    }
+};
+
+struct tag_01 {
+};
+
+bool operator==(const tag_00 &a, const tag_00 &b)
+{
+    return a.vec == b.vec;
+}
+
+bool operator!=(const tag_00 &a, const tag_00 &b)
+{
+    return a.vec != b.vec;
+}
+
+template <typename K, typename C>
+auto series_mul(const series<K, C, tag_00> &, const series<K, C, tag_00> &)
+{
+    auto ret = series<K, C, tag_00>{};
+    ret.tag().vec.resize(20);
+    return ret;
+}
+
+std::size_t hash(const tag_00 &t)
+{
+    return static_cast<std::size_t>(t.vec.size());
+}
+
+std::ostream &operator<<(std::ostream &os, const tag_00 &t)
+{
+    return os << "Vec size: " << t.vec.size() << '\n';
+}
+
+} // namespace ns
+
+TEST_CASE("tag member")
+{
+    using pm_t = d_packed_monomial<std::int32_t, 8>;
+    using s1_t = series<pm_t, rat_t, ns::tag_00>;
+
+    s1_t s;
+
+    REQUIRE(s.tag().vec.size() == 5u);
+
+    auto orig_ptr = &s.tag().vec[0];
+
+    // Verify the tag member is correctly moved.
+    auto sm = std::move(s);
+
+    REQUIRE((sm.tag().vec.size() == 5u && &sm.tag().vec[0] == orig_ptr));
+
+    s = sm;
+
+    // Same with move assignment.
+    orig_ptr = &s.tag().vec[0];
+
+    sm = std::move(s);
+
+    REQUIRE((sm.tag().vec.size() == 5u && &sm.tag().vec[0] == orig_ptr));
+
+    // Clear.
+    sm.tag().vec.resize(15u);
+    sm.clear();
+    REQUIRE(static_cast<const s1_t &>(sm).tag().vec.size() == 5u);
+
+    // Test serialization.
+    std::stringstream ss;
+    {
+        boost::archive::binary_oarchive oarchive(ss);
+        oarchive << sm;
+    }
+    sm.tag().vec.resize(15u);
+    {
+        boost::archive::binary_iarchive iarchive(ss);
+        iarchive >> sm;
+    }
+    REQUIRE(static_cast<const s1_t &>(sm).tag().vec.size() == 5u);
+
+    REQUIRE(sm == s1_t{});
+    sm.tag().vec.resize(15u);
+    REQUIRE(sm != s1_t{});
+
+    // Test the hashing in the pow cache machinery.
+    REQUIRE((sm * sm).tag().vec.size() == 20u);
+    REQUIRE(is_hashable_v<const ns::tag_00 &>);
+
+    sm.set_symbol_set({"x", "y"});
+    sm.add_term(pm_t{1, 1}, 5);
+    sm.add_term(pm_t{2, 3}, -6);
+    obake::pow(sm, 5);
+
+    REQUIRE(obake::pow(sm, 6).tag().vec.size() == 20u);
+
+    // Streaming.
+    ss.str("");
+    ss << obake::pow(sm, 6);
+
+    REQUIRE(boost::algorithm::contains(ss.str(), "Vec size: "));
+
+    // Test constructability/assignability from different tag type.
+    using s2_t = series<pm_t, rat_t, ns::tag_01>;
+    s1_t sm2{s2_t{}};
+    REQUIRE(sm2.tag().vec.size() == 5u);
+
+    sm2.tag().vec.resize(11);
+    sm2 = s2_t{};
+    REQUIRE(sm2.tag().vec.size() == 5u);
 }

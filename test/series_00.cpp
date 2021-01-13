@@ -49,6 +49,9 @@ using real = mppp::real;
 
 #endif
 
+struct tag {
+};
+
 TEST_CASE("cf_key_concepts")
 {
     obake_test::disable_slow_stack_traces();
@@ -93,8 +96,8 @@ TEST_CASE("cf_key_concepts")
 TEST_CASE("series_rank")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using series_t = series<pm_t, rat_t, void>;
-    using series2_t = series<pm_t, series_t, void>;
+    using series_t = series<pm_t, rat_t, tag>;
+    using series2_t = series<pm_t, series_t, tag>;
 
     REQUIRE(series_rank<void> == 0u);
 
@@ -114,11 +117,11 @@ TEST_CASE("series_rank")
 TEST_CASE("series_cf_key_tag_t")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using series_t = series<pm_t, rat_t, void>;
+    using series_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(std::is_same_v<pm_t, series_key_t<series_t>>);
     REQUIRE(std::is_same_v<rat_t, series_cf_t<series_t>>);
-    REQUIRE(std::is_same_v<void, series_tag_t<series_t>>);
+    REQUIRE(std::is_same_v<tag, series_tag_t<series_t>>);
 
     REQUIRE(!is_detected_v<series_key_t, const series_t>);
     REQUIRE(!is_detected_v<series_cf_t, series_t &>);
@@ -128,7 +131,7 @@ TEST_CASE("series_cf_key_tag_t")
 TEST_CASE("is_cvr_series")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using series_t = series<pm_t, rat_t, void>;
+    using series_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(!is_cvr_series_v<void>);
     REQUIRE(!is_cvr_series_v<int>);
@@ -154,7 +157,7 @@ TEST_CASE("is_cvr_series")
 TEST_CASE("add_term_primitives")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     using detail::sat_assume_unique;
     using detail::sat_check_compat_key;
@@ -382,9 +385,9 @@ TEST_CASE("add_term_primitives")
                         // Test coefficient move semantics with mppp::real.
 #if defined(_MSC_VER)
                         // MSVC bug in VS2019. using vs. typedef should make no difference
-                        typedef series<pm_t, real, void> s2_t;
+                        typedef series<pm_t, real, tag> s2_t;
 #else
-                        using s2_t = series<pm_t, real, void>;
+                        using s2_t = series<pm_t, real, tag>;
 #endif
 
                         s2_t s2;
@@ -912,7 +915,7 @@ TEST_CASE("add_term_primitives")
 TEST_CASE("series_basic")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using series_t = series<pm_t, rat_t, void>;
+    using series_t = series<pm_t, rat_t, tag>;
 
     // Default construction.
     series_t s;
@@ -1084,13 +1087,13 @@ TEST_CASE("series_basic")
 TEST_CASE("series_generic_ctor")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1_int_t = series<pm_t, int_t, void>;
-    using s1_double_t = series<pm_t, double, void>;
-    using s2_t = series<pm_t, s1_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1_int_t = series<pm_t, int_t, tag>;
+    using s1_double_t = series<pm_t, double, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
 
 #if defined(MPPP_WITH_MPFR)
-    using s1_real_t = series<pm_t, real, void>;
+    using s1_real_t = series<pm_t, real, tag>;
 #endif
 
     REQUIRE(!std::is_constructible_v<s1_t, void>);
@@ -1178,7 +1181,9 @@ TEST_CASE("series_generic_ctor")
     REQUIRE(std::is_constructible_v<s1_t, s1_int_t>);
     REQUIRE(std::is_constructible_v<s1_t, s1_int_t &>);
     REQUIRE(std::is_constructible_v<s1_t, const s1_int_t &>);
-    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, int>>);
+    struct tag2 {
+    };
+    REQUIRE(std::is_constructible_v<s1_t, series<pm_t, rat_t, tag2>>);
 
     s1 = s1_t{s1_int_t{5}};
     REQUIRE(s1.size() == 1u);
@@ -1252,9 +1257,9 @@ TEST_CASE("series_generic_assignment")
     // Just a couple of simple tests, this is implemented
     // on top of the generic ctor.
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
-    using s1_int_t = series<pm_t, int_t, void>;
-    using s2_t = series<pm_t, s1_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
+    using s1_int_t = series<pm_t, int_t, tag>;
+    using s2_t = series<pm_t, s1_t, tag>;
 
     // Assignment from lower rank.
     s1_t s1;
@@ -1287,13 +1292,15 @@ TEST_CASE("series_generic_assignment")
     REQUIRE(s1.begin()->second == -1);
 
     REQUIRE(!std::is_assignable_v<s1_t, void>);
-    REQUIRE(!std::is_assignable_v<s1_t, series<pm_t, rat_t, int>>);
+    struct tag2 {
+    };
+    REQUIRE(std::is_assignable_v<s1_t, series<pm_t, rat_t, tag2>>);
 }
 
 TEST_CASE("series_swap")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(std::is_nothrow_swappable_v<s1_t>);
 
@@ -1327,7 +1334,7 @@ TEST_CASE("series_swap")
 TEST_CASE("series_is_single_cf")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(s1_t{}.is_single_cf());
     REQUIRE(s1_t{42}.is_single_cf());
@@ -1345,7 +1352,7 @@ TEST_CASE("series_is_single_cf")
 TEST_CASE("series_iterators")
 {
     using pm_t = packed_monomial<std::int32_t>;
-    using s1_t = series<pm_t, rat_t, void>;
+    using s1_t = series<pm_t, rat_t, tag>;
     using it_t = decltype(std::declval<s1_t &>().begin());
     using cit_t = decltype(std::declval<s1_t &>().cbegin());
     using const_it_t = decltype(std::declval<const s1_t &>().begin());

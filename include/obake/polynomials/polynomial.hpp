@@ -30,6 +30,7 @@
 #include <boost/iterator/permutation_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/numeric/conversion/cast.hpp>
+#include <boost/serialization/tracking.hpp>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -66,21 +67,29 @@
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/ranges.hpp>
+#include <obake/s11n.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
-namespace obake
-{
-
-namespace polynomials
+namespace obake::polynomials
 {
 
 // The polynomial tag.
 struct tag {
+    template <typename Archive>
+    void serialize(Archive &, unsigned)
+    {
+    }
 };
 
-} // namespace polynomials
+} // namespace obake::polynomials
+
+// Disable tracking for the polynomial tag.
+BOOST_CLASS_TRACKING(::obake::polynomials::tag, ::boost::serialization::track_never)
+
+namespace obake
+{
 
 template <typename K, typename C>
 using polynomial = series<K, C, polynomials::tag>;
@@ -815,8 +824,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
     assert(!x.empty());
     assert(!y.empty());
     assert(x.size() <= y.size());
-    assert(retval.get_symbol_set() == x.get_symbol_set());
-    assert(retval.get_symbol_set() == y.get_symbol_set());
+    assert(retval.get_symbol_set_fw() == x.get_symbol_set_fw());
+    assert(retval.get_symbol_set_fw() == y.get_symbol_set_fw());
     assert(retval.empty());
     assert(retval._get_s_table().size() == 1u);
 
@@ -1631,8 +1640,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
     assert(!x.empty());
     assert(!y.empty());
     assert(x.size() <= y.size());
-    assert(retval.get_symbol_set() == x.get_symbol_set());
-    assert(retval.get_symbol_set() == y.get_symbol_set());
+    assert(retval.get_symbol_set_fw() == x.get_symbol_set_fw());
+    assert(retval.get_symbol_set_fw() == y.get_symbol_set_fw());
     assert(retval.empty());
     assert(retval._get_s_table().size() == 1u);
 
@@ -1893,7 +1902,7 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &...args)
 
     // Check the preconditions.
     assert(x.size() <= y.size());
-    assert(x.get_symbol_set() == y.get_symbol_set());
+    assert(x.get_symbol_set_fw() == y.get_symbol_set_fw());
 
     // Init the return value.
     ret_t retval;
@@ -1968,7 +1977,7 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &...args)
     // Check the precondition.
     assert(x.size() <= y.size());
 
-    if (x.get_symbol_set() == y.get_symbol_set()) {
+    if (x.get_symbol_set_fw() == y.get_symbol_set_fw()) {
         return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y), args...);
     } else {
         using rT = remove_cvref_t<T>;
