@@ -2290,17 +2290,15 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
     using series_t = remove_cvref_t<T>;
 
     // Print the header.
-    os << "Key type        : " << ::obake::type_name<series_key_t<series_t>>() << '\n';
-    os << "Coefficient type: " << ::obake::type_name<series_cf_t<series_t>>() << '\n';
-    os << "Tag             : " << ::obake::type_name<series_tag_t<series_t>>() << '\n';
-    os << "Rank            : " << series_rank<series_t> << '\n';
-    os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
-    os << "Number of terms : " << s.size() << '\n';
-
     // Stream out the tag, if supported.
     if constexpr (is_stream_insertable_v<const series_tag_t<remove_cvref_t<T>> &>) {
         os << ::std::as_const(s).tag() << '\n';
     }
+    os << "Key type: " << ::obake::type_name<series_key_t<series_t>>() << '\n';
+    os << "Coefficient type: " << ::obake::type_name<series_cf_t<series_t>>() << '\n';
+    os << "Rank: " << series_rank<series_t> << '\n';
+    os << "Symbol set: " << detail::to_string(s.get_symbol_set()) << '\n';
+    os << "Number of terms: " << s.size() << '\n';
 
     series_stream_terms_impl<false>(os, s);
 }
