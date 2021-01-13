@@ -437,9 +437,6 @@ inline void series_add_term(S &s, T &&key, Args &&...args)
 }
 
 // Machinery for series' generic constructor.
-// NOTE: this can be improved to work also with series
-// with same rank but different tag (same goes for the
-// conversion operator).
 template <typename T, typename K, typename C, typename Tag>
 constexpr int series_generic_ctor_algorithm_impl()
 {
@@ -459,9 +456,8 @@ constexpr int series_generic_ctor_algorithm_impl()
             // to be able to construct C from T.
             return ::std::is_constructible_v<C, T> ? 1 : 0;
         } else if constexpr (series_rank<rT> == series_rank<series_t>) {
-            if constexpr (::std::conjunction_v<::std::is_same<series_key_t<rT>, K>,
-                                               ::std::is_same<series_tag_t<rT>, Tag>>) {
-                // Construction from equal rank, different coefficient type. Requires
+            if constexpr (::std::is_same_v<series_key_t<rT>, K>) {
+                // Construction from equal rank and same key. Requires
                 // to be able to construct C from the coefficient type of T.
                 // The construction argument will be a const reference or an rvalue
                 // reference, depending on whether T && is a mutable rvalue reference or not.
@@ -771,11 +767,13 @@ public:
                 *this, m_s_table[0], K(m_symbol_set.get()), ::std::forward<T>(x));
         } else if constexpr (algo == 2) {
             // Case 2: the series rank of T is equal to the series
-            // rank of this series type, and the key and tag types
-            // are the same (but the coefficient types are different,
-            // otherwise we would be in a copy/move constructor scenario).
+            // rank of this series type, and the key types coincide.
             // Insert all terms from x into this, converting the coefficients.
-            static_assert(!::std::is_same_v<series_cf_t<remove_cvref_t<T>>, C>);
+            // The tag will be default-constructed.
+            // NOTE: the cf or tag must differ, because otherwise we would be
+            // in a copy/move scenario.
+            static_assert(!::std::is_same_v<series_cf_t<remove_cvref_t<T>>,
+                                            C> || !::std::is_same_v<series_tag_t<remove_cvref_t<T>>, Tag>);
 
             // Init a rref clearer, as we may be extracting
             // coefficients from x below.
@@ -900,6 +898,10 @@ public:
         return *this = series(::std::forward<T>(x));
     }
 
+    // NOTE: the conversion operator currently only
+    // converts to zero-rank objects. Perhaps in the future
+    // we can enable more general conversion in the same
+    // spirit as the generic ctor.
 #if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConvertible<C> T>
 #else

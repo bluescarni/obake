@@ -376,6 +376,9 @@ struct tag_00 {
     }
 };
 
+struct tag_01 {
+};
+
 bool operator==(const tag_00 &a, const tag_00 &b)
 {
     return a.vec == b.vec;
@@ -469,4 +472,13 @@ TEST_CASE("tag member")
     ss << obake::pow(sm, 6);
 
     REQUIRE(boost::algorithm::contains(ss.str(), "Vec size: "));
+
+    // Test constructability/assignability from different tag type.
+    using s2_t = series<pm_t, rat_t, ns::tag_01>;
+    s1_t sm2{s2_t{}};
+    REQUIRE(sm2.tag().vec.size() == 5u);
+
+    sm2.tag().vec.resize(11);
+    sm2 = s2_t{};
+    REQUIRE(sm2.tag().vec.size() == 5u);
 }

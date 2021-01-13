@@ -1183,7 +1183,7 @@ TEST_CASE("series_generic_ctor")
     REQUIRE(std::is_constructible_v<s1_t, const s1_int_t &>);
     struct tag2 {
     };
-    REQUIRE(!std::is_constructible_v<s1_t, series<pm_t, rat_t, tag2>>);
+    REQUIRE(std::is_constructible_v<s1_t, series<pm_t, rat_t, tag2>>);
 
     s1 = s1_t{s1_int_t{5}};
     REQUIRE(s1.size() == 1u);
@@ -1294,7 +1294,7 @@ TEST_CASE("series_generic_assignment")
     REQUIRE(!std::is_assignable_v<s1_t, void>);
     struct tag2 {
     };
-    REQUIRE(!std::is_assignable_v<s1_t, series<pm_t, rat_t, tag2>>);
+    REQUIRE(std::is_assignable_v<s1_t, series<pm_t, rat_t, tag2>>);
 }
 
 TEST_CASE("series_swap")
