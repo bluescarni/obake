@@ -1618,7 +1618,7 @@ namespace customisation::internal
 template <typename T, typename U>
 inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
 {
-    assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+    assert(lhs.get_symbol_set_fw() == rhs.get_symbol_set_fw());
 
     static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
 
@@ -1658,7 +1658,7 @@ inline bool series_cmp_identical_ss(const T &lhs, const U &rhs)
 template <typename S>
 inline bool series_are_identical(const S &s1, const S &s2)
 {
-    return s1.get_symbol_set() == s2.get_symbol_set() && internal::series_cmp_identical_ss(s1, s2);
+    return s1.get_symbol_set_fw() == s2.get_symbol_set_fw() && internal::series_cmp_identical_ss(s1, s2);
 }
 
 // The series pow cache for a specific series type.
@@ -2557,7 +2557,7 @@ inline series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(
         // Implementation of the addition/subtraction between
         // two series with identical symbol sets.
         auto merge_with_identical_ss = [](auto &&a, auto &&b) {
-            assert(a.get_symbol_set() == b.get_symbol_set());
+            assert(a.get_symbol_set_fw() == b.get_symbol_set_fw());
 
             // Helper to merge the terms from the smaller series (rhs) into the return value
             // (which will be inited from the larger series, lhs).
@@ -2657,7 +2657,7 @@ inline series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(
             }
         };
 
-        if (x.get_symbol_set() == y.get_symbol_set()) {
+        if (x.get_symbol_set_fw() == y.get_symbol_set_fw()) {
             // Same symbol sets, run the implementation
             // directly on x and y.
             return merge_with_identical_ss(::std::forward<T>(x), ::std::forward<U>(y));
@@ -2915,7 +2915,7 @@ inline series_default_in_place_addsub_ret_t<Sign, T &&, U &&> series_default_in_
 
         // Implementation for identical symbol sets.
         auto in_place_with_identical_ss = [](auto &lhs, auto &&rhs) {
-            assert(lhs.get_symbol_set() == rhs.get_symbol_set());
+            assert(lhs.get_symbol_set_fw() == rhs.get_symbol_set_fw());
 
             // We may end up moving coefficients from rhs.
             // Make sure we will clear it out properly.
@@ -2970,7 +2970,7 @@ inline series_default_in_place_addsub_ret_t<Sign, T &&, U &&> series_default_in_
             }
         };
 
-        if (x.get_symbol_set() == y.get_symbol_set()) {
+        if (x.get_symbol_set_fw() == y.get_symbol_set_fw()) {
             // Same symbol sets, run the implementation
             // directly on x and y.
             if constexpr (::std::is_same_v<rT, rU>) {
@@ -3807,7 +3807,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
     if constexpr (algo == 3) {
         // Two series with equal rank, same key/tag, possibly
         // different coefficient type.
-        if (x.get_symbol_set() == y.get_symbol_set()) {
+        if (x.get_symbol_set_fw() == y.get_symbol_set_fw()) {
             return customisation::internal::series_cmp_identical_ss(x, y);
         } else {
             // Merge the symbol sets.
