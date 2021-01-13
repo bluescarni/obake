@@ -72,10 +72,7 @@
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
-namespace obake
-{
-
-namespace polynomials
+namespace obake::polynomials
 {
 
 // The polynomial tag.
@@ -86,9 +83,7 @@ struct tag {
     }
 };
 
-} // namespace polynomials
-
-} // namespace obake
+} // namespace obake::polynomials
 
 // Disable tracking for the polynomial tag.
 BOOST_CLASS_TRACKING(::obake::polynomials::tag, ::boost::serialization::track_never)

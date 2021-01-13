@@ -1583,6 +1583,21 @@ private:
     detail::ss_fw m_symbol_set;
 };
 
+} // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for series.
+template <typename K, typename C, typename Tag>
+struct tracking_level<::obake::series<K, C, Tag>> : ::obake::detail::s11n_no_tracking<::obake::series<K, C, Tag>> {
+};
+
+} // namespace boost::serialization
+
+namespace obake
+{
+
 // Free function implementation of the swapping primitive.
 template <typename K, typename C, typename Tag>
 inline void swap(series<K, C, Tag> &s1, series<K, C, Tag> &s2) noexcept
@@ -4726,15 +4741,5 @@ inline constexpr auto add_symbols = [](auto &&s, const symbol_set &ss)
 #endif
 
 } // namespace obake
-
-namespace boost::serialization
-{
-
-// Disable tracking for series.
-template <typename K, typename C, typename Tag>
-struct tracking_level<::obake::series<K, C, Tag>> : ::obake::detail::s11n_no_tracking<::obake::series<K, C, Tag>> {
-};
-
-} // namespace boost::serialization
 
 #endif

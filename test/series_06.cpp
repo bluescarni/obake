@@ -345,7 +345,7 @@ TEST_CASE("series_generic_ctor_with_ss_bug_00")
 {
     // The constructor would not create a key
     // compatible with the input symbol set.
-    using pm_t = d_packed_monomial<int, 8>;
+    using pm_t = d_packed_monomial<std::int32_t, 8>;
     using s1_t = series<pm_t, rat_t, tag>;
 
     REQUIRE(s1_t(42, symbol_set{"x", "y", "z"}) == 42);
