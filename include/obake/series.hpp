@@ -3932,8 +3932,8 @@ constexpr auto operator!=(T &&x, U &&y)
 namespace customisation::internal
 {
 
-// Common requirements for the degree type
-// in the default series degree computation.
+// Common requirements for the (partial) degree type
+// in the default series (partial) degree computation.
 template <typename DegreeType>
 using series_default_degree_type_common_reqs = ::std::conjunction<
     // Less-than comparable to find the maximum degree
