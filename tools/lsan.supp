@@ -2,4 +2,4 @@ leak:*libtbb*.so*
 # GCC+asan and GCC+valgrind report a memory leak in absl in a couple of tests. The leak does
 # not seem to be there when using clang. The obake code does not look problematic.
 # Perhaps some absl issue showing up only on GCC? Needs to be investigated.
-leak:*container_memory.h*
+leak:*container_internal*
