@@ -131,13 +131,13 @@ namespace detail
 // - poly cf can be constructed from an integral literal.
 template <typename T, typename... Args>
 using make_polynomials_supported
-    = ::std::conjunction<is_polynomial<T>, ::std::is_constructible<::std::string, const Args &>...,
+    = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_polynomial<T>,
+                         ::std::is_constructible<::std::string, const Args &>...,
                          ::std::is_constructible<series_key_t<T>, const int *, const int *>,
                          ::std::is_constructible<series_cf_t<T>, int>>;
 
 template <typename T, typename... Args>
-using make_polynomials_enabler
-    = ::std::enable_if_t<(sizeof...(Args) > 0u) && make_polynomials_supported<T, Args...>::value, int>;
+using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T, Args...>::value, int>;
 
 // Overload with a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
