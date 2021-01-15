@@ -83,14 +83,6 @@
 
 #endif
 
-// Detect older versions of MSVC which do
-// not like inline constexpr lambdas.
-#if defined(_MSC_VER) && ((_MSVC_LANG <= 201703L) || (_MSC_FULL_VER <= 192428206))
-
-#define OBAKE_MSVC_LAMBDA_WORKAROUND
-
-#endif
-
 // For packing 64-bit values, we need 128-bit multiplication.
 // This requires either 128-bit integer types, or compiler intrinsics.
 // NOTE: _WIN64 should catch also 64-bit arm.
