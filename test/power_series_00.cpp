@@ -92,11 +92,13 @@ TEST_CASE("basic")
         REQUIRE(x.begin()->first == pm_t{1});
         REQUIRE(x.begin()->second == 1.);
         REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(get_truncation(x).index() == 0u);
 
         REQUIRE(y.size() == 1u);
         REQUIRE(y.begin()->first == pm_t{1});
         REQUIRE(y.begin()->second == 1.);
         REQUIRE(y.get_symbol_set() == symbol_set{"y"});
+        REQUIRE(get_truncation(y).index() == 0u);
     }
 
     {
@@ -107,15 +109,46 @@ TEST_CASE("basic")
         REQUIRE(x.begin()->first == pm_t{1, 0, 0});
         REQUIRE(x.begin()->second == 1.);
         REQUIRE(x.get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(get_truncation(x).index() == 0u);
 
         REQUIRE(z.size() == 1u);
         REQUIRE(z.begin()->first == pm_t{0, 0, 1});
         REQUIRE(z.begin()->second == 1.);
         REQUIRE(z.get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(get_truncation(z).index() == 0u);
 
         OBAKE_REQUIRES_THROWS_CONTAINS((make_p_series<ps_t>(symbol_set{"x", "y", "z"}, std::string{"x"}, "a")),
                                        std::invalid_argument,
                                        "Cannot create a power series with symbol set {'x', 'y', 'z'} from the "
                                        "generator 'a': the generator is not in the symbol set");
+    }
+
+    {
+        // Total truncation, no ss.
+        auto [x, y] = make_p_series_t<ps_t>(1, "x", std::string{"y"});
+
+        REQUIRE(x.size() == 1u);
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 1.);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(x)) == 1);
+
+        REQUIRE(y.size() == 1u);
+        REQUIRE(y.begin()->first == pm_t{1});
+        REQUIRE(y.begin()->second == 1.);
+        REQUIRE(y.get_symbol_set() == symbol_set{"y"});
+        REQUIRE(get_truncation(y).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(y)) == 1);
+
+        auto [a, b] = make_p_series_t<ps_t>(0, "a", std::string{"b"});
+
+        REQUIRE(a.empty());
+        REQUIRE(a.get_symbol_set() == symbol_set{"a"});
+        REQUIRE(std::get<1>(get_truncation(a)) == 0);
+
+        REQUIRE(b.empty() == 1u);
+        REQUIRE(b.get_symbol_set() == symbol_set{"b"});
+        REQUIRE(std::get<1>(get_truncation(b)) == 0);
     }
 }

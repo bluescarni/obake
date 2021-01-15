@@ -506,10 +506,74 @@ inline constexpr auto make_p_series = make_p_series_msvc<T>{};
 
 #else
 
-// Power series creation functor.
+// Power series creation functor, no truncation.
 template <typename T>
 inline constexpr auto make_p_series
     = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_impl<T>(args...));
+
+#endif
+
+namespace detail
+{
+
+template <typename T, typename U, typename... Args>
+using make_p_series_t_enabler
+    = ::std::enable_if_t<::std::conjunction_v<make_p_series_supported<T, Args...>,
+                                              is_safely_castable<const U &, psk_deg_t<series_key_t<T>>>>,
+                         int>;
+
+// Overload without a symbol set, total truncation.
+template <typename T, typename U, typename... Args, make_p_series_t_enabler<T, U, Args...> = 0>
+inline auto make_p_series_t_impl(const U &d, const Args &...names)
+{
+    // Convert d to the degree type.
+    const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
+
+    auto make_p_series = [&deg](const auto &n) {
+        using str_t = remove_cvref_t<decltype(n)>;
+
+        // Init the retval, assign a symbol set containing only n.
+        T retval;
+        if constexpr (::std::is_same_v<str_t, ::std::string>) {
+            retval.set_symbol_set(symbol_set{n});
+        } else {
+            retval.set_symbol_set(symbol_set{::std::string(n)});
+        }
+
+        constexpr int arr[] = {1};
+
+        // Create and add a new term.
+        retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
+
+        // Set the truncation.
+        ::obake::set_truncation(retval, deg);
+
+        return retval;
+    };
+
+    return detail::make_array(make_p_series(names)...);
+}
+
+} // namespace detail
+
+#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
+
+template <typename T>
+struct make_p_series_t_msvc {
+    template <typename... Args>
+    constexpr auto operator()(const Args &...args) const
+        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_p_series_t_impl<T>(args...))
+};
+
+template <typename T>
+inline constexpr auto make_p_series_t = make_p_series_t_msvc<T>{};
+
+#else
+
+// Power series creation functor, total degree truncation.
+template <typename T>
+inline constexpr auto make_p_series_t
+    = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_t_impl<T>(args...));
 
 #endif
 
