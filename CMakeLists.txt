@@ -293,6 +293,9 @@ set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
 target_compile_features(obake PUBLIC cxx_std_20)
 # Ensure vanilla C++ is being used.
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
+if(YACMA_COMPILER_IS_MSVC)
+    target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
+endif()
 
 # Add the include dirs to the obake target's interface.
 target_include_directories(obake PUBLIC
