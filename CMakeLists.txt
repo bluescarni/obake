@@ -294,6 +294,10 @@ target_compile_features(obake PUBLIC cxx_std_20)
 # Ensure vanilla C++ is being used.
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
 if(YACMA_COMPILER_IS_MSVC)
+    # NOTE: older abseil versions have a problem on MSVC
+    # when using C++20:
+    # https://github.com/abseil/abseil-cpp/issues/649
+    # Hopefully we can eventually remove this.
     target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
 endif()
 

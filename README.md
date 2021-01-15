@@ -1,4 +1,4 @@
-![language](https://img.shields.io/badge/language-C%2B%2B17-red.svg?style=for-the-badge)
+![language](https://img.shields.io/badge/language-C%2B%2B20-green.svg?style=for-the-badge)
 [![Linux Build Status](https://img.shields.io/circleci/project/github/bluescarni/obake/master.svg?style=for-the-badge)](https://circleci.com/gh/bluescarni/obake)
 [![Windows Build Status](https://img.shields.io/appveyor/ci/bluescarni/obake/master.svg?logo=appveyor&style=for-the-badge)](https://ci.appveyor.com/project/bluescarni/obake)
 [![OSX Build Status](https://img.shields.io/travis/bluescarni/obake/master.svg?logo=travis&style=for-the-badge)](https://travis-ci.org/bluescarni/obake)
@@ -13,7 +13,7 @@
 > Literally, the terms mean a thing that changes, referring to a state of transformation
 > or shapeshifting.
 
-obake is a C++17 library for the symbolic manipulation of sparse polynomials
+obake is a C++20 library for the symbolic manipulation of sparse polynomials
 and other closely-related mathematical objects (e.g., truncated power
 series, Poisson series, etc.). obake is the successor of the
 [piranha](https://github.com/bluescarni/piranha) project.
