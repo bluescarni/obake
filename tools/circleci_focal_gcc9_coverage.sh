@@ -24,7 +24,7 @@ mkdir build
 cd build
 
 # GCC build.
-cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DOBAKE_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="-fconcepts --coverage" -DOBAKE_WITH_LIBBACKTRACE=YES -DBoost_NO_BOOST_CMAKE=ON
+cmake ../ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=~/.local -DOBAKE_BUILD_TESTS=YES -DCMAKE_CXX_FLAGS="--coverage" -DOBAKE_WITH_LIBBACKTRACE=YES -DBoost_NO_BOOST_CMAKE=ON
 make -j2 VERBOSE=1
 # Run the tests.
 ctest -V
