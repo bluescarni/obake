@@ -390,6 +390,7 @@ namespace detail
 {
 
 // Enabler for make_p_series():
+// - need at least 1 Arg,
 // - T must be a power series,
 // - std::string can be constructed from each input Args,
 // - ps key can be constructed from a const int * range,
