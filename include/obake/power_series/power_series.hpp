@@ -9,7 +9,6 @@
 #ifndef OBAKE_POWER_SERIES_POWER_SERIES_HPP
 #define OBAKE_POWER_SERIES_POWER_SERIES_HPP
 
-#include <array>
 #include <cstddef>
 #include <ostream>
 #include <sstream>
@@ -28,6 +27,7 @@
 #include <obake/config.hpp>
 #include <obake/detail/fw_utils.hpp>
 #include <obake/detail/it_diff_check.hpp>
+#include <obake/detail/make_array.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/hash.hpp>
 #include <obake/math/degree.hpp>
@@ -396,7 +396,8 @@ namespace detail
 // - ps cf can be constructed from an integral literal.
 template <typename T, typename... Args>
 using make_p_series_supported
-    = ::std::conjunction<is_any_p_series<T>, ::std::is_constructible<::std::string, const Args &>...,
+    = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_any_p_series<T>,
+                         ::std::is_constructible<::std::string, const Args &>...,
                          ::std::is_constructible<series_key_t<T>, const int *, const int *>,
                          ::std::is_constructible<series_cf_t<T>, int>>;
 
@@ -407,7 +408,7 @@ using make_p_series_enabler = ::std::enable_if_t<make_p_series_supported<T, Args
 template <typename T, typename... Args, make_p_series_enabler<T, Args...> = 0>
 inline auto make_p_series_impl(const Args &...names)
 {
-    [[maybe_unused]] auto make_p_series = [](const auto &n) {
+    auto make_p_series = [](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Init the retval, assign a symbol set containing only n.
@@ -426,7 +427,7 @@ inline auto make_p_series_impl(const Args &...names)
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{{make_p_series(names)...}};
+    return detail::make_array(make_p_series(names)...);
 }
 
 // Overload with a symbol set, no truncation.
@@ -440,7 +441,7 @@ inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
     // Create the fw version of the symbol set.
     const detail::ss_fw ss_fw(ss);
 
-    [[maybe_unused]] auto make_p_series = [&ss_fw, &ss, &tmp](const auto &n) {
+    auto make_p_series = [&ss_fw, &ss, &tmp](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
@@ -485,7 +486,7 @@ inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{{make_p_series(names)...}};
+    return detail::make_array(make_p_series(names)...);
 }
 
 } // namespace detail
