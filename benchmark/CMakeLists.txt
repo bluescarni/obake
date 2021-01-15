@@ -21,12 +21,7 @@ target_compile_options(obake_benchmark PRIVATE
   "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
   "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
 )
-if(NOT CMAKE_CXX_STANDARD)
-  # The user did not provide the CMAKE_CXX_STANDARD variable,
-  # go with the default (C++17).
-  set_property(TARGET obake_benchmark PROPERTY CXX_STANDARD 17)
-endif()
-set_property(TARGET obake_benchmark PROPERTY CXX_STANDARD_REQUIRED YES)
+target_compile_features(obake_benchmark PRIVATE cxx_std_20)
 set_property(TARGET obake_benchmark PROPERTY CXX_EXTENSIONS NO)
 
 function(ADD_OBAKE_BENCHMARK arg1)
@@ -38,12 +33,7 @@ function(ADD_OBAKE_BENCHMARK arg1)
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
   )
-  if(NOT CMAKE_CXX_STANDARD)
-    # The user did not provide the CMAKE_CXX_STANDARD variable,
-    # go with the default (C++17).
-    set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
-  endif()
-  set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
+  target_compile_features(${arg1} PRIVATE cxx_std_20)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
 endfunction()
 
