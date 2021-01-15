@@ -300,6 +300,10 @@ if(YACMA_COMPILER_IS_MSVC)
     # Hopefully we can eventually remove this.
     target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
 endif()
+if(YACMA_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10")
+    message(STATUS "Activating the '-fconcepts' flag for GCC<10.")
+    target_compile_options(obake PUBLIC -fconcepts)
+endif()
 
 # Add the include dirs to the obake target's interface.
 target_include_directories(obake PUBLIC
