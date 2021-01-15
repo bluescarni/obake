@@ -31,7 +31,7 @@
 #include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 
 #pragma warning(push)
 #pragma warning(disable : 4251)
@@ -388,7 +388,7 @@ public:
 
 } // namespace obake
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 
 #pragma warning(pop)
 

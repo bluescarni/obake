@@ -18,7 +18,7 @@
 namespace obake::detail
 {
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 
 // NOTE: MSVC complains about the fact that we are using
 // a class from the standard library (std::unique_ptr) in
@@ -68,7 +68,7 @@ private:
     [[maybe_unused]] const size_type m_size;
 };
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 
 #pragma warning(pop)
 

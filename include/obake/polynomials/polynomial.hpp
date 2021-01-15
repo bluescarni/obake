@@ -1208,44 +1208,48 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
         } else {
             // Create and return the functor. The degree data
             // for the two series will be moved in as vd1 and vd2.
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
             // Until MS fixes the lambda capture.
             auto vd1 = ::std::move(::std::get<0>(degree_data));
             auto vd2 = ::std::move(::std::get<1>(degree_data));
-            return [vd1, vd2,
+            return [&, vd1, vd2]
 #else
-
             return [vd1 = ::std::move(::std::get<0>(degree_data)), vd2 = ::std::move(::std::get<1>(degree_data)),
-#endif
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
-                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
-                using idx_t = remove_cvref_t<decltype(i)>;
+                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))]
+#endif
+                (const auto &i, const auto &r2) {
+                    using idx_t = remove_cvref_t<decltype(i)>;
 
-                // Get the total/partial degree of the current term
-                // in the first series.
-                const auto &d_i = vd1[i];
+#if defined(_MSC_VER) && !defined(__clang__)
+                    const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
+#endif
 
-                // Find the first term in the range r2 such
-                // that d_i + d_j > max_deg.
-                // NOTE: we checked above that the static cast
-                // to the it diff type is safe.
-                using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
-                const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(::std::get<0>(r2)),
-                                                   vd2.cbegin() + static_cast<it_diff_t>(::std::get<1>(r2)), max_deg,
-                                                   [&d_i](const auto &mdeg, const auto &d_j) {
-                                                       // NOTE: we require below
-                                                       // comparability between const lvalue limit
-                                                       // and rvalue of the sum of the degrees.
-                                                       return mdeg < d_i + d_j;
-                                                   });
+                    // Get the total/partial degree of the current term
+                    // in the first series.
+                    const auto &d_i = vd1[i];
 
-                // Turn the iterator into an index and return it.
-                // NOTE: we checked above that the iterator diff
-                // type can safely be used as an index (for both
-                // vd1 and vd2).
-                return static_cast<idx_t>(it - vd2.cbegin());
-            };
+                    // Find the first term in the range r2 such
+                    // that d_i + d_j > max_deg.
+                    // NOTE: we checked above that the static cast
+                    // to the it diff type is safe.
+                    using it_diff_t = decltype(vd2.cend() - vd2.cbegin());
+                    const auto it = ::std::upper_bound(vd2.cbegin() + static_cast<it_diff_t>(::std::get<0>(r2)),
+                                                       vd2.cbegin() + static_cast<it_diff_t>(::std::get<1>(r2)),
+                                                       max_deg, [&d_i](const auto &mdeg, const auto &d_j) {
+                                                           // NOTE: we require below
+                                                           // comparability between const lvalue limit
+                                                           // and rvalue of the sum of the degrees.
+                                                           return mdeg < d_i + d_j;
+                                                       });
+
+                    // Turn the iterator into an index and return it.
+                    // NOTE: we checked above that the iterator diff
+                    // type can safely be used as an index (for both
+                    // vd1 and vd2).
+                    return static_cast<idx_t>(it - vd2.cbegin());
+                };
         }
     }();
 
@@ -1784,32 +1788,42 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             };
 
             using ::obake::detail::type_c;
+
+#if defined(_MSC_VER) && !defined(__clang__)
+            return [&, vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{})]
+#else
             return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
                     // NOTE: max_deg is captured via const lref this way,
                     // as args is passed as a const lref pack.
-                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
-                using idx_t = remove_cvref_t<decltype(i)>;
+                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))]
+#endif
+                (const auto &i) {
+                    using idx_t = remove_cvref_t<decltype(i)>;
 
-                // Get the total/partial degree of the current term
-                // in the first series.
-                const auto &d_i = vd1[i];
+#if defined(_MSC_VER) && !defined(__clang__)
+                    const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
+#endif
 
-                // Find the first term in the second series such
-                // that d_i + d_j > max_deg.
-                const auto it
-                    = ::std::upper_bound(vd2.cbegin(), vd2.cend(), max_deg, [&d_i](const auto &mdeg, const auto &d_j) {
-                          // NOTE: we require below
-                          // comparability between const lvalue limit
-                          // and rvalue of the sum of the degrees.
-                          return mdeg < d_i + d_j;
-                      });
+                    // Get the total/partial degree of the current term
+                    // in the first series.
+                    const auto &d_i = vd1[i];
 
-                // Turn the iterator into an index and return it.
-                // NOTE: we checked above that the iterator diff
-                // type can safely be used as an index (for both
-                // vd1 and vd2).
-                return static_cast<idx_t>(it - vd2.cbegin());
-            };
+                    // Find the first term in the second series such
+                    // that d_i + d_j > max_deg.
+                    const auto it = ::std::upper_bound(vd2.cbegin(), vd2.cend(), max_deg,
+                                                       [&d_i](const auto &mdeg, const auto &d_j) {
+                                                           // NOTE: we require below
+                                                           // comparability between const lvalue limit
+                                                           // and rvalue of the sum of the degrees.
+                                                           return mdeg < d_i + d_j;
+                                                       });
+
+                    // Turn the iterator into an index and return it.
+                    // NOTE: we checked above that the iterator diff
+                    // type can safely be used as an index (for both
+                    // vd1 and vd2).
+                    return static_cast<idx_t>(it - vd2.cbegin());
+                };
         }
     }();
 
