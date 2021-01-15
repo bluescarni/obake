@@ -23,26 +23,10 @@
 
 #endif
 
-#if defined(_MSC_VER)
-
-// NOTE: older abseil versions have a problem on MSVC
-// when using C++20:
-// https://github.com/abseil/abseil-cpp/issues/649
-// Hopefully we can eventually remove this.
-#define _HAS_DEPRECATED_RESULT_OF 1
-
-#endif
-
 #include <absl/base/attributes.h>
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <absl/numeric/int128.h>
-
-#if defined(_MSC_VER)
-
-#undef _HAS_DEPRECATED_RESULT_OF
-
-#endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
 
