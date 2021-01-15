@@ -10,7 +10,6 @@
 #define OBAKE_POLYNOMIALS_POLYNOMIAL_HPP
 
 #include <algorithm>
-#include <array>
 #include <atomic>
 #include <cassert>
 #include <cmath>
@@ -46,6 +45,7 @@
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/it_diff_check.hpp>
+#include <obake/detail/make_array.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
@@ -136,11 +136,12 @@ using make_polynomials_supported
                          ::std::is_constructible<series_cf_t<T>, int>>;
 
 template <typename T, typename... Args>
-using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T, Args...>::value, int>;
+using make_polynomials_enabler
+    = ::std::enable_if_t<(sizeof...(Args) > 0u) && make_polynomials_supported<T, Args...>::value, int>;
 
 // Overload with a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &ss, const Args &...names)
+inline auto make_polynomials_impl(const symbol_set &ss, const Args &...names)
 {
     // Create a temp vector of ints which we will use to
     // init the keys.
@@ -149,7 +150,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
     // Create the fw version of the symbol set.
     const detail::ss_fw ss_fw(ss);
 
-    [[maybe_unused]] auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
+    auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
@@ -192,14 +193,14 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
+    return detail::make_array(make_poly(names)...);
 }
 
 // Overload without a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &...names)
+inline auto make_polynomials_impl(const Args &...names)
 {
-    [[maybe_unused]] auto make_poly = [](const auto &n) {
+    auto make_poly = [](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Init the retval, assign a symbol set containing only n.
@@ -218,7 +219,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &...nam
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
+    return detail::make_array(make_poly(names)...);
 }
 
 } // namespace detail

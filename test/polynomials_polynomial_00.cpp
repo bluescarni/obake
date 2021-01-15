@@ -49,9 +49,6 @@ TEST_CASE("make_polynomials_test")
 
     obake_test::disable_slow_stack_traces();
 
-    REQUIRE(make_polynomials<poly_t>().size() == 0u);
-    REQUIRE(make_polynomials<poly_t>(symbol_set{}).size() == 0u);
-
     {
         auto [a] = make_polynomials<poly_t>("a");
         REQUIRE(a.get_symbol_set() == symbol_set{"a"});
