@@ -1212,15 +1212,15 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
             // Until MS fixes the lambda capture.
             auto vd1 = ::std::move(::std::get<0>(degree_data));
             auto vd2 = ::std::move(::std::get<1>(degree_data));
-            return [vd1, vd2,
+            return [&, vd1, vd2
 #else
 
-            return [vd1 = ::std::move(::std::get<0>(degree_data)), vd2 = ::std::move(::std::get<1>(degree_data)),
+            return [&, vd1 = ::std::move(::std::get<0>(degree_data)), vd2 = ::std::move(::std::get<1>(degree_data))
 #endif
-                    // NOTE: max_deg is captured via const lref this way,
-                    // as args is passed as a const lref pack.
-                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i, const auto &r2) {
+            ](const auto &i, const auto &r2) {
                 using idx_t = remove_cvref_t<decltype(i)>;
+
+                const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
 
                 // Get the total/partial degree of the current term
                 // in the first series.
@@ -1784,10 +1784,8 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
             };
 
             using ::obake::detail::type_c;
-            return [vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{}),
-                    // NOTE: max_deg is captured via const lref this way,
-                    // as args is passed as a const lref pack.
-                    &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))](const auto &i) {
+            return [&, vd1 = sorter(v1, type_c<T>{}), vd2 = sorter(v2, type_c<U>{})](const auto &i) {
+                const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
                 using idx_t = remove_cvref_t<decltype(i)>;
 
                 // Get the total/partial degree of the current term
