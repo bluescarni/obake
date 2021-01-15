@@ -125,6 +125,7 @@ namespace detail
 {
 
 // Enabler for make_polynomials():
+// - need at least 1 Arg,
 // - T must be a polynomial,
 // - std::string can be constructed from each input Args,
 // - poly key can be constructed from a const int * range,
