@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 jobs:
   bionic_gcc7_docs:
@@ -35,7 +35,7 @@ jobs:
         command: bash ./tools/circleci_bionic_gcc7_asan.sh
 
 workflows:
-  version: 2
+  version: 2.1
   all_builds:
     jobs:
     - bionic_gcc7_docs
