@@ -9,8 +9,6 @@
 #ifndef OBAKE_DETAIL_SS_FUNC_FORWARD_HPP
 #define OBAKE_DETAIL_SS_FUNC_FORWARD_HPP
 
-#include <obake/config.hpp>
-
 // Small macros to reduce typing when implementing single-statement
 // function templates that perfectly forward their arguments.
 // These are functions which look like this:
@@ -27,58 +25,32 @@
 // trailing return type). This pattern requires to type body 3 times, hence
 // these macros.
 //
-// We need 2 macros, one for free functions and the other one for generic lambdas
-// (which place the constexpr specifier differently).
-//
-// NOTE: on GCC before version 8, noexcept forwarding often triggers ICEs. Disable it.
-#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 8
-#define OBAKE_SS_FORWARD_LAMBDA(body)                                                                                  \
-    constexpr->decltype(body)                                                                                          \
-    {                                                                                                                  \
-        return body;                                                                                                   \
-    }
-#else
+// We need 3 macros, one for free functions, one for generic lambdas
+// (which place the constexpr specifier differently), and one for
+// member functions.
 #define OBAKE_SS_FORWARD_LAMBDA(body)                                                                                  \
     constexpr noexcept(noexcept(body))->decltype(body)                                                                 \
     {                                                                                                                  \
         return body;                                                                                                   \
     }
-#endif
 
 // NOTE: the bit with the useless namespace is to allow to use this macro with a closing semicolon
 // (otherwise clang-format goes berserk).
-#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 8
-#define OBAKE_SS_FORWARD_FUNCTION(body)                                                                                \
-    ->decltype(body)                                                                                                   \
-    {                                                                                                                  \
-        return body;                                                                                                   \
-    }                                                                                                                  \
-    namespace _obake_unused = ::obake::_unused
-#else
 #define OBAKE_SS_FORWARD_FUNCTION(body)                                                                                \
     noexcept(noexcept(body))->decltype(body)                                                                           \
     {                                                                                                                  \
         return body;                                                                                                   \
     }                                                                                                                  \
     namespace _obake_unused = ::obake::_unused
-#endif
 
 namespace obake::_unused
 {
 }
 
-#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 8
-#define OBAKE_SS_FORWARD_MEMBER_FUNCTION(body)                                                                         \
-    ->decltype(body)                                                                                                   \
-    {                                                                                                                  \
-        return body;                                                                                                   \
-    }
-#else
 #define OBAKE_SS_FORWARD_MEMBER_FUNCTION(body)                                                                         \
     noexcept(noexcept(body))->decltype(body)                                                                           \
     {                                                                                                                  \
         return body;                                                                                                   \
     }
-#endif
 
 #endif
