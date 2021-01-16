@@ -13,7 +13,6 @@
 #include <tuple>
 #include <variant>
 
-#include <obake/config.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
@@ -32,41 +31,20 @@ TEST_CASE("basic")
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
 
-    REQUIRE(is_power_series_cf_v<double>);
-    REQUIRE(!is_power_series_cf_v<const double>);
-    REQUIRE(!is_power_series_cf_v<const double &>);
-    REQUIRE(!is_power_series_cf_v<void>);
-
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(power_series_cf<double>);
     REQUIRE(!power_series_cf<const double>);
     REQUIRE(!power_series_cf<const double &>);
     REQUIRE(!power_series_cf<void>);
-#endif
 
-    REQUIRE(is_power_series_key_v<pm_t>);
-    REQUIRE(!is_power_series_key_v<const pm_t>);
-    REQUIRE(!is_power_series_key_v<const pm_t &>);
-    REQUIRE(!is_power_series_key_v<void>);
-
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(power_series_key<pm_t>);
     REQUIRE(!power_series_key<const pm_t>);
     REQUIRE(!power_series_key<const pm_t &>);
     REQUIRE(!power_series_key<void>);
-#endif
 
-    REQUIRE(is_any_p_series_v<ps_t>);
-    REQUIRE(!is_any_p_series_v<const ps_t>);
-    REQUIRE(!is_any_p_series_v<ps_t &>);
-    REQUIRE(!is_any_p_series_v<void>);
-
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(any_p_series<ps_t>);
     REQUIRE(!any_p_series<const ps_t>);
     REQUIRE(!any_p_series<ps_t &>);
     REQUIRE(!any_p_series<void>);
-#endif
 
     // Default construction of the tag.
     ps_t foo;

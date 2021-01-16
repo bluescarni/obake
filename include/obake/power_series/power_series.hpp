@@ -24,7 +24,6 @@
 
 #include <fmt/format.h>
 
-#include <obake/config.hpp>
 #include <obake/detail/fw_utils.hpp>
 #include <obake/detail/it_diff_check.hpp>
 #include <obake/detail/make_array.hpp>
@@ -158,11 +157,7 @@ inline ::std::ostream &operator<<(::std::ostream &os, const tag<T> &t)
 // of the key for the series degree
 // computation, truncation, etc.
 template <typename C>
-using is_power_series_cf
-    = ::std::conjunction<is_cf<C>, ::std::negation<is_with_degree<::std::add_lvalue_reference_t<const C>>>>;
-
-template <typename C>
-inline constexpr bool is_power_series_cf_v = is_power_series_cf<C>::value;
+concept power_series_cf = Cf<C> && !WithDegree<const C &>;
 
 namespace detail
 {
@@ -198,35 +193,13 @@ using psk_pdeg_t = detected_t<detail::key_p_degree_t, ::std::add_lvalue_referenc
 // truncability via the polynomial implementation
 // (which we need to implement the truncate() function).
 template <typename K>
-using is_power_series_key
-    = ::std::conjunction<is_key<K>,
-                         // NOTE: nonesuch is not semi-regular, hence
-                         // the common reqs also take care of detection
-                         // for the degree types.
-                         customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>,
-                         customisation::internal::series_default_degree_type_common_reqs<detail::psk_pdeg_t<K>>,
-                         ::std::is_same<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>>, is_hashable<detail::psk_deg_t<K>>,
-                         is_equality_comparable<detail::psk_deg_t<K>>, is_stream_insertable<detail::psk_deg_t<K>>>;
+concept power_series_key
+    = Key<K> &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>::value
+        &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_pdeg_t<K>>::value
+            && ::std::is_same_v<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>> &&Hashable<const detail::psk_deg_t<K> &>
+                &&EqualityComparable<const detail::psk_deg_t<K> &> &&StreamInsertable<const detail::psk_deg_t<K> &>;
 
-template <typename K>
-inline constexpr bool is_power_series_key_v = is_power_series_key<K>::value;
-
-#if defined(OBAKE_HAVE_CONCEPTS)
-
-template <typename C>
-OBAKE_CONCEPT_DECL power_series_cf = is_power_series_cf_v<C>;
-
-template <typename K>
-OBAKE_CONCEPT_DECL power_series_key = is_power_series_key_v<K>;
-
-#endif
-
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <power_series_key K, power_series_cf C>
-#else
-template <typename K, typename C,
-          typename = ::std::enable_if_t<::std::conjunction_v<is_power_series_key<K>, is_power_series_cf<C>>>>
-#endif
 using p_series = series<K, C, power_series::tag<detail::psk_deg_t<K>>>;
 
 namespace detail
@@ -243,18 +216,9 @@ struct is_any_p_series_impl<p_series<K, C>> : ::std::true_type {
 } // namespace detail
 
 // Detect power series.
-template <typename T>
-using is_any_p_series = detail::is_any_p_series_impl<T>;
 
 template <typename T>
-inline constexpr bool is_any_p_series_v = is_any_p_series<T>::value;
-
-#if defined(OBAKE_HAVE_CONCEPTS)
-
-template <typename T>
-OBAKE_CONCEPT_DECL any_p_series = is_any_p_series_v<T>;
-
-#endif
+concept any_p_series = detail::is_any_p_series_impl<T>::value;
 
 namespace power_series
 {
@@ -396,18 +360,14 @@ namespace detail
 // - ps key can be constructed from a const int * range,
 // - ps cf can be constructed from an integral literal.
 template <typename T, typename... Args>
-using make_p_series_supported
-    = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_any_p_series<T>,
-                         ::std::is_constructible<::std::string, const Args &>...,
-                         ::std::is_constructible<series_key_t<T>, const int *, const int *>,
-                         ::std::is_constructible<series_cf_t<T>, int>>;
-
-template <typename T, typename... Args>
-using make_p_series_enabler = ::std::enable_if_t<make_p_series_supported<T, Args...>::value, int>;
+concept make_p_series_supported
+    = (sizeof...(Args) > 0u)
+      && (any_p_series<T>)&&(... && ::std::is_constructible_v<::std::string, const Args &>)&&::std::is_constructible_v<
+          series_key_t<T>, const int *, const int *> && ::std::is_constructible_v<series_cf_t<T>, int>;
 
 // Overload without a symbol set, no truncation.
-template <typename T, typename... Args, make_p_series_enabler<T, Args...> = 0>
-inline auto make_p_series_impl(const Args &...names)
+template <typename T, typename... Args>
+requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(const Args &...names)
 {
     auto make_p_series = [](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
@@ -432,8 +392,8 @@ inline auto make_p_series_impl(const Args &...names)
 }
 
 // Overload with a symbol set, no truncation.
-template <typename T, typename... Args, make_p_series_enabler<T, Args...> = 0>
-inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
+template <typename T, typename... Args>
+requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
 {
     // Create a temp vector of ints which we will use to
     // init the keys.
@@ -492,39 +452,21 @@ inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-template <typename T>
-struct make_p_series_msvc {
-    template <typename... Args>
-    constexpr auto operator()(const Args &...args) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_p_series_impl<T>(args...))
-};
-
-template <typename T>
-inline constexpr auto make_p_series = make_p_series_msvc<T>{};
-
-#else
-
 // Power series creation functor, no truncation.
 template <typename T>
 inline constexpr auto make_p_series
     = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_impl<T>(args...));
 
-#endif
-
 namespace detail
 {
 
 template <typename T, typename U, typename... Args>
-using make_p_series_t_enabler
-    = ::std::enable_if_t<::std::conjunction_v<make_p_series_supported<T, Args...>,
-                                              is_safely_castable<const U &, psk_deg_t<series_key_t<T>>>>,
-                         int>;
+concept make_p_series_t_supported
+    = make_p_series_supported<T, Args...> &&SafelyCastable<const U &, psk_deg_t<series_key_t<T>>>;
 
 // Overload without a symbol set, total truncation.
-template <typename T, typename U, typename... Args, make_p_series_t_enabler<T, U, Args...> = 0>
-inline auto make_p_series_t_impl(const U &d, const Args &...names)
+template <typename T, typename U, typename... Args>
+requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_impl(const U &d, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -556,26 +498,10 @@ inline auto make_p_series_t_impl(const U &d, const Args &...names)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-template <typename T>
-struct make_p_series_t_msvc {
-    template <typename... Args>
-    constexpr auto operator()(const Args &...args) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_p_series_t_impl<T>(args...))
-};
-
-template <typename T>
-inline constexpr auto make_p_series_t = make_p_series_t_msvc<T>{};
-
-#else
-
 // Power series creation functor, total degree truncation.
 template <typename T>
 inline constexpr auto make_p_series_t
     = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_t_impl<T>(args...));
-
-#endif
 
 } // namespace obake
 
