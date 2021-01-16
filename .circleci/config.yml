@@ -1,14 +1,14 @@
-version: 2
+version: 2.1
 
 jobs:
-  bionic_gcc7_docs:
+  focal_gcc9_docs:
     docker:
-    - image: circleci/buildpack-deps:bionic
+    - image: circleci/buildpack-deps:focal
     steps:
     - checkout
     - run:
         name: Build and test
-        command: bash ./tools/circleci_bionic_gcc7_docs.sh
+        command: bash ./tools/circleci_focal_gcc9_docs.sh
   focal_gcc9_coverage:
     docker:
     - image: circleci/buildpack-deps:focal
@@ -25,20 +25,20 @@ jobs:
     - run:
         name: Build and test
         command: bash ./tools/circleci_focal_gcc9_ubsan.sh
-  bionic_gcc7_asan:
+  focal_gcc9_asan:
     docker:
-    - image: circleci/buildpack-deps:bionic
+    - image: circleci/buildpack-deps:focal
     steps:
     - checkout
     - run:
         name: Build and test
-        command: bash ./tools/circleci_bionic_gcc7_asan.sh
+        command: bash ./tools/circleci_focal_gcc9_asan.sh
 
 workflows:
-  version: 2
+  version: 2.1
   all_builds:
     jobs:
-    - bionic_gcc7_docs
+    - focal_gcc9_docs
     - focal_gcc9_coverage
     - focal_gcc9_ubsan
-    - bionic_gcc7_asan
+    - focal_gcc9_asan

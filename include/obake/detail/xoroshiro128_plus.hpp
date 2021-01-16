@@ -82,11 +82,8 @@ struct xoroshiro128_plus {
         }
 
         // Cast back to the original type.
-        // NOTE: in case Int is signed, this operation is
-        // implementation-defined up to C++20, and from C++20
-        // this follows the rules of two's complement arithmetic.
-        // In practice, all implementations follow two's complement
-        // even before C++20.
+        // NOTE: since C++20 this follows the rules of
+        // two's complement arithmetic.
         return static_cast<Int>(u_retval);
     }
 

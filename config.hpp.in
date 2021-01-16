@@ -32,17 +32,11 @@
 
 #define OBAKE_HAVE_CONCEPTS
 
-// NOTE: GCC < 9 uses the syntax of the concept TS.
-#if defined(OBAKE_COMPILER_IS_GCC) && __GNUC__ < 9
-
-#define OBAKE_CONCEPT_DECL concept bool
+#define OBAKE_CONCEPT_DECL concept
 
 #else
 
-// Otherwise, just use the C++20 syntax.
-#define OBAKE_CONCEPT_DECL concept
-
-#endif
+#error C++20 concepts not supported.
 
 #endif
 
@@ -86,14 +80,6 @@
 #if defined(MPPP_HAVE_STRING_VIEW)
 
 #define OBAKE_HAVE_STRING_VIEW
-
-#endif
-
-// Detect older versions of MSVC which do
-// not like inline constexpr lambdas.
-#if defined(_MSC_VER) && ((_MSVC_LANG <= 201703L) || (_MSC_FULL_VER <= 192428206))
-
-#define OBAKE_MSVC_LAMBDA_WORKAROUND
 
 #endif
 

@@ -1,6 +1,6 @@
-# NOTE: C++17 supported since CMake 3.8.0:
-# https://cmake.org/cmake/help/v3.8/prop_tgt/CXX_STANDARD.html
-cmake_minimum_required(VERSION 3.8.0)
+# NOTE: C++20 supported since CMake 3.12.0:
+# https://cmake.org/cmake/help/v3.12/prop_tgt/CXX_STANDARD.html
+cmake_minimum_required(VERSION 3.12.0)
 
 # Set default build type to "Release".
 # NOTE: this should be done before the project command since the latter can set
@@ -289,16 +289,23 @@ target_compile_options(obake PRIVATE
 )
 set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
-if(NOT CMAKE_CXX_STANDARD)
-    # The user did not provide the CMAKE_CXX_STANDARD variable,
-    # go with the default (C++17).
-    message(STATUS "Setting the C++ standard version to the default value (17).")
-    set_property(TARGET obake PROPERTY CXX_STANDARD 17)
-else()
-    message(STATUS "Using the manually-specified value for the C++ standard version (${CMAKE_CXX_STANDARD}).")
-endif()
-set_property(TARGET obake PROPERTY CXX_STANDARD_REQUIRED YES)
+# Ensure that C++20 is employed when both compiling and consuming obake.
+target_compile_features(obake PUBLIC cxx_std_20)
+# Ensure vanilla C++ is being used.
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
+if(YACMA_COMPILER_IS_MSVC)
+    # NOTE: older abseil versions have a problem on MSVC
+    # when using C++20:
+    # https://github.com/abseil/abseil-cpp/issues/649
+    # Hopefully we can eventually remove this.
+    target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
+endif()
+if(YACMA_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10")
+    # GCC < 10 still needs the -fconcepts flag, even if C++20 is in use.
+    message(STATUS "Activating the '-fconcepts' flag for GCC < 10.")
+    target_compile_options(obake PUBLIC -fconcepts)
+endif()
+
 # Add the include dirs to the obake target's interface.
 target_include_directories(obake PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -366,13 +373,7 @@ DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 install(EXPORT obake_export NAMESPACE obake:: DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 # Take care of versioning.
 include(CMakePackageConfigHelpers)
-# NOTE: SameMinorVersion available only
-# since CMake 3.11.
-if(${CMAKE_VERSION} VERSION_LESS "3.11.0")
-    write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" COMPATIBILITY SameMajorVersion)
-else()
-    write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" COMPATIBILITY SameMinorVersion)
-endif()
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" COMPATIBILITY SameMinorVersion)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/obake-config-version.cmake" DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 
 if(OBAKE_BUILD_TESTS)
