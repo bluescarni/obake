@@ -26,7 +26,7 @@
 // these macros.
 //
 // We need 3 macros, one for free functions, one for generic lambdas
-// (which place the constexpr specifier differently), and one for
+// (which place the constexpr specifier differently) and one for
 // member functions.
 #define OBAKE_SS_FORWARD_LAMBDA(body)                                                                                  \
     constexpr noexcept(noexcept(body))->decltype(body)                                                                 \
@@ -43,14 +43,14 @@
     }                                                                                                                  \
     namespace _obake_unused = ::obake::_unused
 
-namespace obake::_unused
-{
-}
-
 #define OBAKE_SS_FORWARD_MEMBER_FUNCTION(body)                                                                         \
     noexcept(noexcept(body))->decltype(body)                                                                           \
     {                                                                                                                  \
         return body;                                                                                                   \
     }
+
+namespace obake::_unused
+{
+}
 
 #endif

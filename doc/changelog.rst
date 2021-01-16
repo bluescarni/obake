@@ -4,9 +4,19 @@ Changelog
 0.7.0 (unreleased)
 ------------------
 
+New
+~~~
+
+- The C++ standard requirement is now exported in the CMake
+  config-file package installed by obake
+  (`#128 <https://github.com/bluescarni/obake/pull/128>`__).
+
 Changes
 ~~~~~~~
 
+- **BREAKING**: obake is now based on C++20, and the minimum
+  CMake version has been bumped up to 3.12
+  (`#128 <https://github.com/bluescarni/obake/pull/128>`__).
 - **BREAKING**: the implementation of ``packed_monomial`` and
   ``d_packed_monomial`` has changed: now when specifying the desired
   exponent type, only ``std::(u)int32_t`` and ``std::(u)int64_t``
@@ -25,7 +35,7 @@ Changes
   (`#122 <https://github.com/bluescarni/obake/pull/122>`__).
 
 
-0.6.0 (12-06-2020)
+0.6.0 (2020-06-12)
 ------------------
 
 Fix
@@ -36,7 +46,7 @@ Fix
 - Implement a workaround for a compiler bug in GCC 7
   (`#117 <https://github.com/bluescarni/obake/pull/117>`__).
 
-0.5.0 (11-05-2020)
+0.5.0 (2020-05-11)
 ------------------
 
 New
@@ -65,7 +75,7 @@ Fix
 - Fix build issues with recent CMake versions
   (`#111 <https://github.com/bluescarni/obake/pull/111>`__).
 
-0.4.0 (12-02-2020)
+0.4.0 (2020-02-12)
 ------------------
 
 New
@@ -119,7 +129,7 @@ Fix
   `#92 <https://github.com/bluescarni/obake/pull/92>`__,
   `#90 <https://github.com/bluescarni/obake/pull/90>`__).
 
-0.3 (31-10-2019)
+0.3 (2019-10-31)
 ----------------
 
 New
@@ -155,7 +165,7 @@ Fix
 - Fix a build issue on MSVC involving Boost
   (`#86 <https://github.com/bluescarni/obake/pull/86>`__).
 
-0.2 (27-10-2019)
+0.2 (2019-10-27)
 ----------------
 
 New
@@ -180,7 +190,7 @@ Fix
 - Remove an unused variable in a lambda capture
   (`#75 <https://github.com/bluescarni/obake/pull/75>`__).
 
-0.1 (18-10-2019)
+0.1 (2019-10-18)
 ----------------
 
 New
