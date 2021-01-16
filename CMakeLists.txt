@@ -148,7 +148,7 @@ endif()
 # NOTE: put the minimum version in a variable
 # so that we can re-use it in the config-file package
 # machinery below.
-set (_OBAKE_MIN_MPPP_VERSION 0.17)
+set (_OBAKE_MIN_MPPP_VERSION 0.22)
 find_package(mp++ REQUIRED)
 if(${mp++_VERSION} VERSION_LESS ${_OBAKE_MIN_MPPP_VERSION})
     message(FATAL_ERROR "The minimum mp++ version required by obake is ${_OBAKE_MIN_MPPP_VERSION}, but version ${mp++_VERSION} was found instead.")
