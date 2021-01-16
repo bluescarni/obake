@@ -75,14 +75,6 @@
 
 #endif
 
-// Detect the availability of std::string_view.
-// Use the definition from mp++.
-#if defined(MPPP_HAVE_STRING_VIEW)
-
-#define OBAKE_HAVE_STRING_VIEW
-
-#endif
-
 // For packing 64-bit values, we need 128-bit multiplication.
 // This requires either 128-bit integer types, or compiler intrinsics.
 // NOTE: _WIN64 should catch also 64-bit arm.
