@@ -95,14 +95,12 @@ TEST_CASE("pow_arith")
 #endif
 
     // Check perfect forwarding.
-#if !defined(OBAKE_COMPILER_IS_GCC) || __GNUC__ >= 8
     REQUIRE(noexcept(obake::pow(1.5, 1.5)));
     REQUIRE(noexcept(obake::pow(1.5, 1)));
     REQUIRE(noexcept(obake::pow(1, 1.5)));
     REQUIRE(noexcept(obake::pow(1.5f, 1.5f)));
     REQUIRE(noexcept(obake::pow(1.5f, 1)));
     REQUIRE(noexcept(obake::pow(1, 1.5f)));
-#endif
 }
 
 TEST_CASE("pow_mp++_int")

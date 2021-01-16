@@ -15,6 +15,13 @@
 #include <obake/kpack.hpp>
 #include <obake/type_traits.hpp>
 
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(push)
+#pragma warning(disable : 4244)
+
+#endif
+
 namespace obake
 {
 
@@ -1279,3 +1286,9 @@ const ::std::tuple<std::uint64_t, unsigned, unsigned> kpack_data<::std::uint64_t
 } // namespace detail
 
 } // namespace obake
+
+#if defined(_MSC_VER) && !defined(__clang__)
+
+#pragma warning(pop)
+
+#endif

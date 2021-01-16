@@ -5,12 +5,7 @@ target_compile_options(obake_test PRIVATE
   "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
   "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
 )
-if(NOT CMAKE_CXX_STANDARD)
-  # The user did not provide the CMAKE_CXX_STANDARD variable,
-  # go with the default (C++17).
-  set_property(TARGET obake_test PROPERTY CXX_STANDARD 17)
-endif()
-set_property(TARGET obake_test PROPERTY CXX_STANDARD_REQUIRED YES)
+target_compile_features(obake_test PRIVATE cxx_std_20)
 set_property(TARGET obake_test PROPERTY CXX_EXTENSIONS NO)
 
 function(ADD_OBAKE_TESTCASE arg1)
@@ -22,12 +17,7 @@ function(ADD_OBAKE_TESTCASE arg1)
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
   )
-  if(NOT CMAKE_CXX_STANDARD)
-    # The user did not provide the CMAKE_CXX_STANDARD variable,
-    # go with the default (C++17).
-    set_property(TARGET ${arg1} PROPERTY CXX_STANDARD 17)
-  endif()
-  set_property(TARGET ${arg1} PROPERTY CXX_STANDARD_REQUIRED YES)
+  target_compile_features(${arg1} PRIVATE cxx_std_20)
   set_property(TARGET ${arg1} PROPERTY CXX_EXTENSIONS NO)
   add_test(${arg1} ${arg1})
 endfunction()
@@ -116,8 +106,7 @@ target_compile_options(ss_fw_test_lib PRIVATE
 )
 set_target_properties(ss_fw_test_lib PROPERTIES CXX_VISIBILITY_PRESET hidden)
 set_target_properties(ss_fw_test_lib PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
-set_property(TARGET ss_fw_test_lib PROPERTY CXX_STANDARD 17)
-set_property(TARGET ss_fw_test_lib PROPERTY CXX_STANDARD_REQUIRED YES)
+target_compile_features(ss_fw_test_lib PRIVATE cxx_std_20)
 set_property(TARGET ss_fw_test_lib PROPERTY CXX_EXTENSIONS NO)
 target_include_directories(ss_fw_test_lib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

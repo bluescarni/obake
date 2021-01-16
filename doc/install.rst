@@ -25,23 +25,22 @@ obake also depends on other libraries for optional features:
 Installation from source
 ------------------------
 
-obake is written in `C++17 <https://en.wikipedia.org/wiki/C%2B%2B17>`_,
+obake is written in `C++20 <https://en.wikipedia.org/wiki/C%2B%2B20>`_,
 and thus it requires a fairly recent compiler with
 robust support for modern C++ idioms. The following compilers are regularly
 tested in obake's continuous integration setup:
 
-* GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),
-* Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),
+* GCC 9 on Linux (Ubuntu Focal),
 * Visual Studio 2019 on Windows,
-* Clang + Visual Studio 2017 on Windows
+* Clang 11 + Visual Studio 2017 on Windows
   (via the ``clang-cl`` driver),
-* Clang 9 on OSX.
+* Clang 11 on OSX.
 
 See also the
 :ref:`compiler and platform specific notes <platform_specific_notes>`.
 
 In order to install obake from source, `CMake <https://cmake.org/>`_ is
-required (at least version 3.8). After downloading and unpacking obake's
+required (at least version 3.12). After downloading and unpacking obake's
 source code, go to obake's
 source tree, create a ``build`` directory and ``cd`` into it. E.g.,
 on a Unix-like system:
@@ -117,7 +116,7 @@ If enabled, the test suite can be executed with the command:
 Troubleshooting
 ^^^^^^^^^^^^^^^
 
-By far, the most common problem when compiling obake is the detection
+The most common problem when compiling obake is the detection
 of the dependencies.
 
 On Linux systems, generally speaking, the best way of installing the
@@ -156,20 +155,9 @@ Visual Studio:
   with the ``NOMINMAX`` and ``WIN32_LEAN_AND_MEAN`` definitions,
   and, if supported, with the ``/permissive-`` compiler flag.
 
-GCC:
-
-* Due to a compiler bug, when using GCC 7 obake's customisation points
-  do not have any ``noexcept`` specifier.
-
-Clang:
-
-* Due to a compiler bug, Clang 8.0.0 may fail to compile obake's
-  test suite with debugging information. The issue appears to have been
-  rectified in Clang 8.0.1.
-
 OSX:
 
-* On OSX, only the most recent versions of Xcode (i.e., Xcode 9 or later)
+* On OSX, only the most recent versions of Xcode
   are capable of compiling obake.
   As an alternative to Xcode, one can install a more modern compiler toolchain
   using package managers such as `Conda <https://docs.conda.io/en/latest/>`_ or
