@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <variant>
 
 #include <obake/math/degree.hpp>
@@ -53,13 +54,17 @@ TEST_CASE("basic")
     // Tag state after truncation setting.
     set_truncation(foo, 5);
     REQUIRE(foo.tag().trunc.get().index() == 1u);
-    set_truncation(foo, 5, {"x", "y", "z"});
+    REQUIRE(std::is_reference_v<decltype(set_truncation(foo, 5))>);
+    set_truncation(foo, 5, symbol_set{"x", "y", "z"});
     REQUIRE(foo.tag().trunc.get().index() == 2u);
+    REQUIRE(std::is_reference_v<decltype(set_truncation(foo, 5, symbol_set{"x", "y", "z"}))>);
     unset_truncation(foo);
     REQUIRE(foo.tag().trunc.get().index() == 0u);
+    REQUIRE(std::is_reference_v<decltype(unset_truncation(foo))>);
 
     // Truncation getter.
     REQUIRE(get_truncation(foo).index() == 0u);
+    REQUIRE(std::is_reference_v<decltype(get_truncation(foo))>);
 
     // Factory functions.
     {
@@ -125,7 +130,7 @@ TEST_CASE("basic")
         REQUIRE(a.get_symbol_set() == symbol_set{"a"});
         REQUIRE(std::get<1>(get_truncation(a)) == 0);
 
-        REQUIRE(b.empty() == 1u);
+        REQUIRE(b.empty());
         REQUIRE(b.get_symbol_set() == symbol_set{"b"});
         REQUIRE(std::get<1>(get_truncation(b)) == 0);
     }

@@ -199,6 +199,7 @@ concept power_series_key
             && ::std::is_same_v<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>> &&Hashable<const detail::psk_deg_t<K> &>
                 &&EqualityComparable<const detail::psk_deg_t<K> &> &&StreamInsertable<const detail::psk_deg_t<K> &>;
 
+// Definition of the power series class.
 template <power_series_key K, power_series_cf C>
 using p_series = series<K, C, power_series::tag<detail::psk_deg_t<K>>>;
 
@@ -215,8 +216,7 @@ struct is_any_p_series_impl<p_series<K, C>> : ::std::true_type {
 
 } // namespace detail
 
-// Detect power series.
-
+// Detect any power series.
 template <typename T>
 concept any_p_series = detail::is_any_p_series_impl<T>::value;
 
@@ -224,11 +224,9 @@ namespace power_series
 {
 
 // Implementation of (partial) degree truncation for power series.
-template <
-    typename K, typename C, typename T,
-    ::std::enable_if_t<is_less_than_comparable_v<::std::add_lvalue_reference_t<const T>, ::obake::detail::psk_deg_t<K>>,
-                       int> = 0>
-inline void truncate_degree(p_series<K, C> &ps, const T &d)
+template <typename K, typename C, typename T>
+requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline void truncate_degree(p_series<K, C> &ps,
+                                                                                                  const T &d)
 {
     // Use the default functor for the extraction of the term degree.
     // NOTE: d_impl is assured to work thanks to the concept
@@ -243,11 +241,9 @@ inline void truncate_degree(p_series<K, C> &ps, const T &d)
     });
 }
 
-template <
-    typename K, typename C, typename T,
-    ::std::enable_if_t<is_less_than_comparable_v<::std::add_lvalue_reference_t<const T>, ::obake::detail::psk_deg_t<K>>,
-                       int> = 0>
-inline void truncate_p_degree(p_series<K, C> &ps, const T &d, const symbol_set &s)
+template <typename K, typename C, typename T>
+requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline void
+truncate_p_degree(p_series<K, C> &ps, const T &d, const symbol_set &s)
 {
     // Use the default functor for the extraction of the term degree.
     // NOTE: d_impl is assured to work thanks to the concept
@@ -268,11 +264,13 @@ inline void truncate_p_degree(p_series<K, C> &ps, const T &d, const symbol_set &
 
 } // namespace power_series
 
+namespace detail
+{
+
 // Set total degree truncation.
-template <
-    typename K, typename C, typename T,
-    ::std::enable_if_t<is_safely_castable_v<::std::add_lvalue_reference_t<const T>, detail::psk_deg_t<K>>, int> = 0>
-inline p_series<K, C> &set_truncation(p_series<K, C> &ps, const T &d)
+template <typename K, typename C, typename T>
+requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps,
+                                                                                                    const T &d)
 {
     // Convert safely d to the degree type.
     const auto deg = ::obake::safe_cast<detail::psk_deg_t<K>>(d);
@@ -302,10 +300,10 @@ inline p_series<K, C> &set_truncation(p_series<K, C> &ps, const T &d)
     return ps;
 }
 
-template <
-    typename K, typename C, typename T,
-    ::std::enable_if_t<is_safely_castable_v<::std::add_lvalue_reference_t<const T>, detail::psk_deg_t<K>>, int> = 0>
-inline p_series<K, C> &set_truncation(p_series<K, C> &ps, const T &d, symbol_set ss)
+// Set partial degree truncation.
+template <typename K, typename C, typename T>
+requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &
+set_truncation_impl(p_series<K, C> &ps, const T &d, symbol_set ss)
 {
     // Convert safely d to the degree type.
     const auto deg = ::obake::safe_cast<detail::psk_deg_t<K>>(d);
@@ -335,19 +333,24 @@ inline p_series<K, C> &set_truncation(p_series<K, C> &ps, const T &d, symbol_set
     return ps;
 }
 
-template <typename K, typename C>
-inline p_series<K, C> &unset_truncation(p_series<K, C> &ps)
-{
+} // namespace detail
+
+// Set truncation.
+inline constexpr auto set_truncation = []<typename K, typename C, typename... Args>(p_series<K, C> & ps, Args &&...args)
+    OBAKE_SS_FORWARD_LAMBDA(detail::set_truncation_impl(ps, ::std::forward<Args>(args)...));
+
+// Unset truncation.
+inline constexpr auto unset_truncation = []<typename K, typename C>(p_series<K, C> &ps) -> p_series<K, C> & {
     ps.tag().trunc = power_series::detail::trunc_t_fw_default<detail::psk_deg_t<K>>();
 
     return ps;
-}
+};
 
-template <typename K, typename C>
-inline const auto &get_truncation(const p_series<K, C> &ps)
+// Get the truncation.
+inline constexpr auto get_truncation = []<typename K, typename C>(const p_series<K, C> &ps) -> auto &
 {
     return ps.tag().trunc.get();
-}
+};
 
 // Factory functions for power series.
 namespace detail
