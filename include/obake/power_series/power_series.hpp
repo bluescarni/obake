@@ -347,7 +347,7 @@ inline constexpr auto unset_truncation = []<typename K, typename C>(p_series<K, 
 };
 
 // Get the truncation.
-inline constexpr auto get_truncation = []<typename K, typename C>(const p_series<K, C> &ps) -> auto &
+inline constexpr auto get_truncation = []<typename K, typename C>(const p_series<K, C> &ps) -> const auto &
 {
     return ps.tag().trunc.get();
 };
