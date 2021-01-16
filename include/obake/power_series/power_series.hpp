@@ -352,6 +352,22 @@ inline constexpr auto get_truncation = []<typename K, typename C>(const p_series
     return ps.tag().trunc.get();
 };
 
+// Truncate according to the current truncation level.
+inline constexpr auto truncate = []<typename K, typename C>(p_series<K, C> &ps) {
+    ::std::visit(
+        [&ps](const auto &v) {
+            using type = remove_cvref_t<decltype(v)>;
+
+            if constexpr (::std::is_same_v<type, power_series::detail::no_truncation>) {
+            } else if constexpr (::std::is_same_v<type, detail::psk_deg_t<K>>) {
+                power_series::truncate_degree(ps, v);
+            } else {
+                power_series::truncate_p_degree(ps, v.first, v.second);
+            }
+        },
+        ::obake::get_truncation(ps));
+};
+
 // Factory functions for power series.
 namespace detail
 {

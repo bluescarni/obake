@@ -246,7 +246,7 @@ TEST_CASE("basic")
     }
 }
 
-TEST_CASE("explicit truncation")
+TEST_CASE("truncate degree")
 {
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
@@ -256,6 +256,12 @@ TEST_CASE("explicit truncation")
 
         obake::truncate_degree(x, 0);
 
+        REQUIRE(x.empty());
+
+        x.add_term(pm_t{10}, 1.25);
+        obake::truncate_degree(x, 10);
+        REQUIRE(!x.empty());
+        obake::truncate_degree(x, 9);
         REQUIRE(x.empty());
     }
 
@@ -273,5 +279,40 @@ TEST_CASE("explicit truncation")
         x = make_p_series<ps_t>("x")[0];
         obake::truncate_p_degree(x, 0, symbol_set{});
         REQUIRE(x == make_p_series<ps_t>("x")[0]);
+
+        x.add_term(pm_t{10}, 1.25);
+        obake::truncate_p_degree(x, 10, symbol_set{"x"});
+        REQUIRE(!x.empty());
+        obake::truncate_p_degree(x, 0, symbol_set{"y"});
+        REQUIRE(!x.empty());
+        obake::truncate_p_degree(x, 0, symbol_set{"x"});
+        REQUIRE(x.empty());
     }
+}
+
+TEST_CASE("explicit truncation")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x] = make_p_series<ps_t>("x");
+
+    obake::truncate(x);
+
+    REQUIRE(x == make_p_series<ps_t>("x")[0]);
+
+    x = make_p_series_t<ps_t>(0, "x")[0];
+    REQUIRE(x.empty());
+
+    x.add_term(pm_t{1}, 1.25);
+    REQUIRE(!x.empty());
+    obake::truncate(x);
+    REQUIRE(x.empty());
+
+    x = make_p_series_p<ps_t>(0, symbol_set{"x"}, "x")[0];
+    REQUIRE(x.empty());
+    x.add_term(pm_t{1}, 1.25);
+    REQUIRE(!x.empty());
+    obake::truncate(x);
+    REQUIRE(x.empty());
 }
