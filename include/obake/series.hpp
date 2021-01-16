@@ -745,11 +745,11 @@ public:
     // as we rely on its behaviour in a variety of places (e.g., when constructing
     // series from scalars - see for instance the default series pow()
     // implementation).
-#if defined(OBAKE_HAVE_CONCEPTS)
+    // NOTE: currently this algorithm accepts also series with different
+    // tags, and it is the only way of converting between series with
+    // different tags. The default implementations of series arithmetic,
+    // comparison, etc. do not handle series with different tag types.
     template <SeriesConstructible<K, C, Tag> T>
-#else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
-#endif
     explicit series(T &&x) : series()
     {
         constexpr int algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
