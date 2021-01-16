@@ -15,7 +15,8 @@
 #include <utility>
 #include <variant>
 
-#include <obake/math/degree.hpp>
+#include <obake/math/truncate_degree.hpp>
+#include <obake/math/truncate_p_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
@@ -242,5 +243,35 @@ TEST_CASE("basic")
             std::invalid_argument,
             "Cannot create a power series with symbol set {'x', 'y', 'z'} from the "
             "generator 'a': the generator is not in the symbol set");
+    }
+}
+
+TEST_CASE("explicit truncation")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        obake::truncate_degree(x, 0);
+
+        REQUIRE(x.empty());
+    }
+
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        obake::truncate_p_degree(x, 0, symbol_set{"x"});
+
+        REQUIRE(x.empty());
+
+        x = make_p_series<ps_t>("x")[0];
+        obake::truncate_p_degree(x, 0, symbol_set{"y"});
+        REQUIRE(x == make_p_series<ps_t>("x")[0]);
+
+        x = make_p_series<ps_t>("x")[0];
+        obake::truncate_p_degree(x, 0, symbol_set{});
+        REQUIRE(x == make_p_series<ps_t>("x")[0]);
     }
 }
