@@ -301,6 +301,7 @@ if(YACMA_COMPILER_IS_MSVC)
     target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
 endif()
 if(YACMA_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10")
+    # GCC < 10 still needs the -fconcepts flag, even if C++20 is in use.
     message(STATUS "Activating the '-fconcepts' flag for GCC < 10.")
     target_compile_options(obake PUBLIC -fconcepts)
 endif()
