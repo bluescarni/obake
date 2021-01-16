@@ -12,6 +12,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 #include <obake/math/degree.hpp>
@@ -49,6 +50,10 @@ TEST_CASE("basic")
 
     // Default construction of the tag.
     ps_t foo;
+    REQUIRE(foo.tag().trunc.get().index() == 0u);
+    // Re-set the no-truncation level to trigger
+    // the equality operator of no_truncation.
+    foo.tag().trunc = power_series::detail::no_truncation{};
     REQUIRE(foo.tag().trunc.get().index() == 0u);
 
     // Tag state after truncation setting.
@@ -133,5 +138,109 @@ TEST_CASE("basic")
         REQUIRE(b.empty());
         REQUIRE(b.get_symbol_set() == symbol_set{"b"});
         REQUIRE(std::get<1>(get_truncation(b)) == 0);
+    }
+
+    {
+        // Total truncation, with ss.
+        auto [x, y] = make_p_series_t<ps_t>(symbol_set{"x", "y", "z"}, 1, "x", std::string{"y"});
+
+        REQUIRE(x.size() == 1u);
+        REQUIRE(x.begin()->first == pm_t{1, 0, 0});
+        REQUIRE(x.begin()->second == 1.);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(x)) == 1);
+
+        REQUIRE(y.size() == 1u);
+        REQUIRE(y.begin()->first == pm_t{0, 1, 0});
+        REQUIRE(y.begin()->second == 1.);
+        REQUIRE(y.get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(get_truncation(y).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(y)) == 1);
+
+        auto [a, b] = make_p_series_t<ps_t>(symbol_set{"a", "b", "c"}, 0, "a", std::string{"b"});
+
+        REQUIRE(a.empty());
+        REQUIRE(a.get_symbol_set() == symbol_set{"a", "b", "c"});
+        REQUIRE(std::get<1>(get_truncation(a)) == 0);
+
+        REQUIRE(b.empty());
+        REQUIRE(b.get_symbol_set() == symbol_set{"a", "b", "c"});
+        REQUIRE(std::get<1>(get_truncation(b)) == 0);
+
+        OBAKE_REQUIRES_THROWS_CONTAINS((make_p_series_t<ps_t>(symbol_set{"x", "y", "z"}, 1, std::string{"x"}, "a")),
+                                       std::invalid_argument,
+                                       "Cannot create a power series with symbol set {'x', 'y', 'z'} from the "
+                                       "generator 'a': the generator is not in the symbol set");
+    }
+
+    {
+        // Partial truncation, no ss.
+        auto [x, y] = make_p_series_p<ps_t>(1, symbol_set{"x"}, "x", std::string{"y"});
+
+        REQUIRE(x.size() == 1u);
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 1.);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(x)) == std::pair{std::int32_t{1}, symbol_set{"x"}});
+
+        REQUIRE(y.size() == 1u);
+        REQUIRE(y.begin()->first == pm_t{1});
+        REQUIRE(y.begin()->second == 1.);
+        REQUIRE(y.get_symbol_set() == symbol_set{"y"});
+        REQUIRE(get_truncation(y).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(y)) == std::pair{std::int32_t{1}, symbol_set{"x"}});
+
+        auto [a, b] = make_p_series_p<ps_t>(0, symbol_set{"a"}, "a", std::string{"b"});
+
+        REQUIRE(a.empty());
+        REQUIRE(a.get_symbol_set() == symbol_set{"a"});
+        REQUIRE(std::get<2>(get_truncation(a)) == std::pair{std::int32_t{0}, symbol_set{"a"}});
+
+        REQUIRE(b.size() == 1u);
+        REQUIRE(b.begin()->first == pm_t{1});
+        REQUIRE(b.begin()->second == 1.);
+        REQUIRE(b.get_symbol_set() == symbol_set{"b"});
+        REQUIRE(get_truncation(b).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(b)) == std::pair{std::int32_t{0}, symbol_set{"a"}});
+    }
+
+    {
+        // Partial truncation, with ss.
+        auto [x, y] = make_p_series_p<ps_t>(symbol_set{"x", "y", "z"}, 1, symbol_set{"x"}, "x", std::string{"y"});
+
+        REQUIRE(x.size() == 1u);
+        REQUIRE(x.begin()->first == pm_t{1, 0, 0});
+        REQUIRE(x.begin()->second == 1.);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(x)) == std::pair{std::int32_t{1}, symbol_set{"x"}});
+
+        REQUIRE(y.size() == 1u);
+        REQUIRE(y.begin()->first == pm_t{0, 1, 0});
+        REQUIRE(y.begin()->second == 1.);
+        REQUIRE(y.get_symbol_set() == symbol_set{"x", "y", "z"});
+        REQUIRE(get_truncation(y).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(y)) == std::pair{std::int32_t{1}, symbol_set{"x"}});
+
+        auto [a, b] = make_p_series_p<ps_t>(symbol_set{"a", "b", "c"}, 0, symbol_set{"a"}, "a", std::string{"b"});
+
+        REQUIRE(a.empty());
+        REQUIRE(a.get_symbol_set() == symbol_set{"a", "b", "c"});
+        REQUIRE(std::get<2>(get_truncation(a)) == std::pair{std::int32_t{0}, symbol_set{"a"}});
+
+        REQUIRE(b.size() == 1u);
+        REQUIRE(b.begin()->first == pm_t{0, 1, 0});
+        REQUIRE(b.begin()->second == 1.);
+        REQUIRE(b.get_symbol_set() == symbol_set{"a", "b", "c"});
+        REQUIRE(get_truncation(b).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(b)) == std::pair{std::int32_t{0}, symbol_set{"a"}});
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(
+            (make_p_series_p<ps_t>(symbol_set{"x", "y", "z"}, 1, symbol_set{"a"}, std::string{"x"}, "a")),
+            std::invalid_argument,
+            "Cannot create a power series with symbol set {'x', 'y', 'z'} from the "
+            "generator 'a': the generator is not in the symbol set");
     }
 }

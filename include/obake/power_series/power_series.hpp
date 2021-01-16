@@ -499,12 +499,191 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_im
     return detail::make_array(make_p_series(names)...);
 }
 
+// Overload with a symbol set, total truncation.
+template <typename T, typename U, typename... Args>
+requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_impl(const symbol_set &ss, const U &d,
+                                                                                   const Args &...names)
+{
+    // Convert d to the degree type.
+    const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
+
+    // Create a temp vector of ints which we will use to
+    // init the keys.
+    ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
+
+    // Create the fw version of the symbol set.
+    const detail::ss_fw ss_fw(ss);
+
+    auto make_p_series = [&deg, &ss_fw, &ss, &tmp](const auto &n) {
+        using str_t = remove_cvref_t<decltype(n)>;
+
+        // Fetch a const reference to either the original
+        // std::string object n, or to a string temporary
+        // created from it.
+        const auto &s = [&n]() -> decltype(auto) {
+            if constexpr (::std::is_same_v<str_t, ::std::string>) {
+                return n;
+            } else {
+                return ::std::string(n);
+            }
+        }();
+
+        // Init the retval, assign the symbol set.
+        T retval;
+        retval.set_symbol_set_fw(ss_fw);
+
+        // Try to locate s within the symbol set.
+        const auto it = ss.find(s);
+        if (obake_unlikely(it == ss.end() || *it != s)) {
+            using namespace ::fmt::literals;
+
+            obake_throw(::std::invalid_argument,
+                        "Cannot create a power series with symbol set {} from the "
+                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+        }
+
+        // Set to 1 the exponent of the corresponding generator.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
+
+        // Create and add a new term.
+        // NOTE: at least for some monomial types (e.g., packed monomial),
+        // we will be computing the iterator difference when constructing from
+        // a range. Make sure we can safely represent the size of tmp via
+        // iterator difference.
+        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
+        retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
+
+        // Set the truncation.
+        ::obake::set_truncation(retval, deg);
+
+        // Set back to zero the exponent that was previously set to 1.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
+
+        return retval;
+    };
+
+    return detail::make_array(make_p_series(names)...);
+}
+
 } // namespace detail
 
 // Power series creation functor, total degree truncation.
 template <typename T>
 inline constexpr auto make_p_series_t
     = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_t_impl<T>(args...));
+
+namespace detail
+{
+
+// Overload without a symbol set, partial truncation.
+template <typename T, typename U, typename... Args>
+// NOTE: for partial degree truncation we can re-use the concepts
+// used in total degree truncation.
+requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_p_impl(const U &d, const symbol_set &tss,
+                                                                                   const Args &...names)
+{
+    // Convert d to the degree type.
+    const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
+
+    auto make_p_series = [&deg, &tss](const auto &n) {
+        using str_t = remove_cvref_t<decltype(n)>;
+
+        // Init the retval, assign a symbol set containing only n.
+        T retval;
+        if constexpr (::std::is_same_v<str_t, ::std::string>) {
+            retval.set_symbol_set(symbol_set{n});
+        } else {
+            retval.set_symbol_set(symbol_set{::std::string(n)});
+        }
+
+        constexpr int arr[] = {1};
+
+        // Create and add a new term.
+        retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
+
+        // Set the truncation.
+        ::obake::set_truncation(retval, deg, tss);
+
+        return retval;
+    };
+
+    return detail::make_array(make_p_series(names)...);
+}
+
+// Overload with a symbol set, partial truncation.
+template <typename T, typename U, typename... Args>
+// NOTE: for partial degree truncation we can re-use the concepts
+// used in total degree truncation.
+requires make_p_series_t_supported<T, U, Args...> inline auto
+make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, const Args &...names)
+{
+    // Convert d to the degree type.
+    const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
+
+    // Create a temp vector of ints which we will use to
+    // init the keys.
+    ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
+
+    // Create the fw version of the symbol set.
+    const detail::ss_fw ss_fw(ss);
+
+    auto make_p_series = [&deg, &ss_fw, &ss, &tmp, &tss](const auto &n) {
+        using str_t = remove_cvref_t<decltype(n)>;
+
+        // Fetch a const reference to either the original
+        // std::string object n, or to a string temporary
+        // created from it.
+        const auto &s = [&n]() -> decltype(auto) {
+            if constexpr (::std::is_same_v<str_t, ::std::string>) {
+                return n;
+            } else {
+                return ::std::string(n);
+            }
+        }();
+
+        // Init the retval, assign the symbol set.
+        T retval;
+        retval.set_symbol_set_fw(ss_fw);
+
+        // Try to locate s within the symbol set.
+        const auto it = ss.find(s);
+        if (obake_unlikely(it == ss.end() || *it != s)) {
+            using namespace ::fmt::literals;
+
+            obake_throw(::std::invalid_argument,
+                        "Cannot create a power series with symbol set {} from the "
+                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+        }
+
+        // Set to 1 the exponent of the corresponding generator.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
+
+        // Create and add a new term.
+        // NOTE: at least for some monomial types (e.g., packed monomial),
+        // we will be computing the iterator difference when constructing from
+        // a range. Make sure we can safely represent the size of tmp via
+        // iterator difference.
+        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
+        retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
+
+        // Set the truncation.
+        ::obake::set_truncation(retval, deg, tss);
+
+        // Set back to zero the exponent that was previously set to 1.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
+
+        return retval;
+    };
+
+    return detail::make_array(make_p_series(names)...);
+}
+
+} // namespace detail
+
+// Power series creation functor, partial degree truncation.
+template <typename T>
+inline constexpr auto make_p_series_p
+    = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_p_impl<T>(args...));
 
 } // namespace obake
 
