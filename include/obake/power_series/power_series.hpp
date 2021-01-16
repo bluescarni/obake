@@ -21,6 +21,10 @@
 
 #include <boost/flyweight/flyweight.hpp>
 #include <boost/flyweight/hashed_factory.hpp>
+#include <boost/flyweight/serialize.hpp>
+#include <boost/serialization/split_free.hpp>
+#include <boost/serialization/tracking.hpp>
+#include <boost/serialization/utility.hpp>
 
 #include <fmt/format.h>
 
@@ -32,6 +36,7 @@
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/s11n.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -48,6 +53,10 @@ namespace detail
 // Struct to represent the absence
 // of truncation in a power series.
 struct no_truncation {
+    template <typename Archive>
+    void serialize(Archive &, unsigned)
+    {
+    }
 };
 
 // Need equality operator for use in the fw hashed container.
@@ -59,6 +68,111 @@ inline bool operator==(const no_truncation &, const no_truncation &)
 // The truncation state.
 template <typename T>
 using trunc_t = ::std::variant<no_truncation, T, ::std::pair<T, symbol_set>>;
+
+} // namespace detail
+
+} // namespace power_series
+
+} // namespace obake
+
+// Disable tracking for no_truncation.
+BOOST_CLASS_TRACKING(::obake::power_series::detail::no_truncation, ::boost::serialization::track_never)
+
+// Serialisation for trunc_t.
+// NOTE: trunc_t is a std::variant, perhaps in the future
+// Boost.serialization will provide an implementation.
+namespace boost::serialization
+{
+
+template <class Archive, typename T>
+inline void save(Archive &ar, const ::obake::power_series::detail::trunc_t<T> &t, unsigned)
+{
+    // Save the index.
+    ar << t.index();
+
+    // Save the value.
+    ::std::visit([&ar](const auto &v) { ar << v; }, t);
+}
+
+template <class Archive, typename T>
+inline void load(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsigned)
+{
+    // Fetch the index.
+    ::std::size_t idx;
+    ar >> idx;
+
+    // Fetch the value.
+    switch (idx) {
+        case 0u: {
+            ::obake::power_series::detail::no_truncation nt;
+            ar >> nt;
+            t = ::std::move(nt);
+
+            break;
+        }
+        case 1u: {
+            // NOTE: for the (partial) degree
+            // truncation case, we mimick the
+            // implementation of s11n for
+            // Boost.variant, which informs
+            // the archive that the deserialized
+            // object has been moved into the variant.
+            // We don't need this for no_truncation,
+            // as this extra step is needed only for
+            // object tracking, which is disabled for
+            // no_truncation.
+            T n;
+            ar >> n;
+            t = ::std::move(n);
+
+            ar.reset_object_address(&::std::get<1>(t), &n);
+
+            break;
+        }
+        case 2u: {
+            ::std::pair<T, ::obake::symbol_set> p;
+            ar >> p;
+            t = ::std::move(p);
+
+            ar.reset_object_address(&::std::get<2>(t), &p);
+
+            break;
+        }
+        // LCOV_EXCL_START
+        default: {
+            using namespace ::fmt::literals;
+
+            obake_throw(::std::invalid_argument, "The deserialisation of a truncation limit for a power"
+                                                 "series produced the invalid variant index {}"_format(idx));
+        }
+            // LCOV_EXCL_STOP
+    }
+}
+
+// NOTE: cannot use directly the split_free macro
+// due to the presence of the template.
+template <class Archive, typename T>
+inline void serialize(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsigned file_version)
+{
+    split_free(ar, t, file_version);
+}
+
+// Disable tracking for trunc_t.
+template <typename T>
+struct tracking_level<::obake::power_series::detail::trunc_t<T>>
+    : ::obake::detail::s11n_no_tracking<::obake::power_series::detail::trunc_t<T>> {
+};
+
+} // namespace boost::serialization
+
+namespace obake
+{
+
+namespace power_series
+{
+
+namespace detail
+{
 
 // Hasher for trunc_t.
 template <typename T>
@@ -99,24 +213,27 @@ using trunc_t_fw
     = ::boost::flyweight<trunc_t<T>, ::boost::flyweights::hashed_factory<trunc_t_hasher<T>, trunc_t_comparer<T>>,
                          ::obake::detail::fw_holder>;
 
-// NOTE: this helper returns a copy of a global thread-local
-// default-cted trunc_t_fw object. This is useful for fast
-// default construction of classes having trunc_t_fw
-// as a data member.
-template <typename T>
-inline trunc_t_fw<T> trunc_t_fw_default()
-{
-    static thread_local trunc_t_fw<T> ret{};
-
-    return ret;
-}
-
 } // namespace detail
 
+// The power series tag.
 template <typename T>
 struct tag {
-    detail::trunc_t_fw<T> trunc = detail::trunc_t_fw_default<T>();
+    detail::trunc_t_fw<T> trunc;
+
+    template <typename Archive>
+    void serialize(Archive &ar, unsigned)
+    {
+        ar &trunc;
+    }
 };
+
+// Implement equality for the tag, so that series'
+// equality operator can use it.
+template <typename T>
+inline bool operator==(const tag<T> &t0, const tag<T> &t1)
+{
+    return t0.trunc == t1.trunc;
+}
 
 // Stream operator for the tag.
 template <typename T>
@@ -341,7 +458,7 @@ inline constexpr auto set_truncation = []<typename K, typename C, typename... Ar
 
 // Unset truncation.
 inline constexpr auto unset_truncation = []<typename K, typename C>(p_series<K, C> &ps) -> p_series<K, C> & {
-    ps.tag().trunc = power_series::detail::trunc_t_fw_default<detail::psk_deg_t<K>>();
+    ps.tag().trunc = power_series::detail::trunc_t<detail::psk_deg_t<K>>();
 
     return ps;
 };

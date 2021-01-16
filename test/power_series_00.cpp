@@ -8,12 +8,16 @@
 
 #include <cstdint>
 #include <initializer_list>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
+
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 
 #include <obake/math/truncate_degree.hpp>
 #include <obake/math/truncate_p_degree.hpp>
@@ -315,4 +319,114 @@ TEST_CASE("explicit truncation")
     REQUIRE(!x.empty());
     obake::truncate(x);
     REQUIRE(x.empty());
+}
+
+// Test that the tag is taken into
+// account when comparing.
+TEST_CASE("comparison")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x] = make_p_series<ps_t>("x");
+
+    REQUIRE(x == x);
+    REQUIRE(!(x != x));
+
+    auto xt(x);
+
+    REQUIRE(x == xt);
+    REQUIRE(!(x != xt));
+    REQUIRE(xt == x);
+    REQUIRE(!(xt != x));
+
+    obake::set_truncation(xt, 3);
+
+    REQUIRE(!(x == xt));
+    REQUIRE(x != xt);
+    REQUIRE(!(xt == x));
+    REQUIRE(xt != x);
+
+    obake::set_truncation(xt, 3, symbol_set{"a", "b"});
+
+    REQUIRE(!(x == xt));
+    REQUIRE(x != xt);
+    REQUIRE(!(xt == x));
+    REQUIRE(xt != x);
+
+    obake::unset_truncation(xt);
+
+    REQUIRE(x == xt);
+    REQUIRE(!(x != xt));
+    REQUIRE(xt == x);
+    REQUIRE(!(xt != x));
+}
+
+TEST_CASE("s11n")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        std::stringstream oss;
+        {
+            boost::archive::binary_oarchive oa(oss);
+
+            oa << x;
+        }
+
+        x = make_p_series<ps_t>("y")[0];
+
+        {
+            boost::archive::binary_iarchive ia(oss);
+
+            ia >> x;
+        }
+
+        REQUIRE(x == make_p_series<ps_t>("x")[0]);
+    }
+
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        std::stringstream oss;
+        {
+            boost::archive::binary_oarchive oa(oss);
+
+            oa << x;
+        }
+
+        x = make_p_series_t<ps_t>(1, "y")[0];
+
+        {
+            boost::archive::binary_iarchive ia(oss);
+
+            ia >> x;
+        }
+
+        REQUIRE(x == make_p_series<ps_t>("x")[0]);
+    }
+
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        std::stringstream oss;
+        {
+            boost::archive::binary_oarchive oa(oss);
+
+            oa << x;
+        }
+
+        x = make_p_series_p<ps_t>(1, symbol_set{"a"}, "y")[0];
+
+        {
+            boost::archive::binary_iarchive ia(oss);
+
+            ia >> x;
+        }
+
+        REQUIRE(x == make_p_series<ps_t>("x")[0]);
+    }
 }
