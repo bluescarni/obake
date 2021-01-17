@@ -720,6 +720,11 @@ private:
 public:
     using size_type = typename table_type::size_type;
 
+    // NOTE: we use to have a faster way for initing the ss fw
+    // here, but I removed it because it seemed to create
+    // issues with serialization. Perhaps we can revisit
+    // in the future if it turns our that this is a hot spot.
+    // a47d39b81b1df9cd604fce910dc93ad043939c76
     series() : m_s_table(1), m_log2_size(0) {}
     series(const series &) = default;
     series(series &&other) noexcept
