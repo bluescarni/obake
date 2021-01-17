@@ -21,7 +21,6 @@
 
 #include <boost/flyweight/flyweight.hpp>
 #include <boost/flyweight/hashed_factory.hpp>
-#include <boost/flyweight/serialize.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/tracking.hpp>
 #include <boost/serialization/utility.hpp>
@@ -80,7 +79,11 @@ BOOST_CLASS_TRACKING(::obake::power_series::detail::no_truncation, ::boost::seri
 
 // Serialisation for trunc_t.
 // NOTE: trunc_t is a std::variant, perhaps in the future
-// Boost.serialization will provide an implementation.
+// Boost.serialization will provide an implementation. Note that
+// even if Boost eventually does provide an implementation, this
+// code will still be valid as we are specialising for a variant
+// containing our no_truncation class (thus these specialised
+// functions should be picked over the general-purpose implementation).
 namespace boost::serialization
 {
 
@@ -221,10 +224,31 @@ struct tag {
     detail::trunc_t_fw<T> trunc;
 
     template <typename Archive>
-    void serialize(Archive &ar, unsigned)
+    void save(Archive &ar, unsigned) const
     {
-        ar &trunc;
+        ar << trunc.get();
     }
+    template <typename Archive>
+    void load(Archive &ar, unsigned)
+    {
+        // NOTE: instead of using flyweight's
+        // s11n support, we go through a temporary
+        // trunc_t. The reason here is that
+        // fw's s11n support triggers a crash at
+        // program shutdown, seemingly related
+        // to some static init order issue. For now,
+        // let's just do it like this, even if it is
+        // suboptimal wrt archive size. Perhaps when
+        // this starts to matter we can revisit the
+        // issue.
+        // NOTE: no need to reset the object address,
+        // object tracking is disabled for trunc_t.
+        detail::trunc_t<T> tmp;
+        ar >> tmp;
+
+        trunc = tmp;
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 // Implement equality for the tag, so that series'
