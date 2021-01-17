@@ -22,7 +22,6 @@
 #include <boost/flyweight/flyweight.hpp>
 #include <boost/flyweight/hashed_factory.hpp>
 #include <boost/flyweight/refcounted.hpp>
-#include <boost/flyweight/serialize.hpp>
 #include <boost/flyweight/simple_locking.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/string.hpp>
@@ -151,6 +150,11 @@ inline symbol_idx_map<T> sm_intersect_idx(const symbol_map<T> &m, const symbol_s
 } // namespace obake
 
 // Serialisation for symbol_set.
+// NOTE: symbol_set is a flat_set, perhaps in the future
+// Boost.serialization will provide an implementation. Note that
+// even if Boost eventually does provide an implementation, this
+// code will still be valid as we are specialising more than the
+// general-purpose implementation.
 namespace boost::serialization
 {
 
@@ -204,18 +208,6 @@ struct OBAKE_DLL_PUBLIC ss_fw_hasher {
 
 // Definition of the symbol_set flyweight.
 using ss_fw = ::boost::flyweight<symbol_set, ::boost::flyweights::hashed_factory<ss_fw_hasher>, fw_holder>;
-
-// NOTE: this helper returns a copy of a global thread-local
-// ss_fw object constructed from an empty symbol_set. This is used, e.g.,
-// in the default constructor of series so that the construction
-// of the internal m_symbol_set is quick as it needs
-// to go through the fw machinery only once per thread.
-inline ss_fw ss_fw_default()
-{
-    static thread_local ss_fw ret{symbol_set{}};
-
-    return ret;
-}
 
 } // namespace obake::detail
 

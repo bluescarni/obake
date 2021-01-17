@@ -720,13 +720,7 @@ private:
 public:
     using size_type = typename table_type::size_type;
 
-    series()
-        : m_s_table(1), m_log2_size(0),
-          // NOTE: construct m_symbol_set cheaply from
-          // a global object constructed from symbol_set{}.
-          m_symbol_set(detail::ss_fw_default())
-    {
-    }
+    series() : m_s_table(1), m_log2_size(0) {}
     series(const series &) = default;
     series(series &&other) noexcept
         : m_s_table(::std::move(other.m_s_table)), m_log2_size(::std::move(other.m_log2_size)),
@@ -1395,12 +1389,8 @@ public:
     void clear() noexcept
     {
         clear_terms();
-
         m_tag = Tag{};
-
-        // NOTE: cheap assignment via a ss_fw
-        // constructed from a symbol_set{}.
-        m_symbol_set = detail::ss_fw_default();
+        m_symbol_set = detail::ss_fw{};
     }
 
 private:
@@ -1502,7 +1492,7 @@ private:
     {
         ar << m_log2_size;
         ar << m_tag;
-        ar << m_symbol_set;
+        ar << m_symbol_set.get();
 
         for (const auto &tab : m_s_table) {
             ar << tab.size();
@@ -1530,7 +1520,21 @@ private:
             ar >> m_tag;
 
             // Recover the symbol set.
-            ar >> m_symbol_set;
+            // NOTE: instead of using flyweight's
+            // s11n support, we go through a temporary
+            // symbol_set. The reason here is that
+            // fw's s11n support triggers a crash at
+            // program shutdown, seemingly related
+            // to some static init order issue. For now,
+            // let's just do it like this, even if it is
+            // suboptimal wrt archive size. Perhaps when
+            // this starts to matter we can revisit the
+            // issue.
+            // NOTE: no need to reset the object address,
+            // object tracking is disabled for symbol_set.
+            symbol_set tmp_ss;
+            ar >> tmp_ss;
+            m_symbol_set = tmp_ss;
 
             // Iterate over the tables, reading in
             // the keys/coefficients sequentially
