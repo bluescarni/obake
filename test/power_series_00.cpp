@@ -24,6 +24,7 @@
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -429,4 +430,46 @@ TEST_CASE("s11n")
 
         REQUIRE(x == make_p_series<ps_t>("x")[0]);
     }
+}
+
+// Make sure swapping is working as expected.
+TEST_CASE("swap")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    REQUIRE(std::is_nothrow_swappable_v<ps_t>);
+    REQUIRE(std::is_nothrow_swappable_v<remove_cvref_t<decltype(ps_t{}.tag())>>);
+
+    auto [x] = make_p_series<ps_t>("x");
+    auto [y] = make_p_series_t<ps_t>(10, "y");
+
+    using std::swap;
+
+    swap(x, y);
+
+    REQUIRE(x == make_p_series_t<ps_t>(10, "y")[0]);
+    REQUIRE(obake::get_truncation(x).index() == 1u);
+    REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
+    REQUIRE(x.get_symbol_set() == symbol_set{"y"});
+
+    REQUIRE(y == make_p_series<ps_t>("x")[0]);
+    REQUIRE(obake::get_truncation(y).index() == 0u);
+    REQUIRE(y.get_symbol_set() == symbol_set{"x"});
+}
+
+// Make sure clear() is working as expected.
+TEST_CASE("clear")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [y] = make_p_series_t<ps_t>(10, "y");
+    REQUIRE(obake::get_truncation(y).index() == 1u);
+
+    y.clear();
+
+    REQUIRE(y.empty());
+    REQUIRE(y.get_symbol_set() == symbol_set{});
+    REQUIRE(obake::get_truncation(y).index() == 0u);
 }

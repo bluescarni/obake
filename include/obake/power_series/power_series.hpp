@@ -259,6 +259,15 @@ inline bool operator==(const tag<T> &t0, const tag<T> &t1)
     return t0.trunc == t1.trunc;
 }
 
+// Implement the swap primitive for tag.
+template <typename T>
+inline void swap(tag<T> &t0, tag<T> &t1) noexcept
+{
+    using ::std::swap;
+
+    swap(t0.trunc, t1.trunc);
+}
+
 // Stream operator for the tag.
 template <typename T>
 inline ::std::ostream &operator<<(::std::ostream &os, const tag<T> &t)
