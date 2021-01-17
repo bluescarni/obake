@@ -12,14 +12,9 @@
 #include <initializer_list>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
-
-#if defined(OBAKE_HAVE_STRING_VIEW)
-
-#include <string_view>
-
-#endif
 
 #include <mp++/integer.hpp>
 
@@ -60,12 +55,10 @@ TEST_CASE("make_polynomials_test")
         REQUIRE(b.get_symbol_set() == symbol_set{"b"});
     }
 
-#if defined(OBAKE_HAVE_STRING_VIEW)
     {
         auto [a] = make_polynomials<poly_t>(std::string_view{"a"});
         REQUIRE(a.get_symbol_set() == symbol_set{"a"});
     }
-#endif
 
     {
         auto [a1] = make_polynomials<poly_t>(symbol_set{"a"}, "a");
@@ -79,7 +72,6 @@ TEST_CASE("make_polynomials_test")
         REQUIRE(c.get_symbol_set() == symbol_set{"a", "b", "c"});
     }
 
-#if defined(OBAKE_HAVE_STRING_VIEW)
     {
         auto [a1] = make_polynomials<poly_t>(symbol_set{"a"}, std::string_view{"a"});
         REQUIRE(a1.get_symbol_set() == symbol_set{"a"});
@@ -88,7 +80,6 @@ TEST_CASE("make_polynomials_test")
         REQUIRE(b.get_symbol_set() == symbol_set{"a", "b", "c"});
         REQUIRE(c.get_symbol_set() == symbol_set{"a", "b", "c"});
     }
-#endif
 
     OBAKE_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{"b"}, "a"), std::invalid_argument,
                                    "Cannot create a polynomial with symbol set {'b'} from the generator 'a': the "

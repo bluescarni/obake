@@ -15,15 +15,10 @@
 #include <iterator>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
-
-#if defined(OBAKE_HAVE_STRING_VIEW)
-
-#include <string_view>
-
-#endif
 
 namespace obake
 {
@@ -275,13 +270,9 @@ using is_string_like = ::std::disjunction<
     // Is it an array of chars?
     // NOTE: std::remove_cv_t does remove cv qualifiers from arrays.
     ::std::conjunction<::std::is_array<::std::remove_cv_t<T>>,
-                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>
-#if defined(OBAKE_HAVE_STRING_VIEW)
-    ,
+                       ::std::is_same<::std::remove_extent_t<::std::remove_cv_t<T>>, char>>,
     // Is it a string view?
-    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>
-#endif
-    >;
+    ::std::is_same<::std::remove_cv_t<T>, ::std::string_view>>;
 
 template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
