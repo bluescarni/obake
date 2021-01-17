@@ -43,6 +43,10 @@ struct fw_storage_map {
 
 // Helper to create on-demand the global
 // objects used in the flyweight machinery.
+// NOTE: perhaps it would be better to create
+// these as global variables in the anonymous
+// namespace, so that they get immediately
+// created upon loading the library.
 auto fw_statics()
 {
     // Need a storage dict and a mutex to synchronize the
