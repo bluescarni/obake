@@ -2039,17 +2039,12 @@ struct series_default_byte_size_impl {
         // the class size of all the tables. This is slightly incorrect,
         // since, if we only have a single table, its class size will be
         // included in sizeof(T) due to SBO, but it's just a small inaccuracy.
-        auto retval = sizeof(T) + x._get_s_table().size() * sizeof(table_t);
+        // NOTE: due to the use of the fw pattern, the size of the symbol
+        // set is just the size of a pointer, and it is included in sizeof(T).
+        const auto st_size = x._get_s_table().size();
+        auto retval = sizeof(T) + st_size * sizeof(table_t);
 
-        // Add some size for the symbols. This is not 100% accurate
-        // due to SBO in strings.
-        for (const auto &s : x.get_symbol_set()) {
-            // NOTE: s.size() gives the number of chars,
-            // thus it's a size in bytes.
-            retval += sizeof(::std::string) + s.size();
-        }
-
-        if (x._get_s_table().size() > 1u) {
+        if (st_size > 1u) {
             retval += ::tbb::parallel_reduce(
                 ::tbb::blocked_range(x._get_s_table().begin(), x._get_s_table().end()), ::std::size_t(0),
                 [](const auto &r, ::std::size_t init) {
@@ -2060,10 +2055,8 @@ struct series_default_byte_size_impl {
                     return init;
                 },
                 [](auto n1, auto n2) { return n1 + n2; });
-        } else {
-            for (const auto &tab : x._get_s_table()) {
-                retval += series_default_byte_size_impl::st_byte_size<T>(tab);
-            }
+        } else if (st_size != 0u) {
+            retval += series_default_byte_size_impl::st_byte_size<T>(x._get_s_table()[0]);
         }
 
         // Finally, add the contribution from the tag, if available.
