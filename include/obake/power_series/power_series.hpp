@@ -259,6 +259,12 @@ inline bool operator==(const tag<T> &t0, const tag<T> &t1)
     return t0.trunc == t1.trunc;
 }
 
+template <typename T>
+inline bool operator!=(const tag<T> &t0, const tag<T> &t1)
+{
+    return t0.trunc != t1.trunc;
+}
+
 // Implement the swap primitive for tag.
 template <typename T>
 inline void swap(tag<T> &t0, tag<T> &t1) noexcept
