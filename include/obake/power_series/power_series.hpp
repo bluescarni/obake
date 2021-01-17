@@ -268,6 +268,14 @@ inline void swap(tag<T> &t0, tag<T> &t1) noexcept
     swap(t0.trunc, t1.trunc);
 }
 
+// Implement the hash primitive for the tag.
+// NOTE: this is used in series' pow() caching machinery.
+template <typename T>
+inline ::std::size_t hash(const tag<T> &t)
+{
+    return detail::trunc_t_hasher<T>{}(t.trunc.get());
+}
+
 // Stream operator for the tag.
 template <typename T>
 inline ::std::ostream &operator<<(::std::ostream &os, const tag<T> &t)

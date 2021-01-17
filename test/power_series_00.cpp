@@ -16,9 +16,11 @@
 #include <utility>
 #include <variant>
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
+#include <obake/hash.hpp>
 #include <obake/math/truncate_degree.hpp>
 #include <obake/math/truncate_p_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
@@ -472,4 +474,73 @@ TEST_CASE("clear")
     REQUIRE(y.empty());
     REQUIRE(y.get_symbol_set() == symbol_set{});
     REQUIRE(obake::get_truncation(y).index() == 0u);
+}
+
+// Make sure hash() is working as expected.
+// TODO will need to do testing for pow caching,
+// once we have the multiplication.
+TEST_CASE("hash")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    REQUIRE(is_hashable_v<const remove_cvref_t<decltype(ps_t{}.tag())> &>);
+
+    auto [x, y] = make_p_series<ps_t>("x", "y");
+
+    REQUIRE(x.tag() == y.tag());
+    REQUIRE(::obake::hash(x.tag()) == ::obake::hash(y.tag()));
+
+    auto [a, b] = make_p_series_t<ps_t>(23, "x", "y");
+
+    REQUIRE(a.tag() == a.tag());
+    REQUIRE(::obake::hash(a.tag()) == ::obake::hash(a.tag()));
+
+    auto [s, t] = make_p_series_p<ps_t>(23, symbol_set{"a", "b"}, "x", "y");
+
+    REQUIRE(s.tag() == t.tag());
+    REQUIRE(::obake::hash(s.tag()) == ::obake::hash(t.tag()));
+
+    REQUIRE(x.tag() != a.tag());
+    REQUIRE(x.tag() != s.tag());
+    REQUIRE(a.tag() != s.tag());
+}
+
+TEST_CASE("stream operator")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        std::ostringstream oss;
+
+        auto [x] = make_p_series<ps_t>("x");
+
+        oss << x;
+
+        REQUIRE(boost::contains(oss.str(), "power series"));
+        REQUIRE(boost::contains(oss.str(), "Truncation: none"));
+    }
+
+    {
+        std::ostringstream oss;
+
+        auto [x] = make_p_series_t<ps_t>(10, "x");
+
+        oss << x;
+
+        REQUIRE(boost::contains(oss.str(), "power series"));
+        REQUIRE(boost::contains(oss.str(), "Truncation degree: 10"));
+    }
+
+    {
+        std::ostringstream oss;
+
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
+
+        oss << x;
+
+        REQUIRE(boost::contains(oss.str(), "power series"));
+        REQUIRE(boost::contains(oss.str(), "Partial truncation degree: 10, {'a'}"));
+    }
 }
