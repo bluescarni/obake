@@ -24,6 +24,7 @@
 #include <obake/math/truncate_degree.hpp>
 #include <obake/math/truncate_p_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
+#include <obake/polynomials/polynomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -542,5 +543,30 @@ TEST_CASE("stream operator")
 
         REQUIRE(boost::contains(oss.str(), "power series"));
         REQUIRE(boost::contains(oss.str(), "Partial truncation degree: 10, {'a'}"));
+    }
+}
+
+TEST_CASE("poly conversion")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+    using poly_t = polynomial<pm_t, double>;
+
+    {
+        auto [x] = make_p_series_t<ps_t>(symbol_set{"x", "y"}, 10, "x");
+
+        poly_t xp(x);
+
+        REQUIRE(xp == make_polynomials<poly_t>("x")[0]);
+        REQUIRE(xp.get_symbol_set() == symbol_set{"x", "y"});
+    }
+    {
+        auto [x] = make_polynomials<poly_t>(symbol_set{"x", "y"}, "x");
+
+        ps_t xp(x);
+
+        REQUIRE(xp == make_p_series<ps_t>("x")[0]);
+        REQUIRE(xp.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(obake::get_truncation(xp).index() == 0u);
     }
 }
