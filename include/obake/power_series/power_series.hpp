@@ -865,6 +865,105 @@ template <typename T>
 inline constexpr auto make_p_series_p
     = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_p_series_p_impl<T>(args...));
 
+namespace power_series
+{
+
+namespace detail
+{
+
+// Algorithm selection for power series addsub.
+template <bool AddOrSub, typename T, typename U>
+constexpr int ps_addsub_algo()
+{
+    // Fetch the algo/ret type from the default addsub implementation
+    // for series.
+    constexpr auto p = ::obake::detail::series_default_addsub_algorithm_impl<AddOrSub, T, U>();
+
+    if constexpr (p.first == 0) {
+        // addsub not supported.
+        return 0;
+    } else {
+        if constexpr (p.first < 3) {
+            // The ranks of T and U differ. In this situation, one of the
+            // operands becomes the coefficient of a term to be inserted
+            // in the retval. If the retval
+            // is a power series, we need to perform a truncation as the
+            // newly-inserted term may need to be removed. If the retval
+            // is not a power series, then it means that the power-series
+            // operand is inserted as-is into the retval: no truncation needed,
+            // and no point in invoking the addsub specialisation for power_series.
+            return any_p_series<typename decltype(p.second)::type> ? 1 : 0;
+        } else {
+            static_assert(p.first == 3);
+
+            // Both operands are series with the same rank, tag and key,
+            // possibly different coefficients. Since, in this function,
+            // we assume that at least one operand is a power series, then
+            // the other operand is also a power series with the same rank.
+            // We will then need to verify if the truncation matches
+            // in the specialised addsub implementation.
+            return 2;
+        }
+    }
+}
+
+// Implementation of addsub for power series.
+template <bool AddOrSub, typename T, typename U>
+inline auto ps_addsub_impl(T &&x, U &&y)
+{
+    constexpr auto algo = detail::ps_addsub_algo<AddOrSub, T &&, U &&>();
+
+    if constexpr (algo == 1) {
+        // The ranks of T and U differ, and the result is a power series.
+        // The result will be copy/move inited from one of x or y, and it will
+        // thus inherit the truncation level. We need to run an explicit truncation
+        // on the result because the newly-inserted term in ret may violate
+        // the truncation settings.
+
+        // NOTE: rather than doing a normal addsub and truncating later, perhaps
+        // it would be slightly better for performance to avoid the insertion
+        // altogether if it does not respect the truncation limit.
+
+        auto ret = ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y));
+        ::obake::truncate(ret);
+
+        return ret;
+    } else {
+        static_assert(algo == 2);
+
+        // T and U are both power series with the same rank/key, possibly
+        // different coefficients. We need to check that the truncation levels match
+        // and we need to assign the truncation level to the result.
+
+        if (obake_unlikely(x.tag() != y.tag())) {
+            throw ::std::invalid_argument("Unable to add two power series if their truncation levels do not match");
+        }
+
+        auto orig_tag = x.tag();
+
+        auto ret = ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y));
+
+        ret.tag() = ::std::move(orig_tag);
+
+        return ret;
+    }
+}
+
+} // namespace detail
+
+template <typename T, typename U>
+    requires
+    // At least one of the operands must be a power series.
+    (any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
+    // Check that we need the specialised addsub implementation
+    // for power series. Otherwise, the default series addsub will be used.
+    && (detail::ps_addsub_algo<true, T &&, U &&>() != 0) inline auto series_add(T &&x, U &&y)
+{
+    return detail::ps_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+} // namespace power_series
+
 } // namespace obake
 
 #endif

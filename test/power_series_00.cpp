@@ -570,3 +570,39 @@ TEST_CASE("poly conversion")
         REQUIRE(obake::get_truncation(xp).index() == 0u);
     }
 }
+
+// Test to check the tag is correctly preserved
+// when converting between p_series with different
+// coefficient types.
+TEST_CASE("tag preserve")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps1_t = p_series<pm_t, double>;
+    using ps2_t = p_series<pm_t, float>;
+
+    auto [x] = make_p_series_p<ps1_t>(symbol_set{"a", "x"}, 10, symbol_set{"x", "y"}, "x");
+
+    ps2_t x2(x);
+
+    REQUIRE(x2.get_symbol_set() == symbol_set{"a", "x"});
+    REQUIRE(x2.size() == 1);
+    REQUIRE(x2.begin()->first == pm_t{0, 1});
+    REQUIRE(x2.begin()->second == 1);
+    REQUIRE(get_truncation(x2).index() == 2u);
+    REQUIRE(x2.tag() == x.tag());
+}
+
+TEST_CASE("addsub")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x, y] = make_p_series<ps_t>("x", "y");
+
+    auto ret = x + y;
+
+    REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+    REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+    REQUIRE(ret.size() == 2u);
+    REQUIRE(get_truncation(ret).index() == 0u);
+}
