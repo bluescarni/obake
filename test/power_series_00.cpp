@@ -391,6 +391,7 @@ TEST_CASE("s11n")
         }
 
         REQUIRE(x == make_p_series<ps_t>("x")[0]);
+        REQUIRE(obake::get_truncation(x).index() == 0u);
     }
 
     {
@@ -433,6 +434,52 @@ TEST_CASE("s11n")
         }
 
         REQUIRE(x == make_p_series<ps_t>("x")[0]);
+    }
+
+    {
+        auto [x] = make_p_series_t<ps_t>(42, "x");
+
+        std::stringstream oss;
+        {
+            boost::archive::binary_oarchive oa(oss);
+
+            oa << x;
+        }
+
+        x = make_p_series_p<ps_t>(1, symbol_set{"a"}, "y")[0];
+
+        {
+            boost::archive::binary_iarchive ia(oss);
+
+            ia >> x;
+        }
+
+        REQUIRE(x == make_p_series_t<ps_t>(42, "x")[0]);
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 42);
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(42, symbol_set{"x"}, "x");
+
+        std::stringstream oss;
+        {
+            boost::archive::binary_oarchive oa(oss);
+
+            oa << x;
+        }
+
+        x = make_p_series_p<ps_t>(1, symbol_set{"a"}, "y")[0];
+
+        {
+            boost::archive::binary_iarchive ia(oss);
+
+            ia >> x;
+        }
+
+        REQUIRE(x == make_p_series_p<ps_t>(42, symbol_set{"x"}, "x")[0]);
+        REQUIRE(obake::get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(x)) == std::pair{42, symbol_set{"x"}});
     }
 }
 
