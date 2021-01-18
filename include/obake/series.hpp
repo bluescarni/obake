@@ -770,7 +770,8 @@ public:
             // Case 2: the series rank of T is equal to the series
             // rank of this series type, and the key types coincide.
             // Insert all terms from x into this, converting the coefficients.
-            // The tag will be default-constructed.
+            // The tag will be copied/moved if the tag types coincide, otherwise
+            // it will be default-constructed.
             // NOTE: the cf or tag must differ, because otherwise we would be
             // in a copy/move scenario.
             static_assert(!::std::is_same_v<series_cf_t<remove_cvref_t<T>>,
@@ -782,6 +783,14 @@ public:
 
             // Copy over the symbol set.
             m_symbol_set = x.get_symbol_set_fw();
+
+            if constexpr (::std::is_same_v<series_tag_t<remove_cvref_t<T>>, Tag>) {
+                // The tag types coincide, forward x's tag.
+                // NOTE: if x is an rvalue, the rref_clearer will reset
+                // x's tag exiting the scope, either as part of normal
+                // flow or after an exception.
+                m_tag = ::std::forward<T>(x).tag();
+            }
 
             // Set the number of segments.
             const auto x_log2_size = x.get_s_size();
@@ -1481,13 +1490,17 @@ public:
     }
 
     // Tag access.
-    Tag &tag()
+    Tag &tag() &
     {
         return m_tag;
     }
-    const Tag &tag() const
+    const Tag &tag() const &
     {
         return m_tag;
+    }
+    const Tag &&tag() &&
+    {
+        return ::std::move(m_tag);
     }
 
 private:
