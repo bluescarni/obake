@@ -936,13 +936,20 @@ inline auto ps_addsub_impl(T &&x, U &&y)
         // and we need to assign the truncation level to the result.
 
         if (obake_unlikely(x.tag() != y.tag())) {
-            throw ::std::invalid_argument("Unable to add two power series if their truncation levels do not match");
+            using namespace ::fmt::literals;
+
+            throw ::std::invalid_argument(
+                "Unable to {} two power series if their truncation levels do not match"_format(AddOrSub ? "add"
+                                                                                                        : "subtract"));
         }
 
+        // Store the original tag.
         auto orig_tag = x.tag();
 
+        // Perform the addsub.
         auto ret = ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y));
 
+        // Re-assign the original tag.
         ret.tag() = ::std::move(orig_tag);
 
         return ret;
@@ -955,11 +962,19 @@ template <typename T, typename U>
     requires
     // At least one of the operands must be a power series.
     (any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
-    // Check that we need the specialised addsub implementation
-    // for power series. Otherwise, the default series addsub will be used.
+    // Check that the specialised addsub implementation
+    // for power series is avaialable and appropriate.
+    // Otherwise, the default series addsub will be used.
     && (detail::ps_addsub_algo<true, T &&, U &&>() != 0) inline auto series_add(T &&x, U &&y)
 {
     return detail::ps_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+template <typename T, typename U>
+    requires(any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
+    && (detail::ps_addsub_algo<false, T &&, U &&>() != 0) inline auto series_sub(T &&x, U &&y)
+{
+    return detail::ps_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 } // namespace power_series

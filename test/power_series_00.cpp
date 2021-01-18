@@ -6,6 +6,7 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include <algorithm>
 #include <cstdint>
 #include <initializer_list>
 #include <sstream>
@@ -592,17 +593,228 @@ TEST_CASE("tag preserve")
     REQUIRE(x2.tag() == x.tag());
 }
 
-TEST_CASE("addsub")
+TEST_CASE("add")
 {
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
 
-    auto [x, y] = make_p_series<ps_t>("x", "y");
+    auto check_ret_00 = [](const auto &ret) {
+        REQUIRE(std::all_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+    };
 
-    auto ret = x + y;
+    {
+        auto [x, y] = make_p_series<ps_t>("x", "y");
 
-    REQUIRE(std::is_same_v<decltype(ret), ps_t>);
-    REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
-    REQUIRE(ret.size() == 2u);
-    REQUIRE(get_truncation(ret).index() == 0u);
+        auto ret = x + y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(get_truncation(ret).index() == 0u);
+        check_ret_00(ret);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
+
+        auto ret = x + y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        check_ret_00(ret);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x", "y");
+
+        auto ret = x + y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(get_truncation(ret).index() == 2u);
+        check_ret_00(ret);
+    }
+
+    // Conflicting truncation levels.
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x + y, std::invalid_argument,
+                                       "Unable to add two power series if their truncation levels do not match");
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x + y, std::invalid_argument,
+                                       "Unable to add two power series if their truncation levels do not match");
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_p<ps_t>(2, symbol_set{"a"}, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x + y, std::invalid_argument,
+                                       "Unable to add two power series if their truncation levels do not match");
+    }
+
+    // Tests with non-series operand.
+    auto check_ret_01 = []<typename T>(const T &ret) {
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(std::is_same_v<T, ps_t>);
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 3);
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(std::all_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1}; }));
+    };
+
+    using ps2_t = p_series<pm_t, float>;
+    {
+        auto [x] = make_p_series_t<ps2_t>(3, "x");
+
+        check_ret_01(x + 1.);
+        check_ret_01(1. + x);
+    }
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+
+        check_ret_01(x + 1);
+        check_ret_01(1 + x);
+    }
+    {
+        // Check with effective truncation.
+        auto [x] = make_p_series_t<ps2_t>(-1, "x");
+
+        REQUIRE(x.empty());
+        REQUIRE((x + 1.).empty());
+        REQUIRE((1. + x).empty());
+    }
+    {
+        auto [x] = make_p_series_t<ps_t>(-1, "x");
+
+        REQUIRE(x.empty());
+        REQUIRE((x + 1).empty());
+        REQUIRE((1 + x).empty());
+    }
+}
+
+TEST_CASE("sub")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto check_ret_00 = [](const auto &ret) {
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == -1; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+    };
+
+    {
+        auto [x, y] = make_p_series<ps_t>("x", "y");
+
+        auto ret = x - y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(get_truncation(ret).index() == 0u);
+        check_ret_00(ret);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
+
+        auto ret = x - y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        check_ret_00(ret);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x", "y");
+
+        auto ret = x - y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(get_truncation(ret).index() == 2u);
+        check_ret_00(ret);
+    }
+
+    // Conflicting truncation levels.
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x - y, std::invalid_argument,
+                                       "Unable to subtract two power series if their truncation levels do not match");
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x - y, std::invalid_argument,
+                                       "Unable to subtract two power series if their truncation levels do not match");
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_p<ps_t>(2, symbol_set{"a"}, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x - y, std::invalid_argument,
+                                       "Unable to subtract two power series if their truncation levels do not match");
+    }
+
+    // Tests with non-series operand.
+    auto check_ret_01 = []<typename T>(const T &ret) {
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(std::is_same_v<T, ps_t>);
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 3);
+        REQUIRE(ret.size() == 2u);
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == -1; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1}; }));
+    };
+
+    using ps2_t = p_series<pm_t, float>;
+    {
+        auto [x] = make_p_series_t<ps2_t>(3, "x");
+
+        check_ret_01(x - 1.);
+        check_ret_01(1. - x);
+    }
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+
+        check_ret_01(x - 1);
+        check_ret_01(1 - x);
+    }
+    {
+        // Check with effective truncation.
+        auto [x] = make_p_series_t<ps2_t>(-1, "x");
+
+        REQUIRE(x.empty());
+        REQUIRE((x - 1.).empty());
+        REQUIRE((1. - x).empty());
+    }
+    {
+        auto [x] = make_p_series_t<ps_t>(-1, "x");
+
+        REQUIRE(x.empty());
+        REQUIRE((x - 1).empty());
+        REQUIRE((1 - x).empty());
+    }
 }
