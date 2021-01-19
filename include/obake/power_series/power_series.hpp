@@ -1010,7 +1010,8 @@ constexpr int ps_in_place_addsub_algo()
             // T and U are power series with same key type and rank,
             // possibly different coefficient type.
             // We will then need to verify if the truncation matches
-            // in the specialised addsub implementation.
+            // in the specialised addsub implementation, and re-assign
+            // the truncation level after the operation has been performed.
             return 2;
         }
     }
@@ -1042,6 +1043,8 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
 
         // T and U are both power series with the same rank/key, possibly
         // different coefficients. We need to check that the truncation levels match.
+        // We also need to re-assign the tag as the retval may have been reconstructed
+        // from scratch if symbol set extension was required.
         if (obake_unlikely(x.tag() != y.tag())) {
             using namespace ::fmt::literals;
 
@@ -1049,9 +1052,15 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
                                           "their truncation levels do not match"_format(AddOrSub ? "add" : "subtract"));
         }
 
+        auto orig_tag = x.tag();
+
         // Perform the addsub.
-        return ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
-                                                                              ::std::forward<U>(y));
+        decltype(auto) ret = ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                            ::std::forward<U>(y));
+
+        x.tag() = orig_tag;
+
+        return ret;
     }
 }
 

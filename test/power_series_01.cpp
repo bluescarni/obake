@@ -8,27 +8,13 @@
 
 #include <algorithm>
 #include <cstdint>
-// #include <initializer_list>
-// #include <sstream>
 #include <stdexcept>
-// #include <string>
-// #include <tuple>
 #include <type_traits>
-// #include <utility>
-// #include <variant>
+#include <variant>
 
-// #include <boost/algorithm/string/predicate.hpp>
-// #include <boost/archive/binary_iarchive.hpp>
-// #include <boost/archive/binary_oarchive.hpp>
-
-// #include <obake/hash.hpp>
-// #include <obake/math/truncate_degree.hpp>
-// #include <obake/math/truncate_p_degree.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
-// #include <obake/polynomials/polynomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
-// #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -55,6 +41,7 @@ TEST_CASE("in place add")
         REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.second == 2.; }));
         REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{1}; }));
         REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{0}; }));
+        REQUIRE(obake::get_truncation(x).index() == 0u);
     }
 
     // Example with truncation.
@@ -64,6 +51,8 @@ TEST_CASE("in place add")
         REQUIRE(x.empty());
         x += 2.;
         REQUIRE(x.empty());
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == -1);
     }
 
     // Same-rank series.
@@ -80,6 +69,10 @@ TEST_CASE("in place add")
         REQUIRE(std::all_of(x.begin(), x.end(), [](const auto &t) { return t.second == 1.; }));
         REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
         REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+        // Check that the truncation level is perserved
+        // in the return value.
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
     }
 
     // Check incompatible truncation levels.
