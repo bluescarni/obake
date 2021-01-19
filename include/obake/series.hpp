@@ -268,12 +268,8 @@ using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
 template <typename T>
 inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL CvrSeries = is_cvr_series_v<T>;
-
-#endif
+concept CvrSeries = is_cvr_series_v<T>;
 
 namespace detail
 {
@@ -2011,13 +2007,8 @@ inline void negate(negate_t, T &&x)
 namespace customisation::internal
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-template <typename T>
-requires CvrSeries<T>
-#else
-template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
-    inline bool is_zero(is_zero_t, const T &x)
+template <typename K, typename C, typename Tag>
+inline bool is_zero(is_zero_t, const series<K, C, Tag> &x)
 {
     return x.empty();
 }
@@ -2187,6 +2178,19 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
 
 } // namespace detail
 
+// Customise obake::tex_stream_insert() for series types.
+namespace customisation::internal
+{
+
+template <typename K, typename C, typename Tag>
+requires tex_stream_insertable_key<const K &> &&tex_stream_insertable_cf<const C &> inline void
+tex_stream_insert(tex_stream_insert_t, ::std::ostream &os, const series<K, C, Tag> &x)
+{
+    ::obake::detail::series_stream_terms_impl<true>(os, x);
+}
+
+} // namespace customisation::internal
+
 // Customise obake::cf_stream_insert() for series types.
 namespace customisation::internal
 {
@@ -2220,54 +2224,19 @@ inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>
 namespace customisation::internal
 {
 
-// Metaprogramming to establish the algorithm
-// of the default cf_tex_stream_insert() implementation
-// for series types.
-template <typename T>
-constexpr auto series_default_cf_tex_stream_insert_algorithm_impl()
+template <typename K, typename C, typename Tag>
+requires tex_stream_insertable<const series<K, C, Tag> &> inline void
+cf_tex_stream_insert(cf_tex_stream_insert_t, ::std::ostream &os, const series<K, C, Tag> &x)
 {
-    if constexpr (!is_cvr_series_v<T>) {
-        // Not a series type.
-        return 0;
+    if (x.size() > 1u) {
+        // NOTE: if the series has more than 1 term, bracket it.
+        os << "\\left(";
+        ::obake::tex_stream_insert(os, x);
+        os << "\\right)";
     } else {
-        // The coefficient/key types of the series
-        // must be suitable for tex stream insertion
-        // (via const lvalue refs).
-        using rT = remove_cvref_t<T>;
-
-        return static_cast<int>(::std::conjunction_v<is_tex_stream_insertable_cf<const series_cf_t<rT> &>,
-                                                     is_tex_stream_insertable_key<const series_key_t<rT> &>>);
+        ::obake::tex_stream_insert(os, x);
     }
 }
-
-// Default implementation of cf_tex_stream_insert() for series types.
-struct series_default_cf_tex_stream_insert_impl {
-    // Shortcut.
-    template <typename T>
-    static constexpr auto algo = internal::series_default_cf_tex_stream_insert_algorithm_impl<T>();
-
-    template <typename T>
-    void operator()(::std::ostream &os, const T &x) const
-    {
-        if (x.size() > 1u) {
-            // NOTE: if the series has more than 1 term, bracket it.
-            os << "\\left(";
-            detail::series_stream_terms_impl<true>(os, x);
-            os << "\\right)";
-        } else {
-            detail::series_stream_terms_impl<true>(os, x);
-        }
-    }
-};
-
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_cf_tex_stream_insert_impl::algo<T> != 0) inline constexpr auto cf_tex_stream_insert<T>
-#else
-inline constexpr auto
-    cf_tex_stream_insert<T, ::std::enable_if_t<series_default_cf_tex_stream_insert_impl::algo<T> != 0>>
-#endif
-    = series_default_cf_tex_stream_insert_impl{};
 
 } // namespace customisation::internal
 
@@ -2348,34 +2317,6 @@ template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
 #endif
 constexpr auto operator<<(::std::ostream &os, S &&s)
     OBAKE_SS_FORWARD_FUNCTION((void(::obake::series_stream_insert(os, ::std::forward<S>(s))), os));
-
-// Customise obake::tex_stream_insert() for series types.
-namespace customisation::internal
-{
-
-// Default implementation of tex_stream_insert() for series types.
-struct series_default_tex_stream_insert_impl {
-    // NOTE: the requirements on T are the same as in the default implementation
-    // of cf_tex_stream_insert() for series, re-use them.
-    template <typename T>
-    static constexpr auto algo = series_default_cf_tex_stream_insert_impl::algo<T>;
-
-    template <typename T>
-    void operator()(::std::ostream &os, const T &x) const
-    {
-        detail::series_stream_terms_impl<true>(os, x);
-    }
-};
-
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_tex_stream_insert_impl::algo<T> != 0) inline constexpr auto tex_stream_insert<T>
-#else
-inline constexpr auto tex_stream_insert<T, ::std::enable_if_t<series_default_tex_stream_insert_impl::algo<T> != 0>>
-#endif
-    = series_default_tex_stream_insert_impl{};
-
-} // namespace customisation::internal
 
 namespace customisation
 {

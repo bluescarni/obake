@@ -12,7 +12,6 @@
 #include <type_traits>
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
-#include <obake/config.hpp>
 #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
@@ -63,52 +62,28 @@ struct int_si01 {
 namespace obake::customisation
 {
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si00> inline constexpr auto cf_tex_stream_insert<T>
-#else
-inline constexpr auto cf_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
-#endif
-    = [](std::ostream &, auto &&) constexpr noexcept
+constexpr auto cf_tex_stream_insert(cf_tex_stream_insert_t, std::ostream &, const ext_si00 &)
 {
     return true;
-};
+}
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si01> inline constexpr auto cf_tex_stream_insert<T>
-#else
-inline constexpr auto cf_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
-#endif
-    = [](std::ostream &, auto &) constexpr noexcept
+constexpr auto cf_tex_stream_insert(cf_tex_stream_insert_t, std::ostream &, ext_si01 &)
 {
     return true;
-};
+}
 
 namespace internal
 {
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int_si00> inline constexpr auto cf_tex_stream_insert<T>
-#else
-inline constexpr auto cf_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si00>>>
-#endif
-    = [](std::ostream &, auto &&) constexpr noexcept
+constexpr auto cf_tex_stream_insert(cf_tex_stream_insert_t, std::ostream &, const int_si00 &)
 {
     return true;
-};
+}
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int_si01> inline constexpr auto cf_tex_stream_insert<T>
-#else
-inline constexpr auto cf_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si01>>>
-#endif
-    = [](std::ostream &, auto &) constexpr noexcept
+constexpr auto cf_tex_stream_insert(cf_tex_stream_insert_t, std::ostream &, int_si01 &)
 {
     return true;
-};
+}
 
 } // namespace internal
 
@@ -160,7 +135,7 @@ TEST_CASE("cf_tex_stream_insert_test")
 
     REQUIRE(!is_tex_stream_insertable_cf_v<ext_si01>);
     REQUIRE(is_tex_stream_insertable_cf_v<ext_si01 &>);
-    REQUIRE(is_tex_stream_insertable_cf_v<const ext_si01 &>);
+    REQUIRE(!is_tex_stream_insertable_cf_v<const ext_si01 &>);
     REQUIRE(!is_tex_stream_insertable_cf_v<ext_si01 &&>);
 
     REQUIRE(is_tex_stream_insertable_cf_v<int_si00>);
@@ -170,57 +145,55 @@ TEST_CASE("cf_tex_stream_insert_test")
 
     REQUIRE(!is_tex_stream_insertable_cf_v<int_si01>);
     REQUIRE(is_tex_stream_insertable_cf_v<int_si01 &>);
-    REQUIRE(is_tex_stream_insertable_cf_v<const int_si01 &>);
+    REQUIRE(!is_tex_stream_insertable_cf_v<const int_si01 &>);
     REQUIRE(!is_tex_stream_insertable_cf_v<int_si01 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!TexStreamInsertableCf<void>);
+    REQUIRE(!tex_stream_insertable_cf<void>);
 
-    REQUIRE(TexStreamInsertableCf<int>);
-    REQUIRE(TexStreamInsertableCf<int &>);
-    REQUIRE(TexStreamInsertableCf<const int &>);
-    REQUIRE(TexStreamInsertableCf<std::string>);
-    REQUIRE(TexStreamInsertableCf<std::string &>);
-    REQUIRE(TexStreamInsertableCf<const std::string &>);
+    REQUIRE(tex_stream_insertable_cf<int>);
+    REQUIRE(tex_stream_insertable_cf<int &>);
+    REQUIRE(tex_stream_insertable_cf<const int &>);
+    REQUIRE(tex_stream_insertable_cf<std::string>);
+    REQUIRE(tex_stream_insertable_cf<std::string &>);
+    REQUIRE(tex_stream_insertable_cf<const std::string &>);
 
-    REQUIRE(TexStreamInsertableCf<ns::si00>);
-    REQUIRE(TexStreamInsertableCf<ns::si00 &>);
-    REQUIRE(TexStreamInsertableCf<const ns::si00 &>);
-    REQUIRE(TexStreamInsertableCf<ns::si00 &&>);
+    REQUIRE(tex_stream_insertable_cf<ns::si00>);
+    REQUIRE(tex_stream_insertable_cf<ns::si00 &>);
+    REQUIRE(tex_stream_insertable_cf<const ns::si00 &>);
+    REQUIRE(tex_stream_insertable_cf<ns::si00 &&>);
 
-    REQUIRE(TexStreamInsertableCf<ns::si00a>);
-    REQUIRE(TexStreamInsertableCf<ns::si00a &>);
-    REQUIRE(TexStreamInsertableCf<const ns::si00a &>);
-    REQUIRE(TexStreamInsertableCf<ns::si00a &&>);
+    REQUIRE(tex_stream_insertable_cf<ns::si00a>);
+    REQUIRE(tex_stream_insertable_cf<ns::si00a &>);
+    REQUIRE(tex_stream_insertable_cf<const ns::si00a &>);
+    REQUIRE(tex_stream_insertable_cf<ns::si00a &&>);
 
-    REQUIRE(!TexStreamInsertableCf<ns::si01>);
-    REQUIRE(TexStreamInsertableCf<ns::si01 &>);
-    REQUIRE(!TexStreamInsertableCf<const ns::si01 &>);
-    REQUIRE(!TexStreamInsertableCf<ns::si01 &&>);
+    REQUIRE(!tex_stream_insertable_cf<ns::si01>);
+    REQUIRE(tex_stream_insertable_cf<ns::si01 &>);
+    REQUIRE(!tex_stream_insertable_cf<const ns::si01 &>);
+    REQUIRE(!tex_stream_insertable_cf<ns::si01 &&>);
 
-    REQUIRE(!TexStreamInsertableCf<ns::nsi00>);
-    REQUIRE(!TexStreamInsertableCf<ns::nsi00 &>);
-    REQUIRE(!TexStreamInsertableCf<const ns::nsi00 &>);
-    REQUIRE(!TexStreamInsertableCf<ns::nsi00 &&>);
+    REQUIRE(!tex_stream_insertable_cf<ns::nsi00>);
+    REQUIRE(!tex_stream_insertable_cf<ns::nsi00 &>);
+    REQUIRE(!tex_stream_insertable_cf<const ns::nsi00 &>);
+    REQUIRE(!tex_stream_insertable_cf<ns::nsi00 &&>);
 
-    REQUIRE(TexStreamInsertableCf<ext_si00>);
-    REQUIRE(TexStreamInsertableCf<ext_si00 &>);
-    REQUIRE(TexStreamInsertableCf<const ext_si00 &>);
-    REQUIRE(TexStreamInsertableCf<ext_si00 &&>);
+    REQUIRE(tex_stream_insertable_cf<ext_si00>);
+    REQUIRE(tex_stream_insertable_cf<ext_si00 &>);
+    REQUIRE(tex_stream_insertable_cf<const ext_si00 &>);
+    REQUIRE(tex_stream_insertable_cf<ext_si00 &&>);
 
-    REQUIRE(!TexStreamInsertableCf<ext_si01>);
-    REQUIRE(TexStreamInsertableCf<ext_si01 &>);
-    REQUIRE(TexStreamInsertableCf<const ext_si01 &>);
-    REQUIRE(!TexStreamInsertableCf<ext_si01 &&>);
+    REQUIRE(!tex_stream_insertable_cf<ext_si01>);
+    REQUIRE(tex_stream_insertable_cf<ext_si01 &>);
+    REQUIRE(!tex_stream_insertable_cf<const ext_si01 &>);
+    REQUIRE(!tex_stream_insertable_cf<ext_si01 &&>);
 
-    REQUIRE(TexStreamInsertableCf<int_si00>);
-    REQUIRE(TexStreamInsertableCf<int_si00 &>);
-    REQUIRE(TexStreamInsertableCf<const int_si00 &>);
-    REQUIRE(TexStreamInsertableCf<int_si00 &&>);
+    REQUIRE(tex_stream_insertable_cf<int_si00>);
+    REQUIRE(tex_stream_insertable_cf<int_si00 &>);
+    REQUIRE(tex_stream_insertable_cf<const int_si00 &>);
+    REQUIRE(tex_stream_insertable_cf<int_si00 &&>);
 
-    REQUIRE(!TexStreamInsertableCf<int_si01>);
-    REQUIRE(TexStreamInsertableCf<int_si01 &>);
-    REQUIRE(TexStreamInsertableCf<const int_si01 &>);
-    REQUIRE(!TexStreamInsertableCf<int_si01 &&>);
-#endif
+    REQUIRE(!tex_stream_insertable_cf<int_si01>);
+    REQUIRE(tex_stream_insertable_cf<int_si01 &>);
+    REQUIRE(!tex_stream_insertable_cf<const int_si01 &>);
+    REQUIRE(!tex_stream_insertable_cf<int_si01 &&>);
 }
