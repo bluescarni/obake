@@ -17,7 +17,6 @@
 #include <mp++/rational.hpp>
 
 #include <obake/config.hpp>
-#include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/visibility.hpp>
