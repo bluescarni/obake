@@ -977,6 +977,115 @@ template <typename T, typename U>
     return detail::ps_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
+namespace detail
+{
+
+// Algorithm selection for in-place power series addsub.
+template <bool AddOrSub, typename T, typename U>
+constexpr int ps_in_place_addsub_algo()
+{
+    // Fetch the algo/ret type from the default in-place addsub
+    // implementation for series.
+    constexpr auto p = ::obake::detail::series_default_in_place_addsub_algorithm_impl<AddOrSub, T, U>();
+
+    if constexpr (p.first == 0) {
+        // addsub not supported.
+        return 0;
+    } else {
+        if constexpr (p.first == 1) {
+            // T is a power series with a rank
+            // less than U. In this case, the default series addsub
+            // implementation delegates to the binary operator,
+            // thus here we return 0 as there's no reason to use
+            // a specialised primitive.
+            return 0;
+        } else if constexpr (p.first == 2) {
+            // T is a power series with a rank greater
+            // than U. In this case, U ends up being
+            // inserted in T and we need to truncate.
+            return 1;
+        } else {
+            static_assert(p.first == 3);
+
+            // T and U are power series with same key type and rank,
+            // possibly different coefficient type.
+            // We will then need to verify if the truncation matches
+            // in the specialised addsub implementation.
+            return 2;
+        }
+    }
+}
+
+// Implementation of in-place addsub for power series.
+template <bool AddOrSub, typename T, typename U>
+inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
+{
+    constexpr auto algo = detail::ps_in_place_addsub_algo<AddOrSub, T &&, U &&>();
+
+    if constexpr (algo == 1) {
+        // T is a power series with a rank greater
+        // than U. In this case, U ends up being
+        // inserted in T and we need to truncate.
+
+        // NOTE: rather than doing a normal addsub and truncating later, perhaps
+        // it would be slightly better for performance to avoid the insertion
+        // altogether if it does not respect the truncation limit.
+
+        decltype(auto) ret = ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                            ::std::forward<U>(y));
+
+        ::obake::truncate(x);
+
+        return ret;
+    } else {
+        static_assert(algo == 2);
+
+        // T and U are both power series with the same rank/key, possibly
+        // different coefficients. We need to check that the truncation levels match.
+        if (obake_unlikely(x.tag() != y.tag())) {
+            using namespace ::fmt::literals;
+
+            throw ::std::invalid_argument("Unable to {} two power series in place if "
+                                          "their truncation levels do not match"_format(AddOrSub ? "add" : "subtract"));
+        }
+
+        // Perform the addsub.
+        return ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                              ::std::forward<U>(y));
+    }
+}
+
+} // namespace detail
+
+template <typename T, typename U>
+    requires
+    // T must be a power series.
+    // NOTE: if T is not a power series and U is,
+    // then there are the following possibilities:
+    // - rank_T < rank_U -> this delegates to the binary
+    //   operator, does not need special casing,
+    // - rank_T > rank_U -> this inserts U into T, which
+    //   is not a power series, no special casing needed.
+    // - rank_T == rank_U -> this is not possible because
+    //   T is not a power series, thus its tag differs from U's
+    //   which disables the default implementation.
+    any_p_series<remove_cvref_t<T>>
+    // Check that the specialised addsub implementation
+    // for power series is avaialable and appropriate.
+    // Otherwise, the default series addsub will be used.
+    && (detail::ps_in_place_addsub_algo<true, T &&, U &&>() != 0) inline decltype(auto)
+        series_in_place_add(T &&x, U &&y)
+{
+    return detail::ps_in_place_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+template <typename T, typename U>
+    requires any_p_series<remove_cvref_t<
+        T>> && (detail::ps_in_place_addsub_algo<false, T &&, U &&>() != 0) inline decltype(auto) series_in_place_sub(T &&x, U &&y)
+{
+    return detail::ps_in_place_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
 } // namespace power_series
 
 } // namespace obake

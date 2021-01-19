@@ -96,6 +96,7 @@ ADD_OBAKE_TESTCASE(stacktrace)
 ADD_OBAKE_TESTCASE(type_name)
 ADD_OBAKE_TESTCASE(xoroshiro128_plus)
 ADD_OBAKE_TESTCASE(power_series_00)
+ADD_OBAKE_TESTCASE(power_series_01)
 
 add_library(ss_fw_test_lib SHARED ss_fw_test_lib.cpp)
 target_compile_options(ss_fw_test_lib PRIVATE

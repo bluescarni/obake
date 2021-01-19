@@ -3075,19 +3075,6 @@ constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct series_in_place_add_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
-            detail::series_in_place_add_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
-};
-
-inline constexpr auto series_in_place_add = series_in_place_add_msvc{};
-
-#else
-
 // NOTE: explicitly cast the result of the implementation
 // to an lvalue reference to the type of x, so that
 // we disable the implementation if such conversion is
@@ -3101,8 +3088,6 @@ inline constexpr auto series_in_place_add = series_in_place_add_msvc{};
 inline constexpr auto series_in_place_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_in_place_add_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
-
-#endif
 
 // NOTE: handle separately the two cases
 // series lhs vs non-series lhs.
