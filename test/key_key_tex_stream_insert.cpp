@@ -11,7 +11,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_tex_stream_insert.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -71,49 +70,25 @@ struct ext_nsi00 {
 namespace obake::customisation
 {
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si00> inline constexpr auto key_tex_stream_insert<T>
-#else
-inline constexpr auto key_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
-#endif
-    = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
+constexpr auto key_tex_stream_insert(key_tex_stream_insert_t, std::ostream &, const ext_si00 &, const symbol_set &)
 {
     return true;
-};
+}
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si01> inline constexpr auto key_tex_stream_insert<T>
-#else
-inline constexpr auto key_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
-#endif
-    = [](std::ostream &, auto &, const symbol_set &) constexpr noexcept
+constexpr auto key_tex_stream_insert(key_tex_stream_insert_t, std::ostream &, ext_si01 &, const symbol_set &)
 {
     return true;
-};
+}
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nsi00> inline constexpr auto key_tex_stream_insert<T>
-#else
-inline constexpr auto key_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_nsi00>>>
-#endif
-    = [](std::ostream &, auto &&, symbol_set &) constexpr noexcept
-{
-    return std::string{};
-};
-
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ns::nsi01> inline constexpr auto key_tex_stream_insert<T>
-#else
-inline constexpr auto key_tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::nsi01>>>
-#endif
-    = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
+constexpr auto key_tex_stream_insert(key_tex_stream_insert_t, std::ostream &, const ext_nsi00 &, symbol_set &)
 {
     return true;
-};
+}
+
+constexpr auto key_tex_stream_insert(key_tex_stream_insert_t, std::ostream &, const ns::nsi01 &, const symbol_set &)
+{
+    return true;
+}
 
 } // namespace obake::customisation
 
@@ -164,7 +139,7 @@ TEST_CASE("key_tex_stream_insert_test")
 
     REQUIRE(!is_tex_stream_insertable_key_v<ext_si01>);
     REQUIRE(is_tex_stream_insertable_key_v<ext_si01 &>);
-    REQUIRE(is_tex_stream_insertable_key_v<const ext_si01 &>);
+    REQUIRE(!is_tex_stream_insertable_key_v<const ext_si01 &>);
     REQUIRE(!is_tex_stream_insertable_key_v<ext_si01 &&>);
 
     REQUIRE(!is_tex_stream_insertable_key_v<ext_nsi00>);
@@ -172,50 +147,48 @@ TEST_CASE("key_tex_stream_insert_test")
     REQUIRE(!is_tex_stream_insertable_key_v<const ext_nsi00 &>);
     REQUIRE(!is_tex_stream_insertable_key_v<ext_nsi00 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!TexStreamInsertableKey<void>);
+    REQUIRE(!tex_stream_insertable_key<void>);
 
-    REQUIRE(!TexStreamInsertableKey<int>);
-    REQUIRE(!TexStreamInsertableKey<std::string>);
+    REQUIRE(!tex_stream_insertable_key<int>);
+    REQUIRE(!tex_stream_insertable_key<std::string>);
 
-    REQUIRE(TexStreamInsertableKey<ns::si00>);
-    REQUIRE(TexStreamInsertableKey<ns::si00 &>);
-    REQUIRE(TexStreamInsertableKey<const ns::si00 &>);
-    REQUIRE(TexStreamInsertableKey<ns::si00 &&>);
+    REQUIRE(tex_stream_insertable_key<ns::si00>);
+    REQUIRE(tex_stream_insertable_key<ns::si00 &>);
+    REQUIRE(tex_stream_insertable_key<const ns::si00 &>);
+    REQUIRE(tex_stream_insertable_key<ns::si00 &&>);
 
-    REQUIRE(TexStreamInsertableKey<ns::si00a>);
-    REQUIRE(TexStreamInsertableKey<ns::si00a &>);
-    REQUIRE(TexStreamInsertableKey<const ns::si00a &>);
-    REQUIRE(TexStreamInsertableKey<ns::si00a &&>);
+    REQUIRE(tex_stream_insertable_key<ns::si00a>);
+    REQUIRE(tex_stream_insertable_key<ns::si00a &>);
+    REQUIRE(tex_stream_insertable_key<const ns::si00a &>);
+    REQUIRE(tex_stream_insertable_key<ns::si00a &&>);
 
-    REQUIRE(!TexStreamInsertableKey<ns::si01>);
-    REQUIRE(TexStreamInsertableKey<ns::si01 &>);
-    REQUIRE(!TexStreamInsertableKey<const ns::si01 &>);
-    REQUIRE(!TexStreamInsertableKey<ns::si01 &&>);
+    REQUIRE(!tex_stream_insertable_key<ns::si01>);
+    REQUIRE(tex_stream_insertable_key<ns::si01 &>);
+    REQUIRE(!tex_stream_insertable_key<const ns::si01 &>);
+    REQUIRE(!tex_stream_insertable_key<ns::si01 &&>);
 
-    REQUIRE(!TexStreamInsertableKey<ns::nsi00>);
-    REQUIRE(!TexStreamInsertableKey<ns::nsi00 &>);
-    REQUIRE(!TexStreamInsertableKey<const ns::nsi00 &>);
-    REQUIRE(!TexStreamInsertableKey<ns::nsi00 &&>);
+    REQUIRE(!tex_stream_insertable_key<ns::nsi00>);
+    REQUIRE(!tex_stream_insertable_key<ns::nsi00 &>);
+    REQUIRE(!tex_stream_insertable_key<const ns::nsi00 &>);
+    REQUIRE(!tex_stream_insertable_key<ns::nsi00 &&>);
 
-    REQUIRE(TexStreamInsertableKey<ns::nsi01>);
-    REQUIRE(TexStreamInsertableKey<ns::nsi01 &>);
-    REQUIRE(TexStreamInsertableKey<const ns::nsi01 &>);
-    REQUIRE(TexStreamInsertableKey<ns::nsi01 &&>);
+    REQUIRE(tex_stream_insertable_key<ns::nsi01>);
+    REQUIRE(tex_stream_insertable_key<ns::nsi01 &>);
+    REQUIRE(tex_stream_insertable_key<const ns::nsi01 &>);
+    REQUIRE(tex_stream_insertable_key<ns::nsi01 &&>);
 
-    REQUIRE(TexStreamInsertableKey<ext_si00>);
-    REQUIRE(TexStreamInsertableKey<ext_si00 &>);
-    REQUIRE(TexStreamInsertableKey<const ext_si00 &>);
-    REQUIRE(TexStreamInsertableKey<ext_si00 &&>);
+    REQUIRE(tex_stream_insertable_key<ext_si00>);
+    REQUIRE(tex_stream_insertable_key<ext_si00 &>);
+    REQUIRE(tex_stream_insertable_key<const ext_si00 &>);
+    REQUIRE(tex_stream_insertable_key<ext_si00 &&>);
 
-    REQUIRE(!TexStreamInsertableKey<ext_si01>);
-    REQUIRE(TexStreamInsertableKey<ext_si01 &>);
-    REQUIRE(TexStreamInsertableKey<const ext_si01 &>);
-    REQUIRE(!TexStreamInsertableKey<ext_si01 &&>);
+    REQUIRE(!tex_stream_insertable_key<ext_si01>);
+    REQUIRE(tex_stream_insertable_key<ext_si01 &>);
+    REQUIRE(!tex_stream_insertable_key<const ext_si01 &>);
+    REQUIRE(!tex_stream_insertable_key<ext_si01 &&>);
 
-    REQUIRE(!TexStreamInsertableKey<ext_nsi00>);
-    REQUIRE(!TexStreamInsertableKey<ext_nsi00 &>);
-    REQUIRE(!TexStreamInsertableKey<const ext_nsi00 &>);
-    REQUIRE(!TexStreamInsertableKey<ext_nsi00 &&>);
-#endif
+    REQUIRE(!tex_stream_insertable_key<ext_nsi00>);
+    REQUIRE(!tex_stream_insertable_key<ext_nsi00 &>);
+    REQUIRE(!tex_stream_insertable_key<const ext_nsi00 &>);
+    REQUIRE(!tex_stream_insertable_key<ext_nsi00 &&>);
 }

@@ -21,7 +21,6 @@
 
 #endif
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -86,25 +85,10 @@ constexpr auto is_zero_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct is_zero_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::is_zero_impl(::std::forward<T>(x),
-                                                                                detail::priority_tag<3>{})))
-};
-
-inline constexpr auto is_zero = is_zero_msvc{};
-
-#else
-
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
-inline constexpr auto is_zero = [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(
-    static_cast<bool>(detail::is_zero_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})));
-
-#endif
+inline constexpr auto is_zero = []<typename T>(T && x)
+    OBAKE_SS_FORWARD_LAMBDA(static_cast<bool>(detail::is_zero_impl(::std::forward<T>(x), detail::priority_tag<3>{})));
 
 namespace detail
 {
@@ -120,15 +104,11 @@ using is_zero_testable = is_detected<detail::is_zero_t, T>;
 template <typename T>
 inline constexpr bool is_zero_testable_v = is_zero_testable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL ZeroTestable = requires(T &&x)
+concept ZeroTestable = requires(T &&x)
 {
     ::obake::is_zero(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

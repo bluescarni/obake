@@ -17,7 +17,6 @@
 #include <mp++/rational.hpp>
 
 #include <obake/config.hpp>
-#include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/visibility.hpp>
@@ -30,25 +29,15 @@ namespace customisation
 {
 
 // External customisation point for obake::tex_stream_insert().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto tex_stream_insert = not_implemented;
+struct tex_stream_insert_t {
+};
 
 namespace internal
 {
 
 // Internal customisation point for obake::tex_stream_insert().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
-inline constexpr auto tex_stream_insert = not_implemented;
+struct tex_stream_insert_t {
+};
 
 } // namespace internal
 
@@ -90,7 +79,7 @@ inline void tex_stream_insert(::std::ostream &os, const ::mppp::rational<SSize> 
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T>
 constexpr auto tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<3>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::tex_stream_insert<T &&>)(os, ::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(tex_stream_insert(customisation::tex_stream_insert_t{}, os, ::std::forward<T>(x)));
 
 // Unqualified function call implementation.
 template <typename T>
@@ -100,7 +89,8 @@ constexpr auto tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<2>
 // Explicit override in the internal customisation namespace.
 template <typename T>
 constexpr auto tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<1>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::internal::tex_stream_insert<T &&>)(os, ::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(tex_stream_insert(customisation::internal::tex_stream_insert_t{}, os,
+                                                ::std::forward<T>(x)));
 
 // Default implementation: just do a plain stream insertion.
 template <typename T>
@@ -109,26 +99,11 @@ constexpr auto tex_stream_insert_impl(::std::ostream &os, T &&x, priority_tag<0>
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct tex_stream_insert_msvc {
-    template <typename T>
-    constexpr auto operator()(::std::ostream &os, T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::tex_stream_insert_impl(os, ::std::forward<T>(x),
-                                                                             detail::priority_tag<3>{})))
-};
-
-inline constexpr auto tex_stream_insert = tex_stream_insert_msvc{};
-
-#else
-
 // NOTE: perhaps here, and in the other stream insertion functions,
 // it would be more ergonomic to return a reference to os. Let's keep
 // it in mind for the future.
-inline constexpr auto tex_stream_insert = [](::std::ostream & os, auto &&x) OBAKE_SS_FORWARD_LAMBDA(
-    void(detail::tex_stream_insert_impl(os, ::std::forward<decltype(x)>(x), detail::priority_tag<3>{})));
-
-#endif
+inline constexpr auto tex_stream_insert = []<typename T>(::std::ostream & os, T &&x)
+    OBAKE_SS_FORWARD_LAMBDA(void(detail::tex_stream_insert_impl(os, ::std::forward<T>(x), detail::priority_tag<3>{})));
 
 namespace detail
 {
@@ -145,15 +120,11 @@ using is_tex_stream_insertable = is_detected<detail::tex_stream_insert_t, T>;
 template <typename T>
 inline constexpr bool is_tex_stream_insertable_v = is_tex_stream_insertable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL TexStreamInsertable = requires(::std::ostream &os, T &&x)
+concept tex_stream_insertable = requires(::std::ostream &os, T &&x)
 {
     ::obake::tex_stream_insert(os, ::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 
