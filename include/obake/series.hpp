@@ -271,9 +271,6 @@ inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
 template <typename T>
 concept CvrSeries = is_cvr_series_v<T>;
 
-template <typename T>
-concept any_series = detail::is_series_impl<T>::value;
-
 namespace detail
 {
 
@@ -1992,8 +1989,8 @@ inline void negate(negate_t, T &&x)
 namespace customisation::internal
 {
 
-template <typename T>
-requires CvrSeries<T> inline bool is_zero(is_zero_t, const T &x)
+template <typename K, typename C, typename Tag>
+inline bool is_zero(is_zero_t, const series<K, C, Tag> &x)
 {
     return x.empty();
 }
