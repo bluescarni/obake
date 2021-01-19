@@ -56,52 +56,28 @@ struct int_si01 {
 namespace obake::customisation
 {
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si00> inline constexpr auto tex_stream_insert<T>
-#else
-inline constexpr auto tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
-#endif
-    = [](std::ostream &, auto &&) constexpr noexcept
+bool tex_stream_insert(tex_stream_insert_t, std::ostream &, const ext_si00 &)
 {
     return true;
-};
+}
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si01> inline constexpr auto tex_stream_insert<T>
-#else
-inline constexpr auto tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
-#endif
-    = [](std::ostream &, auto &) constexpr noexcept
+constexpr bool tex_stream_insert(tex_stream_insert_t, std::ostream &, ext_si01 &) noexcept
 {
     return true;
-};
+}
 
 namespace internal
 {
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int_si00> inline constexpr auto tex_stream_insert<T>
-#else
-inline constexpr auto tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si00>>>
-#endif
-    = [](std::ostream &, auto &&) constexpr noexcept
+constexpr bool tex_stream_insert(tex_stream_insert_t, std::ostream &, const int_si00 &) noexcept
 {
     return true;
-};
+}
 
-template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int_si01> inline constexpr auto tex_stream_insert<T>
-#else
-inline constexpr auto tex_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si01>>>
-#endif
-    = [](std::ostream &, auto &) constexpr noexcept
+constexpr bool tex_stream_insert(tex_stream_insert_t, std::ostream &, int_si01 &) noexcept
 {
     return true;
-};
+}
 
 } // namespace internal
 
@@ -147,7 +123,7 @@ TEST_CASE("tex_stream_insert_test")
 
     REQUIRE(!is_tex_stream_insertable_v<ext_si01>);
     REQUIRE(is_tex_stream_insertable_v<ext_si01 &>);
-    REQUIRE(is_tex_stream_insertable_v<const ext_si01 &>);
+    REQUIRE(!is_tex_stream_insertable_v<const ext_si01 &>);
     REQUIRE(!is_tex_stream_insertable_v<ext_si01 &&>);
 
     REQUIRE(is_tex_stream_insertable_v<int_si00>);
@@ -157,54 +133,52 @@ TEST_CASE("tex_stream_insert_test")
 
     REQUIRE(!is_tex_stream_insertable_v<int_si01>);
     REQUIRE(is_tex_stream_insertable_v<int_si01 &>);
-    REQUIRE(is_tex_stream_insertable_v<const int_si01 &>);
+    REQUIRE(!is_tex_stream_insertable_v<const int_si01 &>);
     REQUIRE(!is_tex_stream_insertable_v<int_si01 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(!TexStreamInsertable<void>);
+    REQUIRE(!tex_stream_insertable<void>);
 
-    REQUIRE(TexStreamInsertable<int>);
-    REQUIRE(TexStreamInsertable<int &>);
-    REQUIRE(TexStreamInsertable<const int &>);
-    REQUIRE(TexStreamInsertable<std::string>);
-    REQUIRE(TexStreamInsertable<std::string &>);
-    REQUIRE(TexStreamInsertable<const std::string &>);
+    REQUIRE(tex_stream_insertable<int>);
+    REQUIRE(tex_stream_insertable<int &>);
+    REQUIRE(tex_stream_insertable<const int &>);
+    REQUIRE(tex_stream_insertable<std::string>);
+    REQUIRE(tex_stream_insertable<std::string &>);
+    REQUIRE(tex_stream_insertable<const std::string &>);
 
-    REQUIRE(TexStreamInsertable<ns::si00>);
-    REQUIRE(TexStreamInsertable<ns::si00 &>);
-    REQUIRE(TexStreamInsertable<const ns::si00 &>);
-    REQUIRE(TexStreamInsertable<ns::si00 &&>);
+    REQUIRE(tex_stream_insertable<ns::si00>);
+    REQUIRE(tex_stream_insertable<ns::si00 &>);
+    REQUIRE(tex_stream_insertable<const ns::si00 &>);
+    REQUIRE(tex_stream_insertable<ns::si00 &&>);
 
-    REQUIRE(!TexStreamInsertable<ns::si01>);
-    REQUIRE(TexStreamInsertable<ns::si01 &>);
-    REQUIRE(!TexStreamInsertable<const ns::si01 &>);
-    REQUIRE(!TexStreamInsertable<ns::si01 &&>);
+    REQUIRE(!tex_stream_insertable<ns::si01>);
+    REQUIRE(tex_stream_insertable<ns::si01 &>);
+    REQUIRE(!tex_stream_insertable<const ns::si01 &>);
+    REQUIRE(!tex_stream_insertable<ns::si01 &&>);
 
-    REQUIRE(!TexStreamInsertable<ns::nsi00>);
-    REQUIRE(!TexStreamInsertable<ns::nsi00 &>);
-    REQUIRE(!TexStreamInsertable<const ns::nsi00 &>);
-    REQUIRE(!TexStreamInsertable<ns::nsi00 &&>);
+    REQUIRE(!tex_stream_insertable<ns::nsi00>);
+    REQUIRE(!tex_stream_insertable<ns::nsi00 &>);
+    REQUIRE(!tex_stream_insertable<const ns::nsi00 &>);
+    REQUIRE(!tex_stream_insertable<ns::nsi00 &&>);
 
-    REQUIRE(TexStreamInsertable<ext_si00>);
-    REQUIRE(TexStreamInsertable<ext_si00 &>);
-    REQUIRE(TexStreamInsertable<const ext_si00 &>);
-    REQUIRE(TexStreamInsertable<ext_si00 &&>);
+    REQUIRE(tex_stream_insertable<ext_si00>);
+    REQUIRE(tex_stream_insertable<ext_si00 &>);
+    REQUIRE(tex_stream_insertable<const ext_si00 &>);
+    REQUIRE(tex_stream_insertable<ext_si00 &&>);
 
-    REQUIRE(!TexStreamInsertable<ext_si01>);
-    REQUIRE(TexStreamInsertable<ext_si01 &>);
-    REQUIRE(TexStreamInsertable<const ext_si01 &>);
-    REQUIRE(!TexStreamInsertable<ext_si01 &&>);
+    REQUIRE(!tex_stream_insertable<ext_si01>);
+    REQUIRE(tex_stream_insertable<ext_si01 &>);
+    REQUIRE(!tex_stream_insertable<const ext_si01 &>);
+    REQUIRE(!tex_stream_insertable<ext_si01 &&>);
 
-    REQUIRE(TexStreamInsertable<int_si00>);
-    REQUIRE(TexStreamInsertable<int_si00 &>);
-    REQUIRE(TexStreamInsertable<const int_si00 &>);
-    REQUIRE(TexStreamInsertable<int_si00 &&>);
+    REQUIRE(tex_stream_insertable<int_si00>);
+    REQUIRE(tex_stream_insertable<int_si00 &>);
+    REQUIRE(tex_stream_insertable<const int_si00 &>);
+    REQUIRE(tex_stream_insertable<int_si00 &&>);
 
-    REQUIRE(!TexStreamInsertable<int_si01>);
-    REQUIRE(TexStreamInsertable<int_si01 &>);
-    REQUIRE(TexStreamInsertable<const int_si01 &>);
-    REQUIRE(!TexStreamInsertable<int_si01 &&>);
-#endif
+    REQUIRE(!tex_stream_insertable<int_si01>);
+    REQUIRE(tex_stream_insertable<int_si01 &>);
+    REQUIRE(!tex_stream_insertable<const int_si01 &>);
+    REQUIRE(!tex_stream_insertable<int_si01 &&>);
 }
 
 #if defined(OBAKE_HAVE_GCC_INT128)
@@ -221,17 +195,15 @@ TEST_CASE("tex_stream_insert_int128_test")
     REQUIRE(is_tex_stream_insertable_v<const __uint128_t &>);
     REQUIRE(is_tex_stream_insertable_v<__uint128_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(TexStreamInsertable<__int128_t>);
-    REQUIRE(TexStreamInsertable<__int128_t &>);
-    REQUIRE(TexStreamInsertable<const __int128_t &>);
-    REQUIRE(TexStreamInsertable<__int128_t &&>);
+    REQUIRE(tex_stream_insertable<__int128_t>);
+    REQUIRE(tex_stream_insertable<__int128_t &>);
+    REQUIRE(tex_stream_insertable<const __int128_t &>);
+    REQUIRE(tex_stream_insertable<__int128_t &&>);
 
-    REQUIRE(TexStreamInsertable<__uint128_t>);
-    REQUIRE(TexStreamInsertable<__uint128_t &>);
-    REQUIRE(TexStreamInsertable<const __uint128_t &>);
-    REQUIRE(TexStreamInsertable<__uint128_t &&>);
-#endif
+    REQUIRE(tex_stream_insertable<__uint128_t>);
+    REQUIRE(tex_stream_insertable<__uint128_t &>);
+    REQUIRE(tex_stream_insertable<const __uint128_t &>);
+    REQUIRE(tex_stream_insertable<__uint128_t &&>);
 
     std::ostringstream oss;
     tex_stream_insert(oss, __int128_t(-42));
@@ -252,12 +224,10 @@ TEST_CASE("tex_stream_insert_rational_test")
     REQUIRE(is_tex_stream_insertable_v<const rat_t &>);
     REQUIRE(is_tex_stream_insertable_v<rat_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(TexStreamInsertable<rat_t>);
-    REQUIRE(TexStreamInsertable<rat_t &>);
-    REQUIRE(TexStreamInsertable<const rat_t &>);
-    REQUIRE(TexStreamInsertable<rat_t &&>);
-#endif
+    REQUIRE(tex_stream_insertable<rat_t>);
+    REQUIRE(tex_stream_insertable<rat_t &>);
+    REQUIRE(tex_stream_insertable<const rat_t &>);
+    REQUIRE(tex_stream_insertable<rat_t &&>);
 
     std::ostringstream oss;
 
