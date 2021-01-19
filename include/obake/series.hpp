@@ -2175,7 +2175,7 @@ namespace customisation::internal
 {
 
 template <typename K, typename C, typename Tag>
-requires TexStreamInsertableKey<const K &> &&tex_stream_insertable_cf<const C &> inline void
+requires tex_stream_insertable_key<const K &> &&tex_stream_insertable_cf<const C &> inline void
 tex_stream_insert(tex_stream_insert_t, ::std::ostream &os, const series<K, C, Tag> &x)
 {
     ::obake::detail::series_stream_terms_impl<true>(os, x);
