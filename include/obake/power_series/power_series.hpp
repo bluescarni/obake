@@ -38,6 +38,7 @@
 #include <obake/s11n.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
+#include <obake/tex_stream_insert.hpp>
 #include <obake/type_traits.hpp>
 
 namespace obake
@@ -867,6 +868,53 @@ inline constexpr auto make_p_series_p
 
 namespace power_series
 {
+
+// Specialisation of stream insertion in tex mode.
+template <typename K, typename C>
+inline void tex_stream_insert(::std::ostream &os, const p_series<K, C> &ps)
+{
+    // Stream the terms in tex mode.
+    ::obake::detail::series_stream_terms_impl<true>(os, ps);
+
+    // Add the truncation bits.
+    using deg_t [[maybe_unused]] = ::obake::detail::psk_deg_t<K>;
+    os << ::std::visit(
+        [](const auto &v) -> ::std::string {
+            using type = remove_cvref_t<decltype(v)>;
+
+            if constexpr (::std::is_same_v<type, detail::no_truncation>) {
+                return "";
+            } else if constexpr (tex_stream_insertable<const deg_t &>) {
+                ::std::string ret = " + \\mathcal{O}\\left( ";
+
+                ::std::ostringstream oss;
+
+                if constexpr (::std::is_same_v<type, deg_t>) {
+                    ::obake::tex_stream_insert(oss, v);
+                    ret += oss.str() + " \\right)";
+                } else {
+                    for (auto it = v.second.begin(); it != v.second.end();) {
+                        ret += *it;
+
+                        if (++it != v.second.end()) {
+                            ret += ", ";
+                        }
+                    }
+
+                    ret += " \\right)^{";
+
+                    ::obake::tex_stream_insert(oss, v.first);
+
+                    ret += oss.str() + "}";
+                }
+
+                return ret;
+            } else {
+                return " + ??";
+            }
+        },
+        ::obake::get_truncation(ps));
+}
 
 namespace detail
 {

@@ -12,9 +12,11 @@
 #include <type_traits>
 #include <variant>
 
+#include <obake/cf/cf_tex_stream_insert.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
+#include <obake/tex_stream_insert.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -172,5 +174,29 @@ TEST_CASE("in place sub")
         OBAKE_REQUIRES_THROWS_CONTAINS(x -= y, std::invalid_argument,
                                        "Unable to subtract two power series in place if "
                                        "their truncation levels do not match");
+    }
+}
+
+TEST_CASE("tex stream insert")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        auto [x] = make_p_series_t<ps_t>(10, "x");
+
+        obake::tex_stream_insert(std::cout, x);
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a", "b"}, "x");
+
+        obake::tex_stream_insert(std::cout, x);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(10, symbol_set{"a", "b"}, "x", "y");
+
+        obake::cf_tex_stream_insert(std::cout, x + y);
     }
 }
