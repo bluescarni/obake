@@ -3370,12 +3370,7 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
                 v_keys.clear();
 
                 // Perform the multiplications for this table.
-                for (auto &term : t) {
-                    // NOTE: old clang does not like structured
-                    // bindings in the for loop.
-                    auto &k = term.first;
-                    auto &c = term.second;
-
+                for (auto &[k, c] : t) {
                     c *= ::std::as_const(b);
                     // Check if the coefficient became zero
                     // after the multiplication.
