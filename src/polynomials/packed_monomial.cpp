@@ -128,6 +128,8 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
     // Use separate streams for numerator and denominator
     // (the denominator is used only in case of negative powers).
     ::std::ostringstream oss_num, oss_den, *cur_oss;
+    oss_num.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_den.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
 
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
