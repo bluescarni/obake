@@ -326,14 +326,18 @@ struct poly_term_key_ref_extractor {
 };
 
 // Meta-programming for selecting the algorithm and the return
-// type of polynomial multiplication.
+// type of polynomial-like multiplication.
 template <typename T, typename U>
 constexpr auto poly_mul_algorithm_impl()
 {
-    // Preconditions: T and U are not cvr-qualified, and they have the same key type.
+    // Preconditions: T and U are not cvr-qualified, both are series types
+    // and they have the same key and tag types.
     static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
     static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(any_series<T>);
+    static_assert(any_series<U>);
     static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
+    static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
 
     // Shortcut for signalling that the mul implementation
     // is not well-defined.
@@ -343,10 +347,10 @@ constexpr auto poly_mul_algorithm_impl()
     constexpr auto rank_U = series_rank<U>;
 
     if constexpr (rank_T != rank_U) {
-        // T and U are both polynomials, but with different rank.
+        // Unsupported for different ranks.
         return failure;
     } else {
-        // T and U are both polynomials, same rank, same key.
+        // T and U have same rank and key.
         // Determine if the cf/key types support all the necessary
         // bits.
         using cf1_t = series_cf_t<T>;
@@ -374,7 +378,10 @@ constexpr auto poly_mul_algorithm_impl()
                           // so checking only T's key type is enough.
                           is_multipliable_monomial<series_key_t<T> &, const series_key_t<T> &,
                                                    const series_key_t<T> &>>) {
-            return ::std::make_pair(1, ::obake::detail::type_c<polynomial<series_key_t<T>, ret_cf_t>>{});
+            // NOTE: the return type is a series with the same tag/key
+            // as T/U and ret_cf_t as coefficient.
+            using ret_t = series<series_key_t<T>, ret_cf_t, series_tag_t<T>>;
+            return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
         } else {
             return failure;
         }
@@ -2068,11 +2075,14 @@ namespace detail
 template <typename T, typename U, typename V, bool Total>
 constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
-    // Preconditions: T and U are not cvr-qualified, they have the same key type
-    // and V is not cvr-qualified.
+    // Preconditions: T and U are not cvr-qualified, both are series types,
+    // they have the same key and tag types and V is not cvr-qualified.
     static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
     static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(any_series<T>);
+    static_assert(any_series<U>);
     static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
+    static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
     static_assert(::std::is_same_v<remove_cvref_t<V>, V>);
 
     // Check first if we can do the untruncated multiplication. If we cannot,
