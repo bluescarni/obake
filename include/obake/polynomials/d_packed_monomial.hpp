@@ -369,6 +369,8 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     // Use separate streams for numerator and denominator
     // (the denominator is used only in case of negative powers).
     ::std::ostringstream oss_num, oss_den, *cur_oss;
+    oss_num.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_den.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
 
     T tmp;
     // Go through a multiprecision integer for the stream
@@ -935,6 +937,7 @@ inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize
                 if constexpr (is_stream_insertable_v<const U &>) {
                     // Provide better error message if U is ostreamable.
                     ::std::ostringstream oss;
+                    oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
                     static_cast<::std::ostream &>(oss) << n;
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent ("
                                                              + oss.str()
