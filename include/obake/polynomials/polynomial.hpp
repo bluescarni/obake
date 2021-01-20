@@ -330,7 +330,7 @@ struct poly_term_key_ref_extractor {
 template <typename T, typename U>
 constexpr auto poly_mul_algorithm_impl()
 {
-    // Preconditions: T and U are not cv-qualified, and they have the same key type.
+    // Preconditions: T and U are not cvr-qualified, and they have the same key type.
     static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
     static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
     static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
@@ -2068,6 +2068,13 @@ namespace detail
 template <typename T, typename U, typename V, bool Total>
 constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
+    // Preconditions: T and U are not cvr-qualified, they have the same key type
+    // and V is not cvr-qualified.
+    static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
+    static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
+    static_assert(::std::is_same_v<remove_cvref_t<V>, V>);
+
     // Check first if we can do the untruncated multiplication. If we cannot,
     // truncated mult is not possible.
     if constexpr (poly_mul_algo<T, U> == 0) {
@@ -2106,7 +2113,7 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
                                     // NOTE: in the implementation functions, we always compare
                                     // an lvalue ref to the limit V to an rvalue resulting
                                     // from adding the degrees of one term from each series.
-                                    is_less_than_comparable<::std::add_lvalue_reference_t<const V>, deg_add_t>>);
+                                    is_less_than_comparable<const V &, deg_add_t>>);
         } else {
             return 0;
         }
