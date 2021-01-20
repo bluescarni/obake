@@ -122,13 +122,8 @@ TEST_CASE("polynomial_mul_detail_test")
     using p2_t = polynomial<packed_monomial<std::int32_t>, double>;
     using p3_t = polynomial<packed_monomial<exp_t>, float>;
 
-    REQUIRE(polynomials::detail::poly_mul_algo<void, void> == 0);
-    REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<void, void>>);
-
-    REQUIRE(polynomials::detail::poly_mul_algo<p1_t, p2_t> == 0);
-    REQUIRE(polynomials::detail::poly_mul_algo<p2_t, p1_t> == 0);
-    REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<p1_t, p2_t>>);
-    REQUIRE(std::is_same_v<void, polynomials::detail::poly_mul_ret_t<p2_t, p1_t>>);
+    REQUIRE(!is_multipliable_v<const p1_t &, const p2_t &>);
+    REQUIRE(!is_multipliable_v<const p2_t &, const p1_t &>);
 
     REQUIRE(polynomials::detail::poly_mul_algo<p1_t, p3_t> == 1);
     REQUIRE(polynomials::detail::poly_mul_algo<p3_t, p1_t> == 1);

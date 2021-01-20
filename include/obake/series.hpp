@@ -271,6 +271,9 @@ inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
 template <typename T>
 concept CvrSeries = is_cvr_series_v<T>;
 
+template <typename T>
+concept any_series = detail::is_series_impl<T>::value;
+
 namespace detail
 {
 
@@ -317,6 +320,7 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&...args)
                 // A slightly better error message if we can
                 // produce a string representation of the key.
                 ::std::ostringstream oss;
+                oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
                 static_cast<::std::ostream &>(oss) << ::std::as_const(key);
                 obake_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '" + oss.str()
                                                          + "', is not compatible with the series' symbol set, "
@@ -1450,6 +1454,7 @@ public:
     ::std::string table_stats() const
     {
         ::std::ostringstream oss;
+        oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
 
         const auto s = size();
         const auto ntables = m_s_table.size();
@@ -1884,6 +1889,7 @@ template <typename T, typename U, ::std::enable_if_t<series_default_pow_algo<T &
             if constexpr (is_stream_insertable_v<const rU &>) {
                 // Provide better error message if U is ostreamable.
                 ::std::ostringstream oss;
+                oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
                 static_cast<::std::ostream &>(oss) << e;
                 obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
                                                      "multiplications: the exponent ("
@@ -2111,6 +2117,7 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
     auto it = s.begin();
     const auto end = s.end();
     ::std::ostringstream oss;
+    oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
     ::std::string ret;
 
     while (it != end && (!limit || count != limit)) {
