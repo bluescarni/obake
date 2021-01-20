@@ -13,6 +13,7 @@
 #include <variant>
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
+#include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
@@ -221,6 +222,23 @@ TEST_CASE("tex stream insert")
 
         std::cout << '\n';
     }
+}
+
+TEST_CASE("tex stream insert bug")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using dpm_t = d_packed_monomial<std::int32_t, 8>;
+    using ps_t = p_series<pm_t, double>;
+    using ps2_t = p_series<dpm_t, double>;
+
+    std::ostringstream oss;
+    obake::tex_stream_insert(oss, ps_t{1});
+    REQUIRE(oss.str() == "1");
+    oss.str("");
+
+    obake::tex_stream_insert(oss, ps2_t{1});
+    REQUIRE(oss.str() == "1");
+    oss.str("");
 }
 
 TEST_CASE("multiplication")
