@@ -183,20 +183,34 @@ TEST_CASE("tex stream insert")
     using ps_t = p_series<pm_t, double>;
 
     {
+        auto [x] = make_p_series<ps_t>("x");
+
+        obake::tex_stream_insert(std::cout, x);
+
+        std::cout << '\n';
+    }
+
+    {
         auto [x] = make_p_series_t<ps_t>(10, "x");
 
         obake::tex_stream_insert(std::cout, x);
+
+        std::cout << '\n';
     }
 
     {
         auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a", "b"}, "x");
 
         obake::tex_stream_insert(std::cout, x);
+
+        std::cout << '\n';
     }
 
     {
         auto [x, y] = make_p_series_p<ps_t>(10, symbol_set{"a", "b"}, "x", "y");
 
         obake::cf_tex_stream_insert(std::cout, x + y);
+
+        std::cout << '\n';
     }
 }
