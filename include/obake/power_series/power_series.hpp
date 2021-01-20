@@ -35,6 +35,7 @@
 #include <obake/math/degree.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/polynomials/polynomial.hpp>
 #include <obake/s11n.hpp>
 #include <obake/series.hpp>
 #include <obake/symbols.hpp>
@@ -355,9 +356,7 @@ using psk_pdeg_t = detected_t<detail::key_p_degree_t, ::std::add_lvalue_referenc
 // already checks that the degree is a
 // semi-regular type (which we want for use
 // in a variant, and for general copy/move
-// operations), and it also ensures
-// truncability via the polynomial implementation
-// (which we need to implement the truncate() function).
+// operations).
 template <typename K>
 concept power_series_key
     = Key<K> &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>::value
@@ -1147,6 +1146,71 @@ template <typename T, typename U>
         T>> && (detail::ps_in_place_addsub_algo<false, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_sub(T &&x, U &&y)
 {
     return detail::ps_in_place_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
+namespace detail
+{
+
+// Algorithm selection for power series mul.
+template <typename T, typename U>
+constexpr bool ps_mul_algo()
+{
+    // Fetch the (partial) degree type.
+    using deg_t = decltype(::obake::degree(::std::declval<const T &>()));
+
+    // NOTE: the truncated multiplication algorithm selection also checks for the
+    // availability of untruncated multiplication.
+    if constexpr (polynomials::detail::poly_mul_truncated_degree_algo<T, U, deg_t> != 0
+                  && polynomials::detail::poly_mul_truncated_p_degree_algo<T, U, deg_t> != 0) {
+        // The only thing we need to check is that the result of the poly mul
+        // is still a power series. This is necessary because poly_mul_ret_t constructs
+        // a series type from the original key/tag but with the coefficient determined
+        // by the meta-programming algorithm. If such coefficient is not suitable for use
+        // in a power series, we must disable the multiplication.
+        using ret_t = ::obake::polynomials::detail::poly_mul_ret_t<T, U>;
+
+        return any_p_series<ret_t>;
+    } else {
+        return 0;
+    }
+}
+
+} // namespace detail
+
+// Multiplication.
+template <typename K, typename C0, typename C1>
+requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline ::obake::polynomials::detail::
+    poly_mul_ret_t<p_series<K, C0>, p_series<K, C1>> series_mul(const p_series<K, C0> &ps0, const p_series<K, C1> &ps1)
+{
+    if (obake_unlikely(ps0.tag() != ps1.tag())) {
+        throw ::std::invalid_argument("Unable to multiply two power series if their truncation levels do not match");
+    }
+
+    return ::std::visit(
+        [&ps0, &ps1](const auto &v) {
+            using type = remove_cvref_t<decltype(v)>;
+
+            if constexpr (::std::is_same_v<type, detail::no_truncation>) {
+                return polynomials::detail::poly_mul_impl_switch(ps0, ps1);
+            } else {
+                // Store the original tag.
+                auto orig_tag = ps0.tag();
+
+                // Fetch the (partial) degree type.
+                using deg_t = decltype(::obake::degree(ps0));
+
+                if constexpr (::std::is_same_v<type, deg_t>) {
+                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v);
+                    ret.tag() = orig_tag;
+                    return ret;
+                } else {
+                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v.first, v.second);
+                    ret.tag() = orig_tag;
+                    return ret;
+                }
+            }
+        },
+        ::obake::get_truncation(ps0));
 }
 
 } // namespace power_series

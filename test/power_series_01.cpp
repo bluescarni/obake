@@ -222,3 +222,13 @@ TEST_CASE("tex stream insert")
         std::cout << '\n';
     }
 }
+
+TEST_CASE("multiplication")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x, y] = make_p_series<ps_t>("x", "y");
+
+    std::cout << (x * y) << '\n';
+}
