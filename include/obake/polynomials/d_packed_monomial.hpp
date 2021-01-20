@@ -424,6 +424,12 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     } else if (num_str.empty() && !den_str.empty()) {
         // Only negative exponents, display them as 1/something.
         os << "\\frac{1}{" << den_str << '}';
+    } else {
+        // We did not write anything to the stream.
+        // It means that all variables have zero
+        // exponent, thus we print only "1".
+        assert(::std::all_of(c.begin(), c.end(), [](const T &n) { return n == T(0); }));
+        os << '1';
     }
 }
 
