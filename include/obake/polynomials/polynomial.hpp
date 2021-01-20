@@ -328,63 +328,64 @@ struct poly_term_key_ref_extractor {
 };
 
 // Meta-programming for selecting the algorithm and the return
-// type of polynomial multiplication.
+// type of polynomial-like multiplication.
 template <typename T, typename U>
 constexpr auto poly_mul_algorithm_impl()
 {
+    // Preconditions: T and U are not cvr-qualified, both are series types
+    // and they have the same key and tag types.
+    static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
+    static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(any_series<T>);
+    static_assert(any_series<U>);
+    static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
+    static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
+
     // Shortcut for signalling that the mul implementation
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    using rT = remove_cvref_t<T>;
-    using rU = remove_cvref_t<U>;
+    constexpr auto rank_T = series_rank<T>;
+    constexpr auto rank_U = series_rank<U>;
 
-    if constexpr (::std::disjunction_v<::std::negation<is_polynomial<rT>>, ::std::negation<is_polynomial<rU>>>) {
-        // T and U are not both polynomials.
+    if constexpr (rank_T != rank_U) {
+        // Unsupported for different ranks.
         return failure;
     } else {
-        constexpr auto rank_T = series_rank<rT>;
-        constexpr auto rank_U = series_rank<rU>;
+        // T and U have same rank and key.
+        // Determine if the cf/key types support all the necessary
+        // bits.
+        using cf1_t = series_cf_t<T>;
+        using cf2_t = series_cf_t<U>;
+        using ret_cf_t = detected_t<::obake::detail::mul_t, const cf1_t &, const cf2_t &>;
 
-        if constexpr (rank_T != rank_U) {
-            // T and U are both polynomials, but with different rank.
-            return failure;
-        } else if constexpr (!::std::is_same_v<series_key_t<rT>, series_key_t<rU>>) {
-            // The key types differ.
-            return failure;
+        if constexpr (::std::conjunction_v<
+                          // NOTE: this will also check that switching around the
+                          // operands produces the same result. This is necessary
+                          // because we might need to switch the arguments
+                          // in the top level poly multiplication function.
+                          // NOTE: this also ensures that ret_cf_t is detected.
+                          is_multipliable<const cf1_t &, const cf2_t &>,
+                          // If ret_cf_t a coefficient type?
+                          is_cf<ret_cf_t>,
+                          // We may need to merge new symbols into the original key type.
+                          // NOTE: the key types of T and U must be identical at the moment,
+                          // so checking only T's key type is enough.
+                          // NOTE: the merging is done via a const ref.
+                          is_symbols_mergeable_key<const series_key_t<T> &>,
+                          // Need to be able to multiply monomials. We work with lvalue
+                          // references, const for the arguments, mutable for the
+                          // return value.
+                          // NOTE: the key types of T and U must be identical at the moment,
+                          // so checking only T's key type is enough.
+                          is_multipliable_monomial<series_key_t<T> &, const series_key_t<T> &,
+                                                   const series_key_t<T> &>>) {
+            // NOTE: the return type is a series with the same tag/key
+            // as T/U and ret_cf_t as coefficient.
+            using ret_t = series<series_key_t<T>, ret_cf_t, series_tag_t<T>>;
+            return ::std::make_pair(1, ::obake::detail::type_c<ret_t>{});
         } else {
-            // T and U are both polynomials, same rank, same key.
-            // Determine if the cf/key types support all the necessary
-            // bits.
-            using cf1_t = series_cf_t<rT>;
-            using cf2_t = series_cf_t<rU>;
-            using ret_cf_t = detected_t<::obake::detail::mul_t, const cf1_t &, const cf2_t &>;
-
-            if constexpr (::std::conjunction_v<
-                              // NOTE: this will also check that switching around the
-                              // operands produces the same result. This is necessary
-                              // because we might need to switch the arguments
-                              // in the top level poly multiplication function.
-                              // NOTE: this also ensures that ret_cf_t is detected.
-                              is_multipliable<const cf1_t &, const cf2_t &>,
-                              // If ret_cf_t a coefficient type?
-                              is_cf<ret_cf_t>,
-                              // We may need to merge new symbols into the original key type.
-                              // NOTE: the key types of T and U must be identical at the moment,
-                              // so checking only T's key type is enough.
-                              // NOTE: the merging is done via a const ref.
-                              is_symbols_mergeable_key<const series_key_t<rT> &>,
-                              // Need to be able to multiply monomials. We work with lvalue
-                              // references, const for the arguments, mutable for the
-                              // return value.
-                              // NOTE: the key types of T and U must be identical at the moment,
-                              // so checking only T's key type is enough.
-                              is_multipliable_monomial<series_key_t<rT> &, const series_key_t<rT> &,
-                                                       const series_key_t<rT> &>>) {
-                return ::std::make_pair(1, ::obake::detail::type_c<polynomial<series_key_t<rT>, ret_cf_t>>{});
-            } else {
-                return failure;
-            }
+            return failure;
         }
     }
 }
@@ -1911,9 +1912,9 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
 // Implementation of poly multiplication with identical symbol sets.
 // Requires that x is not longer than y.
 template <typename T, typename U, typename... Args>
-inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &...args)
+inline auto poly_mul_impl_identical_ss(const T &x, const U &y, const Args &...args)
 {
-    using ret_t = poly_mul_ret_t<T &&, U &&>;
+    using ret_t = poly_mul_ret_t<T, U>;
     using ret_key_t = series_key_t<ret_t>;
 
     // Check the preconditions.
@@ -1929,20 +1930,20 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &...args)
         return retval;
     }
 
-    if constexpr (::std::conjunction_v<
-                      is_homomorphically_hashable_monomial<ret_key_t>,
-                      // Need also to be able to measure the byte size
-                      // of x, y, and the key/cf of ret_t, via const lvalue references.
-                      // NOTE: perhaps this is too much of a hard requirement,
-                      // and we can make this optional (if not supported,
-                      // fix the nsegs to something like twice the cores).
-                      is_size_measurable<const remove_cvref_t<T> &>, is_size_measurable<const remove_cvref_t<U> &>,
-                      is_size_measurable<const ret_key_t &>, is_size_measurable<const series_cf_t<ret_t> &>>) {
+    if constexpr (::std::conjunction_v<is_homomorphically_hashable_monomial<ret_key_t>,
+                                       // Need also to be able to measure the byte size
+                                       // of x, y, and the key/cf of ret_t, via const lvalue references.
+                                       // NOTE: perhaps this is too much of a hard requirement,
+                                       // and we can make this optional (if not supported,
+                                       // fix the nsegs to something like twice the cores).
+                                       is_size_measurable<const T &>, is_size_measurable<const U &>,
+                                       is_size_measurable<const ret_key_t &>,
+                                       is_size_measurable<const series_cf_t<ret_t> &>>) {
         // Homomorphic hashing is available, we can run
         // the multi-threaded implementation.
 
         // Establish the max byte size of the input series.
-        const auto max_bs = ::std::max(::obake::byte_size(::std::as_const(x)), ::obake::byte_size(::std::as_const(y)));
+        const auto max_bs = ::std::max(::obake::byte_size(x), ::obake::byte_size(y));
 
         if ((x.size() == 1u && y.size() == 1u) || max_bs < 30000ul || ::obake::detail::hc() == 1u) {
             // Run the simple implementation if either:
@@ -1988,17 +1989,14 @@ inline auto poly_mul_impl_identical_ss(T &&x, U &&y, const Args &...args)
 //   out data which we will be overwriting anyway;
 // - perhaps vector permutations could be done in parallel?
 template <typename T, typename U, typename... Args>
-inline auto poly_mul_impl(T &&x, U &&y, const Args &...args)
+inline auto poly_mul_impl(const T &x, const U &y, const Args &...args)
 {
     // Check the precondition.
     assert(x.size() <= y.size());
 
     if (x.get_symbol_set_fw() == y.get_symbol_set_fw()) {
-        return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::forward<U>(y), args...);
+        return detail::poly_mul_impl_identical_ss(x, y, args...);
     } else {
-        using rT = remove_cvref_t<T>;
-        using rU = remove_cvref_t<U>;
-
         // Merge the symbol sets.
         const auto &[merged_ss, ins_map_x, ins_map_y]
             = ::obake::detail::merge_symbol_sets(x.get_symbol_set(), y.get_symbol_set());
@@ -2018,30 +2016,30 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &...args)
             case 1u: {
                 // x already has the correct symbol
                 // set, extend only y.
-                rU b;
+                U b;
                 b.set_symbol_set(merged_ss);
-                ::obake::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+                ::obake::detail::series_sym_extender(b, y, ins_map_y);
 
-                return detail::poly_mul_impl_identical_ss(::std::forward<T>(x), ::std::move(b), args...);
+                return detail::poly_mul_impl_identical_ss(x, ::std::move(b), args...);
             }
             case 2u: {
                 // y already has the correct symbol
                 // set, extend only x.
-                rT a;
+                T a;
                 a.set_symbol_set(merged_ss);
-                ::obake::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
+                ::obake::detail::series_sym_extender(a, x, ins_map_x);
 
-                return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::forward<U>(y), args...);
+                return detail::poly_mul_impl_identical_ss(::std::move(a), y, args...);
             }
         }
 
         // Both x and y need to be extended.
-        rT a;
-        rU b;
+        T a;
+        U b;
         a.set_symbol_set(merged_ss);
         b.set_symbol_set(merged_ss);
-        ::obake::detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
-        ::obake::detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
+        ::obake::detail::series_sym_extender(a, x, ins_map_x);
+        ::obake::detail::series_sym_extender(b, y, ins_map_y);
 
         return detail::poly_mul_impl_identical_ss(::std::move(a), ::std::move(b), args...);
     }
@@ -2050,21 +2048,22 @@ inline auto poly_mul_impl(T &&x, U &&y, const Args &...args)
 // Helper to ensure that poly_mul_impl() is called with the
 // shorter poly first, switching around the arguments if necessary.
 template <typename T, typename U, typename... Args>
-inline auto poly_mul_impl_switch(T &&x, U &&y, const Args &...args)
+inline auto poly_mul_impl_switch(const T &x, const U &y, const Args &...args)
 {
     if (x.size() <= y.size()) {
-        return detail::poly_mul_impl(::std::forward<T>(x), ::std::forward<U>(y), args...);
+        return detail::poly_mul_impl(x, y, args...);
     } else {
-        return detail::poly_mul_impl(::std::forward<U>(y), ::std::forward<T>(x), args...);
+        return detail::poly_mul_impl(y, x, args...);
     }
 }
 
 } // namespace detail
 
-template <typename T, typename U, ::std::enable_if_t<detail::poly_mul_algo<T &&, U &&> != 0, int> = 0>
-inline detail::poly_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
+template <typename K, typename C0, typename C1>
+requires(detail::poly_mul_algo<polynomial<K, C0>, polynomial<K, C1>> != 0) inline detail::poly_mul_ret_t<
+    polynomial<K, C0>, polynomial<K, C1>> series_mul(const polynomial<K, C0> &x, const polynomial<K, C1> &y)
 {
-    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y));
+    return detail::poly_mul_impl_switch(x, y);
 }
 
 namespace detail
@@ -2078,6 +2077,16 @@ namespace detail
 template <typename T, typename U, typename V, bool Total>
 constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
+    // Preconditions: T and U are not cvr-qualified, both are series types,
+    // they have the same key and tag types and V is not cvr-qualified.
+    static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
+    static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(any_series<T>);
+    static_assert(any_series<U>);
+    static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
+    static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
+    static_assert(::std::is_same_v<remove_cvref_t<V>, V>);
+
     // Check first if we can do the untruncated multiplication. If we cannot,
     // truncated mult is not possible.
     if constexpr (poly_mul_algo<T, U> == 0) {
@@ -2116,7 +2125,7 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
                                     // NOTE: in the implementation functions, we always compare
                                     // an lvalue ref to the limit V to an rvalue resulting
                                     // from adding the degrees of one term from each series.
-                                    is_less_than_comparable<::std::add_lvalue_reference_t<const V>, deg_add_t>>);
+                                    is_less_than_comparable<const V &, deg_add_t>>);
         } else {
             return 0;
         }
@@ -2136,18 +2145,21 @@ inline constexpr auto poly_mul_truncated_p_degree_algo
 // Truncated multiplication.
 // NOTE: do we need the type traits/concepts as well?
 // NOTE: should these be function objects?
-template <typename T, typename U, typename V,
-          ::std::enable_if_t<detail::poly_mul_truncated_degree_algo<T &&, U &&, V> != 0, int> = 0>
-inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree)
+template <typename K, typename C0, typename C1, typename V>
+requires(detail::poly_mul_truncated_degree_algo<polynomial<K, C0>, polynomial<K, C1>, V> != 0) inline detail::
+    poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>> truncated_mul(const polynomial<K, C0> &x,
+                                                                       const polynomial<K, C1> &y, const V &max_degree)
 {
-    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y), max_degree);
+    return detail::poly_mul_impl_switch(x, y, max_degree);
 }
 
-template <typename T, typename U, typename V,
-          ::std::enable_if_t<detail::poly_mul_truncated_p_degree_algo<T &&, U &&, V> != 0, int> = 0>
-inline detail::poly_mul_ret_t<T &&, U &&> truncated_mul(T &&x, U &&y, const V &max_degree, const symbol_set &s)
+template <typename K, typename C0, typename C1, typename V>
+requires(detail::poly_mul_truncated_p_degree_algo<polynomial<K, C0>, polynomial<K, C1>, V> != 0) inline detail::
+    poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>> truncated_mul(const polynomial<K, C0> &x,
+                                                                       const polynomial<K, C1> &y, const V &max_degree,
+                                                                       const symbol_set &s)
 {
-    return detail::poly_mul_impl_switch(::std::forward<T>(x), ::std::forward<U>(y), max_degree, s);
+    return detail::poly_mul_impl_switch(x, y, max_degree, s);
 }
 
 namespace detail
