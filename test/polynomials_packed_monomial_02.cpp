@@ -55,7 +55,7 @@ TEST_CASE("key_stream_insert_test")
         std::ostringstream oss;
 
         key_tex_stream_insert(oss, pm_t{}, symbol_set{});
-        REQUIRE(oss.str().empty());
+        REQUIRE(oss.str() == "1");
         oss.str("");
 
         key_tex_stream_insert(oss, pm_t{1}, symbol_set{"x"});
@@ -95,7 +95,7 @@ TEST_CASE("key_stream_insert_test")
         oss.str("");
 
         key_tex_stream_insert(oss, pm_t{0, 0, 0}, symbol_set{"x", "y", "z"});
-        REQUIRE(oss.str().empty());
+        REQUIRE(oss.str() == "1");
         oss.str("");
 
         if constexpr (is_signed_v<int_t>) {
