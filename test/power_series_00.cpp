@@ -21,6 +21,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 
+#include <obake/config.hpp>
 #include <obake/hash.hpp>
 #include <obake/math/truncate_degree.hpp>
 #include <obake/math/truncate_p_degree.hpp>
@@ -42,7 +43,6 @@ TEST_CASE("basic")
     // Type traits/concepts.
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
-    using poly_t = polynomial<pm_t, double>;
 
     REQUIRE(power_series_cf<double>);
     REQUIRE(!power_series_cf<const double>);
@@ -59,9 +59,13 @@ TEST_CASE("basic")
     REQUIRE(!any_p_series<ps_t &>);
     REQUIRE(!any_p_series<void>);
 
+    // NOTE: looks like a bug in GCC 9.
+#if !defined(OBAKE_COMPILER_IS_GCC) || (__GNUC__ >= 10)
     // Check that a series with the power series tag but
     // invalid coefficient is not considered as a p_series.
+    using poly_t = polynomial<pm_t, double>;
     REQUIRE(!any_p_series<series<pm_t, poly_t, power_series::tag<std::int32_t>>>);
+#endif
 
     // Default construction of the tag.
     ps_t foo;
