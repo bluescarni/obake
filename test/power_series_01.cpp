@@ -29,13 +29,17 @@ TEST_CASE("in place add")
 
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
+    using ps2_t = p_series<pm_t, float>;
 
     {
         auto [x] = make_p_series<ps_t>("x");
 
         // Check that the primitive returns a reference.
         REQUIRE(std::is_reference_v<decltype(power_series::series_in_place_add(x, 1))>);
-        REQUIRE(std::is_reference_v<decltype(x += 2.)>);
+        REQUIRE(std::is_same_v<decltype(x += 2.), ps_t &>);
+        REQUIRE(std::is_same_v<decltype(x += ps2_t{}), ps_t &>);
+        ps2_t y;
+        REQUIRE(std::is_same_v<decltype(y += ps_t{}), ps2_t &>);
 
         x += 2.;
         REQUIRE(x.size() == 2u);
@@ -108,13 +112,17 @@ TEST_CASE("in place sub")
 {
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
+    using ps2_t = p_series<pm_t, float>;
 
     {
         auto [x] = make_p_series<ps_t>("x");
 
         // Check that the primitive returns a reference.
         REQUIRE(std::is_reference_v<decltype(power_series::series_in_place_sub(x, 1))>);
-        REQUIRE(std::is_reference_v<decltype(x -= 2.)>);
+        REQUIRE(std::is_same_v<decltype(x -= 2.), ps_t &>);
+        REQUIRE(std::is_same_v<decltype(x -= ps2_t{}), ps_t &>);
+        ps2_t y;
+        REQUIRE(std::is_same_v<decltype(y -= ps_t{}), ps2_t &>);
 
         x -= 2.;
         REQUIRE(x.size() == 2u);

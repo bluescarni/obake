@@ -755,6 +755,23 @@ TEST_CASE("add")
         REQUIRE((x + 1).empty());
         REQUIRE((1 + x).empty());
     }
+
+    {
+        // Test return types.
+        auto [x1] = make_p_series<ps_t>("x");
+        auto [x2] = make_p_series<ps2_t>("x");
+
+        REQUIRE(std::is_same_v<ps_t, decltype(x1 + x2)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x2 + x1)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x1 + 1.)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(1. + x1)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x1 + 1.f)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(1.f + x1)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x2 + 1.)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(1. + x2)>);
+        REQUIRE(std::is_same_v<ps2_t, decltype(x2 + 1.f)>);
+        REQUIRE(std::is_same_v<ps2_t, decltype(1.f + x2)>);
+    }
 }
 
 TEST_CASE("sub")
@@ -868,5 +885,22 @@ TEST_CASE("sub")
         REQUIRE(x.empty());
         REQUIRE((x - 1).empty());
         REQUIRE((1 - x).empty());
+    }
+
+    {
+        // Test return types.
+        auto [x1] = make_p_series<ps_t>("x");
+        auto [x2] = make_p_series<ps2_t>("x");
+
+        REQUIRE(std::is_same_v<ps_t, decltype(x1 - x2)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x2 - x1)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x1 - 1.)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(1. - x1)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x1 - 1.f)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(1.f - x1)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(x2 - 1.)>);
+        REQUIRE(std::is_same_v<ps_t, decltype(1. - x2)>);
+        REQUIRE(std::is_same_v<ps2_t, decltype(x2 - 1.f)>);
+        REQUIRE(std::is_same_v<ps2_t, decltype(1.f - x2)>);
     }
 }

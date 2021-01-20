@@ -1015,14 +1015,18 @@ template <typename T, typename U>
     // Check that the specialised addsub implementation
     // for power series is avaialable and appropriate.
     // Otherwise, the default series addsub will be used.
-    && (detail::ps_addsub_algo<true, T &&, U &&>() != 0) inline auto series_add(T &&x, U &&y)
+    && (detail::ps_addsub_algo<true, T &&, U &&>() != 0) inline
+    // NOTE: don't use auto here due to this GCC bug:
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=95132
+    ::obake::detail::series_default_addsub_ret_t<true, T &&, U &&> series_add(T &&x, U &&y)
 {
     return detail::ps_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 template <typename T, typename U>
     requires(any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
-    && (detail::ps_addsub_algo<false, T &&, U &&>() != 0) inline auto series_sub(T &&x, U &&y)
+    && (detail::ps_addsub_algo<false, T &&, U &&>()
+        != 0) inline ::obake::detail::series_default_addsub_ret_t<false, T &&, U &&> series_sub(T &&x, U &&y)
 {
     return detail::ps_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
 }
@@ -1132,15 +1136,15 @@ template <typename T, typename U>
     // Check that the specialised addsub implementation
     // for power series is avaialable and appropriate.
     // Otherwise, the default series addsub will be used.
-    && (detail::ps_in_place_addsub_algo<true, T &&, U &&>() != 0) inline decltype(auto)
-        series_in_place_add(T &&x, U &&y)
+    && (detail::ps_in_place_addsub_algo<true, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_add(T &&x,
+                                                                                                                U &&y)
 {
     return detail::ps_in_place_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 template <typename T, typename U>
     requires any_p_series<remove_cvref_t<
-        T>> && (detail::ps_in_place_addsub_algo<false, T &&, U &&>() != 0) inline decltype(auto) series_in_place_sub(T &&x, U &&y)
+        T>> && (detail::ps_in_place_addsub_algo<false, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_sub(T &&x, U &&y)
 {
     return detail::ps_in_place_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
 }
