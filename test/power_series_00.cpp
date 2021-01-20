@@ -42,6 +42,7 @@ TEST_CASE("basic")
     // Type traits/concepts.
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
+    using poly_t = polynomial<pm_t, double>;
 
     REQUIRE(power_series_cf<double>);
     REQUIRE(!power_series_cf<const double>);
@@ -57,6 +58,10 @@ TEST_CASE("basic")
     REQUIRE(!any_p_series<const ps_t>);
     REQUIRE(!any_p_series<ps_t &>);
     REQUIRE(!any_p_series<void>);
+
+    // Check that a series with the power series tag but
+    // invalid coefficient is not considered as a p_series.
+    REQUIRE(!any_p_series<series<pm_t, poly_t, power_series::tag<std::int32_t>>>);
 
     // Default construction of the tag.
     ps_t foo;
