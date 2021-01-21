@@ -66,7 +66,7 @@ inline bool operator==(const no_truncation &, const no_truncation &)
     return true;
 }
 
-inline bool operator!=const no_truncation &, const no_truncation &)
+inline bool operator!=(const no_truncation &, const no_truncation &)
 {
     return false;
 }
