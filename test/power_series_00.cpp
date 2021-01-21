@@ -705,18 +705,44 @@ TEST_CASE("add")
                                        "Unable to add two power series if their truncation levels do not match");
     }
     {
-        auto [x] = make_p_series<ps_t>("x");
-        auto [y] = make_p_series_t<ps_t>(2, "y");
+        auto [x] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x");
+        auto [y] = make_p_series_p<ps_t>(3, symbol_set{"a", "c"}, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x + y, std::invalid_argument,
                                        "Unable to add two power series if their truncation levels do not match");
     }
+    // Truncation vs no truncation.
     {
         auto [x] = make_p_series<ps_t>("x");
-        auto [y] = make_p_series_p<ps_t>(2, symbol_set{"a"}, "y");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        auto ret = x + y;
+        check_ret_00(ret);
+        ret = y + x;
+        check_ret_00(ret);
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
+
+        auto ret = x + y;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 0);
+        REQUIRE(ret.empty());
+        ret = y + x;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 0);
+        REQUIRE(ret.empty());
+    }
+    // Incompatible policies.
+    {
+        auto [x] = make_p_series_p<ps_t>(4, symbol_set{}, "x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x + y, std::invalid_argument,
-                                       "Unable to add two power series if their truncation levels do not match");
+                                       "Unable to add two power series if their truncation policies do not match");
+        OBAKE_REQUIRES_THROWS_CONTAINS(y + x, std::invalid_argument,
+                                       "Unable to add two power series if their truncation policies do not match");
     }
 
     // Tests with non-series operand.
@@ -835,18 +861,44 @@ TEST_CASE("sub")
                                        "Unable to subtract two power series if their truncation levels do not match");
     }
     {
-        auto [x] = make_p_series<ps_t>("x");
-        auto [y] = make_p_series_t<ps_t>(2, "y");
+        auto [x] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x");
+        auto [y] = make_p_series_p<ps_t>(3, symbol_set{"a", "c"}, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x - y, std::invalid_argument,
                                        "Unable to subtract two power series if their truncation levels do not match");
     }
+    // Truncation vs no truncation.
     {
         auto [x] = make_p_series<ps_t>("x");
-        auto [y] = make_p_series_p<ps_t>(2, symbol_set{"a"}, "y");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        auto ret = x - y;
+        check_ret_00(ret);
+        ret = y - x;
+        check_ret_00(ret);
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
+
+        auto ret = x - y;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 0);
+        REQUIRE(ret.empty());
+        ret = y - x;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 0);
+        REQUIRE(ret.empty());
+    }
+    // Incompatible policies.
+    {
+        auto [x] = make_p_series_p<ps_t>(4, symbol_set{}, "x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x - y, std::invalid_argument,
-                                       "Unable to subtract two power series if their truncation levels do not match");
+                                       "Unable to subtract two power series if their truncation policies do not match");
+        OBAKE_REQUIRES_THROWS_CONTAINS(y - x, std::invalid_argument,
+                                       "Unable to subtract two power series if their truncation policies do not match");
     }
 
     // Tests with non-series operand.

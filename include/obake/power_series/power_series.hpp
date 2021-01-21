@@ -447,7 +447,7 @@ requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &
         // comparable in the ps requirements.
         power_series::truncate_degree(ps, deg);
 
-        // Set the truncation level in ps.
+        // Set the truncation policy/level in ps.
         ps.tag().trunc = power_series::detail::trunc_t<detail::psk_deg_t<K>>(deg);
 
         // LCOV_EXCL_START
@@ -480,7 +480,7 @@ set_truncation_impl(p_series<K, C> &ps, const T &d, symbol_set ss)
         // comparable in the ps requirements.
         power_series::truncate_p_degree(ps, deg, ss);
 
-        // Set the truncation level in ps.
+        // Set the truncation policy/level in ps.
         ps.tag().trunc = power_series::detail::trunc_t<detail::psk_deg_t<K>>(::std::pair{deg, ::std::move(ss)});
 
         // LCOV_EXCL_START
@@ -517,7 +517,7 @@ inline constexpr auto get_truncation = []<typename K, typename C>(const p_series
     return ps.tag().trunc.get();
 };
 
-// Truncate according to the current truncation level.
+// Truncate according to the current truncation policy and level.
 inline constexpr auto truncate = []<typename K, typename C>(p_series<K, C> &ps) {
     ::std::visit(
         [&ps](const auto &v) {
@@ -965,7 +965,7 @@ inline auto ps_addsub_impl(T &&x, U &&y)
     if constexpr (algo == 1) {
         // The ranks of T and U differ, and the result is a power series.
         // The result will be copy/move inited from one of x or y, and it will
-        // thus inherit the truncation level. We need to run an explicit truncation
+        // thus inherit the truncation policy/level. We need to run an explicit truncation
         // on the result because the newly-inserted term in ret may violate
         // the truncation settings.
 
@@ -981,27 +981,68 @@ inline auto ps_addsub_impl(T &&x, U &&y)
         static_assert(algo == 2);
 
         // T and U are both power series with the same rank/key, possibly
-        // different coefficients. We need to check that the truncation levels match
-        // and we need to assign the truncation level to the result.
+        // different coefficients.
 
-        if (obake_unlikely(x.tag() != y.tag())) {
-            using namespace ::fmt::literals;
+        // Fetch the return type.
+        using ret_t = decltype(
+            ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y)));
 
-            throw ::std::invalid_argument(
-                "Unable to {} two power series if their truncation levels do not match"_format(AddOrSub ? "add"
-                                                                                                        : "subtract"));
-        }
+        return ::std::visit(
+            [&x, &y](const auto &v0, const auto &v1) -> ret_t {
+                using type0 = remove_cvref_t<decltype(v0)>;
+                using type1 = remove_cvref_t<decltype(v1)>;
 
-        // Store the original tag.
-        auto orig_tag = x.tag();
+                if constexpr (::std::is_same_v<type0, type1>) {
+                    // The truncation policies match. In this case, we first
+                    // check that the truncation levels also match, then
+                    // we run a series addsub and finally assign the truncation
+                    // level. No explicit truncation of the result is needed
+                    // because we assume that x and y satisfy the truncation setting.
+                    if (obake_unlikely(v0 != v1)) {
+                        using namespace ::fmt::literals;
 
-        // Perform the addsub.
-        auto ret = ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y));
+                        throw ::std::invalid_argument(
+                            "Unable to {} two power series if their truncation levels do not match"_format(
+                                AddOrSub ? "add" : "subtract"));
+                    }
 
-        // Re-assign the original tag.
-        ret.tag() = ::std::move(orig_tag);
+                    // Store the original tag.
+                    auto orig_tag = x.tag();
 
-        return ret;
+                    // Perform the addsub.
+                    auto ret = ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                     ::std::forward<U>(y));
+
+                    // Re-assign the original tag.
+                    ret.tag() = ::std::move(orig_tag);
+
+                    return ret;
+                } else if constexpr (::std::is_same_v<
+                                         type0,
+                                         detail::no_truncation> || ::std::is_same_v<type1, detail::no_truncation>) {
+                    // One series has no truncation, the other has some truncation. In this case, we
+                    // run a series addsub, assign the truncation to the result
+                    // and do an explicit truncation, as ret may contain terms that
+                    // need to be discarded.
+                    auto orig_tag = ::std::is_same_v<type1, detail::no_truncation> ? x.tag() : y.tag();
+                    auto ret = ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                     ::std::forward<U>(y));
+                    ret.tag() = ::std::move(orig_tag);
+
+                    ::obake::truncate(ret);
+
+                    return ret;
+                } else {
+                    // The series have different truncation policies and both
+                    // series are truncating.
+                    using namespace ::fmt::literals;
+
+                    throw ::std::invalid_argument(
+                        "Unable to {} two power series if their truncation policies do not match"_format(
+                            AddOrSub ? "add" : "subtract"));
+                }
+            },
+            ::obake::get_truncation(x), ::obake::get_truncation(y));
     }
 }
 
