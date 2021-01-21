@@ -66,6 +66,11 @@ inline bool operator==(const no_truncation &, const no_truncation &)
     return true;
 }
 
+inline bool operator!=const no_truncation &, const no_truncation &)
+{
+    return false;
+}
+
 // The truncation state.
 template <typename T>
 using trunc_t = ::std::variant<no_truncation, T, ::std::pair<T, symbol_set>>;
