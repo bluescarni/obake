@@ -718,8 +718,12 @@ TEST_CASE("add")
 
         auto ret = x + y;
         check_ret_00(ret);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 2);
         ret = y + x;
         check_ret_00(ret);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 2);
     }
     {
         auto [x] = make_p_series<ps_t>("x");
@@ -874,8 +878,12 @@ TEST_CASE("sub")
 
         auto ret = x - y;
         check_ret_00(ret);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 2);
         ret = y - x;
         check_ret_00(ret);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 2);
     }
     {
         auto [x] = make_p_series<ps_t>("x");

@@ -1141,25 +1141,67 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
         static_assert(algo == 2);
 
         // T and U are both power series with the same rank/key, possibly
-        // different coefficients. We need to check that the truncation levels match.
-        // We also need to re-assign the tag as the retval may have been reconstructed
-        // from scratch if symbol set extension was required.
-        if (obake_unlikely(x.tag() != y.tag())) {
-            using namespace ::fmt::literals;
+        // different coefficients.
 
-            throw ::std::invalid_argument("Unable to {} two power series in place if "
-                                          "their truncation levels do not match"_format(AddOrSub ? "add" : "subtract"));
-        }
+        // Fetch the return type.
+        using ret_t = decltype(
+            ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y)));
 
-        auto orig_tag = x.tag();
+        return ::std::visit(
+            [&x, &y](const auto &v0, const auto &v1) -> ret_t {
+                using type0 = remove_cvref_t<decltype(v0)>;
+                using type1 = remove_cvref_t<decltype(v1)>;
 
-        // Perform the addsub.
-        decltype(auto) ret = ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
-                                                                                            ::std::forward<U>(y));
+                if constexpr (::std::is_same_v<type0, type1>) {
+                    // The truncation policies match. In this case, we first
+                    // check that the truncation levels also match, then
+                    // we run a series in-place addsub and finally assign the truncation
+                    // level. No explicit truncation of the result is needed
+                    // because we assume that x and y satisfy the truncation setting.
+                    if (obake_unlikely(v0 != v1)) {
+                        using namespace ::fmt::literals;
 
-        x.tag() = orig_tag;
+                        throw ::std::invalid_argument(
+                            "Unable to {} two power series in place if "
+                            "their truncation levels do not match"_format(AddOrSub ? "add" : "subtract"));
+                    }
 
-        return ret;
+                    // Store the original tag.
+                    auto orig_tag = x.tag();
+
+                    // Perform the addsub.
+                    decltype(auto) ret = ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(
+                        ::std::forward<T>(x), ::std::forward<U>(y));
+
+                    // NOTE: the tag re-assign is needed because the retval may have
+                    // been reconstructed from scratch if symbol set extension was required.
+                    x.tag() = ::std::move(orig_tag);
+
+                    return ret;
+                } else if constexpr (::std::is_same_v<
+                                         type0,
+                                         detail::no_truncation> || ::std::is_same_v<type1, detail::no_truncation>) {
+                    // One series has no truncation, the other has some truncation. In this case, we
+                    // run a series in-place addsub, assign the truncation to the result
+                    // and do an explicit truncation, as ret may contain terms that
+                    // need to be discarded.
+                    auto orig_tag = ::std::is_same_v<type1, detail::no_truncation> ? x.tag() : y.tag();
+                    decltype(auto) ret = ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(
+                        ::std::forward<T>(x), ::std::forward<U>(y));
+                    ret.tag() = ::std::move(orig_tag);
+
+                    ::obake::truncate(ret);
+
+                    return ret;
+                } else {
+                    using namespace ::fmt::literals;
+
+                    throw ::std::invalid_argument(
+                        "Unable to {} two power series in place if their truncation policies do not match"_format(
+                            AddOrSub ? "add" : "subtract"));
+                }
+            },
+            ::obake::get_truncation(x), ::obake::get_truncation(y));
     }
 }
 
@@ -1247,11 +1289,11 @@ requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline
 
                 if constexpr (::std::is_same_v<type, deg_t>) {
                     auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v);
-                    ret.tag() = orig_tag;
+                    ret.tag() = ::std::move(orig_tag);
                     return ret;
                 } else {
                     auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v.first, v.second);
-                    ret.tag() = orig_tag;
+                    ret.tag() = ::std::move(orig_tag);
                     return ret;
                 }
             }

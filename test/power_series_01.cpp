@@ -92,20 +92,75 @@ TEST_CASE("in place add")
                                        "their truncation levels do not match");
     }
     {
-        auto [x] = make_p_series<ps_t>("x");
-        auto [y] = make_p_series_t<ps_t>(20, "y");
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"b"}, "x");
+        auto [y] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x += y, std::invalid_argument,
                                        "Unable to add two power series in place if "
                                        "their truncation levels do not match");
     }
+    // Truncation vs no truncation.
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(20, "y");
+
+        x += y;
+
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 20);
+        REQUIRE(x.size() == 2u);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::all_of(x.begin(), x.end(), [](const auto &t) { return t.second == 1.; }));
+        REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
+        REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(20, "y");
+
+        y += x;
+
+        REQUIRE(obake::get_truncation(y).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(y)) == 20);
+        REQUIRE(y.size() == 2u);
+        REQUIRE(y.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::all_of(y.begin(), y.end(), [](const auto &t) { return t.second == 1.; }));
+        REQUIRE(std::any_of(y.begin(), y.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
+        REQUIRE(std::any_of(y.begin(), y.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
+
+        x += y;
+
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 0);
+        REQUIRE(x.empty());
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
+
+        y += x;
+
+        REQUIRE(obake::get_truncation(y).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(y)) == 0);
+        REQUIRE(y.empty());
+        REQUIRE(y.get_symbol_set() == symbol_set{"x", "y"});
+    }
+    // Incompatible policies.
     {
         auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
         auto [y] = make_p_series_t<ps_t>(20, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x += y, std::invalid_argument,
                                        "Unable to add two power series in place if "
-                                       "their truncation levels do not match");
+                                       "their truncation policies do not match");
+        OBAKE_REQUIRES_THROWS_CONTAINS(y += x, std::invalid_argument,
+                                       "Unable to add two power series in place if "
+                                       "their truncation policies do not match");
     }
 }
 
@@ -169,20 +224,77 @@ TEST_CASE("in place sub")
                                        "their truncation levels do not match");
     }
     {
-        auto [x] = make_p_series<ps_t>("x");
-        auto [y] = make_p_series_t<ps_t>(20, "y");
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"b"}, "x");
+        auto [y] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x -= y, std::invalid_argument,
                                        "Unable to subtract two power series in place if "
                                        "their truncation levels do not match");
     }
+    // Truncation vs no truncation.
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(20, "y");
+
+        x -= y;
+
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 20);
+        REQUIRE(x.size() == 2u);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.second == 1.; }));
+        REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.second == -1.; }));
+        REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
+        REQUIRE(std::any_of(x.begin(), x.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(20, "y");
+
+        y -= x;
+
+        REQUIRE(obake::get_truncation(y).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(y)) == 20);
+        REQUIRE(y.size() == 2u);
+        REQUIRE(y.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::any_of(y.begin(), y.end(), [](const auto &t) { return t.second == 1.; }));
+        REQUIRE(std::any_of(y.begin(), y.end(), [](const auto &t) { return t.second == -1.; }));
+        REQUIRE(std::any_of(y.begin(), y.end(), [](const auto &t) { return t.first == pm_t{1, 0}; }));
+        REQUIRE(std::any_of(y.begin(), y.end(), [](const auto &t) { return t.first == pm_t{0, 1}; }));
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
+
+        x -= y;
+
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 0);
+        REQUIRE(x.empty());
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+    }
+    {
+        auto [x] = make_p_series<ps_t>("x");
+        auto [y] = make_p_series_t<ps_t>(0, "y");
+
+        y -= x;
+
+        REQUIRE(obake::get_truncation(y).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(y)) == 0);
+        REQUIRE(y.empty());
+        REQUIRE(y.get_symbol_set() == symbol_set{"x", "y"});
+    }
+    // Incompatible policies.
     {
         auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
         auto [y] = make_p_series_t<ps_t>(20, "y");
 
         OBAKE_REQUIRES_THROWS_CONTAINS(x -= y, std::invalid_argument,
                                        "Unable to subtract two power series in place if "
-                                       "their truncation levels do not match");
+                                       "their truncation policies do not match");
+        OBAKE_REQUIRES_THROWS_CONTAINS(y -= x, std::invalid_argument,
+                                       "Unable to subtract two power series in place if "
+                                       "their truncation policies do not match");
     }
 }
 
