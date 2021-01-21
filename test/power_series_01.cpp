@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
@@ -358,7 +359,141 @@ TEST_CASE("multiplication")
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
 
-    auto [x, y] = make_p_series<ps_t>("x", "y");
+    {
+        auto [x, y] = make_p_series<ps_t>("x", "y");
 
-    std::cout << (x * y) << '\n';
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 0u);
+        REQUIRE(ret.begin()->first == pm_t{1, 1});
+        REQUIRE(ret.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 3);
+        REQUIRE(ret.begin()->first == pm_t{1, 1});
+        REQUIRE(ret.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(1, "x", "y");
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.empty());
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x", "y");
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(ret)) == std::pair{std::int32_t(3), symbol_set{"a", "b"}});
+        REQUIRE(ret.begin()->first == pm_t{1, 1});
+        REQUIRE(ret.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(1, symbol_set{"x", "y", "z"}, "x", "y");
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.empty());
+        REQUIRE(get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(ret)) == std::pair{std::int32_t(1), symbol_set{"x", "y", "z"}});
+    }
+
+    // Conflicting truncation levels.
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x * y, std::invalid_argument,
+                                       "Unable to multiply two power series if their truncation levels do not match");
+    }
+    {
+        auto [x] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x");
+        auto [y] = make_p_series_p<ps_t>(3, symbol_set{"a", "c"}, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x * y, std::invalid_argument,
+                                       "Unable to multiply two power series if their truncation levels do not match");
+    }
+
+    // Truncation vs no truncation.
+    {
+        auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
+        obake::unset_truncation(y);
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 3);
+        REQUIRE(ret.begin()->first == pm_t{1, 1});
+        REQUIRE(ret.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(1, "x", "y");
+        obake::unset_truncation(x);
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.empty());
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x", "y");
+        obake::unset_truncation(x);
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(ret)) == std::pair{std::int32_t(3), symbol_set{"a", "b"}});
+        REQUIRE(ret.begin()->first == pm_t{1, 1});
+        REQUIRE(ret.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(1, symbol_set{"x", "y", "z"}, "x", "y");
+        obake::unset_truncation(y);
+
+        auto ret = x * y;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(ret.empty());
+        REQUIRE(get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(ret)) == std::pair{std::int32_t(1), symbol_set{"x", "y", "z"}});
+    }
 }

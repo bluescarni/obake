@@ -1270,35 +1270,84 @@ template <typename K, typename C0, typename C1>
 requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline ::obake::polynomials::detail::
     poly_mul_ret_t<p_series<K, C0>, p_series<K, C1>> series_mul(const p_series<K, C0> &ps0, const p_series<K, C1> &ps1)
 {
-    if (obake_unlikely(ps0.tag() != ps1.tag())) {
-        throw ::std::invalid_argument("Unable to multiply two power series if their truncation levels do not match");
-    }
+    // Fetch the return type.
+    using ret_t = ::obake::polynomials::detail::poly_mul_ret_t<p_series<K, C0>, p_series<K, C1>>;
+
+    // Fetch the (partial) degree type.
+    using deg_t [[maybe_unused]] = decltype(::obake::degree(ps0));
 
     return ::std::visit(
-        [&ps0, &ps1](const auto &v) {
-            using type = remove_cvref_t<decltype(v)>;
+        [&ps0, &ps1](const auto &v0, const auto &v1) -> ret_t {
+            using type0 = remove_cvref_t<decltype(v0)>;
+            using type1 = remove_cvref_t<decltype(v1)>;
 
-            if constexpr (::std::is_same_v<type, detail::no_truncation>) {
-                return polynomials::detail::poly_mul_impl_switch(ps0, ps1);
-            } else {
-                // Store the original tag.
-                auto orig_tag = ps0.tag();
+            if constexpr (::std::is_same_v<type0, type1>) {
+                // The truncation policies match. In this case, we first
+                // check that the truncation levels also match, then
+                // we run the truncated multiplication. We will have
+                // to assign the tag to the return value.
+                if (obake_unlikely(v0 != v1)) {
+                    throw ::std::invalid_argument(
+                        "Unable to multiply two power series if their truncation levels do not match");
+                }
 
-                // Fetch the (partial) degree type.
-                using deg_t = decltype(::obake::degree(ps0));
+                if constexpr (::std::is_same_v<type0, detail::no_truncation>) {
+                    // Untruncated multiplication.
+                    return polynomials::detail::poly_mul_impl_switch(ps0, ps1);
+                } else {
+                    // Store the original tag.
+                    auto orig_tag = ps0.tag();
 
-                if constexpr (::std::is_same_v<type, deg_t>) {
-                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v);
+                    if constexpr (::std::is_same_v<type0, deg_t>) {
+                        // Total degree truncation.
+                        auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v0);
+                        ret.tag() = ::std::move(orig_tag);
+                        return ret;
+                    } else {
+                        // Partial degree truncation.
+                        auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v0.first, v0.second);
+                        ret.tag() = ::std::move(orig_tag);
+                        return ret;
+                    }
+                }
+            } else if constexpr (::std::is_same_v<type0, detail::no_truncation>) {
+                // ps0 has no truncation, ps1 has truncation. Run the truncated multiplication
+                // and assign ps1's tag to the retval.
+                auto orig_tag = ps1.tag();
+
+                if constexpr (::std::is_same_v<type1, deg_t>) {
+                    // Total degree truncation.
+                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v1);
                     ret.tag() = ::std::move(orig_tag);
                     return ret;
                 } else {
-                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v.first, v.second);
+                    // Partial degree truncation.
+                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v1.first, v1.second);
                     ret.tag() = ::std::move(orig_tag);
                     return ret;
                 }
+            } else if constexpr (::std::is_same_v<type1, detail::no_truncation>) {
+                // ps0 has truncation, ps1 has no truncation. Run the truncated multiplication
+                // and assign ps0's tag to the retval.
+                auto orig_tag = ps0.tag();
+
+                if constexpr (::std::is_same_v<type0, deg_t>) {
+                    // Total degree truncation.
+                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v0);
+                    ret.tag() = ::std::move(orig_tag);
+                    return ret;
+                } else {
+                    // Partial degree truncation.
+                    auto ret = polynomials::detail::poly_mul_impl_switch(ps0, ps1, v0.first, v0.second);
+                    ret.tag() = ::std::move(orig_tag);
+                    return ret;
+                }
+            } else {
+                throw ::std::invalid_argument(
+                    "Unable to multiply two power series if their truncation policies do not match");
             }
         },
-        ::obake::get_truncation(ps0));
+        ::obake::get_truncation(ps0), ::obake::get_truncation(ps1));
 }
 
 } // namespace power_series
