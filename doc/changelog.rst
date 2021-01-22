@@ -26,6 +26,10 @@ Changes
   depending on how ``std::(u)int32_t`` and ``std::(u)int64_t``
   are implemented on the target platform
   (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
+- **BREAKING**: ``d_packed_monomial`` is now specified in terms
+  of the number of exponents to be packed in a single integer
+  rather than the bit width assigned to each exponent
+  (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
 - Adopt a flyweight pattern for the representation of
   symbol sets in series
   (`#124 <https://github.com/bluescarni/obake/pull/124>`__).
@@ -35,6 +39,11 @@ Changes
   the MSVC 2015 standard library have been removed
   (`#122 <https://github.com/bluescarni/obake/pull/122>`__).
 
+Fix
+~~~
+
+- Fix a bug when streaming monomials in tex mode
+  (`#132 <https://github.com/bluescarni/obake/pull/132>`__).
 
 0.6.0 (2020-06-12)
 ------------------
