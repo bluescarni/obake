@@ -163,6 +163,14 @@ TEST_CASE("in place add")
                                        "Unable to add two power series in place if "
                                        "their truncation policies do not match");
     }
+
+    // Number on the left.
+    {
+        auto x = ps_t{5};
+        double tmp = 5;
+        tmp += x;
+        REQUIRE(tmp == 10);
+    }
 }
 
 TEST_CASE("in place sub")
@@ -296,6 +304,14 @@ TEST_CASE("in place sub")
         OBAKE_REQUIRES_THROWS_CONTAINS(y -= x, std::invalid_argument,
                                        "Unable to subtract two power series in place if "
                                        "their truncation policies do not match");
+    }
+
+    // Number on the left.
+    {
+        auto x = ps_t{2};
+        double tmp = 5;
+        tmp -= x;
+        REQUIRE(tmp == 3);
     }
 }
 
