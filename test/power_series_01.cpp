@@ -457,6 +457,15 @@ TEST_CASE("multiplication")
                                        "Unable to multiply two power series if their truncation levels do not match");
     }
 
+    // Conflicting policies.
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+        auto [y] = make_p_series_p<ps_t>(2, symbol_set{"a"}, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x * y, std::invalid_argument,
+                                       "Unable to multiply two power series if their truncation policies do not match");
+    }
+
     // Truncation vs no truncation.
     {
         auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
