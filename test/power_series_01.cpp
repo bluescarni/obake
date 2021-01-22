@@ -15,9 +15,11 @@
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/math/trim.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
+#include <obake/series.hpp>
 #include <obake/symbols.hpp>
 #include <obake/tex_stream_insert.hpp>
 
@@ -1024,4 +1026,54 @@ TEST_CASE("pow")
         REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 2}; }));
         REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 3}; }));
     }
+}
+
+// Check that trimming preserves the tag.
+TEST_CASE("trim")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x, y, z] = make_p_series_t<ps_t>(2, "x", "y", "z");
+
+    auto ret = x + y + z;
+    ret -= z;
+
+    ret = obake::trim(ret);
+
+    REQUIRE(obake::get_truncation(ret).index() == 1u);
+    REQUIRE(std::get<1>(obake::get_truncation(ret)) == 2);
+}
+
+// Check that filtering preserves the tag.
+TEST_CASE("filter")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x, y, z] = make_p_series_t<ps_t>(2, "x", "y", "z");
+
+    auto ret = 2 * x + y + z;
+
+    ret = obake::filtered(ret, [](const auto &t) { return t.second == 2; });
+
+    REQUIRE(ret.size() == 1u);
+    REQUIRE(obake::get_truncation(ret).index() == 1u);
+    REQUIRE(std::get<1>(obake::get_truncation(ret)) == 2);
+}
+
+// Check that adding symbols preserves the tag.
+TEST_CASE("add_symbols")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x] = make_p_series_t<ps_t>(2, "x");
+
+    auto ret = obake::add_symbols(x, symbol_set{"y", "z"});
+
+    REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y", "z"});
+    REQUIRE(ret.size() == 1u);
+    REQUIRE(obake::get_truncation(ret).index() == 1u);
+    REQUIRE(std::get<1>(obake::get_truncation(ret)) == 2);
 }

@@ -342,38 +342,52 @@ TEST_CASE("comparison")
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
 
-    auto [x] = make_p_series<ps_t>("x");
+    {
+        auto [x] = make_p_series<ps_t>("x");
 
-    REQUIRE(x == x);
-    REQUIRE(!(x != x));
+        REQUIRE(x == x);
+        REQUIRE(!(x != x));
 
-    auto xt(x);
+        auto xt(x);
 
-    REQUIRE(x == xt);
-    REQUIRE(!(x != xt));
-    REQUIRE(xt == x);
-    REQUIRE(!(xt != x));
+        REQUIRE(x == xt);
+        REQUIRE(!(x != xt));
+        REQUIRE(xt == x);
+        REQUIRE(!(xt != x));
 
-    obake::set_truncation(xt, 3);
+        obake::set_truncation(xt, 3);
 
-    REQUIRE(!(x == xt));
-    REQUIRE(x != xt);
-    REQUIRE(!(xt == x));
-    REQUIRE(xt != x);
+        REQUIRE(!(x == xt));
+        REQUIRE(x != xt);
+        REQUIRE(!(xt == x));
+        REQUIRE(xt != x);
 
-    obake::set_truncation(xt, 3, symbol_set{"a", "b"});
+        obake::set_truncation(xt, 3, symbol_set{"a", "b"});
 
-    REQUIRE(!(x == xt));
-    REQUIRE(x != xt);
-    REQUIRE(!(xt == x));
-    REQUIRE(xt != x);
+        REQUIRE(!(x == xt));
+        REQUIRE(x != xt);
+        REQUIRE(!(xt == x));
+        REQUIRE(xt != x);
 
-    obake::unset_truncation(xt);
+        obake::unset_truncation(xt);
 
-    REQUIRE(x == xt);
-    REQUIRE(!(x != xt));
-    REQUIRE(xt == x);
-    REQUIRE(!(xt != x));
+        REQUIRE(x == xt);
+        REQUIRE(!(x != xt));
+        REQUIRE(xt == x);
+        REQUIRE(!(xt != x));
+    }
+
+    // Verify that after the extension of symbol sets
+    // during equality comparison, we preserve the tags.
+    {
+        auto [x] = make_p_series<ps_t>(symbol_set{"x", "y"}, "x");
+        auto [xt, zt] = make_p_series_t<ps_t>(3, "x", "z");
+
+        REQUIRE(x != xt);
+        REQUIRE(xt != x);
+        REQUIRE(x != zt);
+        REQUIRE(zt != x);
+    }
 }
 
 TEST_CASE("s11n")
