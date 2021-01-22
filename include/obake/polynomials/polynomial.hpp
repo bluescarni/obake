@@ -2165,24 +2165,10 @@ requires(detail::poly_mul_truncated_p_degree_algo<polynomial<K, C0>, polynomial<
 namespace detail
 {
 
-// Machinery to enable the pow() specialisation for polynomials.
+// Implementation of the specialised pow() implementation
+// for polynomials.
 template <typename T, typename U>
-constexpr auto poly_pow_algorithm_impl()
-{
-    if constexpr (is_polynomial_v<remove_cvref_t<T>>) {
-        return customisation::internal::series_default_pow_algo<T, U>;
-    } else {
-        return 0;
-    }
-}
-
-template <typename T, typename U>
-inline constexpr auto poly_pow_algo = detail::poly_pow_algorithm_impl<T, U>();
-
-} // namespace detail
-
-template <typename T, typename U, ::std::enable_if_t<detail::poly_pow_algo<T &&, U &&> != 0, int> = 0>
-inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+inline auto pow_poly_impl(T &&x, U &&y)
 {
     using ret_t = customisation::internal::series_default_pow_ret_t<T &&, U &&>;
 
@@ -2220,6 +2206,16 @@ inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, 
         return customisation::internal::pow(customisation::internal::pow_t{}, ::std::forward<T>(x),
                                             ::std::forward<U>(y));
     }
+}
+
+} // namespace detail
+
+// Exponentiation.
+template <typename T, typename U>
+    requires Polynomial<remove_cvref_t<
+        T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+{
+    return detail::pow_poly_impl(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 namespace detail
