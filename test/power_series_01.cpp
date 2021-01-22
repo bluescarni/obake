@@ -14,6 +14,7 @@
 #include <variant>
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
+#include <obake/math/pow.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/power_series/power_series.hpp>
@@ -898,5 +899,94 @@ TEST_CASE("division")
         REQUIRE(x.get_symbol_set() == symbol_set{"x"});
         REQUIRE(x.begin()->first == pm_t{1});
         REQUIRE(x.begin()->second == 1. / 2);
+    }
+}
+
+TEST_CASE("pow")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    // Check the specialised poly implementation.
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        x *= 2;
+
+        auto ret = ::obake::pow(x, -1);
+
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{-1});
+        REQUIRE(ret.begin()->second == 1 / 2.);
+    }
+
+    // Tests using the cache.
+    {
+        auto [x, y] = make_p_series<ps_t>("x", "y");
+
+        auto ret = ::obake::pow(x + y, 2);
+
+        REQUIRE(ret.size() == 3u);
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::all_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1 || t.second == 2; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{2, 0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 2}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 1}; }));
+
+        ret = ::obake::pow(x + y, 3);
+        REQUIRE(ret.size() == 4u);
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::all_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1 || t.second == 3; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{3, 0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{2, 1}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 2}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 3}; }));
+    }
+    {
+        auto [x, y] = make_p_series_t<ps_t>(2, "x", "y");
+
+        auto ret = ::obake::pow(x + y, 2);
+
+        REQUIRE(ret.size() == 3u);
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 2);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::all_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1 || t.second == 2; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{2, 0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 2}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 1}; }));
+
+        ret = ::obake::pow(x + y, 3);
+        REQUIRE(ret.empty());
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 2);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+    }
+    {
+        auto [x, y] = make_p_series_p<ps_t>(2, symbol_set{"x"}, "x", "y");
+
+        auto ret = ::obake::pow(x + y, 2);
+
+        REQUIRE(ret.size() == 3u);
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(2), symbol_set{"x"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::all_of(ret.begin(), ret.end(), [](const auto &t) { return t.second == 1 || t.second == 2; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{2, 0}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 2}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 1}; }));
+
+        ret = ::obake::pow(x + y, 3);
+        REQUIRE(ret.size() == 3u);
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(2), symbol_set{"x"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{2, 1}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 2}; }));
+        REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 3}; }));
     }
 }

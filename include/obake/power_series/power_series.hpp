@@ -1352,6 +1352,25 @@ requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline
         ::obake::get_truncation(ps0), ::obake::get_truncation(ps1));
 }
 
+// Exponentiation: we re-use the poly implementation, ensuring
+// that the output is properly truncated.
+template <typename T, typename U>
+    requires any_p_series<remove_cvref_t<
+        T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+{
+    // Store x's tag.
+    auto orig_tag = x.tag();
+
+    // Perform the operation.
+    auto ret = polynomials::detail::pow_poly_impl(::std::forward<T>(x), ::std::forward<U>(y));
+
+    // Re-assign the tag and truncate.
+    ret.tag() = ::std::move(orig_tag);
+    ::obake::truncate(ret);
+
+    return ret;
+}
+
 } // namespace power_series
 
 } // namespace obake
