@@ -3444,6 +3444,8 @@ constexpr auto operator*(T &&x, U &&y)
 
 // NOTE: for now, implement operator*=() in terms of operator*().
 // This can be optimised later performance-wise.
+// NOTE: if this gets optimised for performance, we will probably
+// need to add specialisations for, e.g., power_series.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>

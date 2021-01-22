@@ -496,4 +496,298 @@ TEST_CASE("multiplication")
         REQUIRE(get_truncation(ret).index() == 2u);
         REQUIRE(std::get<2>(get_truncation(ret)) == std::pair{std::int32_t(1), symbol_set{"x", "y", "z"}});
     }
+
+    // Test with different-rank operands.
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        auto ret = x * 5;
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 5);
+
+        ret = 5 * x;
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 5);
+
+        // Multiplication by zero.
+        ret = x * 0;
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.empty());
+
+        ret = 0 * x;
+        REQUIRE(obake::get_truncation(ret).index() == 0u);
+        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.empty());
+    }
+
+    {
+        auto [x] = make_p_series_t<ps_t>(10, "x");
+
+        auto ret = x * 5;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 10);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 5);
+
+        ret = 5 * x;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 10);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 5);
+
+        // Multiplication by zero.
+        ret = x * 0;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 10);
+        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.empty());
+
+        ret = 0 * x;
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 10);
+        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.empty());
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
+
+        auto ret = x * 5;
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 5);
+
+        ret = 5 * x;
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 5);
+
+        // Multiplication by zero.
+        ret = x * 0;
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.empty());
+
+        ret = 0 * x;
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.empty());
+    }
+}
+
+TEST_CASE("in-place multiplication")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        auto [x, y] = make_p_series<ps_t>("x", "y");
+
+        x *= y;
+
+        REQUIRE(std::is_same_v<decltype(x *= y), ps_t &>);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.size() == 1u);
+        REQUIRE(get_truncation(x).index() == 0u);
+        REQUIRE(x.begin()->first == pm_t{1, 1});
+        REQUIRE(x.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
+
+        x *= y;
+
+        REQUIRE(std::is_same_v<decltype(x *= y), ps_t &>);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.size() == 1u);
+        REQUIRE(get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(x)) == 3);
+        REQUIRE(x.begin()->first == pm_t{1, 1});
+        REQUIRE(x.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(1, "x", "y");
+
+        x *= y;
+
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.empty());
+        REQUIRE(get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(x)) == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x", "y");
+
+        x *= y;
+
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.size() == 1u);
+        REQUIRE(get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(x)) == std::pair{std::int32_t(3), symbol_set{"a", "b"}});
+        REQUIRE(x.begin()->first == pm_t{1, 1});
+        REQUIRE(x.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(1, symbol_set{"x", "y", "z"}, "x", "y");
+
+        x *= y;
+
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.empty());
+        REQUIRE(get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(x)) == std::pair{std::int32_t(1), symbol_set{"x", "y", "z"}});
+    }
+
+    // Conflicting truncation levels.
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+        auto [y] = make_p_series_t<ps_t>(2, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x *= y, std::invalid_argument,
+                                       "Unable to multiply two power series if their truncation levels do not match");
+    }
+    {
+        auto [x] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x");
+        auto [y] = make_p_series_p<ps_t>(3, symbol_set{"a", "c"}, "y");
+
+        OBAKE_REQUIRES_THROWS_CONTAINS(x *= y, std::invalid_argument,
+                                       "Unable to multiply two power series if their truncation levels do not match");
+    }
+
+    // Truncation vs no truncation.
+    {
+        auto [x, y] = make_p_series_t<ps_t>(3, "x", "y");
+        obake::unset_truncation(y);
+
+        x *= y;
+
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.size() == 1u);
+        REQUIRE(get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(x)) == 3);
+        REQUIRE(x.begin()->first == pm_t{1, 1});
+        REQUIRE(x.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_t<ps_t>(1, "x", "y");
+        obake::unset_truncation(x);
+
+        x *= y;
+
+        REQUIRE(std::is_same_v<decltype(x), ps_t>);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.empty());
+        REQUIRE(get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(x)) == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x", "y");
+        obake::unset_truncation(x);
+
+        x *= y;
+
+        REQUIRE(std::is_same_v<decltype(x), ps_t>);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.size() == 1u);
+        REQUIRE(get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(x)) == std::pair{std::int32_t(3), symbol_set{"a", "b"}});
+        REQUIRE(x.begin()->first == pm_t{1, 1});
+        REQUIRE(x.begin()->second == 1);
+    }
+
+    {
+        auto [x, y] = make_p_series_p<ps_t>(1, symbol_set{"x", "y", "z"}, "x", "y");
+        obake::unset_truncation(y);
+
+        x *= y;
+
+        REQUIRE(std::is_same_v<decltype(x), ps_t>);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
+        REQUIRE(x.empty());
+        REQUIRE(get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(x)) == std::pair{std::int32_t(1), symbol_set{"x", "y", "z"}});
+    }
+
+    // Test with different-rank operands.
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        x *= 5;
+        REQUIRE(obake::get_truncation(x).index() == 0u);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 5);
+
+        // Multiplication by zero.
+        x = make_p_series<ps_t>("x")[0];
+        x *= 0;
+        REQUIRE(obake::get_truncation(x).index() == 0u);
+        REQUIRE(x.get_symbol_set() == symbol_set{});
+        REQUIRE(x.empty());
+    }
+
+    {
+        auto [x] = make_p_series_t<ps_t>(10, "x");
+
+        x *= 5;
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 5);
+
+        // Multiplication by zero.
+        x = make_p_series_t<ps_t>(10, "x")[0];
+        x *= 0;
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
+        REQUIRE(x.get_symbol_set() == symbol_set{});
+        REQUIRE(x.empty());
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
+
+        x *= 5;
+        REQUIRE(obake::get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(x)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 5);
+
+        // Multiplication by zero.
+        x = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x")[0];
+        x *= 0;
+        REQUIRE(obake::get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(x)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(x.get_symbol_set() == symbol_set{});
+        REQUIRE(x.empty());
+    }
+
+    // Non-series on the left.
+    {
+        auto x = ps_t{5};
+        double tmp = 5;
+        tmp *= x;
+        REQUIRE(tmp == 25.);
+    }
 }
