@@ -532,12 +532,12 @@ TEST_CASE("multiplication")
         // Multiplication by zero.
         ret = x * 0;
         REQUIRE(obake::get_truncation(ret).index() == 0u);
-        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret.empty());
 
         ret = 0 * x;
         REQUIRE(obake::get_truncation(ret).index() == 0u);
-        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret.empty());
     }
 
@@ -562,13 +562,13 @@ TEST_CASE("multiplication")
         ret = x * 0;
         REQUIRE(obake::get_truncation(ret).index() == 1u);
         REQUIRE(std::get<1>(obake::get_truncation(ret)) == 10);
-        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret.empty());
 
         ret = 0 * x;
         REQUIRE(obake::get_truncation(ret).index() == 1u);
         REQUIRE(std::get<1>(obake::get_truncation(ret)) == 10);
-        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret.empty());
     }
 
@@ -593,13 +593,13 @@ TEST_CASE("multiplication")
         ret = x * 0;
         REQUIRE(obake::get_truncation(ret).index() == 2u);
         REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(10), symbol_set{"a"}});
-        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret.empty());
 
         ret = 0 * x;
         REQUIRE(obake::get_truncation(ret).index() == 2u);
         REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(10), symbol_set{"a"}});
-        REQUIRE(ret.get_symbol_set() == symbol_set{});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
         REQUIRE(ret.empty());
     }
 }
@@ -708,7 +708,7 @@ TEST_CASE("in-place multiplication")
 
         x *= y;
 
-        REQUIRE(std::is_same_v<decltype(x), ps_t>);
+        REQUIRE(std::is_same_v<decltype(x *= y), ps_t &>);
         REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
         REQUIRE(x.empty());
         REQUIRE(get_truncation(x).index() == 1u);
@@ -721,7 +721,7 @@ TEST_CASE("in-place multiplication")
 
         x *= y;
 
-        REQUIRE(std::is_same_v<decltype(x), ps_t>);
+        REQUIRE(std::is_same_v<decltype(x *= y), ps_t &>);
         REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
         REQUIRE(x.size() == 1u);
         REQUIRE(get_truncation(x).index() == 2u);
@@ -736,7 +736,7 @@ TEST_CASE("in-place multiplication")
 
         x *= y;
 
-        REQUIRE(std::is_same_v<decltype(x), ps_t>);
+        REQUIRE(std::is_same_v<decltype(x *= y), ps_t &>);
         REQUIRE(x.get_symbol_set() == symbol_set{"x", "y"});
         REQUIRE(x.empty());
         REQUIRE(get_truncation(x).index() == 2u);
@@ -748,6 +748,8 @@ TEST_CASE("in-place multiplication")
         auto [x] = make_p_series<ps_t>("x");
 
         x *= 5;
+
+        REQUIRE(std::is_same_v<decltype(x *= 5), ps_t &>);
         REQUIRE(obake::get_truncation(x).index() == 0u);
         REQUIRE(x.get_symbol_set() == symbol_set{"x"});
         REQUIRE(x.begin()->first == pm_t{1});
@@ -757,7 +759,7 @@ TEST_CASE("in-place multiplication")
         x = make_p_series<ps_t>("x")[0];
         x *= 0;
         REQUIRE(obake::get_truncation(x).index() == 0u);
-        REQUIRE(x.get_symbol_set() == symbol_set{});
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
         REQUIRE(x.empty());
     }
 
@@ -765,6 +767,8 @@ TEST_CASE("in-place multiplication")
         auto [x] = make_p_series_t<ps_t>(10, "x");
 
         x *= 5;
+
+        REQUIRE(std::is_same_v<decltype(x *= 5), ps_t &>);
         REQUIRE(obake::get_truncation(x).index() == 1u);
         REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
         REQUIRE(x.get_symbol_set() == symbol_set{"x"});
@@ -776,7 +780,7 @@ TEST_CASE("in-place multiplication")
         x *= 0;
         REQUIRE(obake::get_truncation(x).index() == 1u);
         REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
-        REQUIRE(x.get_symbol_set() == symbol_set{});
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
         REQUIRE(x.empty());
     }
 
@@ -784,6 +788,8 @@ TEST_CASE("in-place multiplication")
         auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
 
         x *= 5;
+
+        REQUIRE(std::is_same_v<decltype(x *= 5), ps_t &>);
         REQUIRE(obake::get_truncation(x).index() == 2u);
         REQUIRE(std::get<2>(obake::get_truncation(x)) == std::pair{std::int32_t(10), symbol_set{"a"}});
         REQUIRE(x.get_symbol_set() == symbol_set{"x"});
@@ -795,7 +801,7 @@ TEST_CASE("in-place multiplication")
         x *= 0;
         REQUIRE(obake::get_truncation(x).index() == 2u);
         REQUIRE(std::get<2>(obake::get_truncation(x)) == std::pair{std::int32_t(10), symbol_set{"a"}});
-        REQUIRE(x.get_symbol_set() == symbol_set{});
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
         REQUIRE(x.empty());
     }
 
@@ -805,5 +811,92 @@ TEST_CASE("in-place multiplication")
         double tmp = 5;
         tmp *= x;
         REQUIRE(tmp == 25.);
+    }
+}
+
+TEST_CASE("division")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        auto ret = x / 2;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 0u);
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 1. / 2);
+    }
+
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+
+        auto ret = x / 2;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(get_truncation(ret)) == 3);
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 1. / 2);
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x");
+
+        auto ret = x / 2;
+
+        REQUIRE(std::is_same_v<decltype(ret), ps_t>);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(get_truncation(ret)) == std::pair{std::int32_t(3), symbol_set{"a", "b"}});
+        REQUIRE(ret.begin()->first == pm_t{1});
+        REQUIRE(ret.begin()->second == 1 / 2.);
+    }
+
+    // A couple of in-place tests.
+    {
+        auto [x] = make_p_series<ps_t>("x");
+
+        x /= 2;
+
+        REQUIRE(std::is_same_v<decltype(x /= 2), ps_t &>);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x.size() == 1u);
+        REQUIRE(get_truncation(x).index() == 0u);
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 1. / 2);
+    }
+
+    {
+        auto [x] = make_p_series_t<ps_t>(10, "x");
+
+        x /= 2;
+
+        REQUIRE(std::is_same_v<decltype(x /= 2), ps_t &>);
+        REQUIRE(obake::get_truncation(x).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(x)) == 10);
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 1. / 2);
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(10, symbol_set{"a"}, "x");
+
+        x /= 2;
+
+        REQUIRE(std::is_same_v<decltype(x /= 2), ps_t &>);
+        REQUIRE(obake::get_truncation(x).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(x)) == std::pair{std::int32_t(10), symbol_set{"a"}});
+        REQUIRE(x.get_symbol_set() == symbol_set{"x"});
+        REQUIRE(x.begin()->first == pm_t{1});
+        REQUIRE(x.begin()->second == 1. / 2);
     }
 }

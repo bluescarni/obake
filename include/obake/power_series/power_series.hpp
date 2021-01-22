@@ -1266,6 +1266,8 @@ constexpr bool ps_mul_algo()
 } // namespace detail
 
 // Multiplication between two power series with the same rank via (truncated) polynomial multiplication.
+// NOTE: for the other multiplication cases (i.e., those relying on series' default mul implementation)
+// we don't require explicit truncation and we ensure that the tag is preserved correctly.
 template <typename K, typename C0, typename C1>
 requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline ::obake::polynomials::detail::
     poly_mul_ret_t<p_series<K, C0>, p_series<K, C1>> series_mul(const p_series<K, C0> &ps0, const p_series<K, C1> &ps1)
@@ -1348,41 +1350,6 @@ requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline
             }
         },
         ::obake::get_truncation(ps0), ::obake::get_truncation(ps1));
-}
-
-// Multiplication between a power series and an object of lower rank
-// via the default implementation of series multiplication.
-// NOTE: we need this specialisation because in corner cases
-// the default series implementation might discard the tag
-// (e.g., multiplication by zero).
-template <typename T, typename U>
-    requires(any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
-    // Check that the default series mul implementation is available.
-    && (::obake::detail::series_default_mul_algo<T &&, U &&> != 0)
-    // Check that the result is a power series. This means that the series
-    // with higher rank is also a power series.
-    && any_p_series<::obake::detail::series_default_mul_ret_t<T &&, U &&>> inline ::obake::detail::
-        series_default_mul_ret_t<T &&, U &&> series_mul(T &&x, U &&y)
-{
-    // Fetch the tag of the higher-rank series (which must be a power series
-    // due to the constraints above).
-    auto orig_tag = [&x, &y]() {
-        if constexpr ((series_rank<remove_cvref_t<T>>) > (series_rank<remove_cvref_t<U>>)) {
-            return x.tag();
-        } else {
-            return y.tag();
-        }
-    }();
-
-    // Run the multiplication.
-    auto ret = ::obake::detail::series_default_mul_impl(::std::forward<T>(x), ::std::forward<U>(y));
-
-    // Re-assign the tag.
-    // NOTE: don't need explicit truncation because the default series
-    // mul does not add any new terms.
-    ret.tag() = ::std::move(orig_tag);
-
-    return ret;
 }
 
 } // namespace power_series

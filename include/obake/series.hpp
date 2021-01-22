@@ -3351,7 +3351,11 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
         // If either a or b is zero, return an
         // empty series.
         if (::obake::is_zero(::std::as_const(a)) || ::obake::is_zero(::std::as_const(b))) {
-            return ret_t{};
+            // NOTE: assign both the symbol set and the tag from a.
+            ret_t retval;
+            retval.set_symbol_set_fw(a.get_symbol_set_fw());
+            retval.tag() = a.tag();
+            return retval;
         }
 
         // Init the return value from the higher-rank series.
