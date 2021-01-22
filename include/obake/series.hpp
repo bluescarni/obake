@@ -1769,7 +1769,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     };
 
     // Lock down before accessing the cache.
-    ::std::lock_guard<::std::mutex> lock(mutex);
+    ::std::lock_guard lock(mutex);
 
     // Try first to locate the series_te_pow_map_t for the current type,
     // then, in that map, try to locate 'base'. Use try_emplace() so that
