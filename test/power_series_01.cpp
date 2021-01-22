@@ -1026,6 +1026,17 @@ TEST_CASE("pow")
         REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{1, 2}; }));
         REQUIRE(std::any_of(ret.begin(), ret.end(), [](const auto &t) { return t.first == pm_t{0, 3}; }));
     }
+
+    // Check cache interaction when truncation types/levels differ.
+    {
+        auto [x, y] = make_p_series<ps_t>("x", "y");
+        auto [xt, yt] = make_p_series_t<ps_t>(4, "x", "y");
+        auto [xt2, yt2] = make_p_series_t<ps_t>(10, "x", "y");
+
+        REQUIRE(!obake::pow(x + y, 5).empty());
+        REQUIRE(obake::pow(xt + yt, 5).empty());
+        REQUIRE(!obake::pow(xt2 + yt2, 5).empty());
+    }
 }
 
 // Check that trimming preserves the tag.
