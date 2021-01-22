@@ -930,6 +930,32 @@ TEST_CASE("pow")
         REQUIRE(ret.begin()->first == pm_t{-1});
         REQUIRE(ret.begin()->second == 1 / 2.);
     }
+    {
+        auto [x] = make_p_series_t<ps_t>(4, "x");
+
+        x *= 2;
+
+        auto ret = ::obake::pow(x, 5);
+
+        REQUIRE(ret.empty());
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 4);
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x"});
+    }
+    {
+        auto [x, y] = make_p_series_p<ps_t>(4, symbol_set{"x"}, "x", "y");
+
+        x *= y * y;
+
+        auto ret = ::obake::pow(x, 4);
+
+        REQUIRE(ret.size() == 1u);
+        REQUIRE(ret.begin()->first == pm_t{4, 8});
+        REQUIRE(ret.begin()->second == 1);
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(4), symbol_set{"x"}});
+        REQUIRE(ret.get_symbol_set() == symbol_set{"x", "y"});
+    }
 
     // Tests using the cache.
     {
