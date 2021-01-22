@@ -3779,6 +3779,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     // set, extend only y.
                     rU b;
                     b.set_symbol_set(merged_ss);
+                    b.tag() = y.tag();
                     detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
                     return customisation::internal::series_cmp_identical_ss(x, b);
@@ -3788,6 +3789,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
                     // set, extend only x.
                     rT a;
                     a.set_symbol_set(merged_ss);
+                    a.tag() = x.tag();
                     detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
 
                     return customisation::internal::series_cmp_identical_ss(a, y);
@@ -3798,7 +3800,9 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
             rT a;
             rU b;
             a.set_symbol_set(merged_ss);
+            a.tag() = x.tag();
             b.set_symbol_set(merged_ss);
+            b.tag() = y.tag();
             detail::series_sym_extender(a, ::std::forward<T>(x), ins_map_x);
             detail::series_sym_extender(b, ::std::forward<U>(y), ins_map_y);
 
@@ -4485,6 +4489,7 @@ struct series_default_trim_impl {
         // Prepare the return value.
         ret_t<T &&> retval;
         retval.set_symbol_set(new_ss);
+        retval.tag() = x.tag();
         // NOTE: use the same number of segments as x
         // and reserve space for the same number of terms.
         retval.set_n_segments(retval.get_s_size());
@@ -4545,6 +4550,7 @@ inline series<K, C, Tag> filtered_impl(const series<K, C, Tag> &s, const F &f)
     // and same number of segments as s.
     series<K, C, Tag> retval;
     retval.set_symbol_set_fw(s.get_symbol_set_fw());
+    retval.tag() = s.tag();
     retval.set_n_segments(s.get_s_size());
 
     // Do the filtering table by table.
@@ -4662,6 +4668,7 @@ inline series<K, C, Tag> add_symbols_impl(const series<K, C, Tag> &s, const symb
     // NOTE: the sym extender takes care of the segmentation/allocation,
     // it just needs the proper symbol set.
     retval.set_symbol_set(merged_ss);
+    retval.tag() = s.tag();
     detail::series_sym_extender(retval, s, ins_map);
 
     return retval;
