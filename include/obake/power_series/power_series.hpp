@@ -1375,7 +1375,10 @@ template <typename T, typename U>
 // NOTE: we will be using poly's implementation, which
 // is currently based on arithmetic operations and which
 // should then work reasonably well wrt respecting and
-// propagating the truncation settings.
+// propagating the truncation settings. There are however
+// corner cases in which the retval may be untruncated
+// even if the input object(s) have truncation (e.g.,
+// empty x). Not sure what's the best way of dealing with this.
 template <typename T, typename U>
     requires any_p_series<remove_cvref_t<
         T>> && (polynomials::detail::poly_subs_algo<T &&, U> != 0) inline polynomials::detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
@@ -1385,14 +1388,41 @@ template <typename T, typename U>
 
 // Diff.
 // NOTE: we will be using poly's implementation, which
-// is currently based on arithmetic operations and which
-// should then work reasonably well wrt respecting and
-// propagating the truncation settings.
+// is currently based on arithmetic operations or term insertions.
+// In the latter case, differentiation should never increase the degree
+// and thus no truncation is needed. Note that if diff is not done
+// via term insertion, there may be corner cases in which the return
+// value is not truncated even if x is. If this becomes a problem,
+// we can enable this specialisation only for some values of diff_algo.
 template <typename T>
     requires any_p_series<remove_cvref_t<
         T>> && (polynomials::detail::poly_diff_algo<T &&> != 0) inline polynomials::detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
 {
     return polynomials::detail::poly_diff_impl(::std::forward<T>(x), s);
+}
+
+// Integrate.
+// NOTE: we will be using poly's implementation, which
+// is currently based on arithmetic operations and term insertions.
+// In the latter case, we need explicit truncation because integration
+// may end up increasing the degree. Note that if integrate is not done
+// via term insertion, there may be corner cases in which the return
+// value is not truncated even if x is. If this becomes a problem,
+// we can enable this specialisation only for some values of integrate_algo.
+template <typename T>
+    requires any_p_series<remove_cvref_t<
+        T>> && (polynomials::detail::poly_integrate_algo<T &&> != 0) inline polynomials::detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
+{
+    auto ret = polynomials::detail::poly_integrate_impl(::std::forward<T>(x), s);
+
+    if constexpr (::std::is_same_v<decltype(ret), remove_cvref_t<T>>) {
+        // NOTE: if the return type matches the input type,
+        // then the result was calculated via repeated term insertions
+        // and we need to explicitly truncate.
+        ::obake::truncate(ret);
+    }
+
+    return ret;
 }
 
 } // namespace power_series

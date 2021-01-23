@@ -2602,6 +2602,7 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
         tmp_p2.tag() = x.tag();
 
         ret_t retval(0);
+
         for (const auto &t : x) {
             const auto &k = t.first;
             const auto &c = t.second;
@@ -2635,7 +2636,7 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
         // The return type must be the original poly type.
         static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
 
-        // Init retval, using the same symbol set
+        // Init retval, using the same symbol set, tag
         // and segmentation from x, and reserving
         // the same size as x.
         ret_t retval;
@@ -2703,8 +2704,8 @@ constexpr auto poly_integrate_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
+    if constexpr (!any_series<rT>) {
+        // Not a series.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
@@ -2767,17 +2768,16 @@ inline constexpr int poly_integrate_algo = poly_integrate_algorithm<T>.first;
 template <typename T>
 using poly_integrate_ret_t = typename decltype(poly_integrate_algorithm<T>.second)::type;
 
-} // namespace detail
-
-template <typename T, ::std::enable_if_t<detail::poly_integrate_algo<T &&> != 0, int> = 0>
-inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string &s)
+// Implementation of poly integration.
+template <typename T>
+inline auto poly_integrate_impl(T &&x_, const ::std::string &s)
 {
-    using ret_t = detail::poly_integrate_ret_t<T &&>;
+    using ret_t = poly_integrate_ret_t<T &&>;
     using rT = remove_cvref_t<T>;
 
     // The implementation function.
     auto impl = [&s](const rT &x, symbol_idx idx) {
-        constexpr auto algo = detail::poly_integrate_algo<T &&>;
+        constexpr auto algo = poly_integrate_algo<T &&>;
 
         // Sanity check.
         static_assert(algo == 1 || algo == 2);
@@ -2800,6 +2800,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
             // as a series of type rT.
             rT tmp_p;
             tmp_p.set_symbol_set_fw(ss_fw);
+            tmp_p.tag() = x.tag();
 
             // Produce retval by accumulation.
             ret_t retval(0);
@@ -2827,11 +2828,12 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
             // The return type must be the original poly type.
             static_assert(::std::is_same_v<ret_t, rT>);
 
-            // Init retval, using the same symbol set
+            // Init retval, using the same symbol set, tag
             // and segmentation from x, and reserving
             // the same size as x.
             ret_t retval;
             retval.set_symbol_set_fw(ss_fw);
+            retval.tag() = x.tag();
             retval.set_n_segments(x.get_s_size());
             retval.reserve(x.size());
 
@@ -2877,6 +2879,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
         // Prepare the merged version of x.
         rT merged_x;
         merged_x.set_symbol_set(new_ss);
+        merged_x.tag() = x_.tag();
         ::obake::detail::series_sym_extender(merged_x, ::std::forward<T>(x_), symbol_idx_map<symbol_set>{{s_idx, {s}}});
 
         // Run the implementation on merged_x.
@@ -2886,6 +2889,15 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
         // the implementation directly on x_.
         return impl(x_, s_idx);
     }
+}
+
+} // namespace detail
+
+template <typename T>
+    requires Polynomial<remove_cvref_t<
+        T>> && (detail::poly_integrate_algo<T &&> != 0) inline detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
+{
+    return detail::poly_integrate_impl(::std::forward<T>(x), s);
 }
 
 } // namespace polynomials
