@@ -1372,7 +1372,10 @@ template <typename T, typename U>
 }
 
 // Substitution.
-// NOTE: we will be using poly's implementation.
+// NOTE: we will be using poly's implementation, which
+// is currently based on arithmetic operations and which
+// should then work reasonably well wrt respecting and
+// propagating the truncation settings.
 template <typename T, typename U>
     requires any_p_series<remove_cvref_t<
         T>> && (polynomials::detail::poly_subs_algo<T &&, U> != 0) inline polynomials::detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)

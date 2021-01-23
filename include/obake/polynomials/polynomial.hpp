@@ -2332,6 +2332,9 @@ inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
         // tmp_poly. In that case we can avoid one multiplication
         // and call tmp_poly.add_term() above directly with
         // subs(c, sm) as a coefficient instead of 1.
+        // NOTE: if we implement the above suggestions, we will
+        // have to think about the implication wrt power series
+        // and truncation.
         retval += ::std::move(k_sub.first) * ::obake::subs(c, sm) * ::std::as_const(tmp_poly);
     }
 

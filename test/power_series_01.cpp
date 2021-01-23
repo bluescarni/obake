@@ -14,6 +14,8 @@
 #include <variant>
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
+#include <obake/math/degree.hpp>
+#include <obake/math/p_degree.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/subs.hpp>
 #include <obake/math/trim.hpp>
@@ -1104,5 +1106,31 @@ TEST_CASE("subs")
         auto ret = obake::subs(orig, symbol_map<ps_t>{{"z", z + 1}});
 
         REQUIRE(orig == obake::subs(ret, symbol_map<ps_t>{{"z", z - 1}}));
+    }
+
+    // Total degree truncation.
+    {
+        auto [x, y, z] = make_p_series_t<ps_t>(4, "x", "y", "z");
+
+        auto orig = obake::pow(x + y + z, 3);
+
+        auto ret = obake::subs(orig, symbol_map<ps_t>{{"z", z * z + z + 1}});
+
+        REQUIRE(obake::degree(ret) <= 4);
+        REQUIRE(obake::get_truncation(ret).index() == 1u);
+        REQUIRE(std::get<1>(obake::get_truncation(ret)) == 4);
+    }
+
+    // Partial degree truncation.
+    {
+        auto [x, y, z] = make_p_series_p<ps_t>(4, symbol_set{"x", "z"}, "x", "y", "z");
+
+        auto orig = obake::pow(x + y + z, 3);
+
+        auto ret = obake::subs(orig, symbol_map<ps_t>{{"z", z * z + z + 1}});
+
+        REQUIRE(obake::p_degree(ret, symbol_set{"x", "z"}) <= 4);
+        REQUIRE(obake::get_truncation(ret).index() == 2u);
+        REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(4), symbol_set{"x", "z"}});
     }
 }
