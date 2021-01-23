@@ -412,7 +412,7 @@ std::ostream &operator<<(std::ostream &os, const tag_00 &t)
 TEST_CASE("tag member")
 {
     using pm_t = d_packed_monomial<std::int32_t, 8>;
-    using s1_t = series<pm_t, rat_t, ns::tag_00>;
+    using s1_t = series<pm_t, double, ns::tag_00>;
 
     s1_t s;
 
