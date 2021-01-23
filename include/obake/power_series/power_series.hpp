@@ -1371,6 +1371,15 @@ template <typename T, typename U>
     return ret;
 }
 
+// Substitution.
+// NOTE: we will be using poly's implementation.
+template <typename T, typename U>
+    requires any_p_series<remove_cvref_t<
+        T>> && (polynomials::detail::poly_subs_algo<T &&, U> != 0) inline polynomials::detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+{
+    return polynomials::detail::poly_subs_impl(::std::forward<T>(x), sm);
+}
+
 } // namespace power_series
 
 } // namespace obake

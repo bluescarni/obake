@@ -2234,8 +2234,8 @@ constexpr auto poly_subs_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
+    if constexpr (!any_series<rT>) {
+        // Not a series type.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
@@ -2280,10 +2280,9 @@ inline constexpr int poly_subs_algo = poly_subs_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_subs_ret_t = typename decltype(poly_subs_algorithm<T, U>.second)::type;
 
-} // namespace detail
-
-template <typename T, typename U, ::std::enable_if_t<detail::poly_subs_algo<T &&, U> != 0, int> = 0>
-inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
+// Implementation of the polynomial subs algorithm.
+template <typename T, typename U>
+inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 {
     // Sanity check.
     static_assert(detail::poly_subs_algo<T &&, U> == 1);
@@ -2300,6 +2299,7 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
     // Init a temp poly that we will use in the loop below.
     remove_cvref_t<T> tmp_poly;
     tmp_poly.set_symbol_set_fw(x.get_symbol_set_fw());
+    tmp_poly.tag() = x.tag();
 
     // The return value (this will default-construct
     // an empty polynomial).
@@ -2336,6 +2336,16 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
     }
 
     return retval;
+}
+
+} // namespace detail
+
+// Polynomial subs.
+template <typename T, typename U>
+    requires Polynomial<remove_cvref_t<
+        T>> && (detail::poly_subs_algo<T &&, U> != 0) inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+{
+    return detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
 
 namespace detail

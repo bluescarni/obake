@@ -15,6 +15,7 @@
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
 #include <obake/math/pow.hpp>
+#include <obake/math/subs.hpp>
 #include <obake/math/trim.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
@@ -1087,4 +1088,21 @@ TEST_CASE("add_symbols")
     REQUIRE(ret.size() == 1u);
     REQUIRE(obake::get_truncation(ret).index() == 1u);
     REQUIRE(std::get<1>(obake::get_truncation(ret)) == 2);
+}
+
+TEST_CASE("subs")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    // No truncation
+    {
+        auto [x, y, z] = make_p_series<ps_t>("x", "y", "z");
+
+        auto orig = obake::pow(x + y + z, 3);
+
+        auto ret = obake::subs(orig, symbol_map<ps_t>{{"z", z + 1}});
+
+        REQUIRE(orig == obake::subs(ret, symbol_map<ps_t>{{"z", z - 1}}));
+    }
 }
