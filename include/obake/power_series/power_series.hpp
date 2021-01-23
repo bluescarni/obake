@@ -1383,6 +1383,18 @@ template <typename T, typename U>
     return polynomials::detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
 
+// Diff.
+// NOTE: we will be using poly's implementation, which
+// is currently based on arithmetic operations and which
+// should then work reasonably well wrt respecting and
+// propagating the truncation settings.
+template <typename T>
+    requires any_p_series<remove_cvref_t<
+        T>> && (polynomials::detail::poly_diff_algo<T &&> != 0) inline polynomials::detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
+{
+    return polynomials::detail::poly_diff_impl(::std::forward<T>(x), s);
+}
+
 } // namespace power_series
 
 } // namespace obake

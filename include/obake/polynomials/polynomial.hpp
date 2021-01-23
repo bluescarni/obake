@@ -2285,7 +2285,7 @@ template <typename T, typename U>
 inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 {
     // Sanity check.
-    static_assert(detail::poly_subs_algo<T &&, U> == 1);
+    static_assert(poly_subs_algo<T &&, U> == 1);
 
     // Need only const access to x.
     const auto &x = ::std::as_const(x_);
@@ -2303,7 +2303,7 @@ inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 
     // The return value (this will default-construct
     // an empty polynomial).
-    detail::poly_subs_ret_t<T &&, U> retval;
+    poly_subs_ret_t<T &&, U> retval;
 
     // NOTE: parallelisation opportunities here
     // for segmented tables.
@@ -2494,8 +2494,8 @@ constexpr auto poly_diff_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
+    if constexpr (!any_series<rT>) {
+        // Not a series type.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
@@ -2565,13 +2565,12 @@ inline constexpr int poly_diff_algo = poly_diff_algorithm<T>.first;
 template <typename T>
 using poly_diff_ret_t = typename decltype(poly_diff_algorithm<T>.second)::type;
 
-} // namespace detail
-
-template <typename T, ::std::enable_if_t<detail::poly_diff_algo<T &&> != 0, int> = 0>
-inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
+// Implementation of poly diff.
+template <typename T>
+inline auto poly_diff_impl(T &&x_, const ::std::string &s)
 {
-    using ret_t = detail::poly_diff_ret_t<T &&>;
-    constexpr auto algo = detail::poly_diff_algo<T &&>;
+    using ret_t = poly_diff_ret_t<T &&>;
+    constexpr auto algo = poly_diff_algo<T &&>;
 
     // Sanity checks.
     static_assert(algo == 1 || algo == 2);
@@ -2595,8 +2594,12 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         // These will represent the original monomial and its
         // derivative as series of type T (after cvref removal).
         remove_cvref_t<T> tmp_p1, tmp_p2;
+
         tmp_p1.set_symbol_set_fw(ss_fw);
+        tmp_p1.tag() = x.tag();
+
         tmp_p2.set_symbol_set_fw(ss_fw);
+        tmp_p2.tag() = x.tag();
 
         ret_t retval(0);
         for (const auto &t : x) {
@@ -2637,6 +2640,7 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         // the same size as x.
         ret_t retval;
         retval.set_symbol_set_fw(ss_fw);
+        retval.tag() = x.tag();
         retval.set_n_segments(x.get_s_size());
         retval.reserve(x.size());
 
@@ -2670,6 +2674,15 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
 
         return retval;
     }
+}
+
+} // namespace detail
+
+template <typename T>
+    requires Polynomial<remove_cvref_t<
+        T>> && (detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
+{
+    return detail::poly_diff_impl(::std::forward<T>(x), s);
 }
 
 namespace detail
