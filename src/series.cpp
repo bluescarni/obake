@@ -75,7 +75,7 @@ void clear_series_pow_map()
     auto [map, mutex] = internal::get_series_pow_map();
 
     // Lock down before accessing the cache.
-    ::std::lock_guard<::std::mutex> lock(mutex);
+    ::std::lock_guard lock(mutex);
 
     map.clear();
 }

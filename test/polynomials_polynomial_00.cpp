@@ -44,9 +44,6 @@ TEST_CASE("make_polynomials_test")
 
     obake_test::disable_slow_stack_traces();
 
-    REQUIRE(make_polynomials<poly_t>().size() == 0u);
-    REQUIRE(make_polynomials<poly_t>(symbol_set{}).size() == 0u);
-
     {
         auto [a] = make_polynomials<poly_t>("a");
         REQUIRE(a.get_symbol_set() == symbol_set{"a"});
@@ -87,6 +84,11 @@ TEST_CASE("make_polynomials_test")
     OBAKE_REQUIRES_THROWS_CONTAINS(make_polynomials<poly_t>(symbol_set{}, "ada"), std::invalid_argument,
                                    "Cannot create a polynomial with symbol set {} from the generator 'ada': the "
                                    "generator is not in the symbol set");
+
+    OBAKE_REQUIRES_THROWS_CONTAINS((make_polynomials<poly_t>(symbol_set{"x", "y", "z"}, std::string{"x"}, "a")),
+                                   std::invalid_argument,
+                                   "Cannot create a polynomial with symbol set {'x', 'y', 'z'} from the "
+                                   "generator 'a': the generator is not in the symbol set");
 }
 
 TEST_CASE("is_polynomial_test")

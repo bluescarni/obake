@@ -720,6 +720,11 @@ private:
 public:
     using size_type = typename table_type::size_type;
 
+    // NOTE: we use to have a faster way for initing the ss fw
+    // here, but I removed it because it seemed to create
+    // issues with serialization. Perhaps we can revisit
+    // in the future if it turns our that this is a hot spot.
+    // a47d39b81b1df9cd604fce910dc93ad043939c76
     series() : m_s_table(1), m_log2_size(0) {}
     series(const series &) = default;
     series(series &&other) noexcept
@@ -739,11 +744,11 @@ public:
     // as we rely on its behaviour in a variety of places (e.g., when constructing
     // series from scalars - see for instance the default series pow()
     // implementation).
-#if defined(OBAKE_HAVE_CONCEPTS)
+    // NOTE: currently this algorithm accepts also series with different
+    // tags, and it is the only way of converting between series with
+    // different tags. The default implementations of series arithmetic,
+    // comparison, etc. do not handle series with different tag types.
     template <SeriesConstructible<K, C, Tag> T>
-#else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
-#endif
     explicit series(T &&x) : series()
     {
         constexpr int algo = detail::series_generic_ctor_algorithm<T, K, C, Tag>;
@@ -765,7 +770,8 @@ public:
             // Case 2: the series rank of T is equal to the series
             // rank of this series type, and the key types coincide.
             // Insert all terms from x into this, converting the coefficients.
-            // The tag will be default-constructed.
+            // The tag will be copied/moved if the tag types coincide, otherwise
+            // it will be default-constructed.
             // NOTE: the cf or tag must differ, because otherwise we would be
             // in a copy/move scenario.
             static_assert(!::std::is_same_v<series_cf_t<remove_cvref_t<T>>,
@@ -777,6 +783,14 @@ public:
 
             // Copy over the symbol set.
             m_symbol_set = x.get_symbol_set_fw();
+
+            if constexpr (::std::is_same_v<series_tag_t<remove_cvref_t<T>>, Tag>) {
+                // The tag types coincide, forward x's tag.
+                // NOTE: if x is an rvalue, the rref_clearer will reset
+                // x's tag exiting the scope, either as part of normal
+                // flow or after an exception.
+                m_tag = ::std::forward<T>(x).tag();
+            }
 
             // Set the number of segments.
             const auto x_log2_size = x.get_s_size();
@@ -1477,13 +1491,17 @@ public:
     }
 
     // Tag access.
-    Tag &tag()
+    Tag &tag() &
     {
         return m_tag;
     }
-    const Tag &tag() const
+    const Tag &tag() const &
     {
         return m_tag;
+    }
+    const Tag &&tag() &&
+    {
+        return ::std::move(m_tag);
     }
 
 private:
@@ -1751,7 +1769,7 @@ inline Base series_pow_from_cache(const Base &base, unsigned n)
     };
 
     // Lock down before accessing the cache.
-    ::std::lock_guard<::std::mutex> lock(mutex);
+    ::std::lock_guard lock(mutex);
 
     // Try first to locate the series_te_pow_map_t for the current type,
     // then, in that map, try to locate 'base'. Use try_emplace() so that
@@ -2036,17 +2054,12 @@ struct series_default_byte_size_impl {
         // the class size of all the tables. This is slightly incorrect,
         // since, if we only have a single table, its class size will be
         // included in sizeof(T) due to SBO, but it's just a small inaccuracy.
-        auto retval = sizeof(T) + x._get_s_table().size() * sizeof(table_t);
+        // NOTE: due to the use of the fw pattern, the size of the symbol
+        // set is just the size of a pointer, and it is included in sizeof(T).
+        const auto st_size = x._get_s_table().size();
+        auto retval = sizeof(T) + st_size * sizeof(table_t);
 
-        // Add some size for the symbols. This is not 100% accurate
-        // due to SBO in strings.
-        for (const auto &s : x.get_symbol_set()) {
-            // NOTE: s.size() gives the number of chars,
-            // thus it's a size in bytes.
-            retval += sizeof(::std::string) + s.size();
-        }
-
-        if (x._get_s_table().size() > 1u) {
+        if (st_size > 1u) {
             retval += ::tbb::parallel_reduce(
                 ::tbb::blocked_range(x._get_s_table().begin(), x._get_s_table().end()), ::std::size_t(0),
                 [](const auto &r, ::std::size_t init) {
@@ -2057,10 +2070,8 @@ struct series_default_byte_size_impl {
                     return init;
                 },
                 [](auto n1, auto n2) { return n1 + n2; });
-        } else {
-            for (const auto &tab : x._get_s_table()) {
-                retval += series_default_byte_size_impl::st_byte_size<T>(tab);
-            }
+        } else if (st_size != 0u) {
+            retval += series_default_byte_size_impl::st_byte_size<T>(x._get_s_table()[0]);
         }
 
         // Finally, add the contribution from the tag, if available.
@@ -2270,17 +2281,15 @@ inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>
     using series_t = remove_cvref_t<T>;
 
     // Print the header.
-    os << "Key type        : " << ::obake::type_name<series_key_t<series_t>>() << '\n';
-    os << "Coefficient type: " << ::obake::type_name<series_cf_t<series_t>>() << '\n';
-    os << "Tag             : " << ::obake::type_name<series_tag_t<series_t>>() << '\n';
-    os << "Rank            : " << series_rank<series_t> << '\n';
-    os << "Symbol set      : " << detail::to_string(s.get_symbol_set()) << '\n';
-    os << "Number of terms : " << s.size() << '\n';
-
     // Stream out the tag, if supported.
     if constexpr (is_stream_insertable_v<const series_tag_t<remove_cvref_t<T>> &>) {
         os << ::std::as_const(s).tag() << '\n';
     }
+    os << "Key type: " << ::obake::type_name<series_key_t<series_t>>() << '\n';
+    os << "Coefficient type: " << ::obake::type_name<series_cf_t<series_t>>() << '\n';
+    os << "Rank: " << series_rank<series_t> << '\n';
+    os << "Symbol set: " << detail::to_string(s.get_symbol_set()) << '\n';
+    os << "Number of terms: " << s.size() << '\n';
 
     series_stream_terms_impl<false>(os, s);
 }
@@ -3014,19 +3023,6 @@ constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct series_in_place_add_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<::std::add_lvalue_reference_t<remove_cvref_t<T>>>(
-            detail::series_in_place_add_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
-};
-
-inline constexpr auto series_in_place_add = series_in_place_add_msvc{};
-
-#else
-
 // NOTE: explicitly cast the result of the implementation
 // to an lvalue reference to the type of x, so that
 // we disable the implementation if such conversion is
@@ -3040,8 +3036,6 @@ inline constexpr auto series_in_place_add = series_in_place_add_msvc{};
 inline constexpr auto series_in_place_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_in_place_add_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
-
-#endif
 
 // NOTE: handle separately the two cases
 // series lhs vs non-series lhs.
@@ -3357,7 +3351,11 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
         // If either a or b is zero, return an
         // empty series.
         if (::obake::is_zero(::std::as_const(a)) || ::obake::is_zero(::std::as_const(b))) {
-            return ret_t{};
+            // NOTE: assign both the symbol set and the tag from a.
+            ret_t retval;
+            retval.set_symbol_set_fw(a.get_symbol_set_fw());
+            retval.tag() = a.tag();
+            return retval;
         }
 
         // Init the return value from the higher-rank series.
@@ -3376,12 +3374,7 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
                 v_keys.clear();
 
                 // Perform the multiplications for this table.
-                for (auto &term : t) {
-                    // NOTE: old clang does not like structured
-                    // bindings in the for loop.
-                    auto &k = term.first;
-                    auto &c = term.second;
-
+                for (auto &[k, c] : t) {
                     c *= ::std::as_const(b);
                     // Check if the coefficient became zero
                     // after the multiplication.
@@ -3455,6 +3448,8 @@ constexpr auto operator*(T &&x, U &&y)
 
 // NOTE: for now, implement operator*=() in terms of operator*().
 // This can be optimised later performance-wise.
+// NOTE: if this gets optimised for performance, we will probably
+// need to add specialisations for, e.g., power_series.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
@@ -3890,8 +3885,8 @@ constexpr auto operator!=(T &&x, U &&y)
 namespace customisation::internal
 {
 
-// Common requirements for the degree type
-// in the default series degree computation.
+// Common requirements for the (partial) degree type
+// in the default series (partial) degree computation.
 template <typename DegreeType>
 using series_default_degree_type_common_reqs = ::std::conjunction<
     // Less-than comparable to find the maximum degree

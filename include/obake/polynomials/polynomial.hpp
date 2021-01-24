@@ -10,7 +10,6 @@
 #define OBAKE_POLYNOMIALS_POLYNOMIAL_HPP
 
 #include <algorithm>
-#include <array>
 #include <atomic>
 #include <cassert>
 #include <cmath>
@@ -46,6 +45,7 @@
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/it_diff_check.hpp>
+#include <obake/detail/make_array.hpp>
 #include <obake/detail/ss_func_forward.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
@@ -125,13 +125,15 @@ namespace detail
 {
 
 // Enabler for make_polynomials():
+// - need at least 1 Arg,
 // - T must be a polynomial,
 // - std::string can be constructed from each input Args,
 // - poly key can be constructed from a const int * range,
 // - poly cf can be constructed from an integral literal.
 template <typename T, typename... Args>
 using make_polynomials_supported
-    = ::std::conjunction<is_polynomial<T>, ::std::is_constructible<::std::string, const Args &>...,
+    = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_polynomial<T>,
+                         ::std::is_constructible<::std::string, const Args &>...,
                          ::std::is_constructible<series_key_t<T>, const int *, const int *>,
                          ::std::is_constructible<series_cf_t<T>, int>>;
 
@@ -140,7 +142,7 @@ using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T
 
 // Overload with a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &ss, const Args &...names)
+inline auto make_polynomials_impl(const symbol_set &ss, const Args &...names)
 {
     // Create a temp vector of ints which we will use to
     // init the keys.
@@ -149,7 +151,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
     // Create the fw version of the symbol set.
     const detail::ss_fw ss_fw(ss);
 
-    [[maybe_unused]] auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
+    auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
@@ -192,14 +194,14 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const symbol_set &
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
+    return detail::make_array(make_poly(names)...);
 }
 
 // Overload without a symbol set.
 template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &...names)
+inline auto make_polynomials_impl(const Args &...names)
 {
-    [[maybe_unused]] auto make_poly = [](const auto &n) {
+    auto make_poly = [](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
 
         // Init the retval, assign a symbol set containing only n.
@@ -218,7 +220,7 @@ inline ::std::array<T, sizeof...(Args)> make_polynomials_impl(const Args &...nam
         return retval;
     };
 
-    return ::std::array<T, sizeof...(Args)>{{make_poly(names)...}};
+    return detail::make_array(make_poly(names)...);
 }
 
 } // namespace detail
@@ -2163,24 +2165,10 @@ requires(detail::poly_mul_truncated_p_degree_algo<polynomial<K, C0>, polynomial<
 namespace detail
 {
 
-// Machinery to enable the pow() specialisation for polynomials.
+// Implementation of the specialised pow() implementation
+// for polynomials.
 template <typename T, typename U>
-constexpr auto poly_pow_algorithm_impl()
-{
-    if constexpr (is_polynomial_v<remove_cvref_t<T>>) {
-        return customisation::internal::series_default_pow_algo<T, U>;
-    } else {
-        return 0;
-    }
-}
-
-template <typename T, typename U>
-inline constexpr auto poly_pow_algo = detail::poly_pow_algorithm_impl<T, U>();
-
-} // namespace detail
-
-template <typename T, typename U, ::std::enable_if_t<detail::poly_pow_algo<T &&, U &&> != 0, int> = 0>
-inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+inline auto pow_poly_impl(T &&x, U &&y)
 {
     using ret_t = customisation::internal::series_default_pow_ret_t<T &&, U &&>;
 
@@ -2220,6 +2208,16 @@ inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, 
     }
 }
 
+} // namespace detail
+
+// Exponentiation.
+template <typename T, typename U>
+    requires Polynomial<remove_cvref_t<
+        T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+{
+    return detail::pow_poly_impl(::std::forward<T>(x), ::std::forward<U>(y));
+}
+
 namespace detail
 {
 
@@ -2236,8 +2234,8 @@ constexpr auto poly_subs_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
+    if constexpr (!any_series<rT>) {
+        // Not a series type.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
@@ -2282,13 +2280,12 @@ inline constexpr int poly_subs_algo = poly_subs_algorithm<T, U>.first;
 template <typename T, typename U>
 using poly_subs_ret_t = typename decltype(poly_subs_algorithm<T, U>.second)::type;
 
-} // namespace detail
-
-template <typename T, typename U, ::std::enable_if_t<detail::poly_subs_algo<T &&, U> != 0, int> = 0>
-inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
+// Implementation of the polynomial subs algorithm.
+template <typename T, typename U>
+inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 {
     // Sanity check.
-    static_assert(detail::poly_subs_algo<T &&, U> == 1);
+    static_assert(poly_subs_algo<T &&, U> == 1);
 
     // Need only const access to x.
     const auto &x = ::std::as_const(x_);
@@ -2302,10 +2299,11 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
     // Init a temp poly that we will use in the loop below.
     remove_cvref_t<T> tmp_poly;
     tmp_poly.set_symbol_set_fw(x.get_symbol_set_fw());
+    tmp_poly.tag() = x.tag();
 
     // The return value (this will default-construct
     // an empty polynomial).
-    detail::poly_subs_ret_t<T &&, U> retval;
+    poly_subs_ret_t<T &&, U> retval;
 
     // NOTE: parallelisation opportunities here
     // for segmented tables.
@@ -2334,10 +2332,23 @@ inline detail::poly_subs_ret_t<T &&, U> subs(T &&x_, const symbol_map<U> &sm)
         // tmp_poly. In that case we can avoid one multiplication
         // and call tmp_poly.add_term() above directly with
         // subs(c, sm) as a coefficient instead of 1.
+        // NOTE: if we implement the above suggestions, we will
+        // have to think about the implication wrt power series
+        // and truncation.
         retval += ::std::move(k_sub.first) * ::obake::subs(c, sm) * ::std::as_const(tmp_poly);
     }
 
     return retval;
+}
+
+} // namespace detail
+
+// Polynomial subs.
+template <typename T, typename U>
+    requires Polynomial<remove_cvref_t<
+        T>> && (detail::poly_subs_algo<T &&, U> != 0) inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+{
+    return detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
 
 namespace detail
@@ -2483,8 +2494,8 @@ constexpr auto poly_diff_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
+    if constexpr (!any_series<rT>) {
+        // Not a series type.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
@@ -2554,13 +2565,12 @@ inline constexpr int poly_diff_algo = poly_diff_algorithm<T>.first;
 template <typename T>
 using poly_diff_ret_t = typename decltype(poly_diff_algorithm<T>.second)::type;
 
-} // namespace detail
-
-template <typename T, ::std::enable_if_t<detail::poly_diff_algo<T &&> != 0, int> = 0>
-inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
+// Implementation of poly diff.
+template <typename T>
+inline auto poly_diff_impl(T &&x_, const ::std::string &s)
 {
-    using ret_t = detail::poly_diff_ret_t<T &&>;
-    constexpr auto algo = detail::poly_diff_algo<T &&>;
+    using ret_t = poly_diff_ret_t<T &&>;
+    constexpr auto algo = poly_diff_algo<T &&>;
 
     // Sanity checks.
     static_assert(algo == 1 || algo == 2);
@@ -2584,10 +2594,15 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         // These will represent the original monomial and its
         // derivative as series of type T (after cvref removal).
         remove_cvref_t<T> tmp_p1, tmp_p2;
+
         tmp_p1.set_symbol_set_fw(ss_fw);
+        tmp_p1.tag() = x.tag();
+
         tmp_p2.set_symbol_set_fw(ss_fw);
+        tmp_p2.tag() = x.tag();
 
         ret_t retval(0);
+
         for (const auto &t : x) {
             const auto &k = t.first;
             const auto &c = t.second;
@@ -2621,11 +2636,12 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
         // The return type must be the original poly type.
         static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
 
-        // Init retval, using the same symbol set
+        // Init retval, using the same symbol set, tag
         // and segmentation from x, and reserving
         // the same size as x.
         ret_t retval;
         retval.set_symbol_set_fw(ss_fw);
+        retval.tag() = x.tag();
         retval.set_n_segments(x.get_s_size());
         retval.reserve(x.size());
 
@@ -2661,6 +2677,15 @@ inline detail::poly_diff_ret_t<T &&> diff(T &&x_, const ::std::string &s)
     }
 }
 
+} // namespace detail
+
+template <typename T>
+    requires Polynomial<remove_cvref_t<
+        T>> && (detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
+{
+    return detail::poly_diff_impl(::std::forward<T>(x), s);
+}
+
 namespace detail
 {
 
@@ -2679,8 +2704,8 @@ constexpr auto poly_integrate_algorithm_impl()
     // is not well-defined.
     [[maybe_unused]] constexpr auto failure = ::std::make_pair(0, ::obake::detail::type_c<void>{});
 
-    if constexpr (!is_polynomial_v<rT>) {
-        // Not a polynomial.
+    if constexpr (!any_series<rT>) {
+        // Not a series.
         return failure;
     } else {
         using cf_t = series_cf_t<rT>;
@@ -2743,17 +2768,16 @@ inline constexpr int poly_integrate_algo = poly_integrate_algorithm<T>.first;
 template <typename T>
 using poly_integrate_ret_t = typename decltype(poly_integrate_algorithm<T>.second)::type;
 
-} // namespace detail
-
-template <typename T, ::std::enable_if_t<detail::poly_integrate_algo<T &&> != 0, int> = 0>
-inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string &s)
+// Implementation of poly integration.
+template <typename T>
+inline auto poly_integrate_impl(T &&x_, const ::std::string &s)
 {
-    using ret_t = detail::poly_integrate_ret_t<T &&>;
+    using ret_t = poly_integrate_ret_t<T &&>;
     using rT = remove_cvref_t<T>;
 
     // The implementation function.
     auto impl = [&s](const rT &x, symbol_idx idx) {
-        constexpr auto algo = detail::poly_integrate_algo<T &&>;
+        constexpr auto algo = poly_integrate_algo<T &&>;
 
         // Sanity check.
         static_assert(algo == 1 || algo == 2);
@@ -2776,6 +2800,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
             // as a series of type rT.
             rT tmp_p;
             tmp_p.set_symbol_set_fw(ss_fw);
+            tmp_p.tag() = x.tag();
 
             // Produce retval by accumulation.
             ret_t retval(0);
@@ -2803,11 +2828,12 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
             // The return type must be the original poly type.
             static_assert(::std::is_same_v<ret_t, rT>);
 
-            // Init retval, using the same symbol set
+            // Init retval, using the same symbol set, tag
             // and segmentation from x, and reserving
             // the same size as x.
             ret_t retval;
             retval.set_symbol_set_fw(ss_fw);
+            retval.tag() = x.tag();
             retval.set_n_segments(x.get_s_size());
             retval.reserve(x.size());
 
@@ -2853,6 +2879,7 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
         // Prepare the merged version of x.
         rT merged_x;
         merged_x.set_symbol_set(new_ss);
+        merged_x.tag() = x_.tag();
         ::obake::detail::series_sym_extender(merged_x, ::std::forward<T>(x_), symbol_idx_map<symbol_set>{{s_idx, {s}}});
 
         // Run the implementation on merged_x.
@@ -2862,6 +2889,15 @@ inline detail::poly_integrate_ret_t<T &&> integrate(T &&x_, const ::std::string 
         // the implementation directly on x_.
         return impl(x_, s_idx);
     }
+}
+
+} // namespace detail
+
+template <typename T>
+    requires Polynomial<remove_cvref_t<
+        T>> && (detail::poly_integrate_algo<T &&> != 0) inline detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
+{
+    return detail::poly_integrate_impl(::std::forward<T>(x), s);
 }
 
 } // namespace polynomials

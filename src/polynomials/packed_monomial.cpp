@@ -69,7 +69,7 @@ void packed_monomial_stream_insert(::std::ostream &os, const packed_monomial<T> 
             if (tmp != T(1)) {
                 // The exponent is not unitary,
                 // print it.
-                using namespace fmt::literals;
+                using namespace ::fmt::literals;
                 os << "**{}"_format(tmp);
             }
         }

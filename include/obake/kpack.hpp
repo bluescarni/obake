@@ -237,7 +237,7 @@ public:
     explicit kpacker(unsigned size) : m_size(size)
     {
         if (obake_unlikely(size > detail::kpack_max_size<T>())) {
-            using namespace fmt::literals;
+            using namespace ::fmt::literals;
 
             obake_throw(::std::overflow_error,
                         "Invalid size specified in the constructor of a Kronecker packer for "
@@ -249,7 +249,7 @@ public:
     // Insert the next value into the packer.
     kpacker &operator<<(const T &n)
     {
-        using namespace fmt::literals;
+        using namespace ::fmt::literals;
 
         if (obake_unlikely(m_index == m_size)) {
             obake_throw(::std::out_of_range,
@@ -304,7 +304,7 @@ class kunpacker
 public:
     explicit kunpacker(const T &n, unsigned size) : m_value(n), m_size(size)
     {
-        using namespace fmt::literals;
+        using namespace ::fmt::literals;
 
         if (size == 0u) {
             if (obake_unlikely(n != T(0))) {
@@ -335,7 +335,7 @@ public:
     kunpacker &operator>>(T &out)
     {
         if (obake_unlikely(m_index == m_size)) {
-            using namespace fmt::literals;
+            using namespace ::fmt::literals;
 
             obake_throw(::std::out_of_range,
                         "Cannot unpack any more values from this Kronecker unpacker: the number of "
