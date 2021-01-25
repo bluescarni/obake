@@ -30,6 +30,7 @@ ctest -j4 -V
 
 # Build the documentation.
 cd ../doc
+make html linkcheck
 export SPHINX_OUTPUT=`make html linkcheck 2>&1 | grep -v "is deprecated" >/dev/null`;
 
 if [[ "${SPHINX_OUTPUT}" != "" ]]; then
