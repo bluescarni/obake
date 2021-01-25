@@ -25,7 +25,7 @@ pip install --user sphinx-book-theme
 mkdir build
 cd build
 
-# cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Release -DOBAKE_BUILD_TESTS=yes -DOBAKE_WITH_LIBBACKTRACE=yes -DOBAKE_BUILD_BENCHMARKS=yes -DBoost_NO_BOOST_CMAKE=ON
+cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE_BUILD_TYPE=Release -DOBAKE_BUILD_TESTS=yes -DOBAKE_WITH_LIBBACKTRACE=yes -DOBAKE_BUILD_BENCHMARKS=yes -DBoost_NO_BOOST_CMAKE=ON
 # make -j2 VERBOSE=1
 # ctest -j4 -V
 
