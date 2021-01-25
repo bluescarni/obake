@@ -32,14 +32,6 @@ cmake ../ -DCMAKE_INSTALL_PREFIX=$deps_dir -DCMAKE_PREFIX_PATH=$deps_dir -DCMAKE
 # Build the documentation.
 cd ../doc
 make html linkcheck
-export SPHINX_OUTPUT=`make html linkcheck 2>&1 | grep -v "is deprecated" >/dev/null`;
-
-if [[ "${SPHINX_OUTPUT}" != "" ]]; then
-    echo "Sphinx encountered some problem:";
-    echo "${SPHINX_OUTPUT}";
-    exit 1;
-fi
-echo "Sphinx ran successfully";
 
 if [[ ! -z "${CI_PULL_REQUEST}" ]]; then
     echo "Testing a pull request, the generated documentation will not be uploaded.";

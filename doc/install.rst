@@ -13,7 +13,7 @@ Currently, obake has the following mandatory dependencies:
 * the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.17),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least version 1.65),
 * the `Abseil <https://abseil.io/>`_ C++ libraries,
-* the `Intel TBB <https://github.com/intel/tbb>`__ library.
+* the `Intel TBB <https://github.com/oneapi-src/oneTBB>`__ library.
 
 obake also depends on other libraries for optional features:
 
@@ -166,7 +166,7 @@ OSX:
 Building the documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-obake's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/>`_,
+obake's documentation is built with a tool called `Sphinx <https://www.sphinx-doc.org/en/master/>`_,
 and it uses a `custom theme <https://github.com/executablebooks/sphinx-book-theme>`_.
 Sphinx can typically be installed from a variety of package managers,
 while the custom theme can easily be installed with ``pip``:
