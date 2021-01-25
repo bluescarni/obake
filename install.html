@@ -4,9 +4,10 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Installation &#8212; obake 0.7.0 documentation</title>
     
-  <link rel="stylesheet" href="_static/css/index.73d71520a4ca3b99cfee5594769eaaae.css">
+  <link rel="stylesheet" href="_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
 
     
   <link rel="stylesheet"
@@ -24,17 +25,16 @@
     href="_static/vendor/lato_latin-ext/1.44.1/index.css">
 
     
-    <link rel="stylesheet" href="_static/sphinx-book-theme.2d2078699c18a0efb88233928e1cf6ed.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/sphinx-book-theme.40e2e510f6b7d1648584402491bb10fe.css" type="text/css" />
     
-  <link rel="preload" as="script" href="_static/js/index.3da636dd464baa7582d2.js">
+  <link rel="preload" as="script" href="_static/js/index.d3f166471bb80abb5163.js">
 
     <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
-    <script src="_static/sphinx-book-theme.be0a4a0c39cd630af62a2fcf693f3f06.js"></script>
+    <script src="_static/sphinx-book-theme.d31b09fe5c1d09cb49b26a786de4a05d.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
@@ -61,15 +61,12 @@
   <h1 class="site-logo" id="site-title">obake 0.7.0 documentation</h1>
   
 </a>
-</div>
-
-<form class="bd-search d-flex align-items-center" action="search.html" method="get">
+</div><form class="bd-search d-flex align-items-center" action="search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form>
-
 <nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
-  <ul class="current nav sidenav_l1">
+    <ul class="current nav sidenav_l1">
  <li class="toctree-l1 current active">
   <a class="current reference internal" href="#">
    Installation
@@ -82,9 +79,7 @@
  </li>
 </ul>
 
-</nav>
-
- <!-- To handle the deprecated key -->
+</nav> <!-- To handle the deprecated key -->
 
 <div class="navbar_extra_footer">
   Theme by the <a href="https://ebp.jupyterbook.org">Executable Book Project</a>
@@ -113,11 +108,11 @@
             <i class="fas fa-arrow-up"></i>
         </button>
         
-        <div class="dropdown-buttons-trigger">
+        
+<div class="dropdown-buttons-trigger">
     <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
             class="fas fa-download"></i></button>
 
-    
     <div class="dropdown-buttons">
         <!-- ipynb file if we had a myst markdown file -->
         
@@ -129,8 +124,8 @@
         <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
             onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
     </div>
-    
 </div>
+
         <!-- Source interaction buttons -->
 
 
@@ -221,28 +216,27 @@ to improve the quality of the stack traces.</p></li>
 </div>
 <div class="section" id="installation-from-source">
 <span id="id3"></span><h2>Installation from source<a class="headerlink" href="#installation-from-source" title="Permalink to this headline">¶</a></h2>
-<p>obake is written in <a class="reference external" href="https://en.wikipedia.org/wiki/C%2B%2B17">C++17</a>,
+<p>obake is written in <a class="reference external" href="https://en.wikipedia.org/wiki/C%2B%2B20">C++20</a>,
 and thus it requires a fairly recent compiler with
 robust support for modern C++ idioms. The following compilers are regularly
 tested in obake’s continuous integration setup:</p>
 <ul class="simple">
-<li><p>GCC 7 and 8 on Linux (Ubuntu bionic and cosmic),</p></li>
-<li><p>Clang 6 and 7 on Linux (Ubuntu bionic and cosmic),</p></li>
+<li><p>GCC 9 on Linux (Ubuntu Focal),</p></li>
 <li><p>Visual Studio 2019 on Windows,</p></li>
-<li><p>Clang + Visual Studio 2017 on Windows
+<li><p>Clang 11 + Visual Studio 2017 on Windows
 (via the <code class="docutils literal notranslate"><span class="pre">clang-cl</span></code> driver),</p></li>
-<li><p>Clang 9 on OSX.</p></li>
+<li><p>Clang 11 on OSX.</p></li>
 </ul>
 <p>See also the
 <a class="reference internal" href="#platform-specific-notes"><span class="std std-ref">compiler and platform specific notes</span></a>.</p>
 <p>In order to install obake from source, <a class="reference external" href="https://cmake.org/">CMake</a> is
-required (at least version 3.8). After downloading and unpacking obake’s
+required (at least version 3.12). After downloading and unpacking obake’s
 source code, go to obake’s
 source tree, create a <code class="docutils literal notranslate"><span class="pre">build</span></code> directory and <code class="docutils literal notranslate"><span class="pre">cd</span></code> into it. E.g.,
 on a Unix-like system:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> <span class="nb">cd</span> /path/to/obake
-<span class="gp">$</span> mkdir build
-<span class="gp">$</span> <span class="nb">cd</span> build
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span><span class="nb">cd</span> /path/to/obake
+<span class="gp">$ </span>mkdir build
+<span class="gp">$ </span><span class="nb">cd</span> build
 </pre></div>
 </div>
 <p>Next, we will invoke <code class="docutils literal notranslate"><span class="pre">cmake</span></code> to configure the build. The following options
@@ -270,25 +264,25 @@ when looking for dependencies.</p></li>
 <p>Please consult <a class="reference external" href="https://cmake.org/cmake/help/latest/">CMake’s documentation</a>
 for more details about CMake’s variables and options.</p>
 <p>A typical CMake invocation for obake may look something like this:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake ../ -DOBAKE_BUILD_TESTS<span class="o">=</span>ON -DCMAKE_INSTALL_PREFIX<span class="o">=</span>~/.local
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake ../ -DOBAKE_BUILD_TESTS<span class="o">=</span>ON -DCMAKE_INSTALL_PREFIX<span class="o">=</span>~/.local
 </pre></div>
 </div>
 <p>That is, we build the test suite and we
 will be installing obake into our home directory into the <code class="docutils literal notranslate"><span class="pre">.local</span></code>
 subdirectory. If CMake runs without errors, we can then proceed to actually
 building obake:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake --build .
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake --build .
 </pre></div>
 </div>
 <p>This command will build the obake library and, if requested, the test suite.
 Next, we can install obake with the command:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake  --build . --target install
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake  --build . --target install
 </pre></div>
 </div>
 <p>This command will install the obake library and header files to
 the directory tree indicated by the <code class="docutils literal notranslate"><span class="pre">CMAKE_INSTALL_PREFIX</span></code> variable.</p>
 <p>If enabled, the test suite can be executed with the command:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake  --build . --target <span class="nb">test</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake  --build . --target <span class="nb">test</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -299,7 +293,7 @@ DLL (otherwise the tests will fail to run).</p>
 </div>
 <div class="section" id="troubleshooting">
 <h3>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline">¶</a></h3>
-<p>By far, the most common problem when compiling obake is the detection
+<p>The most common problem when compiling obake is the detection
 of the dependencies.</p>
 <p>On Linux systems, generally speaking, the best way of installing the
 dependencies is through the distribution’s package manager
@@ -333,20 +327,9 @@ C++ standard library will be the one supplied with MSVC.</p></li>
 with the <code class="docutils literal notranslate"><span class="pre">NOMINMAX</span></code> and <code class="docutils literal notranslate"><span class="pre">WIN32_LEAN_AND_MEAN</span></code> definitions,
 and, if supported, with the <code class="docutils literal notranslate"><span class="pre">/permissive-</span></code> compiler flag.</p></li>
 </ul>
-<p>GCC:</p>
-<ul class="simple">
-<li><p>Due to a compiler bug, when using GCC 7 obake’s customisation points
-do not have any <code class="docutils literal notranslate"><span class="pre">noexcept</span></code> specifier.</p></li>
-</ul>
-<p>Clang:</p>
-<ul class="simple">
-<li><p>Due to a compiler bug, Clang 8.0.0 may fail to compile obake’s
-test suite with debugging information. The issue appears to have been
-rectified in Clang 8.0.1.</p></li>
-</ul>
 <p>OSX:</p>
 <ul class="simple">
-<li><p>On OSX, only the most recent versions of Xcode (i.e., Xcode 9 or later)
+<li><p>On OSX, only the most recent versions of Xcode
 are capable of compiling obake.
 As an alternative to Xcode, one can install a more modern compiler toolchain
 using package managers such as <a class="reference external" href="https://docs.conda.io/en/latest/">Conda</a> or
@@ -359,20 +342,20 @@ using package managers such as <a class="reference external" href="https://docs.
 and it uses a <a class="reference external" href="https://github.com/executablebooks/sphinx-book-theme">custom theme</a>.
 Sphinx can typically be installed from a variety of package managers,
 while the custom theme can easily be installed with <code class="docutils literal notranslate"><span class="pre">pip</span></code>:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> pip install --user sphinx-book-theme
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip install --user sphinx-book-theme
 </pre></div>
 </div>
 <p>Before attempting to build the documentation, you must ensure
 to run CMake from the <code class="docutils literal notranslate"><span class="pre">build</span></code> directory at least once
 (see the <a class="reference internal" href="#installation-from-source"><span class="std std-ref">source installation instructions</span></a>):</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> cmake ../
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake ../
 </pre></div>
 </div>
 <p>Running CMake is necessary to generate the configuration files required
 to build the documentation.</p>
 <p>After having run CMake, you can move to the <code class="docutils literal notranslate"><span class="pre">doc</span></code> directory and proceed
 to build the documentation. Executing the command</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> make html
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>make html
 </pre></div>
 </div>
 <p>will produce the documentation in HTML format. The documentation will be
@@ -394,9 +377,9 @@ CMake support files.</p></li>
 </ul>
 <p>In order to install obake via conda, you just need
 to add <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> to the channels:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$</span> conda config --add channels conda-forge
-<span class="gp">$</span> conda config --set channel_priority strict
-<span class="gp">$</span> conda install obake obake-devel
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>conda config --add channels conda-forge
+<span class="gp">$ </span>conda config --set channel_priority strict
+<span class="gp">$ </span>conda install obake obake-devel
 </pre></div>
 </div>
 <p>Please refer to the <a class="reference external" href="https://conda.io/en/latest/">conda documentation</a> for instructions on how to setup and manage
@@ -435,7 +418,7 @@ your conda installation.</p>
     </div>
 
     
-  <script src="_static/js/index.3da636dd464baa7582d2.js"></script>
+  <script src="_static/js/index.d3f166471bb80abb5163.js"></script>
 
 
     

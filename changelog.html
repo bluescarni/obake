@@ -4,9 +4,10 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Changelog &#8212; obake 0.7.0 documentation</title>
     
-  <link rel="stylesheet" href="_static/css/index.73d71520a4ca3b99cfee5594769eaaae.css">
+  <link rel="stylesheet" href="_static/css/index.f658d18f9b420779cfdf24aa0a7e2d77.css">
 
     
   <link rel="stylesheet"
@@ -24,17 +25,16 @@
     href="_static/vendor/lato_latin-ext/1.44.1/index.css">
 
     
-    <link rel="stylesheet" href="_static/sphinx-book-theme.2d2078699c18a0efb88233928e1cf6ed.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/sphinx-book-theme.40e2e510f6b7d1648584402491bb10fe.css" type="text/css" />
     
-  <link rel="preload" as="script" href="_static/js/index.3da636dd464baa7582d2.js">
+  <link rel="preload" as="script" href="_static/js/index.d3f166471bb80abb5163.js">
 
     <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
-    <script src="_static/sphinx-book-theme.be0a4a0c39cd630af62a2fcf693f3f06.js"></script>
+    <script src="_static/sphinx-book-theme.d31b09fe5c1d09cb49b26a786de4a05d.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="prev" title="Installation" href="install.html" />
@@ -60,15 +60,12 @@
   <h1 class="site-logo" id="site-title">obake 0.7.0 documentation</h1>
   
 </a>
-</div>
-
-<form class="bd-search d-flex align-items-center" action="search.html" method="get">
+</div><form class="bd-search d-flex align-items-center" action="search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form>
-
 <nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
-  <ul class="current nav sidenav_l1">
+    <ul class="current nav sidenav_l1">
  <li class="toctree-l1">
   <a class="reference internal" href="install.html">
    Installation
@@ -81,9 +78,7 @@
  </li>
 </ul>
 
-</nav>
-
- <!-- To handle the deprecated key -->
+</nav> <!-- To handle the deprecated key -->
 
 <div class="navbar_extra_footer">
   Theme by the <a href="https://ebp.jupyterbook.org">Executable Book Project</a>
@@ -112,11 +107,11 @@
             <i class="fas fa-arrow-up"></i>
         </button>
         
-        <div class="dropdown-buttons-trigger">
+        
+<div class="dropdown-buttons-trigger">
     <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
             class="fas fa-download"></i></button>
 
-    
     <div class="dropdown-buttons">
         <!-- ipynb file if we had a myst markdown file -->
         
@@ -128,8 +123,8 @@
         <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
             onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
     </div>
-    
 </div>
+
         <!-- Source interaction buttons -->
 
 
@@ -157,17 +152,15 @@
   </a>
   <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#new">
+     New
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#changes">
      Changes
     </a>
    </li>
-  </ul>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#id1">
-   0.6.0 (12-06-2020)
-  </a>
-  <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#fix">
      Fix
@@ -176,95 +169,107 @@
   </ul>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#id2">
-   0.5.0 (11-05-2020)
+  <a class="reference internal nav-link" href="#id1">
+   0.6.0 (2020-06-12)
   </a>
   <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#new">
-     New
+    <a class="reference internal nav-link" href="#id2">
+     Fix
     </a>
    </li>
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id3">
-     Changes
-    </a>
-   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id3">
+   0.5.0 (2020-05-11)
+  </a>
+  <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#id4">
-     Fix
+     New
     </a>
    </li>
-  </ul>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#id5">
-   0.4.0 (12-02-2020)
-  </a>
-  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id5">
+     Changes
+    </a>
+   </li>
    <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#id6">
-     New
+     Fix
     </a>
    </li>
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id7">
-     Changes
-    </a>
-   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id7">
+   0.4.0 (2020-02-12)
+  </a>
+  <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#id8">
-     Fix
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#id9">
-   0.3 (31-10-2019)
-  </a>
-  <ul class="nav section-nav flex-column">
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id10">
      New
     </a>
    </li>
    <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id11">
+    <a class="reference internal nav-link" href="#id9">
      Changes
     </a>
    </li>
    <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id12">
+    <a class="reference internal nav-link" href="#id10">
      Fix
     </a>
    </li>
   </ul>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#id13">
-   0.2 (27-10-2019)
+  <a class="reference internal nav-link" href="#id11">
+   0.3 (2019-10-31)
   </a>
   <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id14">
+    <a class="reference internal nav-link" href="#id12">
      New
     </a>
    </li>
    <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id15">
+    <a class="reference internal nav-link" href="#id13">
+     Changes
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id14">
      Fix
     </a>
    </li>
   </ul>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#id16">
-   0.1 (18-10-2019)
+  <a class="reference internal nav-link" href="#id15">
+   0.2 (2019-10-27)
   </a>
   <ul class="nav section-nav flex-column">
    <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id16">
+     New
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
     <a class="reference internal nav-link" href="#id17">
+     Fix
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#id18">
+   0.1 (2019-10-18)
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#id19">
      New
     </a>
    </li>
@@ -285,9 +290,36 @@
 <h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="unreleased">
 <h2>0.7.0 (unreleased)<a class="headerlink" href="#unreleased" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="new">
+<h3>New<a class="headerlink" href="#new" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>The C++ standard requirement is now exported in the CMake
+config-file package installed by obake
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/128">#128</a>).</p></li>
+</ul>
+</div>
 <div class="section" id="changes">
 <h3>Changes<a class="headerlink" href="#changes" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p><strong>BREAKING</strong>: obake is now based on C++20, and the minimum
+CMake version has been bumped up to 3.12. As a consequence,
+obake now requires GCC &gt;= 9, clang &gt;= 11 and MSVC &gt;= 2019
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/128">#128</a>).</p></li>
+<li><p><strong>BREAKING</strong>: the implementation of <code class="docutils literal notranslate"><span class="pre">packed_monomial</span></code> and
+<code class="docutils literal notranslate"><span class="pre">d_packed_monomial</span></code> has changed: now when specifying the desired
+exponent type, only <code class="docutils literal notranslate"><span class="pre">std::(u)int32_t</span></code> and <code class="docutils literal notranslate"><span class="pre">std::(u)int64_t</span></code>
+are supported, and using other integral types (e.g., <code class="docutils literal notranslate"><span class="pre">long</span></code>,
+<code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">long</span> <span class="pre">long</span></code>, etc.) may lead to compile-time errors,
+depending on how <code class="docutils literal notranslate"><span class="pre">std::(u)int32_t</span></code> and <code class="docutils literal notranslate"><span class="pre">std::(u)int64_t</span></code>
+are implemented on the target platform
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/125">#125</a>).</p></li>
+<li><p><strong>BREAKING</strong>: <code class="docutils literal notranslate"><span class="pre">d_packed_monomial</span></code> is now specified in terms
+of the number of exponents to be packed in a single integer
+rather than the bit width assigned to each exponent
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/125">#125</a>).</p></li>
+<li><p>Adopt a flyweight pattern for the representation of
+symbol sets in series
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/124">#124</a>).</p></li>
 <li><p>When building on Windows with <code class="docutils literal notranslate"><span class="pre">clang-cl</span></code>, obake
 now requires at least MSVC 2017. As a result, various
 limitations/workarounds originating from the need to support
@@ -295,11 +327,18 @@ the MSVC 2015 standard library have been removed
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/122">#122</a>).</p></li>
 </ul>
 </div>
-</div>
-<div class="section" id="id1">
-<h2>0.6.0 (12-06-2020)<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="fix">
 <h3>Fix<a class="headerlink" href="#fix" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Fix a bug when streaming monomials in tex mode
+(<a class="reference external" href="https://github.com/bluescarni/obake/pull/132">#132</a>).</p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>0.6.0 (2020-06-12)<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id2">
+<h3>Fix<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Fix a bug in polynomial integration
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/119">#119</a>).</p></li>
@@ -308,10 +347,10 @@ the MSVC 2015 standard library have been removed
 </ul>
 </div>
 </div>
-<div class="section" id="id2">
-<h2>0.5.0 (11-05-2020)<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="new">
-<h3>New<a class="headerlink" href="#new" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id3">
+<h2>0.5.0 (2020-05-11)<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id4">
+<h3>New<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Parallelise the <code class="docutils literal notranslate"><span class="pre">byte_size()</span></code> implementation for series
 types
@@ -321,8 +360,8 @@ files created by the MSVC CMake generators
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/112">#112</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id3">
-<h3>Changes<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id5">
+<h3>Changes<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Various simplifications and improvements to the benchmarks
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/114">#114</a>).</p></li>
@@ -330,8 +369,8 @@ files created by the MSVC CMake generators
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/114">#114</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id4">
-<h3>Fix<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id6">
+<h3>Fix<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Fix build failures with GCC 10 in C++20 mode
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/116">#116</a>).</p></li>
@@ -340,10 +379,10 @@ files created by the MSVC CMake generators
 </ul>
 </div>
 </div>
-<div class="section" id="id5">
-<h2>0.4.0 (12-02-2020)<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id6">
-<h3>New<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id7">
+<h2>0.4.0 (2020-02-12)<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id8">
+<h3>New<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Implement a <code class="docutils literal notranslate"><span class="pre">filtered()</span></code> primitive to return
 the filtered copy of a series
@@ -356,8 +395,8 @@ partial degree
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/91">#91</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id7">
-<h3>Changes<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id9">
+<h3>Changes<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Update Catch to the latest version, 2.11.1
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/107">#107</a>).</p></li>
@@ -372,8 +411,8 @@ machinery for polynomial exponents
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/94">#94</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id8">
-<h3>Fix<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id10">
+<h3>Fix<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Fix a bug in the conversion operator for series
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/99">#99</a>).</p></li>
@@ -397,10 +436,10 @@ Many thanks to <a class="reference external" href="https://github.com/7ofNine">7
 </ul>
 </div>
 </div>
-<div class="section" id="id9">
-<h2>0.3 (31-10-2019)<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id10">
-<h3>New<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id11">
+<h2>0.3 (2019-10-31)<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id12">
+<h3>New<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Implement a caching mechanism for the natural powers
 of series
@@ -410,8 +449,8 @@ and C++ integrals
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/84">#84</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id11">
-<h3>Changes<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id13">
+<h3>Changes<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Significant speedups (and small fixes) for the series
 in-place arithmetic operators
@@ -425,8 +464,8 @@ in-place arithmetic operators
 <a class="reference external" href="https://github.com/bluescarni/obake/pull/83">#83</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id12">
-<h3>Fix<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id14">
+<h3>Fix<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Fix a division by zero and silence various ubsan
 warnings originating from TBB
@@ -436,10 +475,10 @@ warnings originating from TBB
 </ul>
 </div>
 </div>
-<div class="section" id="id13">
-<h2>0.2 (27-10-2019)<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id14">
-<h3>New<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id15">
+<h2>0.2 (2019-10-27)<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id16">
+<h3>New<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Various performance improvements for polynomial
 multiplication
@@ -451,8 +490,8 @@ and ranges
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/77">#77</a>).</p></li>
 </ul>
 </div>
-<div class="section" id="id15">
-<h3>Fix<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id17">
+<h3>Fix<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Fix a missing include file
 (<a class="reference external" href="https://github.com/bluescarni/obake/pull/81">#81</a>).</p></li>
@@ -463,10 +502,10 @@ and ranges
 </ul>
 </div>
 </div>
-<div class="section" id="id16">
-<h2>0.1 (18-10-2019)<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id17">
-<h3>New<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id18">
+<h2>0.1 (2019-10-18)<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id19">
+<h3>New<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li><p>Initial release of obake.</p></li>
 </ul>
@@ -503,7 +542,7 @@ and ranges
     </div>
 
     
-  <script src="_static/js/index.3da636dd464baa7582d2.js"></script>
+  <script src="_static/js/index.d3f166471bb80abb5163.js"></script>
 
 
     
