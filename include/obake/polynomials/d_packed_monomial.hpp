@@ -74,11 +74,7 @@ constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
 // Dynamic packed monomial.
 // NOTE: concept checking on PSize instead of static assert?
 // Probably need to make kpack_max_size() public for that.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <kpackable T, unsigned PSize>
-#else
-template <typename T, unsigned PSize, typename = ::std::enable_if_t<is_kpackable_v<T>>>
-#endif
 class d_packed_monomial
 {
     static_assert(PSize > 0u && PSize <= ::obake::detail::kpack_max_size<T>());
@@ -106,17 +102,10 @@ public:
     }
 
     // Constructor from input iterator and size.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
-    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
-#else
-    template <
-        typename It,
-        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
-                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
-                           int> = 0>
-#endif
-        explicit d_packed_monomial(It it, ::std::size_t n)
+    requires InputIterator<It> &&
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
+                                                                                                     ::std::size_t n)
     {
         // Prepare the container.
         const auto vsize = detail::dpm_nexpos_to_vsize<d_packed_monomial>(n);
@@ -156,46 +145,26 @@ private:
 
 public:
     // Ctor from a pair of input iterators.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
-    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
-#else
-    template <
-        typename It,
-        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
-                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
-                           int> = 0>
-#endif
-        explicit d_packed_monomial(It b, It e) : d_packed_monomial(input_it_ctor_tag{}, b, e)
+    requires InputIterator<It> &&
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It b, It e)
+        : d_packed_monomial(input_it_ctor_tag{}, b, e)
     {
     }
 
     // Ctor from input range.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename Range>
-    requires InputRange<Range> &&SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>
-#else
-    template <
-        typename Range,
-        ::std::enable_if_t<::std::conjunction_v<
-                               is_input_range<Range>,
-                               is_safely_castable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>>,
-                           int> = 0>
-#endif
-        explicit d_packed_monomial(Range &&r)
+    requires InputRange<Range> &&
+        SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T> explicit d_packed_monomial(
+            Range &&r)
         : d_packed_monomial(input_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
                             ::obake::end(::std::forward<Range>(r)))
     {
     }
 
     // Ctor from init list.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename U>
-    requires SafelyCastable<const U &, T>
-#else
-    template <typename U, ::std::enable_if_t<is_safely_castable_v<const U &, T>, int> = 0>
-#endif
-        explicit d_packed_monomial(::std::initializer_list<U> l)
+    requires SafelyCastable<const U &, T> explicit d_packed_monomial(::std::initializer_list<U> l)
         : d_packed_monomial(input_it_ctor_tag{}, l.begin(), l.end())
     {
     }
@@ -540,21 +509,11 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // here we want to return a boolean. Not sure if it
 // is worth it to change the safe arithmetics API
 // for this.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
-requires InputRange<R1> &&InputRange<R2> &&
-    detail::same_d_packed_monomial_v<remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-                                     remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
-#else
-template <typename R1, typename R2,
-          ::std::enable_if_t<
-              ::std::conjunction_v<is_input_range<R1>, is_input_range<R2>,
-                                   detail::same_d_packed_monomial<
-                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>>,
-              int> = 0>
-#endif
-    inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+requires InputRange<R1> &&InputRange<R2> &&detail::same_d_packed_monomial_v<
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>> inline bool
+monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
 {
     using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
     using value_type = typename pm_t::value_type;
@@ -1336,7 +1295,7 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
 } // namespace polynomials
 
 // Lift to the obake namespace.
-template <typename T, unsigned PSize>
+template <typename T, unsigned PSize = 8>
 using d_packed_monomial = polynomials::d_packed_monomial<T, PSize>;
 
 // Specialise monomial_has_homomorphic_hash.
