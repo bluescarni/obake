@@ -180,7 +180,7 @@ TEST_CASE("sm_intersect_idx_test")
 
 TEST_CASE("ss_s11n_test")
 {
-    REQUIRE(boost::serialization::tracking_level<symbol_set>::value == boost::serialization::track_never);
+    static_assert(boost::serialization::tracking_level<symbol_set>::value == boost::serialization::track_never);
 
     std::stringstream ss;
     symbol_set tmp;

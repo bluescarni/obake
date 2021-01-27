@@ -1313,7 +1313,7 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
 } // namespace polynomials
 
 // Lift to the obake namespace.
-template <typename T, unsigned PSize = 8>
+template <typename T, unsigned PSize>
 using d_packed_monomial = polynomials::d_packed_monomial<T, PSize>;
 
 // Specialise monomial_has_homomorphic_hash.
