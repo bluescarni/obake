@@ -7,6 +7,8 @@ Changelog
 New
 ~~~
 
+- Add convenience typedefs for the monomial types
+  (`#134 <https://github.com/bluescarni/obake/pull/134>`__).
 - The C++ standard requirement is now exported in the CMake
   config-file package installed by obake
   (`#128 <https://github.com/bluescarni/obake/pull/128>`__).
@@ -14,6 +16,9 @@ New
 Changes
 ~~~~~~~
 
+- Continue moving code from the headers into the compiled
+  part of the library
+  (`#134 <https://github.com/bluescarni/obake/pull/134>`__).
 - **BREAKING**: obake is now based on C++20, and the minimum
   CMake version has been bumped up to 3.12. As a consequence,
   obake now requires GCC >= 9, clang >= 11 and MSVC >= 2019

@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <iterator>
 #include <ostream>
@@ -24,6 +25,8 @@
 #include <boost/container/small_vector.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
+
+#include <fmt/format.h>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
@@ -38,6 +41,7 @@
 #include <obake/detail/safe_integral_arith.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
+#include <obake/detail/visibility.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/kpack.hpp>
 #include <obake/math/pow.hpp>
@@ -74,11 +78,7 @@ constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
 // Dynamic packed monomial.
 // NOTE: concept checking on PSize instead of static assert?
 // Probably need to make kpack_max_size() public for that.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <kpackable T, unsigned PSize>
-#else
-template <typename T, unsigned PSize, typename = ::std::enable_if_t<is_kpackable_v<T>>>
-#endif
 class d_packed_monomial
 {
     static_assert(PSize > 0u && PSize <= ::obake::detail::kpack_max_size<T>());
@@ -106,17 +106,10 @@ public:
     }
 
     // Constructor from input iterator and size.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
-    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
-#else
-    template <
-        typename It,
-        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
-                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
-                           int> = 0>
-#endif
-        explicit d_packed_monomial(It it, ::std::size_t n)
+    requires InputIterator<It> &&
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
+                                                                                                     ::std::size_t n)
     {
         // Prepare the container.
         const auto vsize = detail::dpm_nexpos_to_vsize<d_packed_monomial>(n);
@@ -156,46 +149,26 @@ private:
 
 public:
     // Ctor from a pair of input iterators.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
-    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
-#else
-    template <
-        typename It,
-        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
-                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
-                           int> = 0>
-#endif
-        explicit d_packed_monomial(It b, It e) : d_packed_monomial(input_it_ctor_tag{}, b, e)
+    requires InputIterator<It> &&
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It b, It e)
+        : d_packed_monomial(input_it_ctor_tag{}, b, e)
     {
     }
 
     // Ctor from input range.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename Range>
-    requires InputRange<Range> &&SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>
-#else
-    template <
-        typename Range,
-        ::std::enable_if_t<::std::conjunction_v<
-                               is_input_range<Range>,
-                               is_safely_castable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>>,
-                           int> = 0>
-#endif
-        explicit d_packed_monomial(Range &&r)
+    requires InputRange<Range> &&
+        SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T> explicit d_packed_monomial(
+            Range &&r)
         : d_packed_monomial(input_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
                             ::obake::end(::std::forward<Range>(r)))
     {
     }
 
     // Ctor from init list.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename U>
-    requires SafelyCastable<const U &, T>
-#else
-    template <typename U, ::std::enable_if_t<is_safely_castable_v<const U &, T>, int> = 0>
-#endif
-        explicit d_packed_monomial(::std::initializer_list<U> l)
+    requires SafelyCastable<const U &, T> explicit d_packed_monomial(::std::initializer_list<U> l)
         : d_packed_monomial(input_it_ctor_tag{}, l.begin(), l.end())
     {
     }
@@ -236,6 +209,33 @@ private:
 private:
     container_t m_container;
 };
+
+// Default PSize for d_packed_monomial.
+inline constexpr unsigned dpm_default_psize =
+#if defined(OBAKE_PACKABLE_INT64)
+    8
+#else
+    4
+#endif
+    ;
+
+// Default signed type for the exponents.
+using dpm_default_s_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::int64_t
+#else
+    ::std::int32_t
+#endif
+    ;
+
+// Default unsigned type for the exponents.
+using dpm_default_u_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::uint64_t
+#else
+    ::std::uint32_t
+#endif
+    ;
 
 // Implementation of key_is_zero(). A monomial is never zero.
 template <typename T, unsigned PSize>
@@ -355,6 +355,12 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSi
     }
 }
 
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                       const symbol_set &);
+
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                       const symbol_set &);
+
 // Implementation of tex stream insertion.
 // NOTE: requires that d is compatible with s.
 template <typename T, unsigned PSize>
@@ -433,6 +439,14 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     }
 }
 
+extern template void key_tex_stream_insert(::std::ostream &,
+                                           const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
+extern template void key_tex_stream_insert(::std::ostream &,
+                                           const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
 // Implementation of symbols merging.
 // NOTE: requires that m is compatible with s, and ins_map consistent with s.
 template <typename T, unsigned PSize>
@@ -487,6 +501,14 @@ inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, 
     return d_packed_monomial<T, PSize>(tmp_v);
 }
 
+extern template d_packed_monomial<dpm_default_s_t, dpm_default_psize>
+key_merge_symbols(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx_map<symbol_set> &,
+                  const symbol_set &);
+
+extern template d_packed_monomial<dpm_default_u_t, dpm_default_psize>
+key_merge_symbols(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx_map<symbol_set> &,
+                  const symbol_set &);
+
 // Implementation of monomial_mul().
 // NOTE: requires a, b and out to be compatible with ss.
 template <typename T, unsigned PSize>
@@ -540,21 +562,11 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // here we want to return a boolean. Not sure if it
 // is worth it to change the safe arithmetics API
 // for this.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
-requires InputRange<R1> &&InputRange<R2> &&
-    detail::same_d_packed_monomial_v<remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-                                     remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
-#else
-template <typename R1, typename R2,
-          ::std::enable_if_t<
-              ::std::conjunction_v<is_input_range<R1>, is_input_range<R2>,
-                                   detail::same_d_packed_monomial<
-                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>>,
-              int> = 0>
-#endif
-    inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+requires InputRange<R1> &&InputRange<R2> &&detail::same_d_packed_monomial_v<
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>> inline bool
+monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
 {
     using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
     using value_type = typename pm_t::value_type;
@@ -889,6 +901,12 @@ inline T key_degree(const d_packed_monomial<T, PSize> &d, const symbol_set &ss)
     return static_cast<T>(retval);
 }
 
+extern template dpm_default_s_t key_degree(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
+extern template dpm_default_u_t key_degree(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
 // Implementation of key_p_degree().
 // NOTE: this assumes that d and si are compatible with ss.
 template <typename T, unsigned PSize>
@@ -921,6 +939,12 @@ inline T key_p_degree(const d_packed_monomial<T, PSize> &d, const symbol_idx_set
     return static_cast<T>(retval);
 }
 
+extern template dpm_default_s_t key_p_degree(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                             const symbol_idx_set &, const symbol_set &);
+
+extern template dpm_default_u_t key_p_degree(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                             const symbol_idx_set &, const symbol_set &);
+
 // Monomial exponentiation.
 // NOTE: this assumes that d is compatible with ss.
 template <typename T, unsigned PSize, typename U,
@@ -941,13 +965,15 @@ inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize
 
             if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
+                    using namespace ::fmt::literals;
+
                     // Provide better error message if U is ostreamable.
                     ::std::ostringstream oss;
                     oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
                     static_cast<::std::ostream &>(oss) << n;
-                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent ("
-                                                             + oss.str()
-                                                             + ") cannot be converted into an integral value");
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for monomial exponentiation: the exponent "
+                                "({}) cannot be converted into an integral value"_format(oss.str()));
                 } else {
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
                                                          "cannot be converted into an integral value");
@@ -1177,6 +1203,14 @@ inline void key_trim_identify(::std::vector<int> &v, const d_packed_monomial<T, 
     }
 }
 
+extern template void key_trim_identify(::std::vector<int> &,
+                                       const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                       const symbol_set &);
+
+extern template void key_trim_identify(::std::vector<int> &,
+                                       const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                       const symbol_set &);
+
 // Eliminate from d the exponents at the indices
 // specifed by si.
 // NOTE: this requires that d is compatible with ss,
@@ -1228,6 +1262,12 @@ inline d_packed_monomial<T, PSize> key_trim(const d_packed_monomial<T, PSize> &d
     return d_packed_monomial<T, PSize>(tmp_v);
 }
 
+extern template d_packed_monomial<dpm_default_s_t, dpm_default_psize>
+key_trim(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx_set &, const symbol_set &);
+
+extern template d_packed_monomial<dpm_default_u_t, dpm_default_psize>
+key_trim(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx_set &, const symbol_set &);
+
 // Monomial differentiation.
 // NOTE: this requires that d is compatible with ss,
 // and idx is within ss.
@@ -1276,6 +1316,12 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_diff(const d_packed_
     return ::std::make_pair(ret_exp, ::std::move(out_dpm));
 }
 
+extern template ::std::pair<dpm_default_s_t, d_packed_monomial<dpm_default_s_t, dpm_default_psize>>
+monomial_diff(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx &, const symbol_set &);
+
+extern template ::std::pair<dpm_default_u_t, d_packed_monomial<dpm_default_u_t, dpm_default_psize>>
+monomial_diff(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx &, const symbol_set &);
+
 // Monomial integration.
 // NOTE: this requires that d is compatible with ss,
 // and idx is within ss.
@@ -1308,11 +1354,13 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
                     // For signed integrals, make sure
                     // we are not integrating x**-1.
                     if (obake_unlikely(tmp == T(-1))) {
+                        using namespace ::fmt::literals;
+
                         obake_throw(
                             ::std::domain_error,
-                            "Cannot integrate a dynamic packed monomial: the exponent of the integration variable ('"
-                                + *ss.nth(static_cast<decltype(ss.size())>(i))
-                                + "') is -1, and the integration would generate a logarithmic term");
+                            "Cannot integrate a dynamic packed monomial: the exponent of the integration variable "
+                            "('{}') is -1, and the integration would generate a logarithmic term"_format(
+                                *ss.nth(static_cast<decltype(ss.size())>(i))));
                     }
                 }
 
@@ -1333,11 +1381,25 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
     return ::std::make_pair(ret_exp, ::std::move(out_dpm));
 }
 
+extern template ::std::pair<dpm_default_s_t, d_packed_monomial<dpm_default_s_t, dpm_default_psize>>
+monomial_integrate(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx &,
+                   const symbol_set &);
+
+extern template ::std::pair<dpm_default_u_t, d_packed_monomial<dpm_default_u_t, dpm_default_psize>>
+monomial_integrate(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx &,
+                   const symbol_set &);
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
 template <typename T, unsigned PSize>
 using d_packed_monomial = polynomials::d_packed_monomial<T, PSize>;
+
+// Definition of the default dynamically-packed monomial type.
+using d_monomial = d_packed_monomial<polynomials::dpm_default_u_t, polynomials::dpm_default_psize>;
+
+// Definition of the default dynamically-packed Laurent monomial type.
+using d_laurent_monomial = d_packed_monomial<polynomials::dpm_default_s_t, polynomials::dpm_default_psize>;
 
 // Specialise monomial_has_homomorphic_hash.
 template <typename T, unsigned PSize>
