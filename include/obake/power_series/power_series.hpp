@@ -164,7 +164,7 @@ inline void load(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsi
 template <class Archive, typename T>
 inline void serialize(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsigned file_version)
 {
-    split_free(ar, t, file_version);
+    serialization::split_free(ar, t, file_version);
 }
 
 // Disable tracking for trunc_t.
@@ -257,6 +257,27 @@ struct tag {
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
+
+} // namespace power_series
+
+} // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for the power series tag.
+template <typename T>
+struct tracking_level<::obake::power_series::tag<T>>
+    : ::obake::detail::s11n_no_tracking<::obake::power_series::tag<T>> {
+};
+
+} // namespace boost::serialization
+
+namespace obake
+{
+
+namespace power_series
+{
 
 // Implement equality for the tag, so that series'
 // equality operator can use it.
