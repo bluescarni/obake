@@ -164,7 +164,7 @@ inline void load(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsi
 template <class Archive, typename T>
 inline void serialize(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsigned file_version)
 {
-    split_free(ar, t, file_version);
+    serialization::split_free(ar, t, file_version);
 }
 
 // Disable tracking for trunc_t.
@@ -257,6 +257,27 @@ struct tag {
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
+
+} // namespace power_series
+
+} // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for the power series tag.
+template <typename T>
+struct tracking_level<::obake::power_series::tag<T>>
+    : ::obake::detail::s11n_no_tracking<::obake::power_series::tag<T>> {
+};
+
+} // namespace boost::serialization
+
+namespace obake
+{
+
+namespace power_series
+{
 
 // Implement equality for the tag, so that series'
 // equality operator can use it.
@@ -894,6 +915,8 @@ inline void tex_stream_insert(::std::ostream &os, const p_series<K, C> &ps)
                 oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
                 // I hope this does what it looks like it should be doing...
                 oss.seekp(0, ::std::ios_base::end);
+
+                oss << "> ";
 
                 if constexpr (::std::is_same_v<type, deg_t>) {
                     ::obake::tex_stream_insert(oss, v);
