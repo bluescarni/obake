@@ -26,6 +26,8 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
+#include <fmt/format.h>
+
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
 #include <tbb/parallel_reduce.h>
@@ -963,13 +965,15 @@ inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize
 
             if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
+                    using namespace ::fmt::literals;
+
                     // Provide better error message if U is ostreamable.
                     ::std::ostringstream oss;
                     oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
                     static_cast<::std::ostream &>(oss) << n;
-                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent ("
-                                                             + oss.str()
-                                                             + ") cannot be converted into an integral value");
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for monomial exponentiation: the exponent "
+                                "({}) cannot be converted into an integral value"_format(oss.str()));
                 } else {
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
                                                          "cannot be converted into an integral value");
@@ -1350,11 +1354,13 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
                     // For signed integrals, make sure
                     // we are not integrating x**-1.
                     if (obake_unlikely(tmp == T(-1))) {
+                        using namespace ::fmt::literals;
+
                         obake_throw(
                             ::std::domain_error,
-                            "Cannot integrate a dynamic packed monomial: the exponent of the integration variable ('"
-                                + *ss.nth(static_cast<decltype(ss.size())>(i))
-                                + "') is -1, and the integration would generate a logarithmic term");
+                            "Cannot integrate a dynamic packed monomial: the exponent of the integration variable "
+                            "('{}') is -1, and the integration would generate a logarithmic term"_format(
+                                *ss.nth(static_cast<decltype(ss.size())>(i))));
                     }
                 }
 

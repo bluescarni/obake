@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <ostream>
+#include <utility>
 #include <vector>
 
 #include <obake/config.hpp>
