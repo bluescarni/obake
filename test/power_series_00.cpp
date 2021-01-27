@@ -29,6 +29,7 @@
 #include <obake/polynomials/polynomial.hpp>
 #include <obake/power_series/power_series.hpp>
 #include <obake/symbols.hpp>
+#include <obake/tex_stream_insert.hpp>
 #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
@@ -980,5 +981,32 @@ TEST_CASE("sub")
         REQUIRE(std::is_same_v<ps_t, decltype(1. - x2)>);
         REQUIRE(std::is_same_v<ps2_t, decltype(x2 - 1.f)>);
         REQUIRE(std::is_same_v<ps2_t, decltype(1.f - x2)>);
+    }
+}
+
+// Check big O tex streaming is handled correctly.
+TEST_CASE("tex stream big O")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    {
+        auto [x] = make_p_series_t<ps_t>(3, "x");
+
+        std::ostringstream oss;
+
+        obake::tex_stream_insert(oss, x);
+
+        REQUIRE(boost::contains(oss.str(), "\\mathcal{O}\\left( > 3 \\right)"));
+    }
+
+    {
+        auto [x] = make_p_series_p<ps_t>(3, symbol_set{"a", "b"}, "x");
+
+        std::ostringstream oss;
+
+        obake::tex_stream_insert(oss, x);
+
+        REQUIRE(boost::contains(oss.str(), "\\mathcal{O}\\left( > 3 ; a, b \\right)"));
     }
 }

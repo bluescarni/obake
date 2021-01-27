@@ -916,6 +916,8 @@ inline void tex_stream_insert(::std::ostream &os, const p_series<K, C> &ps)
                 // I hope this does what it looks like it should be doing...
                 oss.seekp(0, ::std::ios_base::end);
 
+                oss << "> ";
+
                 if constexpr (::std::is_same_v<type, deg_t>) {
                     ::obake::tex_stream_insert(oss, v);
                 } else {
