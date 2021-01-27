@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <iterator>
 #include <ostream>
@@ -38,6 +39,7 @@
 #include <obake/detail/safe_integral_arith.hpp>
 #include <obake/detail/to_string.hpp>
 #include <obake/detail/type_c.hpp>
+#include <obake/detail/visibility.hpp>
 #include <obake/exceptions.hpp>
 #include <obake/kpack.hpp>
 #include <obake/math/pow.hpp>
@@ -323,6 +325,22 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSi
         os << '1';
     }
 }
+
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::int32_t, 8> &,
+                                       const symbol_set &);
+
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::uint32_t, 8> &,
+                                       const symbol_set &);
+
+#if defined(OBAKE_PACKABLE_INT64)
+
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::int64_t, 8> &,
+                                       const symbol_set &);
+
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::uint64_t, 8> &,
+                                       const symbol_set &);
+
+#endif
 
 // Implementation of tex stream insertion.
 // NOTE: requires that d is compatible with s.
