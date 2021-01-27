@@ -26,6 +26,7 @@
 #include <obake/math/safe_cast.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/symbols.hpp>
+#include <obake/type_traits.hpp>
 
 namespace obake
 {
