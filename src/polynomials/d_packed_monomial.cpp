@@ -8,32 +8,76 @@
 
 #include <cstdint>
 #include <ostream>
+#include <vector>
 
 #include <obake/config.hpp>
 #include <obake/detail/visibility.hpp>
 #include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/symbols.hpp>
 
-namespace obake
+namespace obake::polynomials
 {
 
-namespace polynomials
-{
+template OBAKE_DLL_PUBLIC void
+key_stream_insert(::std::ostream &, const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_set &);
 
-template OBAKE_DLL_PUBLIC void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::int32_t, 8> &,
+template OBAKE_DLL_PUBLIC void
+key_stream_insert(::std::ostream &, const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_set &);
+
+template OBAKE_DLL_PUBLIC void key_tex_stream_insert(::std::ostream &,
+                                                     const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                                     const symbol_set &);
+
+template OBAKE_DLL_PUBLIC void key_tex_stream_insert(::std::ostream &,
+                                                     const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                                     const symbol_set &);
+
+template OBAKE_DLL_PUBLIC d_packed_monomial<dpm_default_s_t, dpm_default_psize>
+key_merge_symbols(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx_map<symbol_set> &,
+                  const symbol_set &);
+
+template OBAKE_DLL_PUBLIC d_packed_monomial<dpm_default_u_t, dpm_default_psize>
+key_merge_symbols(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx_map<symbol_set> &,
+                  const symbol_set &);
+
+template OBAKE_DLL_PUBLIC dpm_default_s_t key_degree(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                                     const symbol_set &);
+
+template OBAKE_DLL_PUBLIC dpm_default_u_t key_degree(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                                     const symbol_set &);
+
+template OBAKE_DLL_PUBLIC dpm_default_s_t key_p_degree(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                                       const symbol_idx_set &, const symbol_set &);
+
+template OBAKE_DLL_PUBLIC dpm_default_u_t key_p_degree(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                                       const symbol_idx_set &, const symbol_set &);
+
+template OBAKE_DLL_PUBLIC void key_trim_identify(::std::vector<int> &,
+                                                 const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
                                                  const symbol_set &);
-template OBAKE_DLL_PUBLIC void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::uint32_t, 8> &,
+
+template OBAKE_DLL_PUBLIC void key_trim_identify(::std::vector<int> &,
+                                                 const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
                                                  const symbol_set &);
 
-#if defined(OBAKE_PACKABLE_INT64)
+template OBAKE_DLL_PUBLIC d_packed_monomial<dpm_default_s_t, dpm_default_psize>
+key_trim(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx_set &, const symbol_set &);
 
-template OBAKE_DLL_PUBLIC void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::int64_t, 8> &,
-                                                 const symbol_set &);
-template OBAKE_DLL_PUBLIC void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::uint64_t, 8> &,
-                                                 const symbol_set &);
+template OBAKE_DLL_PUBLIC d_packed_monomial<dpm_default_u_t, dpm_default_psize>
+key_trim(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx_set &, const symbol_set &);
 
-#endif
+template OBAKE_DLL_PUBLIC ::std::pair<dpm_default_s_t, d_packed_monomial<dpm_default_s_t, dpm_default_psize>>
+monomial_diff(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx &, const symbol_set &);
 
-} // namespace polynomials
+template OBAKE_DLL_PUBLIC ::std::pair<dpm_default_u_t, d_packed_monomial<dpm_default_u_t, dpm_default_psize>>
+monomial_diff(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx &, const symbol_set &);
 
-} // namespace obake
+template OBAKE_DLL_PUBLIC ::std::pair<dpm_default_s_t, d_packed_monomial<dpm_default_s_t, dpm_default_psize>>
+monomial_integrate(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx &,
+                   const symbol_set &);
+
+template OBAKE_DLL_PUBLIC ::std::pair<dpm_default_u_t, d_packed_monomial<dpm_default_u_t, dpm_default_psize>>
+monomial_integrate(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx &,
+                   const symbol_set &);
+
+} // namespace obake::polynomials

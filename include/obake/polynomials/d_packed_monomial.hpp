@@ -208,6 +208,33 @@ private:
     container_t m_container;
 };
 
+// Default PSize for d_packed_monomial.
+inline constexpr unsigned dpm_default_psize =
+#if defined(OBAKE_PACKABLE_INT64)
+    8
+#else
+    4
+#endif
+    ;
+
+// Default signed type for the exponents.
+using dpm_default_s_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::int64_t
+#else
+    ::std::int32_t
+#endif
+    ;
+
+// Default unsigned type for the exponents.
+using dpm_default_u_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::uint64_t
+#else
+    ::std::uint32_t
+#endif
+    ;
+
 // Implementation of key_is_zero(). A monomial is never zero.
 template <typename T, unsigned PSize>
 inline bool key_is_zero(const d_packed_monomial<T, PSize> &, const symbol_set &)
@@ -326,21 +353,11 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSi
     }
 }
 
-extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::int32_t, 8> &,
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
                                        const symbol_set &);
 
-extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::uint32_t, 8> &,
+extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
                                        const symbol_set &);
-
-#if defined(OBAKE_PACKABLE_INT64)
-
-extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::int64_t, 8> &,
-                                       const symbol_set &);
-
-extern template void key_stream_insert(::std::ostream &, const d_packed_monomial<::std::uint64_t, 8> &,
-                                       const symbol_set &);
-
-#endif
 
 // Implementation of tex stream insertion.
 // NOTE: requires that d is compatible with s.
@@ -420,6 +437,14 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     }
 }
 
+extern template void key_tex_stream_insert(::std::ostream &,
+                                           const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
+extern template void key_tex_stream_insert(::std::ostream &,
+                                           const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
 // Implementation of symbols merging.
 // NOTE: requires that m is compatible with s, and ins_map consistent with s.
 template <typename T, unsigned PSize>
@@ -473,6 +498,14 @@ inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, 
 
     return d_packed_monomial<T, PSize>(tmp_v);
 }
+
+extern template d_packed_monomial<dpm_default_s_t, dpm_default_psize>
+key_merge_symbols(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx_map<symbol_set> &,
+                  const symbol_set &);
+
+extern template d_packed_monomial<dpm_default_u_t, dpm_default_psize>
+key_merge_symbols(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx_map<symbol_set> &,
+                  const symbol_set &);
 
 // Implementation of monomial_mul().
 // NOTE: requires a, b and out to be compatible with ss.
@@ -866,6 +899,12 @@ inline T key_degree(const d_packed_monomial<T, PSize> &d, const symbol_set &ss)
     return static_cast<T>(retval);
 }
 
+extern template dpm_default_s_t key_degree(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
+extern template dpm_default_u_t key_degree(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                           const symbol_set &);
+
 // Implementation of key_p_degree().
 // NOTE: this assumes that d and si are compatible with ss.
 template <typename T, unsigned PSize>
@@ -897,6 +936,12 @@ inline T key_p_degree(const d_packed_monomial<T, PSize> &d, const symbol_idx_set
 
     return static_cast<T>(retval);
 }
+
+extern template dpm_default_s_t key_p_degree(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                             const symbol_idx_set &, const symbol_set &);
+
+extern template dpm_default_u_t key_p_degree(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                             const symbol_idx_set &, const symbol_set &);
 
 // Monomial exponentiation.
 // NOTE: this assumes that d is compatible with ss.
@@ -1154,6 +1199,14 @@ inline void key_trim_identify(::std::vector<int> &v, const d_packed_monomial<T, 
     }
 }
 
+extern template void key_trim_identify(::std::vector<int> &,
+                                       const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &,
+                                       const symbol_set &);
+
+extern template void key_trim_identify(::std::vector<int> &,
+                                       const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
+                                       const symbol_set &);
+
 // Eliminate from d the exponents at the indices
 // specifed by si.
 // NOTE: this requires that d is compatible with ss,
@@ -1205,6 +1258,12 @@ inline d_packed_monomial<T, PSize> key_trim(const d_packed_monomial<T, PSize> &d
     return d_packed_monomial<T, PSize>(tmp_v);
 }
 
+extern template d_packed_monomial<dpm_default_s_t, dpm_default_psize>
+key_trim(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx_set &, const symbol_set &);
+
+extern template d_packed_monomial<dpm_default_u_t, dpm_default_psize>
+key_trim(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx_set &, const symbol_set &);
+
 // Monomial differentiation.
 // NOTE: this requires that d is compatible with ss,
 // and idx is within ss.
@@ -1252,6 +1311,12 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_diff(const d_packed_
 
     return ::std::make_pair(ret_exp, ::std::move(out_dpm));
 }
+
+extern template ::std::pair<dpm_default_s_t, d_packed_monomial<dpm_default_s_t, dpm_default_psize>>
+monomial_diff(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx &, const symbol_set &);
+
+extern template ::std::pair<dpm_default_u_t, d_packed_monomial<dpm_default_u_t, dpm_default_psize>>
+monomial_diff(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx &, const symbol_set &);
 
 // Monomial integration.
 // NOTE: this requires that d is compatible with ss,
@@ -1310,11 +1375,25 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
     return ::std::make_pair(ret_exp, ::std::move(out_dpm));
 }
 
+extern template ::std::pair<dpm_default_s_t, d_packed_monomial<dpm_default_s_t, dpm_default_psize>>
+monomial_integrate(const d_packed_monomial<dpm_default_s_t, dpm_default_psize> &, const symbol_idx &,
+                   const symbol_set &);
+
+extern template ::std::pair<dpm_default_u_t, d_packed_monomial<dpm_default_u_t, dpm_default_psize>>
+monomial_integrate(const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &, const symbol_idx &,
+                   const symbol_set &);
+
 } // namespace polynomials
 
 // Lift to the obake namespace.
 template <typename T, unsigned PSize>
 using d_packed_monomial = polynomials::d_packed_monomial<T, PSize>;
+
+// Definition of the default dynamically-packed monomial type.
+using d_monomial = d_packed_monomial<polynomials::dpm_default_u_t, polynomials::dpm_default_psize>;
+
+// Definition of the default dynamically-packed Laurent monomial type.
+using d_laurent_monomial = d_packed_monomial<polynomials::dpm_default_s_t, polynomials::dpm_default_psize>;
 
 // Specialise monomial_has_homomorphic_hash.
 template <typename T, unsigned PSize>

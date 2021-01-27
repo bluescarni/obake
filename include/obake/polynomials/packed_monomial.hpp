@@ -771,6 +771,24 @@ monomial_integrate(const packed_monomial<::std::uint64_t> &, const symbol_idx &,
 template <typename T>
 using packed_monomial = polynomials::packed_monomial<T>;
 
+// Definition of the default packed monomial type.
+using p_monomial = packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::uint64_t
+#else
+    ::std::uint32_t
+#endif
+    >;
+
+// Definition of the default packed Laurent monomial type.
+using p_laurent_monomial = packed_monomial<
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::int64_t
+#else
+    ::std::int32_t
+#endif
+    >;
+
 // Specialise monomial_has_homomorphic_hash.
 template <typename T>
 inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
