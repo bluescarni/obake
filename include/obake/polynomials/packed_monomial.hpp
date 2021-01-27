@@ -53,11 +53,7 @@ namespace obake
 namespace polynomials
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <kpackable T>
-#else
-template <typename T, typename = ::std::enable_if_t<is_kpackable_v<T>>>
-#endif
 class packed_monomial
 {
     friend class ::boost::serialization::access;
@@ -73,17 +69,10 @@ public:
     // Constructor from value.
     constexpr explicit packed_monomial(const T &n) : m_value(n) {}
     // Constructor from input iterator and size.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
-    requires InputIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
-#else
-    template <
-        typename It,
-        ::std::enable_if_t<::std::conjunction_v<is_input_iterator<It>,
-                                                is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
-                           int> = 0>
-#endif
-        constexpr explicit packed_monomial(It it, unsigned n)
+    requires InputIterator<It> &&
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> constexpr explicit packed_monomial(It it,
+                                                                                                             unsigned n)
     {
         kpacker<T> kp(n);
         for (auto i = 0u; i < n; ++i, ++it) {
@@ -107,50 +96,25 @@ private:
 
 public:
     // Ctor from a pair of forward iterators.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename It>
     requires ForwardIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::difference_type, unsigned> &&
-        SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
-#else
-    template <typename It,
-              ::std::enable_if_t<::std::conjunction_v<
-                                     is_forward_iterator<It>,
-                                     is_safely_castable<typename ::std::iterator_traits<It>::difference_type, unsigned>,
-                                     is_safely_castable<typename ::std::iterator_traits<It>::reference, T>>,
-                                 int> = 0>
-#endif
-        constexpr explicit packed_monomial(It b, It e) : packed_monomial(fwd_it_ctor_tag{}, b, e)
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> constexpr explicit packed_monomial(It b, It e)
+        : packed_monomial(fwd_it_ctor_tag{}, b, e)
     {
     }
     // Ctor from forward range.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename Range>
     requires ForwardRange<Range> &&
         SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::difference_type, unsigned> &&
-            SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>
-#else
-    template <
-        typename Range,
-        ::std::enable_if_t<
-            ::std::conjunction_v<
-                is_forward_range<Range>,
-                is_safely_castable<typename ::std::iterator_traits<range_begin_t<Range>>::difference_type, unsigned>,
-                is_safely_castable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>>,
-            int> = 0>
-#endif
-        constexpr explicit packed_monomial(Range &&r)
+            SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference,
+                           T> constexpr explicit packed_monomial(Range &&r)
         : packed_monomial(fwd_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
                           ::obake::end(::std::forward<Range>(r)))
     {
     }
     // Ctor from init list.
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <typename U>
-    requires SafelyCastable<const U &, T>
-#else
-    template <typename U, ::std::enable_if_t<is_safely_castable_v<const U &, T>, int> = 0>
-#endif
-        constexpr explicit packed_monomial(::std::initializer_list<U> l)
+    requires SafelyCastable<const U &, T> constexpr explicit packed_monomial(::std::initializer_list<U> l)
         : packed_monomial(fwd_it_ctor_tag{}, l.begin(), l.end())
     {
     }
@@ -322,21 +286,11 @@ inline constexpr bool same_packed_monomial_v = same_packed_monomial<T, U>::value
 // - a good heuristic (should not be too difficult given
 //   the constraints on packed_monomial),
 // - the random-access iterator concept.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename R1, typename R2>
-requires InputRange<R1> &&InputRange<R2> &&
-    detail::same_packed_monomial_v<remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-                                   remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
-#else
-template <typename R1, typename R2,
-          ::std::enable_if_t<
-              ::std::conjunction_v<is_input_range<R1>, is_input_range<R2>,
-                                   detail::same_packed_monomial<
-                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-                                       remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>>,
-              int> = 0>
-#endif
-    inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+requires InputRange<R1> &&InputRange<R2> &&detail::same_packed_monomial_v<
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>> inline bool
+monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
 {
     using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
     using value_type = typename pm_t::value_type;
@@ -533,52 +487,30 @@ template <typename R1, typename R2,
 }
 
 // Implementation of key_degree().
-// NOTE: this assumes that p is compatible with ss.
-template <typename T>
-inline T key_degree(const packed_monomial<T> &p, const symbol_set &ss)
-{
-    assert(polynomials::key_is_compatible(p, ss));
+OBAKE_DLL_PUBLIC ::std::int32_t key_degree(const packed_monomial<::std::int32_t> &, const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::uint32_t key_degree(const packed_monomial<::std::uint32_t> &, const symbol_set &);
 
-    // NOTE: because we assume compatibility, the static cast is safe.
-    const auto s_size = static_cast<unsigned>(ss.size());
+#if defined(OBAKE_PACKABLE_INT64)
 
-    T retval(0), tmp;
-    kunpacker<T> ku(p.get_value(), s_size);
-    for (auto i = 0u; i < s_size; ++i) {
-        ku >> tmp;
-        retval += tmp;
-    }
+OBAKE_DLL_PUBLIC ::std::int64_t key_degree(const packed_monomial<::std::int64_t> &, const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::uint64_t key_degree(const packed_monomial<::std::uint64_t> &, const symbol_set &);
 
-    return retval;
-}
+#endif
 
 // Implementation of key_p_degree().
-// NOTE: this assumes that p and si are compatible with ss.
-template <typename T>
-inline T key_p_degree(const packed_monomial<T> &p, const symbol_idx_set &si, const symbol_set &ss)
-{
-    assert(polynomials::key_is_compatible(p, ss));
-    assert(si.empty() || *(si.end() - 1) < ss.size());
+OBAKE_DLL_PUBLIC ::std::int32_t key_p_degree(const packed_monomial<::std::int32_t> &, const symbol_idx_set &,
+                                             const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::uint32_t key_p_degree(const packed_monomial<::std::uint32_t> &, const symbol_idx_set &,
+                                              const symbol_set &);
 
-    // NOTE: because we assume compatibility, the static cast is safe.
-    const auto s_size = static_cast<unsigned>(ss.size());
+#if defined(OBAKE_PACKABLE_INT64)
 
-    T retval(0), tmp;
-    kunpacker<T> ku(p.get_value(), s_size);
-    auto si_it = si.begin();
-    const auto si_it_end = si.end();
-    for (auto i = 0u; i < s_size && si_it != si_it_end; ++i) {
-        ku >> tmp;
-        if (i == *si_it) {
-            retval += tmp;
-            ++si_it;
-        }
-    }
+OBAKE_DLL_PUBLIC ::std::int64_t key_p_degree(const packed_monomial<::std::int64_t> &, const symbol_idx_set &,
+                                             const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::uint64_t key_p_degree(const packed_monomial<::std::uint64_t> &, const symbol_idx_set &,
+                                              const symbol_set &);
 
-    assert(si_it == si_it_end);
-
-    return retval;
-}
+#endif
 
 // Monomial exponentiation.
 // NOTE: this assumes that p is compatible with ss.
@@ -773,150 +705,65 @@ monomial_subs(const packed_monomial<T> &p, const symbol_idx_map<U> &sm, const sy
 }
 
 // Identify non-trimmable exponents in p.
-// NOTE: this requires that p is compatible with ss,
-// and that v has the same size as ss.
-template <typename T>
-inline void key_trim_identify(::std::vector<int> &v, const packed_monomial<T> &p, const symbol_set &ss)
-{
-    assert(polynomials::key_is_compatible(p, ss));
-    assert(v.size() == ss.size());
+OBAKE_DLL_PUBLIC void key_trim_identify(::std::vector<int> &, const packed_monomial<::std::int32_t> &,
+                                        const symbol_set &);
+OBAKE_DLL_PUBLIC void key_trim_identify(::std::vector<int> &, const packed_monomial<::std::uint32_t> &,
+                                        const symbol_set &);
 
-    // NOTE: because we assume compatibility, the static cast is safe.
-    const auto s_size = static_cast<unsigned>(ss.size());
+#if defined(OBAKE_PACKABLE_INT64)
 
-    kunpacker<T> ku(p.get_value(), s_size);
-    T tmp;
-    for (auto i = 0u; i < s_size; ++i) {
-        ku >> tmp;
+OBAKE_DLL_PUBLIC void key_trim_identify(::std::vector<int> &, const packed_monomial<::std::int64_t> &,
+                                        const symbol_set &);
+OBAKE_DLL_PUBLIC void key_trim_identify(::std::vector<int> &, const packed_monomial<::std::uint64_t> &,
+                                        const symbol_set &);
 
-        if (tmp != T(0)) {
-            // The current exponent is nonzero,
-            // thus it must not be trimmed.
-            v[i] = 0;
-        }
-    }
-}
+#endif
 
 // Eliminate from p the exponents at the indices
 // specifed by si.
-// NOTE: this requires that p is compatible with ss,
-// and that si is consistent with ss.
-template <typename T>
-inline packed_monomial<T> key_trim(const packed_monomial<T> &p, const symbol_idx_set &si, const symbol_set &ss)
-{
-    assert(polynomials::key_is_compatible(p, ss));
-    // NOTE: si cannot be larger than ss, and its last element must be smaller
-    // than the size of ss.
-    assert(si.size() <= ss.size() && (si.empty() || *(si.cend() - 1) < ss.size()));
+OBAKE_DLL_PUBLIC packed_monomial<::std::int32_t> key_trim(const packed_monomial<::std::int32_t> &,
+                                                          const symbol_idx_set &, const symbol_set &);
+OBAKE_DLL_PUBLIC packed_monomial<::std::uint32_t> key_trim(const packed_monomial<::std::uint32_t> &,
+                                                           const symbol_idx_set &, const symbol_set &);
 
-    // NOTE: because we assume compatibility, the static cast is safe.
-    const auto s_size = static_cast<unsigned>(ss.size());
+#if defined(OBAKE_PACKABLE_INT64)
 
-    kunpacker<T> ku(p.get_value(), s_size);
-    kpacker<T> kp(static_cast<unsigned>(s_size - si.size()));
-    T tmp;
-    auto si_it = si.cbegin();
-    const auto si_end = si.cend();
-    for (auto i = 0u; i < s_size; ++i) {
-        ku >> tmp;
+OBAKE_DLL_PUBLIC packed_monomial<::std::int64_t> key_trim(const packed_monomial<::std::int64_t> &,
+                                                          const symbol_idx_set &, const symbol_set &);
+OBAKE_DLL_PUBLIC packed_monomial<::std::uint64_t> key_trim(const packed_monomial<::std::uint64_t> &,
+                                                           const symbol_idx_set &, const symbol_set &);
 
-        if (si_it != si_end && *si_it == i) {
-            // The current exponent must be trimmed. Don't
-            // add it to kp, and move to the next item in the trim set.
-            ++si_it;
-        } else {
-            // The current exponent must be kept.
-            kp << tmp;
-        }
-    }
-    assert(si_it == si_end);
-
-    return packed_monomial<T>(kp.get());
-}
+#endif
 
 // Monomial differentiation.
-// NOTE: this requires that p is compatible with ss,
-// and idx is within ss.
-template <typename T>
-inline ::std::pair<T, packed_monomial<T>> monomial_diff(const packed_monomial<T> &p, const symbol_idx &idx,
-                                                        const symbol_set &ss)
-{
-    assert(polynomials::key_is_compatible(p, ss));
-    assert(idx < ss.size());
+OBAKE_DLL_PUBLIC ::std::pair<::std::int32_t, packed_monomial<::std::int32_t>>
+monomial_diff(const packed_monomial<::std::int32_t> &, const symbol_idx &, const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::pair<::std::uint32_t, packed_monomial<::std::uint32_t>>
+monomial_diff(const packed_monomial<::std::uint32_t> &, const symbol_idx &, const symbol_set &);
 
-    // NOTE: because we assume compatibility, the static cast is safe.
-    const auto s_size = static_cast<unsigned>(ss.size());
+#if defined(OBAKE_PACKABLE_INT64)
 
-    // Init the (un)packing machinery.
-    kunpacker<T> ku(p.get_value(), s_size);
-    kpacker<T> kp(s_size);
-    T tmp, ret_exp(0);
-    for (auto i = 0u; i < s_size; ++i) {
-        ku >> tmp;
+OBAKE_DLL_PUBLIC ::std::pair<::std::int64_t, packed_monomial<::std::int64_t>>
+monomial_diff(const packed_monomial<::std::int64_t> &, const symbol_idx &, const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::pair<::std::uint64_t, packed_monomial<::std::uint64_t>>
+monomial_diff(const packed_monomial<::std::uint64_t> &, const symbol_idx &, const symbol_set &);
 
-        if (i == idx && tmp != T(0)) {
-            // NOTE: the exponent of the differentiation variable
-            // is not zero. Take the derivative.
-            // NOTE: if the exponent is zero, ret_exp will remain to
-            // its initial value (0) and the output monomial
-            // will be the same as p.
-            // NOTE: no need for overflow checking here
-            // due to the way we create the kpack deltas
-            // and consequently the limits.
-            ret_exp = tmp--;
-        }
-
-        kp << tmp;
-    }
-
-    return ::std::make_pair(ret_exp, packed_monomial<T>(kp.get()));
-}
+#endif
 
 // Monomial integration.
-// NOTE: this requires that p is compatible with ss,
-// and idx is within ss.
-template <typename T>
-inline ::std::pair<T, packed_monomial<T>> monomial_integrate(const packed_monomial<T> &p, const symbol_idx &idx,
-                                                             const symbol_set &ss)
-{
-    assert(polynomials::key_is_compatible(p, ss));
-    assert(idx < ss.size());
+OBAKE_DLL_PUBLIC ::std::pair<::std::int32_t, packed_monomial<::std::int32_t>>
+monomial_integrate(const packed_monomial<::std::int32_t> &, const symbol_idx &, const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::pair<::std::uint32_t, packed_monomial<::std::uint32_t>>
+monomial_integrate(const packed_monomial<::std::uint32_t> &, const symbol_idx &, const symbol_set &);
 
-    // NOTE: because we assume compatibility, the static cast is safe.
-    const auto s_size = static_cast<unsigned>(ss.size());
+#if defined(OBAKE_PACKABLE_INT64)
 
-    // Init the (un)packing machinery.
-    kunpacker<T> ku(p.get_value(), s_size);
-    kpacker<T> kp(s_size);
-    T tmp, ret_exp(0);
-    for (auto i = 0u; i < s_size; ++i) {
-        ku >> tmp;
+OBAKE_DLL_PUBLIC ::std::pair<::std::int64_t, packed_monomial<::std::int64_t>>
+monomial_integrate(const packed_monomial<::std::int64_t> &, const symbol_idx &, const symbol_set &);
+OBAKE_DLL_PUBLIC ::std::pair<::std::uint64_t, packed_monomial<::std::uint64_t>>
+monomial_integrate(const packed_monomial<::std::uint64_t> &, const symbol_idx &, const symbol_set &);
 
-        if (i == idx) {
-            if constexpr (is_signed_v<T>) {
-                // For signed integrals, make sure
-                // we are not integrating x**-1.
-                if (obake_unlikely(tmp == T(-1))) {
-                    obake_throw(::std::domain_error,
-                                "Cannot integrate a packed monomial: the exponent of the integration variable ('"
-                                    + *ss.nth(static_cast<decltype(ss.size())>(i))
-                                    + "') is -1, and the integration would generate a logarithmic term");
-                }
-            }
-
-            // NOTE: no need for overflow checking here
-            // due to the way we create the kpack deltas
-            // and consequently the limits.
-            ret_exp = ++tmp;
-        }
-
-        kp << tmp;
-    }
-    // We must have written some nonzero value to ret_exp.
-    assert(ret_exp != T(0));
-
-    return ::std::make_pair(ret_exp, packed_monomial<T>(kp.get()));
-}
+#endif
 
 } // namespace polynomials
 
