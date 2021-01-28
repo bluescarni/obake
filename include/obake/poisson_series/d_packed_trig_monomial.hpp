@@ -13,6 +13,7 @@
 #include <iterator>
 #include <stdexcept>
 
+#include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 
 #include <fmt/format.h>
@@ -86,12 +87,13 @@ public:
     requires InputIterator<It> &&
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_trig_monomial(
             It it, ::std::size_t n, bool type = true)
-        : m_type(type)
+        : m_container(::obake::safe_cast<typename container_t::size_type>(
+                          detail::dptm_n_expos_to_vsize<d_packed_trig_monomial>(n)),
+                      // NOTE: avoid value-init of the elements, as we will
+                      // be setting all of them to some value in the loop below.
+                      ::boost::container::default_init_t{}),
+          m_type(type)
     {
-        // Prepare the container.
-        const auto vsize = detail::dptm_n_expos_to_vsize<d_packed_trig_monomial>(n);
-        m_container.resize(::obake::safe_cast<typename container_t::size_type>(vsize));
-
         ::std::size_t counter = 0;
         bool first_nz_found = false;
         for (auto &out : m_container) {
