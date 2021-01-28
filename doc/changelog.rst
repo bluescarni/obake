@@ -12,6 +12,8 @@ New
 - The C++ standard requirement is now exported in the CMake
   config-file package installed by obake
   (`#128 <https://github.com/bluescarni/obake/pull/128>`__).
+- Implement truncated power series
+  (`#127 <https://github.com/bluescarni/obake/pull/127>`__).
 
 Changes
 ~~~~~~~
