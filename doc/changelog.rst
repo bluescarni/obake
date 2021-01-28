@@ -37,6 +37,10 @@ Changes
   of the number of exponents to be packed in a single integer
   rather than the bit width assigned to each exponent
   (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
+- The Kronecker packing code has been rewritten to avoid
+  division and remainder operations, leading to a
+  substantial performance uplift
+  (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
 - Adopt a flyweight pattern for the representation of
   symbol sets in series
   (`#124 <https://github.com/bluescarni/obake/pull/124>`__).
