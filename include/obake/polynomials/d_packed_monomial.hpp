@@ -135,6 +135,9 @@ private:
     struct input_it_ctor_tag {
     };
     // Implementation of the ctor from input iterators.
+    // NOTE: a possible optimisation here is to detect
+    // random-access iterators and delegate to the
+    // ctor from input iterator and size.
     template <typename It>
     explicit d_packed_monomial(input_it_ctor_tag, It b, It e)
     {
