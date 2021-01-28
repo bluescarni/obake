@@ -75,14 +75,14 @@ constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
 
 } // namespace detail
 
-// Dynamic packed monomial.
-// NOTE: concept checking on PSize instead of static assert?
-// Probably need to make kpack_max_size() public for that.
-template <kpackable T, unsigned PSize>
-class d_packed_monomial
-{
-    static_assert(PSize > 0u && PSize <= ::obake::detail::kpack_max_size<T>());
+// Max psize for d_packed_monomial.
+template <kpackable T>
+inline constexpr unsigned dpm_max_psize = ::obake::detail::kpack_max_size<T>();
 
+// Dynamic packed monomial.
+template <kpackable T, unsigned PSize>
+    requires(PSize > 0u) && (PSize <= dpm_max_psize<T>)class d_packed_monomial
+{
     friend class ::boost::serialization::access;
 
 public:
