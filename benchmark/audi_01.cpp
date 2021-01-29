@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <iostream>
 
-#include <obake/config.hpp>
 #include <obake/polynomials/packed_monomial.hpp>
 #include <obake/polynomials/polynomial.hpp>
 
@@ -44,14 +43,7 @@ auto truncated_pow(const T &x, unsigned n, unsigned limit)
 
 int main()
 {
-    using p_type = polynomial<packed_monomial<
-#if defined(OBAKE_PACKABLE_INT64)
-                                  std::uint64_t
-#else
-                                  std::uint32_t
-#endif
-                                  >,
-                              double>;
+    using p_type = polynomial<p_monomial, double>;
 
     auto polys = make_polynomials<p_type>("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10");
 
