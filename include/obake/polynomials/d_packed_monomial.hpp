@@ -67,12 +67,12 @@ namespace detail
 // we need to store n exponents in a dynamic packed
 // monomial of type T. U must be an
 // unsigned integral type.
-template <typename T, typename U>
-constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
+template <typename T>
+inline constexpr auto dpm_nexpos_to_vsize = []<typename U>(const U &n) constexpr noexcept
 {
     static_assert(is_integral_v<U> && !is_signed_v<U>);
     return n / T::psize + static_cast<U>(n % T::psize != 0u);
-}
+};
 
 } // namespace detail
 
@@ -282,16 +282,20 @@ inline ::std::size_t hash(const d_packed_monomial<T, PSize> &d)
     return ret;
 }
 
-// Symbol set compatibility implementation.
-template <typename T, unsigned PSize>
-inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol_set &s)
+namespace detail
+{
+
+// Implementation of symbol set compatibility check.
+// NOTE: factored out for re-use.
+template <typename T, typename F>
+inline bool dpm_key_is_compatible(const T &d, const symbol_set &s, const F &f, unsigned psize)
 {
     const auto s_size = s.size();
     const auto &c = d._container();
 
     // Determine the size the container must have in order
     // to be able to represent s_size exponents.
-    const auto exp_size = detail::dpm_nexpos_to_vsize<d_packed_monomial<T, PSize>>(s_size);
+    const auto exp_size = f(s_size);
 
     // Check if c has the expected size.
     if (c.size() != exp_size) {
@@ -300,7 +304,7 @@ inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol
 
     // We need to check if the encoded values in the container
     // are within the limits.
-    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<T>(PSize);
+    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<typename T::value_type>(psize);
     for (const auto &n : c) {
         if (n < klim_min || n > klim_max) {
             return false;
@@ -308,6 +312,15 @@ inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol
     }
 
     return true;
+}
+
+} // namespace detail
+
+// Symbol set compatibility implementation.
+template <typename T, unsigned PSize>
+inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol_set &s)
+{
+    return detail::dpm_key_is_compatible(d, s, detail::dpm_nexpos_to_vsize<d_packed_monomial<T, PSize>>, PSize);
 }
 
 // Implementation of stream insertion.
@@ -346,7 +359,8 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSi
                 if (tmp != T(1)) {
                     // The exponent is not unitary,
                     // print it.
-                    os << "**" << ::obake::detail::to_string(tmp);
+                    using namespace ::fmt::literals;
+                    os << "**{}"_format(tmp);
                 }
             }
         }
