@@ -9,13 +9,29 @@
 #ifndef OBAKE_POISSON_SERIES_D_PACKED_TRIG_MONOMIAL_HPP
 #define OBAKE_POISSON_SERIES_D_PACKED_TRIG_MONOMIAL_HPP
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <iterator>
 #include <stdexcept>
 
 #include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/version.hpp>
+
+// NOTE: the header for hash_combine changed in version 1.67.
+#if (BOOST_VERSION / 100000 > 1) || (BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 >= 67)
+
+#include <boost/container_hash/hash.hpp>
+
+#else
+
+#include <boost/functional/hash.hpp>
+
+#endif
 
 #include <fmt/format.h>
 
@@ -24,6 +40,7 @@
 #include <obake/kpack.hpp>
 #include <obake/math/safe_cast.hpp>
 #include <obake/ranges.hpp>
+#include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -57,6 +74,8 @@ requires(is_signed_v<T> == true) inline constexpr unsigned dptm_max_psize = ::ob
 template <kpackable T, unsigned PSize>
     requires(is_signed_v<T> == true) && (PSize > 0u) && (PSize <= dptm_max_psize<T>)class d_packed_trig_monomial
 {
+    friend class ::boost::serialization::access;
+
 public:
     // The container type.
     using container_t = ::boost::container::small_vector<T, 1>;
@@ -208,7 +227,109 @@ public:
     {
         return m_type;
     }
+
+private:
+    // Serialisation.
+    // NOTE: when improve the s11n experience,
+    // we will probably want to verify
+    // canonical form when loading from non-binary
+    // archives.
+    template <class Archive>
+    void save(Archive &ar, unsigned) const
+    {
+        ar << m_container.size();
+
+        for (const auto &n : m_container) {
+            ar << n;
+        }
+
+        ar << m_type;
+    }
+    template <class Archive>
+    void load(Archive &ar, unsigned)
+    {
+        decltype(m_container.size()) size;
+        ar >> size;
+        m_container.resize(size);
+
+        for (auto &n : m_container) {
+            ar >> n;
+        }
+
+        ar >> m_type;
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
+
+// Default PSize for d_packed_trig_monomial.
+inline constexpr unsigned dptm_default_psize =
+#if defined(OBAKE_PACKABLE_INT64)
+    8
+#else
+    4
+#endif
+    ;
+
+// Default type for the exponents.
+using dptm_default_t =
+#if defined(OBAKE_PACKABLE_INT64)
+    ::std::int64_t
+#else
+    ::std::int32_t
+#endif
+    ;
+
+// Implementation of key_is_zero(). A trigonometric monomial is zero
+// if it is a sine and all the exponents are zero.
+template <typename T, unsigned PSize>
+inline bool key_is_zero(const d_packed_trig_monomial<T, PSize> &d, const symbol_set &)
+{
+    return d.type() == false
+           && ::std::all_of(d._container().cbegin(), d._container().cend(), [](const T &n) { return n == T(0); });
+}
+
+// Implementation of key_is_one(). A trigonometric monomial is one if it is a cosine
+// and all its exponents are zero.
+template <typename T, unsigned PSize>
+inline bool key_is_one(const d_packed_trig_monomial<T, PSize> &d, const symbol_set &)
+{
+    return d.type() == true
+           && ::std::all_of(d._container().cbegin(), d._container().cend(), [](const T &n) { return n == T(0); });
+}
+
+// Comparisons.
+template <typename T, unsigned PSize>
+inline bool operator==(const d_packed_trig_monomial<T, PSize> &d1, const d_packed_trig_monomial<T, PSize> &d2)
+{
+    return d1.type() == d2.type() && d1._container() == d2._container();
+}
+
+template <typename T, unsigned PSize>
+inline bool operator!=(const d_packed_trig_monomial<T, PSize> &d1, const d_packed_trig_monomial<T, PSize> &d2)
+{
+    return !(d1 == d2);
+}
+
+// Hash implementation.
+// NOTE: this is not homomorphic at this time,
+// and it is not clear if that is needed at all.
+// A homomorphic implementation would ignore the
+// type of the monomial and just add the exponents,
+// at the price of a possible
+// increase in collisions.
+// NOTE: perhaps the extra mixing via hash_combine()
+// is not really necessary, but on the other hand
+// performance in poisson_series should not be really
+// bottlenecked by this. Revisit when we have more data.
+template <typename T, unsigned PSize>
+inline ::std::size_t hash(const d_packed_trig_monomial<T, PSize> &d)
+{
+    auto ret = static_cast<::std::size_t>(d.type());
+    for (const auto &n : d._container()) {
+        ::boost::hash_combine(ret, n);
+    }
+    return ret;
+}
 
 } // namespace poisson_series
 
@@ -217,5 +338,16 @@ template <typename T, unsigned PSize>
 using d_packed_trig_monomial = poisson_series::d_packed_trig_monomial<T, PSize>;
 
 } // namespace obake
+
+namespace boost::serialization
+{
+
+// Disable tracking for d_packed_trig_monomial.
+template <typename T, unsigned PSize>
+struct tracking_level<::obake::d_packed_trig_monomial<T, PSize>>
+    : ::obake::detail::s11n_no_tracking<::obake::d_packed_trig_monomial<T, PSize>> {
+};
+
+} // namespace boost::serialization
 
 #endif

@@ -7,32 +7,27 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include <algorithm>
-// #include <bitset>
-// #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
-// #include <iostream>
-// #include <limits>
+#include <iostream>
 #include <random>
 #include <stdexcept>
-// #include <sstream>
 #include <tuple>
 #include <type_traits>
 #include <vector>
 
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+
 #include <obake/config.hpp>
-// #include <obake/detail/to_string.hpp>
 #include <obake/detail/tuple_for_each.hpp>
-// #include <obake/hash.hpp>
-// #include <obake/key/key_is_compatible.hpp>
-// #include <obake/key/key_is_one.hpp>
-// #include <obake/key/key_is_zero.hpp>
-// #include <obake/key/key_stream_insert.hpp>
-// #include <obake/key/key_tex_stream_insert.hpp>
+#include <obake/hash.hpp>
+#include <obake/key/key_is_one.hpp>
+#include <obake/key/key_is_zero.hpp>
 #include <obake/kpack.hpp>
 #include <obake/poisson_series/d_packed_trig_monomial.hpp>
 #include <obake/symbols.hpp>
-// #include <obake/type_name.hpp>
+#include <obake/type_name.hpp>
 #include <obake/type_traits.hpp>
 
 #include "catch.hpp"
@@ -50,7 +45,8 @@ using int_types = std::tuple<std::int32_t
 // The packed sizes over which we will be testing for type T.
 template <typename T>
 using psizes
-    = std::tuple<std::integral_constant<unsigned, 1>, std::integral_constant<unsigned, 2>,
+    = std::tuple<std::integral_constant<unsigned, poisson_series::dptm_default_psize>,
+                 std::integral_constant<unsigned, 1>, std::integral_constant<unsigned, 2>,
                  std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, detail::kpack_max_size<T>()>>;
 
 std::mt19937 rng;
@@ -301,6 +297,154 @@ TEST_CASE("basic_test")
                     REQUIRE(pm.type() == type);
                 }
             }
+        });
+    });
+}
+
+TEST_CASE("s11n_test")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_trig_monomial<int_t, bw>;
+
+            auto test_s11n = [](const pm_t &t) {
+                std::stringstream ss;
+
+                {
+                    boost::archive::binary_oarchive oa(ss);
+                    oa << t;
+                }
+
+                pm_t out;
+
+                {
+                    boost::archive::binary_iarchive ia(ss);
+                    ia >> out;
+                }
+
+                REQUIRE(t == out);
+                REQUIRE(!(t != out));
+            };
+
+            pm_t t;
+            test_s11n(t);
+
+            t._type() = false;
+            test_s11n(t);
+
+            t = pm_t{1, -2, 3};
+            test_s11n(t);
+
+            t._type() = false;
+            test_s11n(t);
+
+            t = pm_t{0, 0, 1, -2, -3, 2};
+            test_s11n(t);
+
+            t._type() = false;
+            test_s11n(t);
+        });
+    });
+}
+
+TEST_CASE("comparison")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_trig_monomial<int_t, bw>;
+
+            REQUIRE(pm_t{} == pm_t{});
+            REQUIRE(!(pm_t{} != pm_t{}));
+
+            REQUIRE(pm_t{1, 2, -3} == pm_t{1, 2, -3});
+            REQUIRE(pm_t{1, 2, -3} != pm_t{1, -2, -3});
+            REQUIRE(pm_t{0, 2, -3} == pm_t{0, 2, -3});
+            REQUIRE(pm_t{0, 2, -3} != pm_t{1, -2, -3});
+
+            // Checks on the type.
+            pm_t t0, t1;
+            t1._type() = false;
+            REQUIRE(t0 != t1);
+            REQUIRE(t1 != t0);
+
+            t0 = pm_t{1, -2, 3, 0};
+            t1 = t0;
+            t1._type() = false;
+            REQUIRE(t0 != t1);
+            REQUIRE(t1 != t0);
+        });
+    });
+}
+
+TEST_CASE("is zero one")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_trig_monomial<int_t, bw>;
+
+            REQUIRE(obake::key_is_one(pm_t{}, symbol_set{}));
+            REQUIRE(!obake::key_is_zero(pm_t{}, symbol_set{}));
+
+            pm_t t00;
+            t00._type() = false;
+            REQUIRE(!obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(obake::key_is_zero(t00, symbol_set{}));
+
+            t00 = pm_t{0, 2, 3};
+            REQUIRE(!obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(!obake::key_is_zero(t00, symbol_set{}));
+
+            t00._type() = false;
+            REQUIRE(!obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(!obake::key_is_zero(t00, symbol_set{}));
+
+            t00 = pm_t{1, -2, 3};
+            REQUIRE(!obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(!obake::key_is_zero(t00, symbol_set{}));
+
+            t00._type() = false;
+            REQUIRE(!obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(!obake::key_is_zero(t00, symbol_set{}));
+
+            t00 = pm_t{0, 0, 0};
+            REQUIRE(obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(!obake::key_is_zero(t00, symbol_set{}));
+
+            t00._type() = false;
+            REQUIRE(!obake::key_is_one(t00, symbol_set{}));
+            REQUIRE(obake::key_is_zero(t00, symbol_set{}));
+        });
+    });
+}
+
+TEST_CASE("hash")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_trig_monomial<int_t, bw>;
+
+            REQUIRE(obake::hash(pm_t{}) == 1u);
+
+            pm_t t00;
+            t00._type() = false;
+            REQUIRE(obake::hash(t00) == 0u);
+
+            t00 = pm_t{1, -2, 3, 0, 1};
+            std::cout << "Sample hash for cos: " << obake::hash(t00) << '\n';
+            t00._type() = false;
+            std::cout << "Sample hash for sin: " << obake::hash(t00) << '\n';
         });
     });
 }
