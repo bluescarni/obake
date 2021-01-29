@@ -57,12 +57,12 @@ namespace detail
 // we need to store n exponents in a dynamic packed
 // trig monomial of type T. U must be an
 // unsigned integral type.
-template <typename T, typename U>
-constexpr auto dptm_n_expos_to_vsize(const U &n) noexcept
+template <typename T>
+inline constexpr auto dptm_n_expos_to_vsize = []<typename U>(const U &n) constexpr noexcept
 {
     static_assert(is_integral_v<U> && !is_signed_v<U>);
     return n / T::psize + static_cast<U>(n % T::psize != 0u);
-}
+};
 
 } // namespace detail
 
