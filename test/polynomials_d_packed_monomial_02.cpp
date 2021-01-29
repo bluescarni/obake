@@ -52,8 +52,9 @@ using int_types = std::tuple<std::int32_t, std::uint32_t
 // The packed sizes over which we will be testing for type T.
 template <typename T>
 using psizes
-    = std::tuple<std::integral_constant<unsigned, 1>, std::integral_constant<unsigned, 2>,
-                 std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, detail::kpack_max_size<T>()>>;
+    = std::tuple<std::integral_constant<unsigned, polynomials::dpm_default_psize>, std::integral_constant<unsigned, 1>,
+                 std::integral_constant<unsigned, 2>, std::integral_constant<unsigned, 3>,
+                 std::integral_constant<unsigned, detail::kpack_max_size<T>()>>;
 
 TEST_CASE("byte_size_test")
 {
