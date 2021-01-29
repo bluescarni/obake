@@ -13,7 +13,7 @@
 #include <initializer_list>
 // #include <iostream>
 // #include <limits>
-// #include <random>
+#include <random>
 #include <stdexcept>
 // #include <sstream>
 #include <tuple>
@@ -53,7 +53,7 @@ using psizes
     = std::tuple<std::integral_constant<unsigned, 1>, std::integral_constant<unsigned, 2>,
                  std::integral_constant<unsigned, 3>, std::integral_constant<unsigned, detail::kpack_max_size<T>()>>;
 
-// std::mt19937 rng;
+std::mt19937 rng;
 
 TEST_CASE("basic_test")
 {
@@ -120,13 +120,27 @@ TEST_CASE("basic_test")
             t00 = pm_t(static_cast<int_t *>(nullptr), 0);
             REQUIRE(t00._container().empty());
             REQUIRE(t00.type() == true);
+            t00 = pm_t(static_cast<int_t *>(nullptr), static_cast<int_t *>(nullptr));
+            REQUIRE(t00._container().empty());
+            REQUIRE(t00.type() == true);
 
             t00 = pm_t(static_cast<int_t *>(nullptr), 0, false);
+            REQUIRE(t00._container().empty());
+            REQUIRE(t00.type() == false);
+            t00 = pm_t(static_cast<int_t *>(nullptr), static_cast<int_t *>(nullptr), false);
             REQUIRE(t00._container().empty());
             REQUIRE(t00.type() == false);
 
             upack_v = std::vector<int_t>{1};
             t00 = pm_t(upack_v.data(), 1);
+            upack(t00, 1);
+            REQUIRE(upack_v == std::vector<int_t>{1});
+            REQUIRE(t00.type() == true);
+            t00 = pm_t(upack_v.begin(), upack_v.end());
+            upack(t00, 1);
+            REQUIRE(upack_v == std::vector<int_t>{1});
+            REQUIRE(t00.type() == true);
+            t00 = pm_t(upack_v);
             upack(t00, 1);
             REQUIRE(upack_v == std::vector<int_t>{1});
             REQUIRE(t00.type() == true);
@@ -136,9 +150,25 @@ TEST_CASE("basic_test")
             upack(t00, 1);
             REQUIRE(upack_v == std::vector<int_t>{2});
             REQUIRE(t00.type() == false);
+            t00 = pm_t(upack_v.begin(), upack_v.end(), false);
+            upack(t00, 1);
+            REQUIRE(upack_v == std::vector<int_t>{2});
+            REQUIRE(t00.type() == false);
+            t00 = pm_t(upack_v, false);
+            upack(t00, 1);
+            REQUIRE(upack_v == std::vector<int_t>{2});
+            REQUIRE(t00.type() == false);
 
             upack_v = std::vector<int_t>{1, -1, 3, 3};
             t00 = pm_t(upack_v.data(), 4);
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{1, -1, 3, 3});
+            REQUIRE(t00.type() == true);
+            t00 = pm_t(upack_v.begin(), upack_v.end());
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{1, -1, 3, 3});
+            REQUIRE(t00.type() == true);
+            t00 = pm_t(upack_v);
             upack(t00, 4);
             REQUIRE(upack_v == std::vector<int_t>{1, -1, 3, 3});
             REQUIRE(t00.type() == true);
@@ -148,9 +178,25 @@ TEST_CASE("basic_test")
             upack(t00, 4);
             REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
             REQUIRE(t00.type() == false);
+            t00 = pm_t(upack_v.begin(), upack_v.end(), false);
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(t00.type() == false);
+            t00 = pm_t(upack_v, false);
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(t00.type() == false);
 
             upack_v = std::vector<int_t>{0, 0, 3, 3};
             t00 = pm_t(upack_v.data(), 4);
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(t00.type() == true);
+            t00 = pm_t(upack_v.begin(), upack_v.end());
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(t00.type() == true);
+            t00 = pm_t(upack_v);
             upack(t00, 4);
             REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
             REQUIRE(t00.type() == true);
@@ -160,9 +206,23 @@ TEST_CASE("basic_test")
             upack(t00, 4);
             REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
             REQUIRE(t00.type() == false);
+            t00 = pm_t(upack_v.begin(), upack_v.end(), false);
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(t00.type() == false);
+            t00 = pm_t(upack_v, false);
+            upack(t00, 4);
+            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(t00.type() == false);
 
             upack_v = std::vector<int_t>{-1, 0, 3, 3};
             OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.data(), 4), std::invalid_argument,
+                                           "Cannot construct a trigonometric monomial whose first nonzero "
+                                           "exponent (-1) is negative");
+            OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.begin(), upack_v.end()), std::invalid_argument,
+                                           "Cannot construct a trigonometric monomial whose first nonzero "
+                                           "exponent (-1) is negative");
+            OBAKE_REQUIRES_THROWS_CONTAINS(t00 = pm_t(upack_v), std::invalid_argument,
                                            "Cannot construct a trigonometric monomial whose first nonzero "
                                            "exponent (-1) is negative");
 
@@ -170,54 +230,27 @@ TEST_CASE("basic_test")
             OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.data(), 4, false), std::invalid_argument,
                                            "Cannot construct a trigonometric monomial whose first nonzero "
                                            "exponent (-3) is negative");
+            OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.begin(), upack_v.end()), std::invalid_argument,
+                                           "Cannot construct a trigonometric monomial whose first nonzero "
+                                           "exponent (-3) is negative");
+            OBAKE_REQUIRES_THROWS_CONTAINS(t00 = pm_t(upack_v), std::invalid_argument,
+                                           "Cannot construct a trigonometric monomial whose first nonzero "
+                                           "exponent (-3) is negative");
 
-#if 0
-            using c_t = typename pm_t::container_t;
+            // Ctor from init list.
+            t00 = pm_t{1, 2, 3};
+            upack(t00, 3);
+            REQUIRE(upack_v == std::vector<int_t>{1, 2, 3});
+            REQUIRE(t00.type() == true);
 
-            REQUIRE(!std::is_constructible_v<pm_t, void>);
-            REQUIRE(!std::is_constructible_v<pm_t, int>);
-            REQUIRE(!std::is_constructible_v<pm_t, const double &>);
+            t00 = pm_t{0, 2, -3};
+            upack(t00, 3);
+            REQUIRE(upack_v == std::vector<int_t>{0, 2, -3});
+            REQUIRE(t00.type() == true);
 
-            // Default ctor.
-            REQUIRE(pm_t{}._container().empty());
-
-            // Ctor from symbol set.
-            REQUIRE(pm_t{symbol_set{}}._container().empty());
-            REQUIRE(pm_t{symbol_set{"x"}}._container() == c_t{0});
-            if constexpr (bw == 1u) {
-                // With full width, we need an element in the container per symbol.
-                REQUIRE(pm_t{symbol_set{"x", "y"}}._container() == c_t{0, 0});
-                REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container() == c_t{0, 0, 0});
-            } else {
-                REQUIRE(pm_t{symbol_set{"x", "y"}}._container()
-                        == c_t(polynomials::detail::dpm_nexpos_to_vsize<pm_t>(2u)));
-                REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container()
-                        == c_t(polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u)));
-            }
-
-            // Constructors from iterators.
-            int_t arr[] = {1, 1, 1};
-
-            // Try empty size first.
-            REQUIRE(pm_t(arr, 0) == pm_t{});
-            REQUIRE(pm_t(arr, arr) == pm_t{});
-
-            REQUIRE(pm_t(arr, 1)._container() == c_t{1});
-            REQUIRE(pm_t(arr, arr + 1)._container() == c_t{1});
-            if constexpr (bw == 1u) {
-                REQUIRE(pm_t(arr, 3)._container() == c_t{1, 1, 1});
-                REQUIRE(pm_t(arr, arr + 3)._container() == c_t{1, 1, 1});
-            } else {
-                REQUIRE(pm_t(arr, 3)._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
-                REQUIRE(pm_t(arr, arr + 3)._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
-            }
-
-            // Try the init list ctor as well.
-            if constexpr (bw == 1u) {
-                REQUIRE(pm_t{1, 1, 1}._container() == c_t{1, 1, 1});
-            } else {
-                REQUIRE(pm_t{1, 1, 1}._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
-            }
+            OBAKE_REQUIRES_THROWS_CONTAINS((t00 = pm_t{0, 0, -2}), std::invalid_argument,
+                                           "Cannot construct a trigonometric monomial whose first nonzero "
+                                           "exponent (-2) is negative");
 
             // Random testing.
             if constexpr (bw <= 3u) {
@@ -225,75 +258,49 @@ TEST_CASE("basic_test")
                 using param_t = typename idist_t::param_type;
                 idist_t dist;
 
-                c_t tmp, cmp;
-                int_t tmp_n;
+                std::vector<int_t> copy;
 
                 for (auto i = 0u; i < 1000u; ++i) {
-                    tmp.resize(i);
+                    upack_v.resize(i);
 
+                    bool first_nz_found = false;
                     for (auto j = 0u; j < i; ++j) {
-                        if constexpr (is_signed_v<int_t>) {
-                            tmp[j] = dist(rng, param_t{-10, 10});
-                        } else {
-                            tmp[j] = dist(rng, param_t{0, 20});
+                        auto tmp = dist(rng, param_t{-10, 10});
+
+                        if (!first_nz_found && tmp < 0) {
+                            tmp = -tmp;
                         }
+
+                        upack_v[j] = tmp;
+
+                        first_nz_found = (first_nz_found || tmp != 0);
                     }
 
                     // Construct the monomial.
-                    pm_t pm(tmp.data(), i);
+                    const bool type = (dist(rng, param_t{0, 1}) == 0);
+                    pm_t pm(upack_v.data(), i, type);
 
-                    // Unpack it into cmp.
-                    cmp.clear();
-                    for (const auto &n : pm._container()) {
-                        kunpacker<int_t> ku(n, pm.psize);
-                        for (auto j = 0u; j < pm.psize; ++j) {
-                            ku >> tmp_n;
-                            cmp.push_back(tmp_n);
-                        }
-                    }
+                    copy = upack_v;
 
-                    // Verify.
-                    REQUIRE(cmp.size() >= tmp.size());
-                    REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
-                    REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
-                                        [](const auto &n) { return n == int_t(0); }));
+                    // Unpack it.
+                    upack(pm, i);
+
+                    REQUIRE(upack_v == copy);
+                    REQUIRE(pm.type() == type);
 
                     // Do the same with input iterators.
-                    pm = pm_t(tmp.begin(), tmp.end());
-
-                    cmp.clear();
-                    for (const auto &n : pm._container()) {
-                        kunpacker<int_t> ku(n, pm.psize);
-                        for (auto j = 0u; j < pm.psize; ++j) {
-                            ku >> tmp_n;
-                            cmp.push_back(tmp_n);
-                        }
-                    }
-
-                    REQUIRE(cmp.size() >= tmp.size());
-                    REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
-                    REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
-                                        [](const auto &n) { return n == int_t(0); }));
+                    pm = pm_t(upack_v.begin(), upack_v.end(), type);
+                    upack(pm, i);
+                    REQUIRE(upack_v == copy);
+                    REQUIRE(pm.type() == type);
 
                     // Do the same with input range.
-                    pm = pm_t(tmp);
-
-                    cmp.clear();
-                    for (const auto &n : pm._container()) {
-                        kunpacker<int_t> ku(n, pm.psize);
-                        for (auto j = 0u; j < pm.psize; ++j) {
-                            ku >> tmp_n;
-                            cmp.push_back(tmp_n);
-                        }
-                    }
-
-                    REQUIRE(cmp.size() >= tmp.size());
-                    REQUIRE(std::equal(tmp.begin(), tmp.end(), cmp.begin()));
-                    REQUIRE(std::all_of(cmp.data() + tmp.size(), cmp.data() + cmp.size(),
-                                        [](const auto &n) { return n == int_t(0); }));
+                    pm = pm_t(upack_v, type);
+                    upack(pm, i);
+                    REQUIRE(upack_v == copy);
+                    REQUIRE(pm.type() == type);
                 }
             }
-#endif
         });
     });
 }

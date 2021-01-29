@@ -10,6 +10,7 @@
 #define OBAKE_POISSON_SERIES_D_PACKED_TRIG_MONOMIAL_HPP
 
 #include <cstddef>
+#include <initializer_list>
 #include <iterator>
 #include <stdexcept>
 
@@ -22,6 +23,7 @@
 #include <obake/exceptions.hpp>
 #include <obake/kpack.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/ranges.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
 
@@ -122,6 +124,71 @@ public:
 
             out = kp.get();
         }
+    }
+
+private:
+    struct input_it_ctor_tag {
+    };
+    // Implementation of the ctor from input iterators.
+    // NOTE: a possible optimisation here is to detect
+    // random-access iterators and delegate to the
+    // ctor from input iterator and size.
+    template <typename It>
+    explicit d_packed_trig_monomial(input_it_ctor_tag, It b, It e, bool type) : m_type(type)
+    {
+        bool first_nz_found = false;
+
+        while (b != e) {
+            kpacker<T> kp(psize);
+
+            for (auto j = 0u; j < psize && b != e; ++j, ++b) {
+                const auto tmp = ::obake::safe_cast<T>(*b);
+
+                if (obake_unlikely(!first_nz_found && tmp < 0)) {
+                    // This is the first nonzero exponent
+                    // and it is negative, thus the canonical
+                    // form of the monomial is violated.
+                    using namespace ::fmt::literals;
+                    obake_throw(::std::invalid_argument,
+                                "Cannot construct a trigonometric monomial whose first nonzero "
+                                "exponent ({}) is negative"_format(tmp));
+                }
+
+                // Update first_nz_found.
+                first_nz_found = (first_nz_found || tmp != 0);
+
+                kp << tmp;
+            }
+
+            m_container.push_back(kp.get());
+        }
+    }
+
+public:
+    // Ctor from a pair of input iterators.
+    template <typename It>
+    requires InputIterator<It> &&
+        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_trig_monomial(It b, It e,
+                                                                                                          bool type
+                                                                                                          = true)
+        : d_packed_trig_monomial(input_it_ctor_tag{}, b, e, type)
+    {
+    }
+
+    // Ctor from input range.
+    template <typename Range>
+    requires InputRange<Range> &&SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference,
+                                                T> explicit d_packed_trig_monomial(Range &&r, bool type = true)
+        : d_packed_trig_monomial(input_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
+                                 ::obake::end(::std::forward<Range>(r)), type)
+    {
+    }
+
+    // Ctor from init list.
+    template <typename U>
+    requires SafelyCastable<const U &, T> explicit d_packed_trig_monomial(::std::initializer_list<U> l)
+        : d_packed_trig_monomial(input_it_ctor_tag{}, l.begin(), l.end(), true)
+    {
     }
 
     container_t &_container()
