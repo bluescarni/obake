@@ -199,8 +199,9 @@ public:
 
     // Ctor from init list.
     template <typename U>
-    requires SafelyCastable<const U &, T> explicit d_packed_trig_monomial(::std::initializer_list<U> l)
-        : d_packed_trig_monomial(input_it_ctor_tag{}, l.begin(), l.end(), true)
+    requires SafelyCastable<const U &, T> explicit d_packed_trig_monomial(::std::initializer_list<U> l,
+                                                                          bool type = true)
+        : d_packed_trig_monomial(input_it_ctor_tag{}, l.begin(), l.end(), type)
     {
     }
 

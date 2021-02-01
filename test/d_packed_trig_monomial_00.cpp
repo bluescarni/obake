@@ -244,6 +244,16 @@ TEST_CASE("basic_test")
             REQUIRE(upack_v == std::vector<int_t>{-3, 2, 0});
             REQUIRE(t00.type() == true);
 
+            t00 = pm_t({1, 2, 3}, false);
+            upack(t00, 3);
+            REQUIRE(upack_v == std::vector<int_t>{1, 2, 3});
+            REQUIRE(t00.type() == false);
+
+            t00 = pm_t({-3, 2, 0}, false);
+            upack(t00, 3);
+            REQUIRE(upack_v == std::vector<int_t>{-3, 2, 0});
+            REQUIRE(t00.type() == false);
+
             OBAKE_REQUIRES_THROWS_CONTAINS((t00 = pm_t{-2, 0, 0}), std::invalid_argument,
                                            "Cannot construct a trigonometric monomial whose last nonzero "
                                            "exponent is negative");
