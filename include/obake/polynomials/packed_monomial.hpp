@@ -24,6 +24,9 @@
 
 #include <boost/serialization/access.hpp>
 
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
 #include <tbb/parallel_reduce.h>
@@ -536,12 +539,10 @@ inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, 
             if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
                     // Provide better error message if U is ostreamable.
-                    ::std::ostringstream oss;
-                    oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
-                    static_cast<::std::ostream &>(oss) << n;
-                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent ("
-                                                             + oss.str()
-                                                             + ") cannot be converted into an integral value");
+                    using namespace ::fmt::literals;
+                    obake_throw(::std::invalid_argument,
+                                "Invalid exponent for monomial exponentiation: the exponent ({}) "
+                                "cannot be converted into an integral value"_format(n));
                 } else {
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
                                                          "cannot be converted into an integral value");

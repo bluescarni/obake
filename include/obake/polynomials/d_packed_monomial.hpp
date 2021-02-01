@@ -28,6 +28,7 @@
 #include <boost/serialization/split_member.hpp>
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
@@ -111,11 +112,13 @@ public:
     requires InputIterator<It> &&
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
                                                                                                      ::std::size_t n)
+        // LCOV_EXCL_START
         : m_container(
             ::obake::safe_cast<typename container_t::size_type>(detail::dpm_n_expos_to_vsize<d_packed_monomial>(n)),
             // NOTE: avoid value-init of the elements, as we will
             // be setting all of them to some value in the loop below.
             ::boost::container::default_init_t{})
+    // LCOV_EXCL_STOP
     {
         ::std::size_t counter = 0;
         for (auto &out : m_container) {
@@ -395,7 +398,9 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     // (the denominator is used only in case of negative powers).
     ::std::ostringstream oss_num, oss_den, *cur_oss;
     oss_num.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_num.flags(os.flags());
     oss_den.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_den.flags(os.flags());
 
     T tmp;
     // Go through a multiprecision integer for the stream
@@ -984,15 +989,10 @@ inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize
 
             if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
-                    using namespace ::fmt::literals;
-
                     // Provide better error message if U is ostreamable.
-                    ::std::ostringstream oss;
-                    oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
-                    static_cast<::std::ostream &>(oss) << n;
-                    obake_throw(::std::invalid_argument,
-                                "Invalid exponent for monomial exponentiation: the exponent "
-                                "({}) cannot be converted into an integral value"_format(oss.str()));
+                    using namespace ::fmt::literals;
+                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
+                                                         "({}) cannot be converted into an integral value"_format(n));
                 } else {
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
                                                          "cannot be converted into an integral value");
