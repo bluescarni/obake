@@ -39,6 +39,7 @@
 #include <obake/exceptions.hpp>
 #include <obake/kpack.hpp>
 #include <obake/math/safe_cast.hpp>
+#include <obake/polynomials/d_packed_monomial.hpp>
 #include <obake/ranges.hpp>
 #include <obake/s11n.hpp>
 #include <obake/symbols.hpp>
@@ -49,22 +50,6 @@ namespace obake
 
 namespace poisson_series
 {
-
-namespace detail
-{
-
-// Small helper to determine the container size
-// we need to store n exponents in a dynamic packed
-// trig monomial of type T. U must be an
-// unsigned integral type.
-template <typename T>
-inline constexpr auto dptm_n_expos_to_vsize = []<typename U>(const U &n) constexpr noexcept
-{
-    static_assert(is_integral_v<U> && !is_signed_v<U>);
-    return n / T::psize + static_cast<U>(n % T::psize != 0u);
-};
-
-} // namespace detail
 
 // Max psize for d_packed_trig_monomial.
 template <kpackable T>
@@ -98,7 +83,7 @@ public:
     // Constructor from symbol set.
     explicit d_packed_trig_monomial(const symbol_set &ss, bool type = true)
         : m_container(::obake::safe_cast<typename container_t::size_type>(
-            detail::dptm_n_expos_to_vsize<d_packed_trig_monomial>(ss.size()))),
+            polynomials::detail::dpm_n_expos_to_vsize<d_packed_trig_monomial>(ss.size()))),
           m_type(type)
     {
     }
@@ -109,7 +94,7 @@ public:
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_trig_monomial(
             It it, ::std::size_t n, bool type = true)
         : m_container(::obake::safe_cast<typename container_t::size_type>(
-                          detail::dptm_n_expos_to_vsize<d_packed_trig_monomial>(n)),
+                          polynomials::detail::dpm_n_expos_to_vsize<d_packed_trig_monomial>(n)),
                       // NOTE: avoid value-init of the elements, as we will
                       // be setting all of them to some value in the loop below.
                       ::boost::container::default_init_t{}),
