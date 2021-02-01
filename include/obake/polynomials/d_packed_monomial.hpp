@@ -22,11 +22,13 @@
 #include <utility>
 #include <vector>
 
+#include <boost/container/container_fwd.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
@@ -66,23 +68,23 @@ namespace detail
 // we need to store n exponents in a dynamic packed
 // monomial of type T. U must be an
 // unsigned integral type.
-template <typename T, typename U>
-constexpr auto dpm_nexpos_to_vsize(const U &n) noexcept
+template <typename T>
+inline constexpr auto dpm_n_expos_to_vsize = []<typename U>(const U &n) constexpr noexcept
 {
     static_assert(is_integral_v<U> && !is_signed_v<U>);
     return n / T::psize + static_cast<U>(n % T::psize != 0u);
-}
+};
 
 } // namespace detail
 
-// Dynamic packed monomial.
-// NOTE: concept checking on PSize instead of static assert?
-// Probably need to make kpack_max_size() public for that.
-template <kpackable T, unsigned PSize>
-class d_packed_monomial
-{
-    static_assert(PSize > 0u && PSize <= ::obake::detail::kpack_max_size<T>());
+// Max psize for d_packed_monomial.
+template <kpackable T>
+inline constexpr unsigned dpm_max_psize = ::obake::detail::kpack_max_size<T>();
 
+// Dynamic packed monomial.
+template <kpackable T, unsigned PSize>
+    requires(PSize > 0u) && (PSize <= dpm_max_psize<T>)class d_packed_monomial
+{
     friend class ::boost::serialization::access;
 
 public:
@@ -101,7 +103,7 @@ public:
     // Constructor from symbol set.
     explicit d_packed_monomial(const symbol_set &ss)
         : m_container(::obake::safe_cast<typename container_t::size_type>(
-            detail::dpm_nexpos_to_vsize<d_packed_monomial>(ss.size())))
+            detail::dpm_n_expos_to_vsize<d_packed_monomial>(ss.size())))
     {
     }
 
@@ -110,11 +112,14 @@ public:
     requires InputIterator<It> &&
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
                                                                                                      ::std::size_t n)
+        // LCOV_EXCL_START
+        : m_container(
+            ::obake::safe_cast<typename container_t::size_type>(detail::dpm_n_expos_to_vsize<d_packed_monomial>(n)),
+            // NOTE: avoid value-init of the elements, as we will
+            // be setting all of them to some value in the loop below.
+            ::boost::container::default_init_t{})
+    // LCOV_EXCL_STOP
     {
-        // Prepare the container.
-        const auto vsize = detail::dpm_nexpos_to_vsize<d_packed_monomial>(n);
-        m_container.resize(::obake::safe_cast<typename container_t::size_type>(vsize));
-
         ::std::size_t counter = 0;
         for (auto &out : m_container) {
             kpacker<T> kp(psize);
@@ -133,6 +138,9 @@ private:
     struct input_it_ctor_tag {
     };
     // Implementation of the ctor from input iterators.
+    // NOTE: a possible optimisation here is to detect
+    // random-access iterators and delegate to the
+    // ctor from input iterator and size.
     template <typename It>
     explicit d_packed_monomial(input_it_ctor_tag, It b, It e)
     {
@@ -277,16 +285,20 @@ inline ::std::size_t hash(const d_packed_monomial<T, PSize> &d)
     return ret;
 }
 
-// Symbol set compatibility implementation.
-template <typename T, unsigned PSize>
-inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol_set &s)
+namespace detail
+{
+
+// Implementation of symbol set compatibility check.
+// NOTE: factored out for re-use.
+template <typename T, typename F>
+inline bool dpm_key_is_compatible(const T &d, const symbol_set &s, const F &f, unsigned psize)
 {
     const auto s_size = s.size();
     const auto &c = d._container();
 
     // Determine the size the container must have in order
     // to be able to represent s_size exponents.
-    const auto exp_size = detail::dpm_nexpos_to_vsize<d_packed_monomial<T, PSize>>(s_size);
+    const auto exp_size = f(s_size);
 
     // Check if c has the expected size.
     if (c.size() != exp_size) {
@@ -295,7 +307,7 @@ inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol
 
     // We need to check if the encoded values in the container
     // are within the limits.
-    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<T>(PSize);
+    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<typename T::value_type>(psize);
     for (const auto &n : c) {
         if (n < klim_min || n > klim_max) {
             return false;
@@ -303,6 +315,15 @@ inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol
     }
 
     return true;
+}
+
+} // namespace detail
+
+// Symbol set compatibility implementation.
+template <typename T, unsigned PSize>
+inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol_set &s)
+{
+    return detail::dpm_key_is_compatible(d, s, detail::dpm_n_expos_to_vsize<d_packed_monomial<T, PSize>>, PSize);
 }
 
 // Implementation of stream insertion.
@@ -341,7 +362,8 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSi
                 if (tmp != T(1)) {
                     // The exponent is not unitary,
                     // print it.
-                    os << "**" << ::obake::detail::to_string(tmp);
+                    using namespace ::fmt::literals;
+                    os << "**{}"_format(tmp);
                 }
             }
         }
@@ -376,7 +398,9 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     // (the denominator is used only in case of negative powers).
     ::std::ostringstream oss_num, oss_den, *cur_oss;
     oss_num.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_num.flags(os.flags());
     oss_den.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_den.flags(os.flags());
 
     T tmp;
     // Go through a multiprecision integer for the stream
@@ -965,15 +989,10 @@ inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize
 
             if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
-                    using namespace ::fmt::literals;
-
                     // Provide better error message if U is ostreamable.
-                    ::std::ostringstream oss;
-                    oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
-                    static_cast<::std::ostream &>(oss) << n;
-                    obake_throw(::std::invalid_argument,
-                                "Invalid exponent for monomial exponentiation: the exponent "
-                                "({}) cannot be converted into an integral value"_format(oss.str()));
+                    using namespace ::fmt::literals;
+                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
+                                                         "({}) cannot be converted into an integral value"_format(n));
                 } else {
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
                                                          "cannot be converted into an integral value");
