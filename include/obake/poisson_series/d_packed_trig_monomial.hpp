@@ -123,7 +123,7 @@ public:
                 cur_positive = true;
             } else {
                 // For coverage purposes.
-                assert(kp.get() == 0);
+                assert(kp.get() == 0); // LCOV_EXCL_LINE
             }
         }
 
@@ -166,7 +166,7 @@ private:
                 cur_positive = true;
             } else {
                 // For coverage purposes.
-                assert(kp.get() == 0);
+                assert(kp.get() == 0); // LCOV_EXCL_LINE
             }
         }
 
@@ -359,7 +359,7 @@ inline bool key_is_compatible(const d_packed_trig_monomial<T, PSize> &d, const s
         } else if (n > 0) {
             cur_positive = true;
         } else {
-            assert(n == 0);
+            assert(n == 0); // LCOV_EXCL_LINE
         }
     }
 
@@ -371,7 +371,7 @@ inline bool key_is_compatible(const d_packed_trig_monomial<T, PSize> &d, const s
 template <typename T, unsigned PSize>
 inline void key_stream_insert(::std::ostream &os, const d_packed_trig_monomial<T, PSize> &d, const symbol_set &s)
 {
-    assert(poisson_series::key_is_compatible(d, s));
+    assert(poisson_series::key_is_compatible(d, s)); // LCOV_EXCL_LINE
 
     const auto &c = d._container();
     auto s_it = s.cbegin();
