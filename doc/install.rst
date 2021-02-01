@@ -10,7 +10,7 @@ Requirements
 
 Currently, obake has the following mandatory dependencies:
 
-* the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.17),
+* the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.22),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least version 1.65),
 * the `Abseil <https://abseil.io/>`_ C++ libraries,
 * the `Intel TBB <https://github.com/oneapi-src/oneTBB>`__ library.
@@ -19,6 +19,33 @@ obake also depends on other libraries for optional features:
 
 * on some operating systems, obake can use `libbacktrace <https://github.com/ianlancetaylor/libbacktrace>`_
   to improve the quality of the stack traces.
+
+Packages
+--------
+
+Conda
+^^^^^
+
+obake is available in the `conda <https://conda.io/en/latest/>`__ package manager from the
+`conda-forge <https://conda-forge.org/>`__ channel. Two
+packages are available:
+
+* `obake <https://anaconda.org/conda-forge/obake>`__, which contains the obake shared library,
+* `obake-devel <https://anaconda.org/conda-forge/obake-devel>`__,
+  which contains the obake headers and the
+  CMake support files.
+
+In order to install obake via conda, you just need
+to add ``conda-forge`` to the channels:
+
+.. code-block:: console
+
+   $ conda config --add channels conda-forge
+   $ conda config --set channel_priority strict
+   $ conda install obake obake-devel
+
+Please refer to the `conda documentation <https://conda.io/en/latest/>`__ for instructions on how to setup and manage
+your conda installation.
 
 .. _installation_from_source:
 
@@ -195,30 +222,3 @@ to build the documentation. Executing the command
 
 will produce the documentation in HTML format. The documentation will be
 generated in the ``doc/_build`` directory.
-
-Packages
---------
-
-Conda
-^^^^^
-
-obake is available in the `conda <https://conda.io/en/latest/>`__ package manager from the
-`conda-forge <https://conda-forge.org/>`__ channel. Two
-packages are available:
-
-* `obake <https://anaconda.org/conda-forge/obake>`__, which contains the obake shared library,
-* `obake-devel <https://anaconda.org/conda-forge/obake-devel>`__,
-  which contains the obake headers and the
-  CMake support files.
-
-In order to install obake via conda, you just need
-to add ``conda-forge`` to the channels:
-
-.. code-block:: console
-
-   $ conda config --add channels conda-forge
-   $ conda config --set channel_priority strict
-   $ conda install obake obake-devel
-
-Please refer to the `conda documentation <https://conda.io/en/latest/>`__ for instructions on how to setup and manage
-your conda installation.
