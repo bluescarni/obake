@@ -153,6 +153,18 @@
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#packages">
+   Packages
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#conda">
+     Conda
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#installation-from-source">
    Installation from source
   </a>
@@ -174,18 +186,6 @@
    </li>
   </ul>
  </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#packages">
-   Packages
-  </a>
-  <ul class="nav section-nav flex-column">
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#id7">
-     Conda
-    </a>
-   </li>
-  </ul>
- </li>
 </ul>
 
         </nav>
@@ -203,7 +203,7 @@
 <span id="id2"></span><h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
 <p>Currently, obake has the following mandatory dependencies:</p>
 <ul class="simple">
-<li><p>the <a class="reference external" href="https://bluescarni.github.io/mppp/">mp++</a> multiprecision library (at least version 0.17),</p></li>
+<li><p>the <a class="reference external" href="https://bluescarni.github.io/mppp/">mp++</a> multiprecision library (at least version 0.22),</p></li>
 <li><p>the <a class="reference external" href="https://www.boost.org/">Boost</a> C++ libraries (at least version 1.65),</p></li>
 <li><p>the <a class="reference external" href="https://abseil.io/">Abseil</a> C++ libraries,</p></li>
 <li><p>the <a class="reference external" href="https://github.com/oneapi-src/oneTBB">Intel TBB</a> library.</p></li>
@@ -213,6 +213,30 @@
 <li><p>on some operating systems, obake can use <a class="reference external" href="https://github.com/ianlancetaylor/libbacktrace">libbacktrace</a>
 to improve the quality of the stack traces.</p></li>
 </ul>
+</div>
+<div class="section" id="packages">
+<h2>Packages<a class="headerlink" href="#packages" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="conda">
+<h3>Conda<a class="headerlink" href="#conda" title="Permalink to this headline">¶</a></h3>
+<p>obake is available in the <a class="reference external" href="https://conda.io/en/latest/">conda</a> package manager from the
+<a class="reference external" href="https://conda-forge.org/">conda-forge</a> channel. Two
+packages are available:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://anaconda.org/conda-forge/obake">obake</a>, which contains the obake shared library,</p></li>
+<li><p><a class="reference external" href="https://anaconda.org/conda-forge/obake-devel">obake-devel</a>,
+which contains the obake headers and the
+CMake support files.</p></li>
+</ul>
+<p>In order to install obake via conda, you just need
+to add <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> to the channels:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>conda config --add channels conda-forge
+<span class="gp">$ </span>conda config --set channel_priority strict
+<span class="gp">$ </span>conda install obake obake-devel
+</pre></div>
+</div>
+<p>Please refer to the <a class="reference external" href="https://conda.io/en/latest/">conda documentation</a> for instructions on how to setup and manage
+your conda installation.</p>
+</div>
 </div>
 <div class="section" id="installation-from-source">
 <span id="id3"></span><h2>Installation from source<a class="headerlink" href="#installation-from-source" title="Permalink to this headline">¶</a></h2>
@@ -360,30 +384,6 @@ to build the documentation. Executing the command</p>
 </div>
 <p>will produce the documentation in HTML format. The documentation will be
 generated in the <code class="docutils literal notranslate"><span class="pre">doc/_build</span></code> directory.</p>
-</div>
-</div>
-<div class="section" id="packages">
-<h2>Packages<a class="headerlink" href="#packages" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id7">
-<h3>Conda<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
-<p>obake is available in the <a class="reference external" href="https://conda.io/en/latest/">conda</a> package manager from the
-<a class="reference external" href="https://conda-forge.org/">conda-forge</a> channel. Two
-packages are available:</p>
-<ul class="simple">
-<li><p><a class="reference external" href="https://anaconda.org/conda-forge/obake">obake</a>, which contains the obake shared library,</p></li>
-<li><p><a class="reference external" href="https://anaconda.org/conda-forge/obake-devel">obake-devel</a>,
-which contains the obake headers and the
-CMake support files.</p></li>
-</ul>
-<p>In order to install obake via conda, you just need
-to add <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> to the channels:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>conda config --add channels conda-forge
-<span class="gp">$ </span>conda config --set channel_priority strict
-<span class="gp">$ </span>conda install obake obake-devel
-</pre></div>
-</div>
-<p>Please refer to the <a class="reference external" href="https://conda.io/en/latest/">conda documentation</a> for instructions on how to setup and manage
-your conda installation.</p>
 </div>
 </div>
 </div>
