@@ -83,9 +83,9 @@ TEST_CASE("basic_test")
                 REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container() == c_t{0, 0, 0});
             } else {
                 REQUIRE(pm_t{symbol_set{"x", "y"}}._container()
-                        == c_t(polynomials::detail::dpm_nexpos_to_vsize<pm_t>(2u)));
+                        == c_t(polynomials::detail::dpm_n_expos_to_vsize<pm_t>(2u)));
                 REQUIRE(pm_t{symbol_set{"x", "y", "z"}}._container()
-                        == c_t(polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u)));
+                        == c_t(polynomials::detail::dpm_n_expos_to_vsize<pm_t>(3u)));
             }
 
             // Constructors from iterators.
@@ -101,15 +101,15 @@ TEST_CASE("basic_test")
                 REQUIRE(pm_t(arr, 3)._container() == c_t{1, 1, 1});
                 REQUIRE(pm_t(arr, arr + 3)._container() == c_t{1, 1, 1});
             } else {
-                REQUIRE(pm_t(arr, 3)._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
-                REQUIRE(pm_t(arr, arr + 3)._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
+                REQUIRE(pm_t(arr, 3)._container().size() == polynomials::detail::dpm_n_expos_to_vsize<pm_t>(3u));
+                REQUIRE(pm_t(arr, arr + 3)._container().size() == polynomials::detail::dpm_n_expos_to_vsize<pm_t>(3u));
             }
 
             // Try the init list ctor as well.
             if constexpr (bw == 1u) {
                 REQUIRE(pm_t{1, 1, 1}._container() == c_t{1, 1, 1});
             } else {
-                REQUIRE(pm_t{1, 1, 1}._container().size() == polynomials::detail::dpm_nexpos_to_vsize<pm_t>(3u));
+                REQUIRE(pm_t{1, 1, 1}._container().size() == polynomials::detail::dpm_n_expos_to_vsize<pm_t>(3u));
             }
 
             // Random testing.

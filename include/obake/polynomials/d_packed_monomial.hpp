@@ -68,7 +68,7 @@ namespace detail
 // monomial of type T. U must be an
 // unsigned integral type.
 template <typename T>
-inline constexpr auto dpm_nexpos_to_vsize = []<typename U>(const U &n) constexpr noexcept
+inline constexpr auto dpm_n_expos_to_vsize = []<typename U>(const U &n) constexpr noexcept
 {
     static_assert(is_integral_v<U> && !is_signed_v<U>);
     return n / T::psize + static_cast<U>(n % T::psize != 0u);
@@ -102,7 +102,7 @@ public:
     // Constructor from symbol set.
     explicit d_packed_monomial(const symbol_set &ss)
         : m_container(::obake::safe_cast<typename container_t::size_type>(
-            detail::dpm_nexpos_to_vsize<d_packed_monomial>(ss.size())))
+            detail::dpm_n_expos_to_vsize<d_packed_monomial>(ss.size())))
     {
     }
 
@@ -112,7 +112,7 @@ public:
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
                                                                                                      ::std::size_t n)
         : m_container(
-            ::obake::safe_cast<typename container_t::size_type>(detail::dpm_nexpos_to_vsize<d_packed_monomial>(n)),
+            ::obake::safe_cast<typename container_t::size_type>(detail::dpm_n_expos_to_vsize<d_packed_monomial>(n)),
             // NOTE: avoid value-init of the elements, as we will
             // be setting all of them to some value in the loop below.
             ::boost::container::default_init_t{})
@@ -320,7 +320,7 @@ inline bool dpm_key_is_compatible(const T &d, const symbol_set &s, const F &f, u
 template <typename T, unsigned PSize>
 inline bool key_is_compatible(const d_packed_monomial<T, PSize> &d, const symbol_set &s)
 {
-    return detail::dpm_key_is_compatible(d, s, detail::dpm_nexpos_to_vsize<d_packed_monomial<T, PSize>>, PSize);
+    return detail::dpm_key_is_compatible(d, s, detail::dpm_n_expos_to_vsize<d_packed_monomial<T, PSize>>, PSize);
 }
 
 // Implementation of stream insertion.
