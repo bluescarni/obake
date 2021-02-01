@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <iterator>
+#include <ostream>
 #include <stdexcept>
 
 #include <boost/container/container_fwd.hpp>
@@ -326,6 +327,66 @@ inline ::std::size_t hash(const d_packed_trig_monomial<T, PSize> &d)
         ::boost::hash_combine(ret, n);
     }
     return ret;
+}
+
+// Symbol set compatibility implementation.
+template <typename T, unsigned PSize>
+inline bool key_is_compatible(const d_packed_trig_monomial<T, PSize> &d, const symbol_set &s)
+{
+    const auto s_size = s.size();
+    const auto &c = d._container();
+
+    // Determine the size the container must have in order
+    // to be able to represent s_size exponents.
+    const auto exp_size = polynomials::detail::dpm_n_expos_to_vsize<d_packed_trig_monomial<T, PSize>>(s_size);
+
+    // Check if c has the expected size.
+    if (c.size() != exp_size) {
+        return false;
+    }
+
+    // We need to check if the encoded values in the container
+    // are within the limits, and if the canonical form is respected.
+    const auto [klim_min, klim_max] = ::obake::detail::kpack_get_klims<T>(PSize);
+    bool cur_positive = true;
+    for (const auto &n : c) {
+        if (n < klim_min || n > klim_max) {
+            return false;
+        }
+
+        if (n < 0) {
+            cur_positive = false;
+        } else if (n > 0) {
+            cur_positive = true;
+        } else {
+            assert(n == 0);
+        }
+    }
+
+    return cur_positive;
+}
+
+// Implementation of stream insertion.
+// NOTE: requires that d is compatible with s.
+template <typename T, unsigned PSize>
+inline void key_stream_insert(::std::ostream &os, const d_packed_trig_monomial<T, PSize> &d, const symbol_set &s)
+{
+    assert(poisson_series::key_is_compatible(d, s));
+
+    const auto &c = d._container();
+    auto s_it = s.cbegin();
+    const auto s_end = s.cend();
+
+    // Don't print anything in case all exponents are zero.
+    // NOTE: if this is a sine, it should not have all exponents
+    // set to zero in a series, because otherwise d itself would
+    // be zero and it should not be in a series in the first place.
+    if (::std::all_of(c.begin(), c.end(), [](const T &n) { return n == T(0); })) {
+        return;
+    }
+
+    // Print the type.
+    os << (d.type() ? "cos(" : "sin(");
 }
 
 } // namespace poisson_series

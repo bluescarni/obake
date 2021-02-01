@@ -22,6 +22,7 @@
 #include <obake/config.hpp>
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/hash.hpp>
+#include <obake/key/key_is_compatible.hpp>
 #include <obake/key/key_is_one.hpp>
 #include <obake/key/key_is_zero.hpp>
 #include <obake/kpack.hpp>
@@ -458,6 +459,47 @@ TEST_CASE("hash")
             std::cout << "Sample hash for cos: " << obake::hash(t00) << '\n';
             t00._type() = false;
             std::cout << "Sample hash for sin: " << obake::hash(t00) << '\n';
+        });
+    });
+}
+
+TEST_CASE("key_is_compatible")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_trig_monomial<int_t, bw>;
+
+            REQUIRE(obake::key_is_compatible(pm_t{}, symbol_set{}));
+            REQUIRE(obake::key_is_compatible(pm_t{1, 2, 3}, symbol_set{"x", "y", "z"}));
+            REQUIRE(obake::key_is_compatible(pm_t{1, -2, 3}, symbol_set{"x", "y", "z"}));
+            REQUIRE(obake::key_is_compatible(pm_t{-1, -2, 3}, symbol_set{"x", "y", "z"}));
+            REQUIRE(obake::key_is_compatible(pm_t{-1, -2, 3, 0, 0, 0}, symbol_set{"x", "y", "z", "a", "b", "c"}));
+            REQUIRE(obake::key_is_compatible(pm_t{0, 0, 3, 0, 0, 0}, symbol_set{"x", "y", "z", "a", "b", "c"}));
+
+            // Size mismatch.
+            REQUIRE(!obake::key_is_compatible(pm_t{}, symbol_set{"x", "y", "z"}));
+
+            // klim overflow.
+            pm_t t00{0};
+            t00._container()[0] = detail::kpack_get_klims<int_t>(bw).second + 1;
+            REQUIRE(!obake::key_is_compatible(t00, symbol_set{"x"}));
+
+            // Non-canonical form.
+            t00 = pm_t{1, 2, 3};
+            REQUIRE(obake::key_is_compatible(t00, symbol_set{"x", "y", "z"}));
+            t00._container().back() *= -1;
+            REQUIRE(!obake::key_is_compatible(t00, symbol_set{"x", "y", "z"}));
+            t00 = pm_t{-1, -2, 3};
+            REQUIRE(obake::key_is_compatible(t00, symbol_set{"x", "y", "z"}));
+            t00._container().back() *= -1;
+            REQUIRE(!obake::key_is_compatible(t00, symbol_set{"x", "y", "z"}));
+            t00 = pm_t{-1, -2, 0, 0, 0, 3};
+            REQUIRE(obake::key_is_compatible(t00, symbol_set{"x", "y", "z", "a", "b", "c"}));
+            t00._container().back() *= -1;
+            REQUIRE(!obake::key_is_compatible(t00, symbol_set{"x", "y", "z", "a", "b", "c"}));
         });
     });
 }
