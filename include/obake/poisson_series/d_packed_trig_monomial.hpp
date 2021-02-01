@@ -10,6 +10,7 @@
 #define OBAKE_POISSON_SERIES_D_PACKED_TRIG_MONOMIAL_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -32,8 +33,6 @@
 #include <boost/functional/hash.hpp>
 
 #endif
-
-#include <fmt/format.h>
 
 #include <obake/config.hpp>
 #include <obake/exceptions.hpp>
@@ -101,32 +100,37 @@ public:
           m_type(type)
     {
         ::std::size_t counter = 0;
-        bool first_nz_found = false;
+        bool cur_positive = true;
         for (auto &out : m_container) {
             kpacker<T> kp(psize);
 
             // Keep packing until we get to psize or we have
             // exhausted the input values.
             for (auto j = 0u; j < psize && counter < n; ++j, ++counter, ++it) {
-                const auto tmp = ::obake::safe_cast<T>(*it);
-
-                if (obake_unlikely(!first_nz_found && tmp < 0)) {
-                    // This is the first nonzero exponent
-                    // and it is negative, thus the canonical
-                    // form of the monomial is violated.
-                    using namespace ::fmt::literals;
-                    obake_throw(::std::invalid_argument,
-                                "Cannot construct a trigonometric monomial whose first nonzero "
-                                "exponent ({}) is negative"_format(tmp));
-                }
-
-                // Update first_nz_found.
-                first_nz_found = (first_nz_found || tmp != 0);
-
-                kp << tmp;
+                kp << ::obake::safe_cast<T>(*it);
             }
 
             out = kp.get();
+
+            // Check if we added a positive
+            // or negative value. If we added
+            // a zero value, we don't alter
+            // cur_positive.
+            if (kp.get() < 0) {
+                cur_positive = false;
+            } else if (kp.get() > 0) {
+                cur_positive = true;
+            } else {
+                // For coverage purposes.
+                assert(kp.get() == 0);
+            }
+        }
+
+        if (obake_unlikely(!cur_positive)) {
+            // The last nonzero value added to the container
+            // was negative: the monomial is not in canonical form.
+            obake_throw(::std::invalid_argument, "Cannot construct a trigonometric monomial whose last nonzero "
+                                                 "exponent is negative");
         }
     }
 
@@ -140,31 +144,36 @@ private:
     template <typename It>
     explicit d_packed_trig_monomial(input_it_ctor_tag, It b, It e, bool type) : m_type(type)
     {
-        bool first_nz_found = false;
+        bool cur_positive = true;
 
         while (b != e) {
             kpacker<T> kp(psize);
 
             for (auto j = 0u; j < psize && b != e; ++j, ++b) {
-                const auto tmp = ::obake::safe_cast<T>(*b);
-
-                if (obake_unlikely(!first_nz_found && tmp < 0)) {
-                    // This is the first nonzero exponent
-                    // and it is negative, thus the canonical
-                    // form of the monomial is violated.
-                    using namespace ::fmt::literals;
-                    obake_throw(::std::invalid_argument,
-                                "Cannot construct a trigonometric monomial whose first nonzero "
-                                "exponent ({}) is negative"_format(tmp));
-                }
-
-                // Update first_nz_found.
-                first_nz_found = (first_nz_found || tmp != 0);
-
-                kp << tmp;
+                kp << ::obake::safe_cast<T>(*b);
             }
 
             m_container.push_back(kp.get());
+
+            // Check if we added a positive
+            // or negative value. If we added
+            // a zero value, we don't alter
+            // cur_positive.
+            if (kp.get() < 0) {
+                cur_positive = false;
+            } else if (kp.get() > 0) {
+                cur_positive = true;
+            } else {
+                // For coverage purposes.
+                assert(kp.get() == 0);
+            }
+        }
+
+        if (obake_unlikely(!cur_positive)) {
+            // The last nonzero value added to the container
+            // was negative: the monomial is not in canonical form.
+            obake_throw(::std::invalid_argument, "Cannot construct a trigonometric monomial whose last nonzero "
+                                                 "exponent is negative");
         }
     }
 

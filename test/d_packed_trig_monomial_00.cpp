@@ -169,69 +169,69 @@ TEST_CASE("basic_test")
             REQUIRE(upack_v == std::vector<int_t>{1, -1, 3, 3});
             REQUIRE(t00.type() == true);
 
-            upack_v = std::vector<int_t>{0, 0, 3, 3};
+            upack_v = std::vector<int_t>{3, 3, 0, 0};
             t00 = pm_t(upack_v.data(), 4, false);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == false);
             t00 = pm_t(upack_v.begin(), upack_v.end(), false);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == false);
             t00 = pm_t(upack_v, false);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == false);
 
-            upack_v = std::vector<int_t>{0, 0, 3, 3};
+            upack_v = std::vector<int_t>{3, 3, 0, 0};
             t00 = pm_t(upack_v.data(), 4);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == true);
             t00 = pm_t(upack_v.begin(), upack_v.end());
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == true);
             t00 = pm_t(upack_v);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == true);
 
-            upack_v = std::vector<int_t>{0, 0, 3, 3};
+            upack_v = std::vector<int_t>{3, 3, 0, 0};
             t00 = pm_t(upack_v.data(), 4, false);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == false);
             t00 = pm_t(upack_v.begin(), upack_v.end(), false);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == false);
             t00 = pm_t(upack_v, false);
             upack(t00, 4);
-            REQUIRE(upack_v == std::vector<int_t>{0, 0, 3, 3});
+            REQUIRE(upack_v == std::vector<int_t>{3, 3, 0, 0});
             REQUIRE(t00.type() == false);
 
-            upack_v = std::vector<int_t>{-1, 0, 3, 3};
+            upack_v = std::vector<int_t>{1, 0, 3, -3};
             OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.data(), 4), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-1) is negative");
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
             OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.begin(), upack_v.end()), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-1) is negative");
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
             OBAKE_REQUIRES_THROWS_CONTAINS(t00 = pm_t(upack_v), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-1) is negative");
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
 
-            upack_v = std::vector<int_t>{0, 0, -3, 3};
+            upack_v = std::vector<int_t>{3, -3, 0, 0};
             OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.data(), 4, false), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-3) is negative");
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
             OBAKE_REQUIRES_THROWS_CONTAINS(pm_t(upack_v.begin(), upack_v.end()), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-3) is negative");
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
             OBAKE_REQUIRES_THROWS_CONTAINS(t00 = pm_t(upack_v), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-3) is negative");
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
 
             // Ctor from init list.
             t00 = pm_t{1, 2, 3};
@@ -239,14 +239,14 @@ TEST_CASE("basic_test")
             REQUIRE(upack_v == std::vector<int_t>{1, 2, 3});
             REQUIRE(t00.type() == true);
 
-            t00 = pm_t{0, 2, -3};
+            t00 = pm_t{-3, 2, 0};
             upack(t00, 3);
-            REQUIRE(upack_v == std::vector<int_t>{0, 2, -3});
+            REQUIRE(upack_v == std::vector<int_t>{-3, 2, 0});
             REQUIRE(t00.type() == true);
 
-            OBAKE_REQUIRES_THROWS_CONTAINS((t00 = pm_t{0, 0, -2}), std::invalid_argument,
-                                           "Cannot construct a trigonometric monomial whose first nonzero "
-                                           "exponent (-2) is negative");
+            OBAKE_REQUIRES_THROWS_CONTAINS((t00 = pm_t{-2, 0, 0}), std::invalid_argument,
+                                           "Cannot construct a trigonometric monomial whose last nonzero "
+                                           "exponent is negative");
 
             // Random testing.
             if constexpr (bw <= 3u) {
@@ -271,6 +271,9 @@ TEST_CASE("basic_test")
 
                         first_nz_found = (first_nz_found || tmp != 0);
                     }
+
+                    // Reverse it.
+                    std::reverse(upack_v.begin(), upack_v.end());
 
                     // Construct the monomial.
                     const bool type = (dist(rng, param_t{0, 1}) == 0);
@@ -362,10 +365,10 @@ TEST_CASE("comparison")
             REQUIRE(pm_t{} == pm_t{});
             REQUIRE(!(pm_t{} != pm_t{}));
 
-            REQUIRE(pm_t{1, 2, -3} == pm_t{1, 2, -3});
-            REQUIRE(pm_t{1, 2, -3} != pm_t{1, -2, -3});
-            REQUIRE(pm_t{0, 2, -3} == pm_t{0, 2, -3});
-            REQUIRE(pm_t{0, 2, -3} != pm_t{1, -2, -3});
+            REQUIRE(pm_t{-1, 2, 3} == pm_t{-1, 2, 3});
+            REQUIRE(pm_t{1, 2, 3} != pm_t{1, -2, 3});
+            REQUIRE(pm_t{-3, 2, 0} == pm_t{-3, 2, 0});
+            REQUIRE(pm_t{-3, 2, 0} != pm_t{-3, 2, 1});
 
             // Checks on the type.
             pm_t t0, t1;
