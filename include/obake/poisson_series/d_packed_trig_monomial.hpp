@@ -230,7 +230,7 @@ public:
 
 private:
     // Serialisation.
-    // NOTE: when improve the s11n experience,
+    // NOTE: when we improve the s11n experience,
     // we will probably want to verify
     // canonical form when loading from non-binary
     // archives.
@@ -321,6 +321,8 @@ inline bool operator!=(const d_packed_trig_monomial<T, PSize> &d1, const d_packe
 // is not really necessary, but on the other hand
 // performance in poisson_series should not be really
 // bottlenecked by this. Revisit when we have more data.
+// Also, once we have benchmarks, we should also
+// investigate the absl hashing performance.
 template <typename T, unsigned PSize>
 inline ::std::size_t hash(const d_packed_trig_monomial<T, PSize> &d)
 {
