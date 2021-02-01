@@ -395,7 +395,9 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     // (the denominator is used only in case of negative powers).
     ::std::ostringstream oss_num, oss_den, *cur_oss;
     oss_num.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_num.flags(os.flags());
     oss_den.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_den.flags(os.flags());
 
     T tmp;
     // Go through a multiprecision integer for the stream

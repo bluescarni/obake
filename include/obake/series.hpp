@@ -2129,6 +2129,7 @@ inline void series_stream_terms_impl(::std::ostream &os, const T &s)
     const auto end = s.end();
     ::std::ostringstream oss;
     oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss.flags(os.flags());
     ::std::string ret;
 
     while (it != end && (!limit || count != limit)) {

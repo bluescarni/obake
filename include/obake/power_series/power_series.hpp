@@ -316,7 +316,7 @@ inline ::std::ostream &operator<<(::std::ostream &os, const tag<T> &t)
 {
     return os << "Series type: power series\n"
               << ::std::visit(
-                     [](const auto &v) -> ::std::string {
+                     [&os](const auto &v) -> ::std::string {
                          using type = remove_cvref_t<decltype(v)>;
 
                          if constexpr (::std::is_same_v<type, detail::no_truncation>) {
@@ -324,6 +324,7 @@ inline ::std::ostream &operator<<(::std::ostream &os, const tag<T> &t)
                          } else {
                              ::std::ostringstream oss;
                              oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+                             oss.flags(os.flags());
 
                              if constexpr (::std::is_same_v<type, T>) {
                                  oss << v;
@@ -905,7 +906,7 @@ inline void tex_stream_insert(::std::ostream &os, const p_series<K, C> &ps)
     // Add the truncation bits.
     using deg_t [[maybe_unused]] = decltype(::obake::degree(ps));
     os << ::std::visit(
-        [](const auto &v) -> ::std::string {
+        [&os](const auto &v) -> ::std::string {
             using type = remove_cvref_t<decltype(v)>;
 
             if constexpr (::std::is_same_v<type, detail::no_truncation>) {
@@ -913,6 +914,7 @@ inline void tex_stream_insert(::std::ostream &os, const p_series<K, C> &ps)
             } else if constexpr (tex_stream_insertable<const deg_t &>) {
                 ::std::ostringstream oss(" + \\mathcal{O}\\left( ");
                 oss.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+                oss.flags(os.flags());
                 // I hope this does what it looks like it should be doing...
                 oss.seekp(0, ::std::ios_base::end);
 
