@@ -112,11 +112,13 @@ public:
     requires InputIterator<It> &&
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
                                                                                                      ::std::size_t n)
+        // LCOV_EXCL_START
         : m_container(
             ::obake::safe_cast<typename container_t::size_type>(detail::dpm_n_expos_to_vsize<d_packed_monomial>(n)),
             // NOTE: avoid value-init of the elements, as we will
             // be setting all of them to some value in the loop below.
             ::boost::container::default_init_t{})
+    // LCOV_EXCL_STOP
     {
         ::std::size_t counter = 0;
         for (auto &out : m_container) {
