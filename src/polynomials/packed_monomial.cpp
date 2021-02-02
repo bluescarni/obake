@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include <mp++/integer.hpp>
 
@@ -128,11 +129,15 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
 {
     assert(polynomials::key_is_compatible(m, s));
 
+    using namespace ::fmt::literals;
+
     // Use separate streams for numerator and denominator
     // (the denominator is used only in case of negative powers).
     ::std::ostringstream oss_num, oss_den, *cur_oss;
     oss_num.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_num.flags(os.flags());
     oss_den.exceptions(::std::ios_base::failbit | ::std::ios_base::badbit);
+    oss_den.flags(os.flags());
 
     // NOTE: we know s is not too large from the assert.
     const auto s_size = static_cast<unsigned>(s.size());
@@ -164,11 +169,11 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
             }
 
             // Print the symbol name.
-            *cur_oss << '{' << var << '}';
+            *cur_oss << "{{{}}}"_format(var);
 
             // Raise to power, if the exponent is not one.
             if (!tmp_mp.is_one()) {
-                *cur_oss << "^{" << tmp_mp << '}';
+                *cur_oss << "^{{{}}}"_format(tmp_mp);
             }
         }
     }
@@ -178,13 +183,13 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
     if (!num_str.empty() && !den_str.empty()) {
         // We have both negative and positive exponents,
         // print them both in a fraction.
-        os << "\\frac{" << num_str << "}{" << den_str << '}';
+        os << "\\frac{{{}}}{{{}}}"_format(num_str, den_str);
     } else if (!num_str.empty() && den_str.empty()) {
         // Only positive exponents.
         os << num_str;
     } else if (num_str.empty() && !den_str.empty()) {
         // Only negative exponents, display them as 1/something.
-        os << "\\frac{1}{" << den_str << '}';
+        os << "\\frac{{1}}{{{}}}"_format(den_str);
     } else {
         // We did not write anything to the stream.
         // It means that all variables have zero
