@@ -377,17 +377,56 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_trig_monomial<T
     auto s_it = s.cbegin();
     const auto s_end = s.cend();
 
-    // Don't print anything in case all exponents are zero.
-    // NOTE: if this is a sine, it should not have all exponents
-    // set to zero in a series, because otherwise d itself would
-    // be zero and it should not be in a series in the first place.
+    // Check if all exponents are zero.
     if (::std::all_of(c.begin(), c.end(), [](const T &n) { return n == T(0); })) {
+        os << (d.type() ? "1" : "0");
+
         return;
     }
 
     // Print the type.
     os << (d.type() ? "cos(" : "sin(");
+
+    T tmp;
+    bool empty_output = true;
+    for (const auto &n : c) {
+        kunpacker<T> ku(n, PSize);
+
+        for (auto j = 0u; j < PSize && s_it != s_end; ++j, ++s_it) {
+            ku >> tmp;
+
+            if (tmp != 0) {
+                if (tmp > 0 && !empty_output) {
+                    // A positive exponent, in case previous output exists,
+                    // must be preceded by a "+" sign.
+                    os << '+';
+                }
+
+                if (tmp == -1) {
+                    // The exponent is -1, just print the
+                    // minus sign.
+                    os << '-';
+                } else if (tmp != 1) {
+                    // The exponent is not 1, print it.
+                    using namespace ::fmt::literals;
+                    os << "{}*"_format(tmp);
+                }
+
+                // Finally, print name of variable.
+                os << *s_it;
+
+                // Flag that we wrote something.
+                empty_output = false;
+            }
+        }
+    }
+
+    os << ')';
 }
+
+extern template void key_stream_insert(::std::ostream &,
+                                       const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
+                                       const symbol_set &);
 
 } // namespace poisson_series
 

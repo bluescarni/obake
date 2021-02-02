@@ -11,6 +11,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -25,6 +26,7 @@
 #include <obake/key/key_is_compatible.hpp>
 #include <obake/key/key_is_one.hpp>
 #include <obake/key/key_is_zero.hpp>
+#include <obake/key/key_stream_insert.hpp>
 #include <obake/kpack.hpp>
 #include <obake/poisson_series/d_packed_trig_monomial.hpp>
 #include <obake/symbols.hpp>
@@ -500,6 +502,78 @@ TEST_CASE("key_is_compatible")
             REQUIRE(obake::key_is_compatible(t00, symbol_set{"x", "y", "z", "a", "b", "c"}));
             t00._container().back() *= -1;
             REQUIRE(!obake::key_is_compatible(t00, symbol_set{"x", "y", "z", "a", "b", "c"}));
+        });
+    });
+}
+
+TEST_CASE("key_stream_insert")
+{
+    detail::tuple_for_each(int_types{}, [](const auto &n) {
+        using int_t = remove_cvref_t<decltype(n)>;
+
+        detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
+            constexpr auto bw = decltype(b)::value;
+            using pm_t = d_packed_trig_monomial<int_t, bw>;
+
+            auto stream = [](const pm_t &k, const symbol_set &ss) {
+                std::ostringstream oss;
+
+                obake::key_stream_insert(oss, k, ss);
+
+                return oss.str();
+            };
+
+            // Check 0/1 printing.
+            REQUIRE(stream(pm_t{}, symbol_set{}) == "1");
+            REQUIRE(stream(pm_t{0}, symbol_set{"x"}) == "1");
+            REQUIRE(stream(pm_t{0, 0, 0}, symbol_set{"x", "y", "z"}) == "1");
+
+            REQUIRE(stream(pm_t({}, false), symbol_set{}) == "0");
+            REQUIRE(stream(pm_t({0}, false), symbol_set{"x"}) == "0");
+            REQUIRE(stream(pm_t({0, 0, 0}, false), symbol_set{"x", "y", "z"}) == "0");
+
+            // General test cases.
+            REQUIRE(stream(pm_t{1}, symbol_set{"x"}) == "cos(x)");
+            REQUIRE(stream(pm_t({1}, false), symbol_set{"x"}) == "sin(x)");
+
+            REQUIRE(stream(pm_t{1, 1}, symbol_set{"x", "y"}) == "cos(x+y)");
+            REQUIRE(stream(pm_t({1, 1}, false), symbol_set{"x", "y"}) == "sin(x+y)");
+
+            REQUIRE(stream(pm_t{1, 2}, symbol_set{"x", "y"}) == "cos(x+2*y)");
+            REQUIRE(stream(pm_t({1, 2}, false), symbol_set{"x", "y"}) == "sin(x+2*y)");
+
+            REQUIRE(stream(pm_t{-1, 2}, symbol_set{"x", "y"}) == "cos(-x+2*y)");
+            REQUIRE(stream(pm_t({-1, 2}, false), symbol_set{"x", "y"}) == "sin(-x+2*y)");
+
+            REQUIRE(stream(pm_t{3, 2}, symbol_set{"x", "y"}) == "cos(3*x+2*y)");
+            REQUIRE(stream(pm_t({3, 2}, false), symbol_set{"x", "y"}) == "sin(3*x+2*y)");
+
+            REQUIRE(stream(pm_t{-3, 2}, symbol_set{"x", "y"}) == "cos(-3*x+2*y)");
+            REQUIRE(stream(pm_t({-3, 2}, false), symbol_set{"x", "y"}) == "sin(-3*x+2*y)");
+
+            REQUIRE(stream(pm_t{3, 1, 2}, symbol_set{"x", "y", "z"}) == "cos(3*x+y+2*z)");
+            REQUIRE(stream(pm_t({3, 1, 2}, false), symbol_set{"x", "y", "z"}) == "sin(3*x+y+2*z)");
+
+            REQUIRE(stream(pm_t{3, -1, 2}, symbol_set{"x", "y", "z"}) == "cos(3*x-y+2*z)");
+            REQUIRE(stream(pm_t({3, -1, 2}, false), symbol_set{"x", "y", "z"}) == "sin(3*x-y+2*z)");
+
+            REQUIRE(stream(pm_t{0, 0, 2}, symbol_set{"x", "y", "z"}) == "cos(2*z)");
+            REQUIRE(stream(pm_t({0, 0, 2}, false), symbol_set{"x", "y", "z"}) == "sin(2*z)");
+
+            REQUIRE(stream(pm_t{0, 0, 1}, symbol_set{"x", "y", "z"}) == "cos(z)");
+            REQUIRE(stream(pm_t({0, 0, 1}, false), symbol_set{"x", "y", "z"}) == "sin(z)");
+
+            REQUIRE(stream(pm_t{2, 0, 1}, symbol_set{"x", "y", "z"}) == "cos(2*x+z)");
+            REQUIRE(stream(pm_t({2, 0, 1}, false), symbol_set{"x", "y", "z"}) == "sin(2*x+z)");
+
+            REQUIRE(stream(pm_t{-2, 0, 1}, symbol_set{"x", "y", "z"}) == "cos(-2*x+z)");
+            REQUIRE(stream(pm_t({-2, 0, 1}, false), symbol_set{"x", "y", "z"}) == "sin(-2*x+z)");
+
+            REQUIRE(stream(pm_t{-1, 0, 1}, symbol_set{"x", "y", "z"}) == "cos(-x+z)");
+            REQUIRE(stream(pm_t({-1, 0, 1}, false), symbol_set{"x", "y", "z"}) == "sin(-x+z)");
+
+            REQUIRE(stream(pm_t{1, 0, 1}, symbol_set{"x", "y", "z"}) == "cos(x+z)");
+            REQUIRE(stream(pm_t({1, 0, 1}, false), symbol_set{"x", "y", "z"}) == "sin(x+z)");
         });
     });
 }
