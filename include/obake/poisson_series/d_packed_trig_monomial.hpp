@@ -93,12 +93,14 @@ public:
     requires InputIterator<It> &&
         SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_trig_monomial(
             It it, ::std::size_t n, bool type = true)
+        // LCOV_EXCL_START
         : m_container(::obake::safe_cast<typename container_t::size_type>(
                           polynomials::detail::dpm_n_expos_to_vsize<d_packed_trig_monomial>(n)),
                       // NOTE: avoid value-init of the elements, as we will
                       // be setting all of them to some value in the loop below.
                       ::boost::container::default_init_t{}),
           m_type(type)
+    // LCOV_EXCL_STOP
     {
         ::std::size_t counter = 0;
         bool cur_positive = true;
