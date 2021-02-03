@@ -499,6 +499,9 @@ extern template void key_tex_stream_insert(::std::ostream &,
 template <typename T, unsigned PSize>
 using d_packed_trig_monomial = poisson_series::d_packed_trig_monomial<T, PSize>;
 
+// Definition of the default dynamically-packed trig monomial type.
+using d_trig_monomial = d_packed_trig_monomial<poisson_series::dptm_default_t, poisson_series::dptm_default_psize>;
+
 } // namespace obake
 
 namespace boost::serialization
