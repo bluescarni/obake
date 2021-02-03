@@ -490,13 +490,10 @@ inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, 
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
     T tmp;
-    // NOTE: store the merged monomial in a temporary vector and then pack it
-    // at the end.
-    // NOTE: perhaps we could use a small_vector here with a static size
-    // equal to PSize, for the case in which everything fits in a single
-    // packed value.
-    // NOTE: perhaps better to make this a thread local variable.
-    ::std::vector<T> tmp_v;
+    // NOTE: store the merged monomial in a temporary
+    // vector and then pack it at the end.
+    thread_local ::std::vector<T> tmp_v;
+    tmp_v.clear();
     for (const auto &n : c) {
         kunpacker<T> ku(n, PSize);
 
