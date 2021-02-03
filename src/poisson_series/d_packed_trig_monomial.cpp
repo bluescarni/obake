@@ -19,4 +19,8 @@ template OBAKE_DLL_PUBLIC void key_stream_insert(::std::ostream &,
                                                  const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
                                                  const symbol_set &);
 
+template OBAKE_DLL_PUBLIC void key_tex_stream_insert(::std::ostream &,
+                                                     const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
+                                                     const symbol_set &);
+
 } // namespace obake::poisson_series

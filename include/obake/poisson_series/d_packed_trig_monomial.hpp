@@ -381,7 +381,7 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_trig_monomial<T
 
     // Check if all exponents are zero.
     if (::std::all_of(c.begin(), c.end(), [](const T &n) { return n == T(0); })) {
-        os << (d.type() ? "1" : "0");
+        os << (d.type() ? '1' : '0');
 
         return;
     }
@@ -429,6 +429,69 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_trig_monomial<T
 extern template void key_stream_insert(::std::ostream &,
                                        const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
                                        const symbol_set &);
+
+// Implementation of tex stream insertion.
+// NOTE: requires that d is compatible with s.
+template <typename T, unsigned PSize>
+inline void key_tex_stream_insert(::std::ostream &os, const d_packed_trig_monomial<T, PSize> &d, const symbol_set &s)
+{
+    assert(poisson_series::key_is_compatible(d, s)); // LCOV_EXCL_LINE
+
+    const auto &c = d._container();
+    auto s_it = s.cbegin();
+    const auto s_end = s.cend();
+
+    // Check if all exponents are zero.
+    if (::std::all_of(c.begin(), c.end(), [](const T &n) { return n == T(0); })) {
+        os << (d.type() ? '1' : '0');
+
+        return;
+    }
+
+    // Print the type.
+    os << (d.type() ? "\\cos{\\left(" : "\\sin{\\left(");
+
+    T tmp;
+    bool empty_output = true;
+    for (const auto &n : c) {
+        using namespace ::fmt::literals;
+
+        kunpacker<T> ku(n, PSize);
+
+        for (auto j = 0u; j < PSize && s_it != s_end; ++j, ++s_it) {
+            ku >> tmp;
+
+            if (tmp != 0) {
+                if (tmp > 0 && !empty_output) {
+                    // A positive exponent, in case previous output exists,
+                    // must be preceded by a "+" sign.
+                    os << '+';
+                }
+
+                if (tmp == -1) {
+                    // The exponent is -1, just print the
+                    // minus sign.
+                    os << '-';
+                } else if (tmp != 1) {
+                    // The exponent is not 1, print it.
+                    os << "{}"_format(tmp);
+                }
+
+                // Finally, print name of variable.
+                os << "{{{}}}"_format(*s_it);
+
+                // Flag that we wrote something.
+                empty_output = false;
+            }
+        }
+    }
+
+    os << "\\right)}";
+}
+
+extern template void key_tex_stream_insert(::std::ostream &,
+                                           const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
+                                           const symbol_set &);
 
 } // namespace poisson_series
 
