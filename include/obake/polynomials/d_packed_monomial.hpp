@@ -45,6 +45,7 @@
 #include <obake/detail/type_c.hpp>
 #include <obake/detail/visibility.hpp>
 #include <obake/exceptions.hpp>
+#include <obake/key/key_is_compatible.hpp>
 #include <obake/kpack.hpp>
 #include <obake/math/pow.hpp>
 #include <obake/math/safe_cast.hpp>
@@ -473,36 +474,42 @@ extern template void key_tex_stream_insert(::std::ostream &,
                                            const d_packed_monomial<dpm_default_u_t, dpm_default_psize> &,
                                            const symbol_set &);
 
-// Implementation of symbols merging.
-// NOTE: requires that m is compatible with s, and ins_map consistent with s.
-template <typename T, unsigned PSize>
-inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, PSize> &d,
-                                                     const symbol_idx_map<symbol_set> &ins_map, const symbol_set &s)
+namespace detail
 {
-    assert(polynomials::key_is_compatible(d, s));
+
+// Implementation of symbols merging.
+// NOTE: requires that d is compatible with s, and ins_map consistent with s.
+// NOTE: factored out for re-use.
+template <typename T>
+inline T dpm_key_merge_symbols(const T &d, const symbol_idx_map<symbol_set> &ins_map, const symbol_set &s)
+{
+    assert(::obake::key_is_compatible(d, s));
     // The last element of the insertion map must be at most s.size(), which means that there
     // are symbols to be appended at the end.
     assert(ins_map.empty() || ins_map.rbegin()->first <= s.size());
+
+    using value_type = typename T::value_type;
 
     const auto &c = d._container();
     symbol_idx idx = 0;
     const auto s_size = s.size();
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
-    T tmp;
+    value_type tmp;
     // NOTE: store the merged monomial in a temporary
     // vector and then pack it at the end.
-    thread_local ::std::vector<T> tmp_v;
+    thread_local ::std::vector<value_type> tmp_v;
     tmp_v.clear();
     for (const auto &n : c) {
-        kunpacker<T> ku(n, PSize);
+        kunpacker<value_type> ku(n, T::psize);
 
-        for (auto j = 0u; j < PSize && idx < s_size; ++j, ++idx) {
+        for (auto j = 0u; j < T::psize && idx < s_size; ++j, ++idx) {
             if (map_it != map_end && map_it->first == idx) {
                 // We reached an index at which we need to
                 // insert new elements. Insert as many
                 // zeroes as necessary in the temporary vector.
-                tmp_v.insert(tmp_v.end(), ::obake::safe_cast<decltype(tmp_v.size())>(map_it->second.size()), T(0));
+                tmp_v.insert(tmp_v.end(), ::obake::safe_cast<decltype(tmp_v.size())>(map_it->second.size()),
+                             value_type(0));
                 // Move to the next element in the map.
                 ++map_it;
             }
@@ -517,11 +524,21 @@ inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, 
 
     // We could still have symbols which need to be appended at the end.
     if (map_it != map_end) {
-        tmp_v.insert(tmp_v.end(), ::obake::safe_cast<decltype(tmp_v.size())>(map_it->second.size()), T(0));
+        tmp_v.insert(tmp_v.end(), ::obake::safe_cast<decltype(tmp_v.size())>(map_it->second.size()), value_type(0));
         assert(map_it + 1 == map_end);
     }
 
-    return d_packed_monomial<T, PSize>(tmp_v);
+    return T(tmp_v);
+}
+
+} // namespace detail
+
+// Implementation of symbols merging.
+template <typename T, unsigned PSize>
+inline d_packed_monomial<T, PSize> key_merge_symbols(const d_packed_monomial<T, PSize> &d,
+                                                     const symbol_idx_map<symbol_set> &ins_map, const symbol_set &s)
+{
+    return detail::dpm_key_merge_symbols(d, ins_map, s);
 }
 
 extern template d_packed_monomial<dpm_default_s_t, dpm_default_psize>
