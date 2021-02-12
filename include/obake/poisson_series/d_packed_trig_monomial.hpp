@@ -493,6 +493,25 @@ extern template void key_tex_stream_insert(::std::ostream &,
                                            const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
                                            const symbol_set &);
 
+// Implementation of symbols merging.
+template <typename T, unsigned PSize>
+inline d_packed_trig_monomial<T, PSize> key_merge_symbols(const d_packed_trig_monomial<T, PSize> &d,
+                                                          const symbol_idx_map<symbol_set> &ins_map,
+                                                          const symbol_set &s)
+{
+    // Do the merging for the exponents.
+    auto ret = polynomials::detail::dpm_key_merge_symbols(d, ins_map, s);
+
+    // Assign the type.
+    ret._type() = d.type();
+
+    return ret;
+}
+
+extern template d_packed_trig_monomial<dptm_default_t, dptm_default_psize>
+key_merge_symbols(const d_packed_trig_monomial<dptm_default_t, dptm_default_psize> &,
+                  const symbol_idx_map<symbol_set> &, const symbol_set &);
+
 } // namespace poisson_series
 
 // Lift to the obake namespace.
