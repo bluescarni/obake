@@ -10,10 +10,11 @@ Requirements
 
 Currently, obake has the following mandatory dependencies:
 
-* the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.22),
+* the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.23),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least version 1.65),
 * the `Abseil <https://abseil.io/>`_ C++ libraries,
-* the `Intel TBB <https://github.com/oneapi-src/oneTBB>`__ library.
+* the `Intel TBB <https://github.com/oneapi-src/oneTBB>`__ library,
+* the `{fmt} <https://fmt.dev/latest/index.html>`__ library.
 
 obake also depends on other libraries for optional features:
 
@@ -172,8 +173,8 @@ Compiler and platform specific notes
 
 Visual Studio:
 
-* Due to various compiler issues, only MSVC 2019 is currently able
-  to compile obake.
+* Due to various compiler issues, only recent versions
+  of MSVC 2019 are currently able to compile obake.
 * It is possible to use ``clang-cl`` to compile obake
   with MSVC 2017. This means
   that Clang will be used as a C/C++ compiler, while the

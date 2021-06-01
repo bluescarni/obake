@@ -52,9 +52,10 @@ namespace detail
 
 #if defined(MPPP_WITH_MPFR)
 
-// Implementation of is_zero() for mppp::real. It will be found
-// by the unqualified function call overload of is_zero_impl().
-inline bool is_zero(const ::mppp::real &r)
+// NOTE: make this a template because otherwise implict conversions
+// in mppp::real create issues.
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real>) inline bool is_zero(const T &r)
 {
     return r.zero_p();
 }

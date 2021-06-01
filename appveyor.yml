@@ -8,7 +8,7 @@ environment:
   matrix:
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: MSVC17_clang_64
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019 Preview
       BUILD_TYPE: MSVC19_64
 
 install:

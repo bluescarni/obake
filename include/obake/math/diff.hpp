@@ -78,7 +78,8 @@ inline ::mppp::rational<SSize> diff(const ::mppp::rational<SSize> &, const ::std
 
 #if defined(MPPP_WITH_MPFR)
 
-inline ::mppp::real diff(const ::mppp::real &x, const ::std::string &)
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real>) inline T diff(const T &x, const ::std::string &)
 {
     // NOTE: return a zero with the same precision as x.
     return ::mppp::real(0, x.get_prec());
@@ -88,7 +89,8 @@ inline ::mppp::real diff(const ::mppp::real &x, const ::std::string &)
 
 #if defined(MPPP_WITH_QUADMATH)
 
-constexpr ::mppp::real128 diff(const ::mppp::real128 &, const ::std::string &)
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real128>) constexpr T diff(const T &, const ::std::string &)
 {
     return ::mppp::real128(0);
 }

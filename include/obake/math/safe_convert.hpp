@@ -41,7 +41,7 @@ namespace detail
 // Implementation for C++ integrals.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-    requires Integral<T> && (!::std::is_const_v<T>) && Integral<U>
+requires integral<T> &&(!::std::is_const_v<T>)&&integral<U>
 #else
 template <typename T, typename U,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>, is_integral<U>>,
@@ -105,7 +105,7 @@ template <typename T, typename U,
 
 // Implementations for mppp::integer - C++ integrals.
 #if defined(OBAKE_HAVE_CONCEPTS)
-template <::std::size_t SSize, Integral T>
+template <::std::size_t SSize, integral T>
 #else
 template <::std::size_t SSize, typename T, ::std::enable_if_t<is_integral_v<T>, int> = 0>
 #endif
@@ -117,12 +117,12 @@ inline bool safe_convert(::mppp::integer<SSize> &n, const T &m)
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-requires Integral<T> && (!::std::is_const_v<T>)
+requires integral<T> &&(!::std::is_const_v<T>)
 #else
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
 #endif
-inline bool safe_convert(T &n, const ::mppp::integer<SSize> &m)
+    inline bool safe_convert(T &n, const ::mppp::integer<SSize> &m)
 {
     return ::mppp::get(n, m);
 }
@@ -152,12 +152,12 @@ inline bool safe_convert(::mppp::rational<SSize> &q, const ::mppp::integer<SSize
 // Implementations for C++ integrals - mppp::rational.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, ::std::size_t SSize>
-    requires Integral<T> && (!::std::is_const_v<T>)
+requires integral<T> &&(!::std::is_const_v<T>)
 #else
 template <typename T, ::std::size_t SSize,
           ::std::enable_if_t<::std::conjunction_v<is_integral<T>, ::std::negation<::std::is_const<T>>>, int> = 0>
 #endif
-inline bool safe_convert(T &n, const ::mppp::rational<SSize> &q)
+    inline bool safe_convert(T &n, const ::mppp::rational<SSize> &q)
 {
     if (q.get_den().is_one()) {
         return ::mppp::get(n, q.get_num());
@@ -167,7 +167,7 @@ inline bool safe_convert(T &n, const ::mppp::rational<SSize> &q)
 }
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-template <Integral T, ::std::size_t SSize>
+template <integral T, ::std::size_t SSize>
 #else
 template <typename T, ::std::size_t SSize, ::std::enable_if_t<is_integral_v<T>, int> = 0>
 #endif
@@ -196,8 +196,8 @@ requires ::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>
 #else
 template <typename T, typename U, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>, int> = 0>
 #endif
-    constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
-        OBAKE_SS_FORWARD_FUNCTION((void(::std::forward<T>(x) = ::std::forward<U>(y)), true));
+constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION((void(::std::forward<T>(x) = ::std::forward<U>(y)), true));
 
 } // namespace detail
 

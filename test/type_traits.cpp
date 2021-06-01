@@ -74,13 +74,13 @@ TEST_CASE("is_integral")
 #endif
 
 #if defined(OBAKE_HAVE_CONCEPTS)
-    REQUIRE(Integral<int>);
-    REQUIRE(Integral<const int>);
-    REQUIRE(Integral<const volatile int>);
-    REQUIRE(Integral<volatile int>);
-    REQUIRE(!Integral<int &>);
-    REQUIRE(!Integral<const int &>);
-    REQUIRE(!Integral<int &&>);
+    REQUIRE(integral<int>);
+    REQUIRE(integral<const int>);
+    REQUIRE(integral<const volatile int>);
+    REQUIRE(integral<volatile int>);
+    REQUIRE(!integral<int &>);
+    REQUIRE(!integral<const int &>);
+    REQUIRE(!integral<int &&>);
 #endif
 }
 
