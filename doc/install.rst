@@ -173,8 +173,8 @@ Compiler and platform specific notes
 
 Visual Studio:
 
-* Due to various compiler issues, only MSVC 2019 is currently able
-  to compile obake.
+* Due to various compiler issues, only recent versions
+  of MSVC 2019 are currently able to compile obake.
 * It is possible to use ``clang-cl`` to compile obake
   with MSVC 2017. This means
   that Clang will be used as a C/C++ compiler, while the
