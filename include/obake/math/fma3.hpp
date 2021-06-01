@@ -94,7 +94,8 @@ inline void fma3(::mppp::integer<SSize> &ret, const ::mppp::integer<SSize> &x, c
 
 #if defined(MPPP_WITH_MPFR)
 
-inline void fma3(::mppp::real &ret, const ::mppp::real &x, const ::mppp::real &y)
+template <typename T>
+requires(::std::is_same_v<::mppp::real, T>) inline void fma3(T &ret, const T &x, const T &y)
 {
     ::mppp::fma(ret, x, y, ret);
 }
@@ -103,7 +104,8 @@ inline void fma3(::mppp::real &ret, const ::mppp::real &x, const ::mppp::real &y
 
 #if defined(MPPP_WITH_QUADMATH)
 
-inline void fma3(::mppp::real128 &ret, const ::mppp::real128 &x, const ::mppp::real128 &y)
+template <typename T>
+requires(::std::is_same_v<::mppp::real128, T>) inline void fma3(T &ret, const T &x, const T &y)
 {
     ret = ::mppp::fma(x, y, ret);
 }

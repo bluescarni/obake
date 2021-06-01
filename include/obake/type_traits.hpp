@@ -107,7 +107,7 @@ inline constexpr bool is_integral_v = is_integral<T>::value;
 #if defined(OBAKE_HAVE_CONCEPTS)
 
 template <typename T>
-OBAKE_CONCEPT_DECL Integral = is_integral_v<T>;
+OBAKE_CONCEPT_DECL integral = is_integral_v<T>;
 
 #endif
 
@@ -318,8 +318,8 @@ OBAKE_CONCEPT_DECL Addable = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T, typename U>
-using in_place_add_t = decltype(::std::declval<T>() += ::std::declval<U>());
+    template <typename T, typename U>
+    using in_place_add_t = decltype(::std::declval<T>() += ::std::declval<U>());
 
 }
 
@@ -342,8 +342,8 @@ OBAKE_CONCEPT_DECL InPlaceAddable = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T>
-using preinc_t = decltype(++::std::declval<T>());
+    template <typename T>
+    using preinc_t = decltype(++::std::declval<T>());
 
 }
 
@@ -367,8 +367,8 @@ OBAKE_CONCEPT_DECL PreIncrementable = requires(T &&x)
 namespace detail
 {
 
-template <typename T>
-using postinc_t = decltype(::std::declval<T>()++);
+    template <typename T>
+    using postinc_t = decltype(::std::declval<T>()++);
 
 }
 
@@ -392,8 +392,8 @@ OBAKE_CONCEPT_DECL PostIncrementable = requires(T &&x)
 namespace detail
 {
 
-template <typename T, typename U>
-using sub_t = decltype(::std::declval<T>() - ::std::declval<U>());
+    template <typename T, typename U>
+    using sub_t = decltype(::std::declval<T>() - ::std::declval<U>());
 
 }
 
@@ -421,8 +421,8 @@ OBAKE_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T, typename U>
-using in_place_sub_t = decltype(::std::declval<T>() -= ::std::declval<U>());
+    template <typename T, typename U>
+    using in_place_sub_t = decltype(::std::declval<T>() -= ::std::declval<U>());
 
 }
 
@@ -445,8 +445,8 @@ OBAKE_CONCEPT_DECL InPlaceSubtractable = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T>
-using predec_t = decltype(--::std::declval<T>());
+    template <typename T>
+    using predec_t = decltype(--::std::declval<T>());
 
 }
 
@@ -470,8 +470,8 @@ OBAKE_CONCEPT_DECL PreDecrementable = requires(T &&x)
 namespace detail
 {
 
-template <typename T>
-using postdec_t = decltype(::std::declval<T>()--);
+    template <typename T>
+    using postdec_t = decltype(::std::declval<T>()--);
 
 }
 
@@ -495,8 +495,8 @@ OBAKE_CONCEPT_DECL PostDecrementable = requires(T &&x)
 namespace detail
 {
 
-template <typename T, typename U>
-using mul_t = decltype(::std::declval<T>() * ::std::declval<U>());
+    template <typename T, typename U>
+    using mul_t = decltype(::std::declval<T>() * ::std::declval<U>());
 
 }
 
@@ -524,8 +524,8 @@ OBAKE_CONCEPT_DECL Multipliable = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T, typename U>
-using in_place_mul_t = decltype(::std::declval<T>() *= ::std::declval<U>());
+    template <typename T, typename U>
+    using in_place_mul_t = decltype(::std::declval<T>() *= ::std::declval<U>());
 
 }
 
@@ -548,8 +548,8 @@ OBAKE_CONCEPT_DECL InPlaceMultipliable = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T, typename U>
-using div_t = decltype(::std::declval<T>() / ::std::declval<U>());
+    template <typename T, typename U>
+    using div_t = decltype(::std::declval<T>() / ::std::declval<U>());
 
 }
 
@@ -577,8 +577,8 @@ OBAKE_CONCEPT_DECL Divisible = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T, typename U>
-using in_place_div_t = decltype(::std::declval<T>() /= ::std::declval<U>());
+    template <typename T, typename U>
+    using in_place_div_t = decltype(::std::declval<T>() /= ::std::declval<U>());
 
 }
 
@@ -601,11 +601,11 @@ OBAKE_CONCEPT_DECL InPlaceDivisible = requires(T &&x, U &&y)
 namespace detail
 {
 
-template <typename T, typename U>
-using eq_t = decltype(::std::declval<T>() == ::std::declval<U>());
+    template <typename T, typename U>
+    using eq_t = decltype(::std::declval<T>() == ::std::declval<U>());
 
-template <typename T, typename U>
-using ineq_t = decltype(::std::declval<T>() != ::std::declval<U>());
+    template <typename T, typename U>
+    using ineq_t = decltype(::std::declval<T>() != ::std::declval<U>());
 
 } // namespace detail
 

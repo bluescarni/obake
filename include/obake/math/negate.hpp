@@ -85,12 +85,16 @@ inline void negate(::mppp::rational<SSize> &&q)
 
 #if defined(MPPP_WITH_MPFR)
 
-inline void negate(::mppp::real &r)
+// NOTE: use templates because otherwise implict conversions
+// in mppp::real create issues.
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real>) inline void negate(T &r)
 {
     r.neg();
 }
 
-inline void negate(::mppp::real &&r)
+template <typename T>
+requires(::std::is_same_v<T &&, ::mppp::real &&>) inline void negate(T &&r)
 {
     r.neg();
 }
