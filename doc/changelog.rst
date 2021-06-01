@@ -58,6 +58,8 @@ Changes
 Fix
 ~~~
 
+- Fix build with mp++ >= 0.23
+  (`#139 <https://github.com/bluescarni/obake/pull/139>`__).
 - Fix build with oneTBB
   (`#139 <https://github.com/bluescarni/obake/pull/139>`__).
 - Fix a bug when streaming monomials in tex mode

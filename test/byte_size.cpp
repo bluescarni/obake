@@ -196,7 +196,8 @@ namespace obake::customisation
 
 template <typename T>
 #if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, byte_size_1> inline constexpr auto byte_size<T>
+requires SameCvr<T, byte_size_1>
+inline constexpr auto byte_size<T>
 #else
 inline constexpr auto byte_size<T, std::enable_if_t<is_same_cvr_v<T, byte_size_1>>>
 #endif

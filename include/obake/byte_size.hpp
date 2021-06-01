@@ -94,7 +94,10 @@ inline ::std::size_t byte_size(const ::mppp::rational<SSize> &q)
 
 #if defined(MPPP_WITH_MPFR)
 
-inline ::std::size_t byte_size(const ::mppp::real &r)
+// NOTE: make this a template because otherwise implict conversions
+// in mppp::real create issues.
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real>) inline ::std::size_t byte_size(const T &r)
 {
     // Size of r plus the dynamically-allocated storage.
     // NOTE: not ideal here to use directly an MPFR
