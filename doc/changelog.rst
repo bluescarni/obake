@@ -27,6 +27,9 @@ Changes
   CMake version has been bumped up to 3.12. As a consequence,
   obake now requires GCC >= 9, clang >= 11 and MSVC >= 2019
   (`#128 <https://github.com/bluescarni/obake/pull/128>`__).
+- obake now depends on the `{fmt} <https://fmt.dev/latest/index.html>`__
+  library
+  (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
 - **BREAKING**: the implementation of ``packed_monomial`` and
   ``d_packed_monomial`` has changed: now when specifying the desired
   exponent type, only ``std::(u)int32_t`` and ``std::(u)int64_t``

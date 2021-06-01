@@ -13,7 +13,8 @@ Currently, obake has the following mandatory dependencies:
 * the `mp++ <https://bluescarni.github.io/mppp/>`_ multiprecision library (at least version 0.23),
 * the `Boost <https://www.boost.org/>`_ C++ libraries (at least version 1.65),
 * the `Abseil <https://abseil.io/>`_ C++ libraries,
-* the `Intel TBB <https://github.com/oneapi-src/oneTBB>`__ library.
+* the `Intel TBB <https://github.com/oneapi-src/oneTBB>`__ library,
+* the `{fmt} <https://fmt.dev/latest/index.html>`__ library.
 
 obake also depends on other libraries for optional features:
 
