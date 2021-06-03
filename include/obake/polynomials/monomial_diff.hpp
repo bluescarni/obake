@@ -73,22 +73,8 @@ constexpr auto monomial_diff_impl_with_ret_check(T &&x, const symbol_idx &idx, c
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct monomial_diff_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_idx &idx, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::monomial_diff_impl_with_ret_check(::std::forward<T>(x), idx, ss))
-};
-
-inline constexpr auto monomial_diff = monomial_diff_msvc{};
-
-#else
-
 inline constexpr auto monomial_diff = [](auto &&x, const symbol_idx &idx, const symbol_set &ss)
     OBAKE_SS_FORWARD_LAMBDA(detail::monomial_diff_impl_with_ret_check(::std::forward<decltype(x)>(x), idx, ss));
-
-#endif
 
 namespace detail
 {

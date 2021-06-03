@@ -50,25 +50,10 @@ constexpr auto key_is_compatible_impl(T &&x, const symbol_set &ss, priority_tag<
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct key_is_compatible_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::key_is_compatible_impl(::std::forward<T>(x), ss,
-                                                                                          detail::priority_tag<1>{})))
-};
-
-inline constexpr auto key_is_compatible = key_is_compatible_msvc{};
-
-#else
-
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
 inline constexpr auto key_is_compatible = [](auto &&x, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<bool>(detail::key_is_compatible_impl(::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {

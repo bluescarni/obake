@@ -54,24 +54,9 @@ constexpr auto truncate_degree_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct truncate_degree_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::truncate_degree_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                           detail::priority_tag<1>{})))
-};
-
-inline constexpr auto truncate_degree = truncate_degree_msvc{};
-
-#else
-
 inline constexpr auto truncate_degree =
     [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(void(detail::truncate_degree_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {

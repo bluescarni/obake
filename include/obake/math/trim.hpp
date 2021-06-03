@@ -81,22 +81,8 @@ constexpr auto trim_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct trim_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::trim_impl_with_ret_check(::std::forward<T>(x)))
-};
-
-inline constexpr auto trim = trim_msvc{};
-
-#else
-
 inline constexpr auto trim =
     [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::trim_impl_with_ret_check(::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {

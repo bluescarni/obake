@@ -55,7 +55,7 @@ requires Iterator<begin_using_adl::begin_t<T>>
 #else
 template <typename T, ::std::enable_if_t<is_iterator_v<detected_t<begin_using_adl::begin_t, T>>, int> = 0>
 #endif
-    constexpr auto begin_impl(T &&x) OBAKE_SS_FORWARD_FUNCTION(begin_using_adl::call_begin(::std::forward<T>(x)));
+constexpr auto begin_impl(T &&x) OBAKE_SS_FORWARD_FUNCTION(begin_using_adl::call_begin(::std::forward<T>(x)));
 
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T>
@@ -63,33 +63,13 @@ requires Iterator<end_using_adl::end_t<T>>
 #else
 template <typename T, ::std::enable_if_t<is_iterator_v<detected_t<end_using_adl::end_t, T>>, int> = 0>
 #endif
-    constexpr auto end_impl(T &&x) OBAKE_SS_FORWARD_FUNCTION(end_using_adl::call_end(::std::forward<T>(x)));
+constexpr auto end_impl(T &&x) OBAKE_SS_FORWARD_FUNCTION(end_using_adl::call_end(::std::forward<T>(x)));
 
 } // namespace detail
-
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct begin_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::begin_impl(::std::forward<T>(x)))
-};
-
-inline constexpr auto begin = begin_msvc{};
-
-struct end_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::end_impl(::std::forward<T>(x)))
-};
-
-inline constexpr auto end = end_msvc{};
-
-#else
 
 inline constexpr auto begin = [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::begin_impl(::std::forward<decltype(x)>(x)));
 
 inline constexpr auto end = [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::end_impl(::std::forward<decltype(x)>(x)));
-
-#endif
 
 template <typename T>
 using range_begin_t = decltype(::obake::begin(::std::declval<T>()));

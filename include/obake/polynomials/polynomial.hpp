@@ -225,26 +225,10 @@ inline auto make_polynomials_impl(const Args &...names)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-template <typename T>
-struct make_polynomials_msvc {
-    template <typename... Args>
-    constexpr auto operator()(const Args &...args) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::make_polynomials_impl<T>(args...))
-};
-
-template <typename T>
-inline constexpr auto make_polynomials = make_polynomials_msvc<T>{};
-
-#else
-
 // Polynomial creation functor.
 template <typename T>
 inline constexpr auto make_polynomials
     = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
-
-#endif
 
 namespace polynomials
 {
@@ -2212,8 +2196,9 @@ inline auto pow_poly_impl(T &&x, U &&y)
 
 // Exponentiation.
 template <typename T, typename U>
-    requires Polynomial<remove_cvref_t<
-        T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+requires Polynomial<remove_cvref_t<T>> &&(
+    customisation::internal::series_default_pow_algo<
+        T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
 {
     return detail::pow_poly_impl(::std::forward<T>(x), ::std::forward<U>(y));
 }
@@ -2345,8 +2330,8 @@ inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 
 // Polynomial subs.
 template <typename T, typename U>
-    requires Polynomial<remove_cvref_t<
-        T>> && (detail::poly_subs_algo<T &&, U> != 0) inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+requires Polynomial<remove_cvref_t<T>> &&(
+    detail::poly_subs_algo<T &&, U> != 0) inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
 {
     return detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
@@ -2680,8 +2665,8 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
 } // namespace detail
 
 template <typename T>
-    requires Polynomial<remove_cvref_t<
-        T>> && (detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
+requires Polynomial<remove_cvref_t<T>> &&(detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(
+    T &&x, const ::std::string &s)
 {
     return detail::poly_diff_impl(::std::forward<T>(x), s);
 }
@@ -2894,8 +2879,9 @@ inline auto poly_integrate_impl(T &&x_, const ::std::string &s)
 } // namespace detail
 
 template <typename T>
-    requires Polynomial<remove_cvref_t<
-        T>> && (detail::poly_integrate_algo<T &&> != 0) inline detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
+requires Polynomial<remove_cvref_t<T>> &&(
+    detail::poly_integrate_algo<T &&> != 0) inline detail::poly_integrate_ret_t<T &&> integrate(T &&x,
+                                                                                                const ::std::string &s)
 {
     return detail::poly_integrate_impl(::std::forward<T>(x), s);
 }

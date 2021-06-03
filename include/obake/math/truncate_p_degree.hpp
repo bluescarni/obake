@@ -56,31 +56,16 @@ constexpr auto truncate_p_degree_impl(T &&x, U &&y, const symbol_set &ss, priori
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct truncate_p_degree_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::truncate_p_degree_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                             ss, detail::priority_tag<1>{})))
-};
-
-inline constexpr auto truncate_p_degree = truncate_p_degree_msvc{};
-
-#else
-
 inline constexpr auto truncate_p_degree =
     [](auto &&x, auto &&y, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(void(detail::truncate_p_degree_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss, detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {
 
 template <typename T, typename U>
-using truncate_p_degree_t = decltype(
-    ::obake::truncate_p_degree(::std::declval<T>(), ::std::declval<U>(), ::std::declval<const symbol_set &>()));
+using truncate_p_degree_t = decltype(::obake::truncate_p_degree(::std::declval<T>(), ::std::declval<U>(),
+                                                                ::std::declval<const symbol_set &>()));
 
 }
 

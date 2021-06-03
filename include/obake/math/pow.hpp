@@ -51,7 +51,7 @@ namespace detail
 // from ambiguities with pow() functions defined in the root namespace.
 #if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires Arithmetic<T> && Arithmetic<U> && (FloatingPoint<T> || FloatingPoint<U>)
+requires Arithmetic<T> && Arithmetic<U> &&(FloatingPoint<T> || FloatingPoint<U>)
 #else
 template <typename T, typename U,
           ::std::enable_if_t<
@@ -59,7 +59,7 @@ template <typename T, typename U,
                                    ::std::disjunction<::std::is_floating_point<T>, ::std::is_floating_point<U>>>,
               int> = 0>
 #endif
-inline auto pow(const T &x, const U &y) noexcept
+    inline auto pow(const T &x, const U &y) noexcept
 {
     // NOTE: when one of the arguments to std::pow() is an integral type,
     // then that argument will be converted to double automatically. This means that,
@@ -95,23 +95,8 @@ constexpr auto pow_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct pow_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::pow_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                          detail::priority_tag<2>{}))
-};
-
-inline constexpr auto pow = pow_msvc{};
-
-#else
-
 inline constexpr auto pow = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
     detail::pow_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{}));
-
-#endif
 
 namespace detail
 {

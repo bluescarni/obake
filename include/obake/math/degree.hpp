@@ -67,22 +67,8 @@ constexpr auto degree_impl(T &&x, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct degree_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::degree_impl(::std::forward<T>(x), detail::priority_tag<2>{}))
-};
-
-inline constexpr auto degree = degree_msvc{};
-
-#else
-
 inline constexpr auto degree = [](auto &&x)
     OBAKE_SS_FORWARD_LAMBDA(detail::degree_impl(::std::forward<decltype(x)>(x), detail::priority_tag<2>{}));
-
-#endif
 
 namespace detail
 {

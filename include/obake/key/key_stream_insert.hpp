@@ -51,24 +51,9 @@ constexpr auto key_stream_insert_impl(::std::ostream &os, T &&x, const symbol_se
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct key_stream_insert_msvc {
-    template <typename T>
-    constexpr auto operator()(::std::ostream &os, T &&x, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::key_stream_insert_impl(os, ::std::forward<T>(x), ss,
-                                                                             detail::priority_tag<1>{})))
-};
-
-inline constexpr auto key_stream_insert = key_stream_insert_msvc{};
-
-#else
-
 inline constexpr auto key_stream_insert =
     [](::std::ostream & os, auto &&x, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
         void(detail::key_stream_insert_impl(os, ::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {

@@ -52,27 +52,11 @@ constexpr auto monomial_mul_impl(T &&x, U &&y, V &&z, const symbol_set &ss, prio
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct monomial_mul_msvc {
-    template <typename T, typename U, typename V>
-    constexpr auto operator()(T &&x, U &&y, V &&z, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::monomial_mul_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                        ::std::forward<V>(z), ss,
-                                                                        detail::priority_tag<1>{})))
-};
-
-inline constexpr auto monomial_mul = monomial_mul_msvc{};
-
-#else
-
 // NOTE: as usual, cast the return value to void in order to ensure
 // it is never used.
 inline constexpr auto monomial_mul = [](auto &&x, auto &&y, auto &&z, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
     void(detail::monomial_mul_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y),
                                    ::std::forward<decltype(z)>(z), ss, detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {

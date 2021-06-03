@@ -64,23 +64,8 @@ constexpr auto monomial_pow_impl_with_ret_check(T &&x, U &&y, const symbol_set &
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct monomial_pow_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::monomial_pow_impl_with_ret_check(::std::forward<T>(x),
-                                                                                  ::std::forward<U>(y), ss))
-};
-
-inline constexpr auto monomial_pow = monomial_pow_msvc{};
-
-#else
-
 inline constexpr auto monomial_pow = [](auto &&x, auto &&y, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
     detail::monomial_pow_impl_with_ret_check(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss));
-
-#endif
 
 namespace detail
 {

@@ -63,22 +63,8 @@ constexpr auto key_trim_impl_with_ret_check(T &&x, const symbol_idx_set &si, con
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct key_trim_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_idx_set &si, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::key_trim_impl_with_ret_check(::std::forward<T>(x), si, ss))
-};
-
-inline constexpr auto key_trim = key_trim_msvc{};
-
-#else
-
 inline constexpr auto key_trim = [](auto &&x, const symbol_idx_set &si, const symbol_set &ss)
     OBAKE_SS_FORWARD_LAMBDA(detail::key_trim_impl_with_ret_check(::std::forward<decltype(x)>(x), si, ss));
-
-#endif
 
 namespace detail
 {

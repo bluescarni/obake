@@ -125,24 +125,9 @@ constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct fma3_msvc {
-    template <typename T, typename U, typename V>
-    constexpr auto operator()(T &&x, U &&y, V &&z) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::fma3_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                ::std::forward<V>(z), detail::priority_tag<1>{})))
-};
-
-inline constexpr auto fma3 = fma3_msvc{};
-
-#else
-
 inline constexpr auto fma3 = [](auto &&x, auto &&y, auto &&z)
     OBAKE_SS_FORWARD_LAMBDA(void(detail::fma3_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y),
                                                    ::std::forward<decltype(z)>(z), detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {

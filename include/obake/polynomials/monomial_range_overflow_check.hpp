@@ -51,25 +51,10 @@ constexpr auto monomial_range_overflow_check_impl(T &&x, U &&y, const symbol_set
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct monomial_range_overflow_check_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::monomial_range_overflow_check_impl(
-            ::std::forward<T>(x), ::std::forward<U>(y), ss, detail::priority_tag<1>{})))
-};
-
-inline constexpr auto monomial_range_overflow_check = monomial_range_overflow_check_msvc{};
-
-#else
-
 // NOTE: as usual, cast the return value to bool.
 inline constexpr auto monomial_range_overflow_check = [](auto &&x, auto &&y, const symbol_set &ss)
     OBAKE_SS_FORWARD_LAMBDA(static_cast<bool>(detail::monomial_range_overflow_check_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), ss, detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {

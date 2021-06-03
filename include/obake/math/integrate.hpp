@@ -51,22 +51,8 @@ constexpr auto integrate_impl(T &&x, const ::std::string &s, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct integrate_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const ::std::string &s) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::integrate_impl(::std::forward<T>(x), s, detail::priority_tag<1>{}))
-};
-
-inline constexpr auto integrate = integrate_msvc{};
-
-#else
-
 inline constexpr auto integrate = [](auto &&x, const ::std::string &s)
     OBAKE_SS_FORWARD_LAMBDA(detail::integrate_impl(::std::forward<decltype(x)>(x), s, detail::priority_tag<1>{}));
-
-#endif
 
 namespace detail
 {

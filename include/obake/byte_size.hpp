@@ -137,22 +137,8 @@ constexpr auto byte_size_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct byte_size_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::byte_size_impl_with_ret_check(::std::forward<T>(x)))
-};
-
-inline constexpr auto byte_size = byte_size_msvc{};
-
-#else
-
 inline constexpr auto byte_size =
     [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::byte_size_impl_with_ret_check(::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {

@@ -201,23 +201,9 @@ constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct safe_convert_msvc {
-    template <typename T, typename U>
-    constexpr auto operator()(T &&x, U &&y) const OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(
-        detail::safe_convert_impl(::std::forward<T>(x), ::std::forward<U>(y), detail::priority_tag<2>{})))
-};
-
-inline constexpr auto safe_convert = safe_convert_msvc{};
-
-#else
-
 inline constexpr auto safe_convert =
     [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(static_cast<bool>(detail::safe_convert_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
-
-#endif
 
 namespace detail
 {

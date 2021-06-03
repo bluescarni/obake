@@ -50,24 +50,9 @@ constexpr auto key_p_degree_impl(T &&x, const symbol_idx_set &si, const symbol_s
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct key_p_degree_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_idx_set &si, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::key_p_degree_impl(::std::forward<T>(x), si, ss,
-                                                                   detail::priority_tag<1>{}))
-};
-
-inline constexpr auto key_p_degree = key_p_degree_msvc{};
-
-#else
-
 inline constexpr auto key_p_degree =
     [](auto &&x, const symbol_idx_set &si, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
         detail::key_p_degree_impl(::std::forward<decltype(x)>(x), si, ss, detail::priority_tag<1>{}));
-
-#endif
 
 namespace detail
 {
