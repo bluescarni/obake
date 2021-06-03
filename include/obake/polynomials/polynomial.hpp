@@ -114,114 +114,110 @@ using is_polynomial = detail::is_polynomial_impl<T>;
 template <typename T>
 inline constexpr bool is_polynomial_v = is_polynomial<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Polynomial = is_polynomial_v<T>;
-
-#endif
+concept Polynomial = is_polynomial_v<T>;
 
 namespace detail
 {
 
-// Enabler for make_polynomials():
-// - need at least 1 Arg,
-// - T must be a polynomial,
-// - std::string can be constructed from each input Args,
-// - poly key can be constructed from a const int * range,
-// - poly cf can be constructed from an integral literal.
-template <typename T, typename... Args>
-using make_polynomials_supported
-    = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_polynomial<T>,
-                         ::std::is_constructible<::std::string, const Args &>...,
-                         ::std::is_constructible<series_key_t<T>, const int *, const int *>,
-                         ::std::is_constructible<series_cf_t<T>, int>>;
+    // Enabler for make_polynomials():
+    // - need at least 1 Arg,
+    // - T must be a polynomial,
+    // - std::string can be constructed from each input Args,
+    // - poly key can be constructed from a const int * range,
+    // - poly cf can be constructed from an integral literal.
+    template <typename T, typename... Args>
+    using make_polynomials_supported
+        = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_polynomial<T>,
+                             ::std::is_constructible<::std::string, const Args &>...,
+                             ::std::is_constructible<series_key_t<T>, const int *, const int *>,
+                             ::std::is_constructible<series_cf_t<T>, int>>;
 
-template <typename T, typename... Args>
-using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T, Args...>::value, int>;
+    template <typename T, typename... Args>
+    using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T, Args...>::value, int>;
 
-// Overload with a symbol set.
-template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline auto make_polynomials_impl(const symbol_set &ss, const Args &...names)
-{
-    // Create a temp vector of ints which we will use to
-    // init the keys.
-    ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
+    // Overload with a symbol set.
+    template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
+    inline auto make_polynomials_impl(const symbol_set &ss, const Args &...names)
+    {
+        // Create a temp vector of ints which we will use to
+        // init the keys.
+        ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
 
-    // Create the fw version of the symbol set.
-    const detail::ss_fw ss_fw(ss);
+        // Create the fw version of the symbol set.
+        const detail::ss_fw ss_fw(ss);
 
-    auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
+            using str_t = remove_cvref_t<decltype(n)>;
 
-        // Fetch a const reference to either the original
-        // std::string object n, or to a string temporary
-        // created from it.
-        const auto &s = [&n]() -> decltype(auto) {
-            if constexpr (::std::is_same_v<str_t, ::std::string>) {
-                return n;
-            } else {
-                return ::std::string(n);
+            // Fetch a const reference to either the original
+            // std::string object n, or to a string temporary
+            // created from it.
+            const auto &s = [&n]() -> decltype(auto) {
+                if constexpr (::std::is_same_v<str_t, ::std::string>) {
+                    return n;
+                } else {
+                    return ::std::string(n);
+                }
+            }();
+
+            // Init the retval, assign the symbol set.
+            T retval;
+            retval.set_symbol_set_fw(ss_fw);
+
+            // Try to locate s within the symbol set.
+            const auto it = ss.find(s);
+            if (obake_unlikely(it == ss.end() || *it != s)) {
+                obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set "
+                                                         + detail::to_string(ss) + " from the generator '" + s
+                                                         + "': the generator is not in the symbol set");
             }
-        }();
 
-        // Init the retval, assign the symbol set.
-        T retval;
-        retval.set_symbol_set_fw(ss_fw);
+            // Set to 1 the exponent of the corresponding generator.
+            tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
-        // Try to locate s within the symbol set.
-        const auto it = ss.find(s);
-        if (obake_unlikely(it == ss.end() || *it != s)) {
-            obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
-                                                     + " from the generator '" + s
-                                                     + "': the generator is not in the symbol set");
-        }
+            // Create and add a new term.
+            // NOTE: at least for some monomial types (e.g., packed monomial),
+            // we will be computing the iterator difference when constructing from
+            // a range. Make sure we can safely represent the size of tmp via
+            // iterator difference.
+            ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
+            retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
 
-        // Set to 1 the exponent of the corresponding generator.
-        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
+            // Set back to zero the exponent that was previously set to 1.
+            tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
 
-        // Create and add a new term.
-        // NOTE: at least for some monomial types (e.g., packed monomial),
-        // we will be computing the iterator difference when constructing from
-        // a range. Make sure we can safely represent the size of tmp via
-        // iterator difference.
-        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
-        retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
+            return retval;
+        };
 
-        // Set back to zero the exponent that was previously set to 1.
-        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
+        return detail::make_array(make_poly(names)...);
+    }
 
-        return retval;
-    };
+    // Overload without a symbol set.
+    template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
+    inline auto make_polynomials_impl(const Args &...names)
+    {
+        auto make_poly = [](const auto &n) {
+            using str_t = remove_cvref_t<decltype(n)>;
 
-    return detail::make_array(make_poly(names)...);
-}
+            // Init the retval, assign a symbol set containing only n.
+            T retval;
+            if constexpr (::std::is_same_v<str_t, ::std::string>) {
+                retval.set_symbol_set(symbol_set{n});
+            } else {
+                retval.set_symbol_set(symbol_set{::std::string(n)});
+            }
 
-// Overload without a symbol set.
-template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-inline auto make_polynomials_impl(const Args &...names)
-{
-    auto make_poly = [](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+            constexpr int arr[] = {1};
 
-        // Init the retval, assign a symbol set containing only n.
-        T retval;
-        if constexpr (::std::is_same_v<str_t, ::std::string>) {
-            retval.set_symbol_set(symbol_set{n});
-        } else {
-            retval.set_symbol_set(symbol_set{::std::string(n)});
-        }
+            // Create and add a new term.
+            retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
 
-        constexpr int arr[] = {1};
+            return retval;
+        };
 
-        // Create and add a new term.
-        retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
-
-        return retval;
-    };
-
-    return detail::make_array(make_poly(names)...);
-}
+        return detail::make_array(make_poly(names)...);
+    }
 
 } // namespace detail
 

@@ -43,12 +43,7 @@ namespace customisation
 {
 
 // External customisation point for obake::diff().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto diff = not_implemented;
 
 } // namespace customisation
@@ -126,15 +121,11 @@ using is_differentiable = is_detected<detail::diff_t, T>;
 template <typename T>
 inline constexpr bool is_differentiable_v = is_differentiable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Differentiable = requires(T &&x, const ::std::string &s)
+concept Differentiable = requires(T &&x, const ::std::string &s)
 {
     ::obake::diff(::std::forward<T>(x), s);
 };
-
-#endif
 
 } // namespace obake
 

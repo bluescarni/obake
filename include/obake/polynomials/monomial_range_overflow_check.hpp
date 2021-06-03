@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,12 +24,7 @@ namespace customisation
 {
 
 // External customisation point for obake::monomial_range_overflow_check().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto monomial_range_overflow_check = not_implemented;
 
 } // namespace customisation
@@ -71,15 +65,11 @@ using are_overflow_testable_monomial_ranges = is_detected<detail::monomial_range
 template <typename T, typename U>
 inline constexpr bool are_overflow_testable_monomial_ranges_v = are_overflow_testable_monomial_ranges<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL OverflowTestableMonomialRanges = requires(T &&x, U &&y, const symbol_set &ss)
+concept OverflowTestableMonomialRanges = requires(T &&x, U &&y, const symbol_set &ss)
 {
     ::obake::monomial_range_overflow_check(::std::forward<T>(x), ::std::forward<U>(y), ss);
 };
-
-#endif
 
 } // namespace obake
 

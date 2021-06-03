@@ -26,24 +26,14 @@ namespace customisation
 {
 
 // External customisation point for obake::cf_stream_insert().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto cf_stream_insert = not_implemented;
 
 namespace internal
 {
 
 // Internal customisation point for obake::cf_stream_insert().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto cf_stream_insert = not_implemented;
 
 } // namespace internal
@@ -100,15 +90,11 @@ using is_stream_insertable_cf = is_detected<detail::cf_stream_insert_t, T>;
 template <typename T>
 inline constexpr bool is_stream_insertable_cf_v = is_stream_insertable_cf<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL StreamInsertableCf = requires(::std::ostream &os, T &&x)
+concept StreamInsertableCf = requires(::std::ostream &os, T &&x)
 {
     ::obake::cf_stream_insert(os, ::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

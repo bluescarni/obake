@@ -158,15 +158,11 @@ using is_negatable = is_detected<detail::negate_t, T>;
 template <typename T>
 inline constexpr bool is_negatable_v = is_negatable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Negatable = requires(T &&x)
+concept Negatable = requires(T &&x)
 {
     ::obake::negate(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

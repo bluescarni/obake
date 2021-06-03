@@ -13,7 +13,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -49,17 +48,9 @@ namespace detail
 // namespaces (as ADL does not kick in for fundamental types), and thus only this specific
 // pow() function will be found and used. This is convenient, because it shields us
 // from ambiguities with pow() functions defined in the root namespace.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires Arithmetic<T> && Arithmetic<U> &&(FloatingPoint<T> || FloatingPoint<U>)
-#else
-template <typename T, typename U,
-          ::std::enable_if_t<
-              ::std::conjunction_v<is_arithmetic<T>, is_arithmetic<U>,
-                                   ::std::disjunction<::std::is_floating_point<T>, ::std::is_floating_point<U>>>,
-              int> = 0>
-#endif
-    inline auto pow(const T &x, const U &y) noexcept
+requires Arithmetic<T> && Arithmetic<U> &&(FloatingPoint<T> || FloatingPoint<U>)inline auto pow(const T &x,
+                                                                                                const U &y) noexcept
 {
     // NOTE: when one of the arguments to std::pow() is an integral type,
     // then that argument will be converted to double automatically. This means that,
@@ -112,15 +103,11 @@ using is_exponentiable = is_detected<detail::pow_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_exponentiable_v = is_exponentiable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL Exponentiable = requires(T &&x, U &&y)
+concept Exponentiable = requires(T &&x, U &&y)
 {
     ::obake::pow(::std::forward<T>(x), ::std::forward<U>(y));
 };
-
-#endif
 
 } // namespace obake
 

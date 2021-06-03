@@ -34,24 +34,14 @@ namespace customisation
 {
 
 // External customisation point for obake::byte_size().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto byte_size = not_implemented;
 
 namespace internal
 {
 
 // Internal customisation point for obake::byte_size().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto byte_size = not_implemented;
 
 } // namespace internal
@@ -154,15 +144,11 @@ using is_size_measurable = is_detected<detail::byte_size_t, T>;
 template <typename T>
 inline constexpr bool is_size_measurable_v = is_size_measurable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL SizeMeasurable = requires(T &&x)
+concept SizeMeasurable = requires(T &&x)
 {
     ::obake::byte_size(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

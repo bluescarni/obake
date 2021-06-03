@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,12 +24,7 @@ namespace customisation
 {
 
 // External customisation point for obake::key_is_compatible().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto key_is_compatible = not_implemented;
 
 } // namespace customisation
@@ -70,15 +64,11 @@ using is_compatibility_testable_key = is_detected<detail::key_is_compatible_t, T
 template <typename T>
 inline constexpr bool is_compatibility_testable_key_v = is_compatibility_testable_key<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL CompatibilityTestableKey = requires(T &&x, const symbol_set &ss)
+concept CompatibilityTestableKey = requires(T &&x, const symbol_set &ss)
 {
     ::obake::key_is_compatible(::std::forward<T>(x), ss);
 };
-
-#endif
 
 } // namespace obake
 

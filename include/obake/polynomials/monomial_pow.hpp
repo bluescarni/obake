@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::monomial_pow().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto monomial_pow = not_implemented;
 
 } // namespace customisation
@@ -84,15 +78,11 @@ using is_exponentiable_monomial = is_detected<detail::monomial_pow_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_exponentiable_monomial_v = is_exponentiable_monomial<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL ExponentiableMonomial = requires(T &&x, U &&y, const symbol_set &ss)
+concept ExponentiableMonomial = requires(T &&x, U &&y, const symbol_set &ss)
 {
     ::obake::monomial_pow(::std::forward<T>(x), ::std::forward<U>(y), ss);
 };
-
-#endif
 
 } // namespace obake
 

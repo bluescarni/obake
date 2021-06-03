@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,12 +24,7 @@ namespace customisation
 {
 
 // External customisation point for obake::key_p_degree().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto key_p_degree = not_implemented;
 
 } // namespace customisation
@@ -69,15 +63,11 @@ using is_key_with_p_degree = is_detected<detail::key_p_degree_t, T>;
 template <typename T>
 inline constexpr bool is_key_with_p_degree_v = is_key_with_p_degree<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL KeyWithPDegree = requires(T &&x, const symbol_idx_set &si, const symbol_set &ss)
+concept KeyWithPDegree = requires(T &&x, const symbol_idx_set &si, const symbol_set &ss)
 {
     ::obake::key_p_degree(::std::forward<T>(x), si, ss);
 };
-
-#endif
 
 } // namespace obake
 

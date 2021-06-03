@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::monomial_diff().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto monomial_diff = not_implemented;
 
 } // namespace customisation
@@ -93,15 +87,11 @@ using is_differentiable_monomial = is_detected<detail::monomial_diff_t, T>;
 template <typename T>
 inline constexpr bool is_differentiable_monomial_v = is_differentiable_monomial<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL DifferentiableMonomial = requires(T &&x, const symbol_idx &idx, const symbol_set &ss)
+concept DifferentiableMonomial = requires(T &&x, const symbol_idx &idx, const symbol_set &ss)
 {
     ::obake::monomial_diff(::std::forward<T>(x), idx, ss);
 };
-
-#endif
 
 } // namespace obake
 

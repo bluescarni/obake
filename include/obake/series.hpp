@@ -110,12 +110,8 @@ using is_key = ::std::conjunction<is_semi_regular<T>, ::std::is_constructible<T,
 template <typename T>
 inline constexpr bool is_key_v = is_key<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Key = is_key_v<T>;
-
-#endif
+concept Key = is_key_v<T>;
 
 template <typename T>
 using is_cf = ::std::conjunction<
@@ -130,12 +126,8 @@ using is_cf = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_cf_v = is_cf<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Cf = is_cf_v<T>;
-
-#endif
+concept Cf = is_cf_v<T>;
 
 // A series tag must be a semi-regular class.
 // NOTE: semi-regular already includes swappability.
@@ -145,20 +137,11 @@ using is_series_tag = ::std::conjunction<::std::is_class<T>, is_semi_regular<T>>
 template <typename T>
 inline constexpr bool is_series_tag_v = is_series_tag<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL series_tag = is_series_tag_v<T>;
-
-#endif
+concept series_tag = is_series_tag_v<T>;
 
 // Forward declaration.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key, Cf, series_tag>
-#else
-template <typename K, typename C, typename Tag,
-          typename = ::std::enable_if_t<::std::conjunction_v<is_key<K>, is_cf<C>, is_series_tag<Tag>>>>
-#endif
 class series;
 
 namespace detail
@@ -495,12 +478,8 @@ using is_series_constructible
 template <typename T, typename K, typename C, typename Tag>
 inline constexpr bool is_series_constructible_v = is_series_constructible<T, K, C, Tag>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename K, typename C, typename Tag>
-OBAKE_CONCEPT_DECL SeriesConstructible = is_series_constructible_v<T, K, C, Tag>;
-
-#endif
+concept SeriesConstructible = is_series_constructible_v<T, K, C, Tag>;
 
 template <typename T, typename C>
 using is_series_convertible = ::std::conjunction<::std::integral_constant<bool, series_rank<T> == 0u>,
@@ -510,192 +489,184 @@ using is_series_convertible = ::std::conjunction<::std::integral_constant<bool, 
 template <typename T, typename C>
 inline constexpr bool is_series_convertible_v = is_series_convertible<T, C>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename C>
-OBAKE_CONCEPT_DECL SeriesConvertible = is_series_convertible_v<T, C>;
-
-#endif
+concept SeriesConvertible = is_series_convertible_v<T, C>;
 
 namespace detail
 {
 
-// A small hashing wrapper for keys. It accomplishes two tasks:
-// - force the evaluation of a key through const reference,
-//   so that, in the Key requirements, we can request hashability
-//   through const lvalue ref;
-// - provide additional mixing.
-struct series_key_hasher {
-    // NOTE: here we are duplicating a bit of internal
-    // abseil code for integral hash mixing, with the intent
-    // of avoiding the per-process seeding that abseil does.
-    // See here for the original code:
-    // https://github.com/abseil/abseil-cpp/blob/37dd2562ec830d547a1524bb306be313ac3f2556/absl/hash/internal/hash.h#L754
-    // If/when abseil starts supporting DLL builds, we can
-    // remove this code and switch back to using abseil's
-    // own hash machinery for mixing.
-    static constexpr ::std::uint64_t kMul
-        = sizeof(::std::size_t) == 4u ? ::std::uint64_t{0xcc9e2d51ull} : ::std::uint64_t{0x9ddfea08eb382d69ull};
-    ABSL_ATTRIBUTE_ALWAYS_INLINE static ::std::uint64_t Mix(::std::uint64_t state, ::std::uint64_t v)
-    {
-        using MultType = ::std::conditional_t<sizeof(::std::size_t) == 4u, ::std::uint64_t, ::absl::uint128>;
-        // We do the addition in 64-bit space to make sure the 128-bit
-        // multiplication is fast. If we were to do it as MultType the compiler has
-        // to assume that the high word is non-zero and needs to perform 2
-        // multiplications instead of one.
-        MultType m = state + v;
-        m *= kMul;
-        return static_cast<::std::uint64_t>(m ^ (m >> (sizeof(m) * 8 / 2)));
-    }
-    template <typename K>
-    ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
-    {
-        // NOTE: mix with a compile-time seed.
-        return static_cast<::std::size_t>(
-            series_key_hasher::Mix(15124392053943080205ull, static_cast<::std::uint64_t>(::obake::hash(k))));
-    }
-};
-
-// Wrapper to force key comparison via const lvalue refs.
-struct series_key_comparer {
-    template <typename K>
-    constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
-    {
-        return k1 == k2;
-    }
-};
-
-// Small helper to clear() a nonconst
-// rvalue reference to a series. This is used in various places
-// where we might end up moving away individual coefficients from an input series,
-// which may leave the series in an inconsistent state. With this
-// RAII struct, we'll ensure the series is cleared out before
-// leaving the scope (either as part of regular program
-// flow or in case of exception).
-// NOTE: this is different from the clear() that is called
-// in debug mode during move operations: in that situation,
-// we are guaranteeing that after the move the series
-// is destructible and assignable, so the state of the series
-// does not matter as long as we can revive it. This clearer,
-// on the other hand, is not called during move operations,
-// but only when it might make sense, for optimisation purposes,
-// to move individual coefficients - hence the move semantics
-// guarantee does not apply.
-template <typename T>
-struct series_rref_clearer {
-    series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
-    ~series_rref_clearer()
-    {
-        if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-            m_ref.clear();
+    // A small hashing wrapper for keys. It accomplishes two tasks:
+    // - force the evaluation of a key through const reference,
+    //   so that, in the Key requirements, we can request hashability
+    //   through const lvalue ref;
+    // - provide additional mixing.
+    struct series_key_hasher {
+        // NOTE: here we are duplicating a bit of internal
+        // abseil code for integral hash mixing, with the intent
+        // of avoiding the per-process seeding that abseil does.
+        // See here for the original code:
+        // https://github.com/abseil/abseil-cpp/blob/37dd2562ec830d547a1524bb306be313ac3f2556/absl/hash/internal/hash.h#L754
+        // If/when abseil starts supporting DLL builds, we can
+        // remove this code and switch back to using abseil's
+        // own hash machinery for mixing.
+        static constexpr ::std::uint64_t kMul
+            = sizeof(::std::size_t) == 4u ? ::std::uint64_t{0xcc9e2d51ull} : ::std::uint64_t{0x9ddfea08eb382d69ull};
+        ABSL_ATTRIBUTE_ALWAYS_INLINE static ::std::uint64_t Mix(::std::uint64_t state, ::std::uint64_t v)
+        {
+            using MultType = ::std::conditional_t<sizeof(::std::size_t) == 4u, ::std::uint64_t, ::absl::uint128>;
+            // We do the addition in 64-bit space to make sure the 128-bit
+            // multiplication is fast. If we were to do it as MultType the compiler has
+            // to assume that the high word is non-zero and needs to perform 2
+            // multiplications instead of one.
+            MultType m = state + v;
+            m *= kMul;
+            return static_cast<::std::uint64_t>(m ^ (m >> (sizeof(m) * 8 / 2)));
         }
-    }
-    T &&m_ref;
-};
+        template <typename K>
+        ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
+        {
+            // NOTE: mix with a compile-time seed.
+            return static_cast<::std::size_t>(
+                series_key_hasher::Mix(15124392053943080205ull, static_cast<::std::uint64_t>(::obake::hash(k))));
+        }
+    };
 
-// Helper to extend the keys of "from" with the symbol insertion map ins_map.
-// The new series will be written to "to". The coefficient type of "to"
-// may be different from the coefficient type of "from", in which case a coefficient
-// conversion will take place. "to" is supposed to have the correct symbol set already,
-// but, apart from that, it must be empty, and the number of segments and space
-// reservation will be taken from "from".
-// Another precondition is that to and from must be distinct objects.
-template <typename To, typename From>
-inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
-{
-    // NOTE: we assume that this helper is
-    // invoked with a non-empty insertion map, and an empty
-    // "to" series. "to" must have the correct symbol set.
-    assert(!ins_map.empty());
-    assert(to.empty());
-    if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
-        assert(&to != &from);
-    }
+    // Wrapper to force key comparison via const lvalue refs.
+    struct series_key_comparer {
+        template <typename K>
+        constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
+        {
+            return k1 == k2;
+        }
+    };
 
-    // Ensure that the key type of From
-    // is symbol mergeable (via const lvalue ref).
-    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
+    // Small helper to clear() a nonconst
+    // rvalue reference to a series. This is used in various places
+    // where we might end up moving away individual coefficients from an input series,
+    // which may leave the series in an inconsistent state. With this
+    // RAII struct, we'll ensure the series is cleared out before
+    // leaving the scope (either as part of regular program
+    // flow or in case of exception).
+    // NOTE: this is different from the clear() that is called
+    // in debug mode during move operations: in that situation,
+    // we are guaranteeing that after the move the series
+    // is destructible and assignable, so the state of the series
+    // does not matter as long as we can revive it. This clearer,
+    // on the other hand, is not called during move operations,
+    // but only when it might make sense, for optimisation purposes,
+    // to move individual coefficients - hence the move semantics
+    // guarantee does not apply.
+    template <typename T>
+    struct series_rref_clearer {
+        series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
+        ~series_rref_clearer()
+        {
+            if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+                m_ref.clear();
+            }
+        }
+        T &&m_ref;
+    };
 
-    // We may end up moving coefficients from "from" in the conversion to "to".
-    // Make sure we will clear "from" out properly.
-    series_rref_clearer<From> from_c(::std::forward<From>(from));
+    // Helper to extend the keys of "from" with the symbol insertion map ins_map.
+    // The new series will be written to "to". The coefficient type of "to"
+    // may be different from the coefficient type of "from", in which case a coefficient
+    // conversion will take place. "to" is supposed to have the correct symbol set already,
+    // but, apart from that, it must be empty, and the number of segments and space
+    // reservation will be taken from "from".
+    // Another precondition is that to and from must be distinct objects.
+    template <typename To, typename From>
+    inline void series_sym_extender(To & to, From && from, const symbol_idx_map<symbol_set> &ins_map)
+    {
+        // NOTE: we assume that this helper is
+        // invoked with a non-empty insertion map, and an empty
+        // "to" series. "to" must have the correct symbol set.
+        assert(!ins_map.empty());
+        assert(to.empty());
+        if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
+            assert(&to != &from);
+        }
 
-    // Cache the original symbol set.
-    const auto &orig_ss = from.get_symbol_set();
+        // Ensure that the key type of From
+        // is symbol mergeable (via const lvalue ref).
+        static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
 
-    // Set the number of segments, reserve space.
-    const auto from_log2_size = from.get_s_size();
-    to.set_n_segments(from_log2_size);
-    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
+        // We may end up moving coefficients from "from" in the conversion to "to".
+        // Make sure we will clear "from" out properly.
+        series_rref_clearer<From> from_c(::std::forward<From>(from));
 
-    // Establish if we need to check for zero coefficients
-    // when inserting. We don't if the coefficient types of to and from
-    // coincide (i.e., no cf conversion takes place),
-    // otherwise the conversion might generate zeroes.
-    constexpr auto check_zero
-        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+        // Cache the original symbol set.
+        const auto &orig_ss = from.get_symbol_set();
 
-    // Merge the terms, distinguishing the segmented vs non-segmented case.
-    if (from_log2_size) {
-        for (auto &t : from._get_s_table()) {
-            for (auto &term : t) {
-                // NOTE: old clang does not like structured
-                // bindings in the for loop.
-                auto &k = term.first;
-                auto &c = term.second;
+        // Set the number of segments, reserve space.
+        const auto from_log2_size = from.get_s_size();
+        to.set_n_segments(from_log2_size);
+        to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
 
+        // Establish if we need to check for zero coefficients
+        // when inserting. We don't if the coefficient types of to and from
+        // coincide (i.e., no cf conversion takes place),
+        // otherwise the conversion might generate zeroes.
+        constexpr auto check_zero
+            = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+
+        // Merge the terms, distinguishing the segmented vs non-segmented case.
+        if (from_log2_size) {
+            for (auto &t : from._get_s_table()) {
+                for (auto &term : t) {
+                    // NOTE: old clang does not like structured
+                    // bindings in the for loop.
+                    auto &k = term.first;
+                    auto &c = term.second;
+
+                    // Compute the merged key.
+                    auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+
+                    // Insert the term. We need the following checks:
+                    // - zero check, in case the coefficient type changes,
+                    // - table size check, because even if we know the
+                    //   max table size was not exceeded in the original series,
+                    //   it might be now (as the merged key may end up in a different
+                    //   table).
+                    // NOTE: in the runtime requirements for key_merge_symbol(), we impose
+                    // that symbol merging does not affect is_zero(), compatibility and
+                    // uniqueness.
+                    if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                        detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                                sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
+                    } else {
+                        detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                                sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
+                    }
+                }
+            }
+        } else {
+            auto &to_table = to._get_s_table()[0];
+
+            for (const auto &[k, c] : from._get_s_table()[0]) {
                 // Compute the merged key.
                 auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
 
-                // Insert the term. We need the following checks:
-                // - zero check, in case the coefficient type changes,
-                // - table size check, because even if we know the
-                //   max table size was not exceeded in the original series,
-                //   it might be now (as the merged key may end up in a different
-                //   table).
-                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
-                // that symbol merging does not affect is_zero(), compatibility and
-                // uniqueness.
+                // Insert the term: the only check we may need is check_zero, in case
+                // the coefficient type changes. We know that the table size cannot be
+                // exceeded as we are dealing with a single table.
                 if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
+                    detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
+                                                  sat_check_table_size::off, sat_assume_unique::on>(
+                        to, to_table, ::std::move(merged_key), ::std::move(c));
                 } else {
-                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
+                    detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
+                                                  sat_check_table_size::off, sat_assume_unique::on>(
+                        to, to_table, ::std::move(merged_key), ::std::as_const(c));
                 }
             }
         }
-    } else {
-        auto &to_table = to._get_s_table()[0];
-
-        for (const auto &[k, c] : from._get_s_table()[0]) {
-            // Compute the merged key.
-            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
-
-            // Insert the term: the only check we may need is check_zero, in case
-            // the coefficient type changes. We know that the table size cannot be
-            // exceeded as we are dealing with a single table.
-            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::move(c));
-            } else {
-                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
-                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
-                                                                     ::std::as_const(c));
-            }
-        }
     }
-}
 
 } // namespace detail
 
 // NOTE: document that moved-from series are destructible and assignable.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <Key K, Cf C, series_tag Tag>
-#else
-template <typename K, typename C, typename Tag, typename>
-#endif
 class series
 {
     friend class ::boost::serialization::access;
@@ -896,21 +867,13 @@ public:
 
         return *this;
     }
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConstructible<K, C, Tag> T>
-#else
-    template <typename T, ::std::enable_if_t<is_series_constructible_v<T, K, C, Tag>, int> = 0>
-#endif
     series &operator=(T &&x)
     {
         return *this = series(::std::forward<T>(x));
     }
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     template <SeriesConvertible<C> T>
-#else
-    template <typename T, ::std::enable_if_t<is_series_convertible_v<T, C>, int> = 0>
-#endif
     explicit operator T() const
     {
         switch (size()) {
@@ -1354,14 +1317,8 @@ public:
 
     // NOTE: this method requires that the term
     // being inserted is not from this series.
-    template <bool Sign = true,
-#if defined(OBAKE_HAVE_CONCEPTS)
-              SameCvr<K> T, typename... Args>
+    template <bool Sign = true, SameCvr<K> T, typename... Args>
     requires Constructible<C, Args...>
-#else
-              typename T, typename... Args,
-              ::std::enable_if_t<::std::conjunction_v<is_same_cvr<T, K>, ::std::is_constructible<C, Args...>>, int> = 0>
-#endif
     void add_term(T &&key, Args &&...args)
     {
         // NOTE: all checks enabled, don't assume uniqueness.
@@ -1846,13 +1803,8 @@ template <typename T, typename U>
 using series_default_pow_ret_t = typename decltype(series_default_pow_algorithm<T, U>.second)::type;
 
 // Default implementation of series exponentiation.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires(series_default_pow_algo<T &&, U &&> != 0)
-#else
-template <typename T, typename U, ::std::enable_if_t<series_default_pow_algo<T &&, U &&> != 0, int> = 0>
-#endif
-    inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
+requires(series_default_pow_algo<T &&, U &&> != 0) inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
 {
     using ret_t = series_default_pow_ret_t<T &&, U &&>;
 
@@ -1929,11 +1881,7 @@ template <typename T, typename U, ::std::enable_if_t<series_default_pow_algo<T &
 } // namespace customisation::internal
 
 // Identity operator for series.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <CvrSeries T>
-#else
-template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
 inline remove_cvref_t<T> operator+(T &&x)
 {
     return ::std::forward<T>(x);
@@ -1963,11 +1911,7 @@ inline void series_default_negate_impl(T &&x)
 } // namespace detail
 
 // Negated copy operator.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <CvrSeries T>
-#else
-template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
 inline remove_cvref_t<T> operator-(T &&x)
 {
     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
@@ -1988,16 +1932,8 @@ inline remove_cvref_t<T> operator-(T &&x)
 namespace customisation::internal
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T>
-requires CvrSeries<T> &&(!::std::is_const_v<::std::remove_reference_t<T>>)
-#else
-template <typename T,
-          ::std::enable_if_t<
-              ::std::conjunction_v<is_cvr_series<T>, ::std::negation<::std::is_const<::std::remove_reference_t<T>>>>,
-              int> = 0>
-#endif
-    inline void negate(negate_t, T &&x)
+requires CvrSeries<T> &&(!::std::is_const_v<::std::remove_reference_t<T>>)inline void negate(negate_t, T &&x)
 {
     detail::series_default_negate_impl(::std::forward<T>(x));
 }
@@ -2084,16 +2020,9 @@ struct series_default_byte_size_impl {
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
 requires CvrSeries<T> && SizeMeasurable < const series_key_t<remove_cvref_t<T>>
-& > &&SizeMeasurable<const series_cf_t<remove_cvref_t<T>> &> inline constexpr auto byte_size<T>
-#else
-inline constexpr auto
-    byte_size<T, ::std::enable_if_t<
-                     ::std::conjunction_v<is_cvr_series<T>, is_size_measurable<const series_key_t<remove_cvref_t<T>> &>,
-                                          is_size_measurable<const series_cf_t<remove_cvref_t<T>> &>>>>
-#endif
-    = series_default_byte_size_impl{};
+& > &&SizeMeasurable<const series_cf_t<remove_cvref_t<T>> &> inline constexpr auto
+        byte_size<T> = series_default_byte_size_impl{};
 
 } // namespace customisation::internal
 
@@ -2214,13 +2143,8 @@ struct series_default_cf_stream_insert_impl {
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
 requires CvrSeries<T>
-inline constexpr auto cf_stream_insert<T>
-#else
-inline constexpr auto cf_stream_insert<T, ::std::enable_if_t<is_cvr_series_v<T>>>
-#endif
-    = series_default_cf_stream_insert_impl{};
+inline constexpr auto cf_stream_insert<T> = series_default_cf_stream_insert_impl{};
 
 } // namespace customisation::internal
 
@@ -2248,12 +2172,7 @@ namespace customisation
 {
 
 // External customisation point for obake::series_stream_insert().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto series_stream_insert = not_implemented;
 
 } // namespace customisation
@@ -2299,11 +2218,7 @@ inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) O
 // NOTE: constrain the operator so that it is enabled
 // only if s is a series. This way, we avoid it to be too
 // greedy.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <CvrSeries S>
-#else
-template <typename S, ::std::enable_if_t<is_cvr_series_v<S>, int> = 0>
-#endif
 constexpr auto operator<<(::std::ostream &os, S &&s)
     OBAKE_SS_FORWARD_FUNCTION((void(::obake::series_stream_insert(os, ::std::forward<S>(s))), os));
 
@@ -2311,12 +2226,7 @@ namespace customisation
 {
 
 // External customisation point for obake::series_add().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_add = not_implemented;
 
 } // namespace customisation
@@ -2669,12 +2579,8 @@ inline constexpr auto series_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBD
 
 // Like with operator<<(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
-#else
-template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
-#endif
 constexpr auto operator+(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -2682,12 +2588,7 @@ namespace customisation
 {
 
 // External customisation point for obake::series_in_place_add().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_in_place_add = not_implemented;
 
 } // namespace customisation
@@ -3006,38 +2907,23 @@ inline constexpr auto series_in_place_add = [](auto &&x, auto &&y) OBAKE_SS_FORW
 
 // NOTE: handle separately the two cases
 // series lhs vs non-series lhs.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
-#else
-template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
 constexpr auto operator+=(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_in_place_add(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: if the lhs is not a series, just implement
 // on top of the binary operator.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires(!CvrSeries<T>)
-    && CvrSeries<U>
-#else
-template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
-#endif
-    constexpr auto operator+=(T &&x, U &&y)
+    && CvrSeries<U> constexpr auto operator+=(T &&x, U &&y)
         OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
 
 // External customisation point for obake::series_sub().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_sub = not_implemented;
 
 } // namespace customisation
@@ -3070,12 +2956,8 @@ inline constexpr auto series_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBD
 
 // Like with operator+(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
-#else
-template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
-#endif
 constexpr auto operator-(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -3083,12 +2965,7 @@ namespace customisation
 {
 
 // External customisation point for obake::series_in_place_sub().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_in_place_sub = not_implemented;
 
 } // namespace customisation
@@ -3134,38 +3011,23 @@ inline constexpr auto series_in_place_sub = [](auto &&x, auto &&y) OBAKE_SS_FORW
 
 // NOTE: handle separately the two cases
 // series lhs vs non-series lhs.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
-#else
-template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
 constexpr auto operator-=(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_in_place_sub(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: if the lhs is not a series, just implement
 // on top of the binary operator.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires(!CvrSeries<T>)
-    && CvrSeries<U>
-#else
-template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
-#endif
-    constexpr auto operator-=(T &&x, U &&y)
+    && CvrSeries<U> constexpr auto operator-=(T &&x, U &&y)
         OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
 
 namespace customisation
 {
 
 // External customisation point for obake::series_mul().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_mul = not_implemented;
 
 } // namespace customisation
@@ -3359,12 +3221,8 @@ inline constexpr auto series_mul = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBD
 
 // Like with operator+(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
-#else
-template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
-#endif
 constexpr auto operator*(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_mul(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -3372,35 +3230,20 @@ constexpr auto operator*(T &&x, U &&y)
 // This can be optimised later performance-wise.
 // NOTE: if this gets optimised for performance, we will probably
 // need to add specialisations for, e.g., power_series.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
-#else
-template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
 constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::forward<T>(x) * ::std::forward<U>(y));
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires(!CvrSeries<T>)
-    && CvrSeries<U>
-#else
-template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
-#endif
-    constexpr auto operator*=(T &&x, U &&y)
+    && CvrSeries<U> constexpr auto operator*=(T &&x, U &&y)
         OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
 
 namespace customisation
 {
 
 // External customisation point for obake::series_div().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_div = not_implemented;
 
 } // namespace customisation
@@ -3537,46 +3380,27 @@ inline constexpr auto series_div = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBD
 
 // Like with operator+(), constrain so that the operator
 // is enabled only if at least 1 operator is a series.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
-#else
-template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
-#endif
 constexpr auto operator/(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_div(::std::forward<T>(x), ::std::forward<U>(y)));
 
 // NOTE: for now, implement operator/=() in terms of operator/().
 // This can be optimised later performance-wise.
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T>
-#else
-template <typename T, typename U, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
-#endif
 constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::forward<T>(x) / ::std::forward<U>(y));
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires(!CvrSeries<T>)
-    && CvrSeries<U>
-#else
-template <typename T, typename U,
-          ::std::enable_if_t<::std::conjunction_v<::std::negation<is_cvr_series<T>>, is_cvr_series<U>>, int> = 0>
-#endif
-    constexpr auto operator/=(T &&x, U &&y)
+    && CvrSeries<U> constexpr auto operator/=(T &&x, U &&y)
         OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {
 
 // External customisation point for obake::series_equal_to().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto series_equal_to = not_implemented;
 
 } // namespace customisation
@@ -3756,21 +3580,13 @@ inline constexpr auto series_equal_to =
     [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(static_cast<bool>(detail::series_equal_to_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
-#else
-template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
-#endif
 constexpr auto operator==(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(::obake::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
 requires CvrSeries<T> || CvrSeries<U>
-#else
-template <typename T, typename U, ::std::enable_if_t<::std::disjunction_v<is_cvr_series<T>, is_cvr_series<U>>, int> = 0>
-#endif
 constexpr auto operator!=(T &&x, U &&y)
     OBAKE_SS_FORWARD_FUNCTION(!::obake::series_equal_to(::std::forward<T>(x), ::std::forward<U>(y)));
 
@@ -3963,12 +3779,7 @@ struct series_default_degree_impl {
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_degree_impl::algo<T> != 0) inline constexpr auto degree<T>
-#else
-inline constexpr auto degree<T, ::std::enable_if_t<series_default_degree_impl::algo<T> != 0>>
-#endif
-    = series_default_degree_impl{};
+requires(series_default_degree_impl::algo<T> != 0) inline constexpr auto degree<T> = series_default_degree_impl{};
 
 // Helper to construct a vector of total degrees
 // from a range of terms using the series_default_degree_impl
@@ -4121,12 +3932,7 @@ struct series_default_p_degree_impl {
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_p_degree_impl::algo<T> != 0) inline constexpr auto p_degree<T>
-#else
-inline constexpr auto p_degree<T, ::std::enable_if_t<series_default_p_degree_impl::algo<T> != 0>>
-#endif
-    = series_default_p_degree_impl{};
+requires(series_default_p_degree_impl::algo<T> != 0) inline constexpr auto p_degree<T> = series_default_p_degree_impl{};
 
 // Helper to construct a vector of partial degrees
 // from a range of terms using the series_default_p_degree_impl
@@ -4286,12 +4092,8 @@ struct series_default_evaluate_impl {
 };
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_evaluate_impl::algo<T, U> != 0) inline constexpr auto evaluate<T, U>
-#else
-inline constexpr auto evaluate<T, U, ::std::enable_if_t<series_default_evaluate_impl::algo<T, U> != 0>>
-#endif
-    = series_default_evaluate_impl{};
+requires(series_default_evaluate_impl::algo<T, U> != 0) inline constexpr auto evaluate<
+    T, U> = series_default_evaluate_impl{};
 
 } // namespace customisation::internal
 
@@ -4413,12 +4215,7 @@ struct series_default_trim_impl {
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires(series_default_trim_impl::algo<T> != 0) inline constexpr auto trim<T>
-#else
-inline constexpr auto trim<T, ::std::enable_if_t<series_default_trim_impl::algo<T> != 0>>
-#endif
-    = series_default_trim_impl{};
+requires(series_default_trim_impl::algo<T> != 0) inline constexpr auto trim<T> = series_default_trim_impl{};
 
 } // namespace customisation::internal
 

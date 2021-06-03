@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -30,12 +29,7 @@ namespace customisation
 // but it probably makes sense to have a default implementation
 // for series kicking in when only the coefficient has a degree
 // (i.e., for Poisson series).
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto truncate_p_degree = not_implemented;
 
 } // namespace customisation
@@ -75,15 +69,11 @@ using is_p_degree_truncatable = is_detected<detail::truncate_p_degree_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_p_degree_truncatable_v = is_p_degree_truncatable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL PDegreeTruncatable = requires(T &&x, U &&y, const symbol_set &ss)
+concept PDegreeTruncatable = requires(T &&x, U &&y, const symbol_set &ss)
 {
     ::obake::truncate_p_degree(::std::forward<T>(x), ::std::forward<U>(y), ss);
 };
-
-#endif
 
 } // namespace obake
 

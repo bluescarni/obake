@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -24,24 +23,14 @@ namespace customisation
 {
 
 // External customisation point for obake::degree().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto degree = not_implemented;
 
 namespace internal
 {
 
 // Internal customisation point for obake::degree().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto degree = not_implemented;
 
 } // namespace internal
@@ -84,15 +73,11 @@ using is_with_degree = is_detected<detail::degree_t, T>;
 template <typename T>
 inline constexpr bool is_with_degree_v = is_with_degree<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL WithDegree = requires(T &&x)
+concept WithDegree = requires(T &&x)
 {
     ::obake::degree(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

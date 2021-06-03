@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,12 +24,7 @@ namespace customisation
 {
 
 // External customisation point for obake::monomial_mul().
-template <typename T, typename U, typename V
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U, typename V>
 inline constexpr auto monomial_mul = not_implemented;
 
 } // namespace customisation
@@ -75,15 +69,11 @@ using is_multipliable_monomial = is_detected<detail::monomial_mul_t, T, U, V>;
 template <typename T, typename U, typename V>
 inline constexpr bool is_multipliable_monomial_v = is_multipliable_monomial<T, U, V>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U, typename V>
-OBAKE_CONCEPT_DECL MultipliableMonomial = requires(T &&x, U &&y, V &&z, const symbol_set &ss)
+concept MultipliableMonomial = requires(T &&x, U &&y, V &&z, const symbol_set &ss)
 {
     ::obake::monomial_mul(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z), ss);
 };
-
-#endif
 
 } // namespace obake
 

@@ -32,8 +32,6 @@
 
 #define OBAKE_HAVE_CONCEPTS
 
-#define OBAKE_CONCEPT_DECL concept
-
 #else
 
 #error C++20 concepts not supported.

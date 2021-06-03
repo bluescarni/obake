@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,12 +24,7 @@ namespace customisation
 {
 
 // External customisation point for obake::key_is_zero().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto key_is_zero = not_implemented;
 
 } // namespace customisation
@@ -69,15 +63,11 @@ using is_zero_testable_key = is_detected<detail::key_is_zero_t, T>;
 template <typename T>
 inline constexpr bool is_zero_testable_key_v = is_zero_testable_key<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL ZeroTestableKey = requires(T &&x, const symbol_set &ss)
+concept ZeroTestableKey = requires(T &&x, const symbol_set &ss)
 {
     ::obake::key_is_zero(::std::forward<T>(x), ss);
 };
-
-#endif
 
 } // namespace obake
 

@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::key_trim().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto key_trim = not_implemented;
 
 } // namespace customisation
@@ -84,15 +78,11 @@ using is_trimmable_key = is_detected<detail::key_trim_t, T>;
 template <typename T>
 inline constexpr bool is_trimmable_key_v = is_trimmable_key<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL TrimmableKey = requires(T &&x, const symbol_idx_set &si, const symbol_set &ss)
+concept TrimmableKey = requires(T &&x, const symbol_idx_set &si, const symbol_set &ss)
 {
     ::obake::key_trim(::std::forward<T>(x), si, ss);
 };
-
-#endif
 
 } // namespace obake
 

@@ -42,12 +42,7 @@ namespace customisation
 {
 
 // External customisation point for obake::fma3().
-template <typename T, typename U, typename V
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U, typename V>
 inline constexpr auto fma3 = not_implemented;
 
 } // namespace customisation
@@ -143,15 +138,11 @@ using is_mult_addable = is_detected<detail::fma3_t, T, U, V>;
 template <typename T, typename U, typename V>
 inline constexpr bool is_mult_addable_v = is_mult_addable<T, U, V>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U, typename V>
-OBAKE_CONCEPT_DECL MultAddable = requires(T &&x, U &&y, V &&z)
+concept MultAddable = requires(T &&x, U &&y, V &&z)
 {
     ::obake::fma3(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z));
 };
-
-#endif
 
 } // namespace obake
 

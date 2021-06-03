@@ -14,7 +14,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -27,12 +26,7 @@ namespace customisation
 {
 
 // External customisation point for obake::hash().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto hash = not_implemented;
 
 } // namespace customisation
@@ -82,15 +76,11 @@ using is_hashable = is_detected<detail::hash_t, T>;
 template <typename T>
 inline constexpr bool is_hashable_v = is_hashable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Hashable = requires(T &&x)
+concept Hashable = requires(T &&x)
 {
     ::obake::hash(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 
