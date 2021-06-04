@@ -55,23 +55,15 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si00> inline constexpr auto cf_stream_insert<T>
-#else
-inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
-#endif
-    = [](std::ostream &, auto &&) constexpr noexcept
+requires SameCvr<T, ext_si00>
+inline constexpr auto cf_stream_insert<T> = [](std::ostream &, auto &&) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si01> inline constexpr auto cf_stream_insert<T>
-#else
-inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
-#endif
-    = [](std::ostream &, auto &) constexpr noexcept
+requires SameCvr<T, ext_si01>
+inline constexpr auto cf_stream_insert<T> = [](std::ostream &, auto &) constexpr noexcept
 {
     return true;
 };
@@ -80,23 +72,15 @@ namespace internal
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int_si00> inline constexpr auto cf_stream_insert<T>
-#else
-inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si00>>>
-#endif
-    = [](std::ostream &, auto &&) constexpr noexcept
+requires SameCvr<T, int_si00>
+inline constexpr auto cf_stream_insert<T> = [](std::ostream &, auto &&) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, int_si01> inline constexpr auto cf_stream_insert<T>
-#else
-inline constexpr auto cf_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, int_si01>>>
-#endif
-    = [](std::ostream &, auto &) constexpr noexcept
+requires SameCvr<T, int_si01>
+inline constexpr auto cf_stream_insert<T> = [](std::ostream &, auto &) constexpr noexcept
 {
     return true;
 };
@@ -156,7 +140,6 @@ TEST_CASE("cf_stream_insert_test")
     REQUIRE(is_stream_insertable_cf_v<const int_si01 &>);
     REQUIRE(!is_stream_insertable_cf_v<int_si01 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertableCf<void>);
 
     REQUIRE(StreamInsertableCf<int>);
@@ -200,7 +183,6 @@ TEST_CASE("cf_stream_insert_test")
     REQUIRE(StreamInsertableCf<int_si01 &>);
     REQUIRE(StreamInsertableCf<const int_si01 &>);
     REQUIRE(!StreamInsertableCf<int_si01 &&>);
-#endif
 }
 
 #if defined(OBAKE_HAVE_GCC_INT128)
@@ -217,7 +199,6 @@ TEST_CASE("cf_stream_insert_int128_test")
     REQUIRE(is_stream_insertable_cf_v<const __uint128_t &>);
     REQUIRE(is_stream_insertable_cf_v<__uint128_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(StreamInsertableCf<__int128_t>);
     REQUIRE(StreamInsertableCf<__int128_t &>);
     REQUIRE(StreamInsertableCf<const __int128_t &>);
@@ -227,7 +208,6 @@ TEST_CASE("cf_stream_insert_int128_test")
     REQUIRE(StreamInsertableCf<__uint128_t &>);
     REQUIRE(StreamInsertableCf<const __uint128_t &>);
     REQUIRE(StreamInsertableCf<__uint128_t &&>);
-#endif
 
     std::ostringstream oss;
     cf_stream_insert(oss, __int128_t(-42));

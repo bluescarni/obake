@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/truncate_degree.hpp>
 #include <obake/type_traits.hpp>
 
@@ -26,14 +25,12 @@ TEST_CASE("truncate_degree_arith")
     REQUIRE(!is_degree_truncatable_v<int &, const int>);
     REQUIRE(!is_degree_truncatable_v<const int &, double>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!DegreeTruncatable<void, void>);
     REQUIRE(!DegreeTruncatable<void, int>);
     REQUIRE(!DegreeTruncatable<int, void>);
     REQUIRE(!DegreeTruncatable<int, int>);
     REQUIRE(!DegreeTruncatable<int &, const int>);
     REQUIRE(!DegreeTruncatable<const int &, double>);
-#endif
 }
 
 struct notr_00 {
@@ -72,24 +69,16 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, tr_ext> inline constexpr auto truncate_degree<T, U>
-#else
-inline constexpr auto truncate_degree<T, U, std::enable_if_t<is_same_cvr_v<T, tr_ext>>>
-#endif
-    = [](auto &&, auto &&) constexpr noexcept
+requires SameCvr<T, tr_ext>
+inline constexpr auto truncate_degree<T, U> = [](auto &&, auto &&) constexpr noexcept
 {
     return tr_ext{};
 };
 
 // Wrong signature.
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notr_ext_01> inline constexpr auto truncate_degree<T, U>
-#else
-inline constexpr auto truncate_degree<T, U, std::enable_if_t<is_same_cvr_v<T, notr_ext_01>>>
-#endif
-    = [](notr_ext_01 &) constexpr noexcept
+requires SameCvr<T, notr_ext_01>
+inline constexpr auto truncate_degree<T, U> = [](notr_ext_01 &) constexpr noexcept
 {
     return 1;
 };
@@ -129,7 +118,6 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(!is_degree_truncatable_v<const notr_ext_01 &, int &>);
     REQUIRE(!is_degree_truncatable_v<notr_ext_01, double>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!DegreeTruncatable<ns::tr_00, void>);
     REQUIRE(!DegreeTruncatable<ns::tr_00 &, void>);
     REQUIRE(!DegreeTruncatable<const ns::tr_00 &, void>);
@@ -160,5 +148,4 @@ TEST_CASE("truncate_degree_custom")
     REQUIRE(!DegreeTruncatable<const notr_ext_01 &, const int>);
     REQUIRE(!DegreeTruncatable<const notr_ext_01 &, int &>);
     REQUIRE(!DegreeTruncatable<notr_ext_01, double>);
-#endif
 }

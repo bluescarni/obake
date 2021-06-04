@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,24 +24,14 @@ namespace customisation
 {
 
 // External customisation point for obake::trim().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto trim = not_implemented;
 
 namespace internal
 {
 
 // Internal customisation point for obake::trim().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto trim = not_implemented;
 
 } // namespace internal
@@ -81,22 +70,8 @@ constexpr auto trim_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct trim_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::trim_impl_with_ret_check(::std::forward<T>(x)))
-};
-
-inline constexpr auto trim = trim_msvc{};
-
-#else
-
 inline constexpr auto trim =
     [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::trim_impl_with_ret_check(::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {
@@ -112,15 +87,11 @@ using is_trimmable = is_detected<detail::trim_t, T>;
 template <typename T>
 inline constexpr bool is_trimmable_v = is_trimmable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Trimmable = requires(T &&x)
+concept Trimmable = requires(T &&x)
 {
     ::obake::trim(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

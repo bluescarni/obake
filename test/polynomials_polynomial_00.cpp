@@ -104,7 +104,6 @@ TEST_CASE("is_polynomial_test")
     REQUIRE(!is_polynomial_v<poly_t &&>);
     REQUIRE(!is_polynomial_v<const poly_t>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Polynomial<poly_t>);
     REQUIRE(!Polynomial<void>);
     REQUIRE(!Polynomial<int>);
@@ -113,7 +112,6 @@ TEST_CASE("is_polynomial_test")
     REQUIRE(!Polynomial<poly_t &>);
     REQUIRE(!Polynomial<poly_t &&>);
     REQUIRE(!Polynomial<const poly_t>);
-#endif
 }
 
 #if defined(OBAKE_PACKABLE_INT64)

@@ -172,7 +172,6 @@ TEST_CASE("ranges_test")
     REQUIRE(!obake::is_random_access_range_v<std::set<int>>);
     REQUIRE(!obake::is_random_access_range_v<std::unordered_set<int>>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!obake::Range<void>);
     REQUIRE(!obake::InputRange<void>);
     REQUIRE(!obake::ForwardRange<void>);
@@ -253,7 +252,6 @@ TEST_CASE("ranges_test")
     REQUIRE(!obake::RandomAccessRange<const ns::range04>);
     REQUIRE(!obake::RandomAccessRange<std::set<int>>);
     REQUIRE(!obake::RandomAccessRange<std::unordered_set<int>>);
-#endif
 
     // A couple of runtime tests.
     std::vector<int> v_int_0 = {1, 2, 3};

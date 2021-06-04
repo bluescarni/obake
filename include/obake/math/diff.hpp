@@ -43,12 +43,7 @@ namespace customisation
 {
 
 // External customisation point for obake::diff().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto diff = not_implemented;
 
 } // namespace customisation
@@ -109,22 +104,8 @@ constexpr auto diff_impl(T &&x, const ::std::string &s, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct diff_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const ::std::string &s) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::diff_impl(::std::forward<T>(x), s, detail::priority_tag<1>{}))
-};
-
-inline constexpr auto diff = diff_msvc{};
-
-#else
-
 inline constexpr auto diff = [](auto &&x, const ::std::string &s)
     OBAKE_SS_FORWARD_LAMBDA(detail::diff_impl(::std::forward<decltype(x)>(x), s, detail::priority_tag<1>{}));
-
-#endif
 
 namespace detail
 {
@@ -140,15 +121,11 @@ using is_differentiable = is_detected<detail::diff_t, T>;
 template <typename T>
 inline constexpr bool is_differentiable_v = is_differentiable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Differentiable = requires(T &&x, const ::std::string &s)
+concept Differentiable = requires(T &&x, const ::std::string &s)
 {
     ::obake::diff(::std::forward<T>(x), s);
 };
-
-#endif
 
 } // namespace obake
 

@@ -73,7 +73,6 @@ TEST_CASE("is_integral")
     REQUIRE(!is_integral_v<__uint128_t &&>);
 #endif
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(integral<int>);
     REQUIRE(integral<const int>);
     REQUIRE(integral<const volatile int>);
@@ -81,10 +80,8 @@ TEST_CASE("is_integral")
     REQUIRE(!integral<int &>);
     REQUIRE(!integral<const int &>);
     REQUIRE(!integral<int &&>);
-#endif
 }
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 TEST_CASE("is_floating_point")
 {
     REQUIRE(FloatingPoint<float>);
@@ -95,7 +92,6 @@ TEST_CASE("is_floating_point")
     REQUIRE(!FloatingPoint<const float &>);
     REQUIRE(!FloatingPoint<float &&>);
 }
-#endif
 
 TEST_CASE("is_arithmetic")
 {
@@ -110,7 +106,6 @@ TEST_CASE("is_arithmetic")
     REQUIRE(!is_arithmetic_v<std::string>);
     REQUIRE(!is_arithmetic_v<void>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Arithmetic<float>);
     REQUIRE(Arithmetic<const bool>);
     REQUIRE(Arithmetic<const volatile long>);
@@ -118,7 +113,6 @@ TEST_CASE("is_arithmetic")
     REQUIRE(!Arithmetic<float &>);
     REQUIRE(!Arithmetic<const int &>);
     REQUIRE(!Arithmetic<short &&>);
-#endif
 }
 
 TEST_CASE("is_signed")
@@ -152,7 +146,6 @@ TEST_CASE("is_signed")
     REQUIRE(!is_signed_v<const __uint128_t &>);
 #endif
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Signed<void>);
     REQUIRE(!Signed<void>);
     REQUIRE(!Signed<unsigned>);
@@ -181,7 +174,6 @@ TEST_CASE("is_signed")
     REQUIRE(!Signed<__uint128_t &>);
     REQUIRE(!Signed<__uint128_t &&>);
     REQUIRE(!Signed<const __uint128_t &>);
-#endif
 #endif
 }
 
@@ -237,10 +229,8 @@ TEST_CASE("is_returnable")
     REQUIRE(!is_returnable_v<unreturnable_01>);
     REQUIRE(is_returnable_v<unreturnable_01 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Returnable<const volatile void>);
     REQUIRE(!Returnable<unreturnable_00>);
-#endif
 }
 
 TEST_CASE("is_same_cvr")
@@ -259,13 +249,11 @@ TEST_CASE("is_same_cvr")
     REQUIRE(is_same_cvr_v<volatile void, const void>);
     REQUIRE(is_same_cvr_v<const volatile void, const void>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(SameCvr<int, int>);
     REQUIRE(SameCvr<int, int &>);
     REQUIRE(SameCvr<const int, int &>);
     REQUIRE(!SameCvr<int, void>);
     REQUIRE(!SameCvr<int *, int &>);
-#endif
 }
 
 template <typename T, std::enable_if_t<is_string_like_v<T>, int> = 0>
@@ -311,7 +299,6 @@ TEST_CASE("is_string_like_v")
     REQUIRE(!is_string_like_v<const std::string_view &>);
     REQUIRE(is_string_like_v<const std::string_view>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StringLike<void>);
     REQUIRE(StringLike<char *>);
     REQUIRE(StringLike<const char *>);
@@ -320,7 +307,6 @@ TEST_CASE("is_string_like_v")
     REQUIRE(StringLike<std::string>);
     REQUIRE(StringLike<std::string_view>);
     REQUIRE(!StringLike<std::string &>);
-#endif
 
     std::string s{"foo"};
     check_string_like_dispatch(std::string{"foo"});
@@ -378,7 +364,6 @@ TEST_CASE("is_addable")
     REQUIRE(!is_addable_v<nonaddable_1, addable_0>);
     REQUIRE(!is_addable_v<nonaddable_2, addable_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Addable<void>);
     REQUIRE(!Addable<void, void>);
     REQUIRE(!Addable<void, int>);
@@ -394,7 +379,6 @@ TEST_CASE("is_addable")
     REQUIRE(Addable<addable_1, addable_0>);
     REQUIRE(!Addable<nonaddable_1, addable_0>);
     REQUIRE(!Addable<nonaddable_2, addable_0>);
-#endif
 }
 
 struct noncomp_0 {
@@ -449,7 +433,6 @@ TEST_CASE("is_equality_comparable")
     REQUIRE(is_equality_comparable_v<comp_0>);
     REQUIRE(!is_equality_comparable_v<comp_0, noncomp_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!EqualityComparable<void>);
     REQUIRE(!EqualityComparable<void, void>);
     REQUIRE(!EqualityComparable<int, void>);
@@ -465,7 +448,6 @@ TEST_CASE("is_equality_comparable")
     REQUIRE(!EqualityComparable<noncomp_2>);
     REQUIRE(EqualityComparable<comp_0>);
     REQUIRE(!EqualityComparable<comp_0, noncomp_0>);
-#endif
 }
 
 struct nonlt_0 {
@@ -503,7 +485,6 @@ TEST_CASE("is_less_than_comparable")
     REQUIRE(is_less_than_comparable_v<lt_0>);
     REQUIRE(!is_less_than_comparable_v<lt_0, nonlt_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!LessThanComparable<void>);
     REQUIRE(!LessThanComparable<void, void>);
     REQUIRE(!LessThanComparable<int, void>);
@@ -518,7 +499,6 @@ TEST_CASE("is_less_than_comparable")
     REQUIRE(!LessThanComparable<nonlt_1>);
     REQUIRE(LessThanComparable<lt_0>);
     REQUIRE(!LessThanComparable<lt_0, nonlt_0>);
-#endif
 }
 
 struct nongt_0 {
@@ -556,7 +536,6 @@ TEST_CASE("is_greater_than_comparable")
     REQUIRE(is_greater_than_comparable_v<gt_0>);
     REQUIRE(!is_greater_than_comparable_v<gt_0, nongt_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!GreaterThanComparable<void>);
     REQUIRE(!GreaterThanComparable<void, void>);
     REQUIRE(!GreaterThanComparable<int, void>);
@@ -571,7 +550,6 @@ TEST_CASE("is_greater_than_comparable")
     REQUIRE(!GreaterThanComparable<nongt_1>);
     REQUIRE(GreaterThanComparable<gt_0>);
     REQUIRE(!GreaterThanComparable<gt_0, nongt_0>);
-#endif
 }
 
 struct nonlte_0 {
@@ -609,7 +587,6 @@ TEST_CASE("is_lte_comparable")
     REQUIRE(is_lte_comparable_v<lte_0>);
     REQUIRE(!is_lte_comparable_v<lte_0, nonlte_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!LTEComparable<void>);
     REQUIRE(!LTEComparable<void, void>);
     REQUIRE(!LTEComparable<int, void>);
@@ -624,7 +601,6 @@ TEST_CASE("is_lte_comparable")
     REQUIRE(!LTEComparable<nonlte_1>);
     REQUIRE(LTEComparable<lte_0>);
     REQUIRE(!LTEComparable<lte_0, nonlte_0>);
-#endif
 }
 
 struct nongte_0 {
@@ -662,7 +638,6 @@ TEST_CASE("is_gte_comparable")
     REQUIRE(is_gte_comparable_v<gte_0>);
     REQUIRE(!is_gte_comparable_v<gte_0, nongte_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!GTEComparable<void>);
     REQUIRE(!GTEComparable<void, void>);
     REQUIRE(!GTEComparable<int, void>);
@@ -677,7 +652,6 @@ TEST_CASE("is_gte_comparable")
     REQUIRE(!GTEComparable<nongte_1>);
     REQUIRE(GTEComparable<gte_0>);
     REQUIRE(!GTEComparable<gte_0, nongte_0>);
-#endif
 }
 
 TEST_CASE("is_pre_incrementable")
@@ -688,13 +662,11 @@ TEST_CASE("is_pre_incrementable")
     REQUIRE(!is_pre_incrementable_v<int &&>);
     REQUIRE(!is_pre_incrementable_v<std::string &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PreIncrementable<void>);
     REQUIRE(PreIncrementable<int &>);
     REQUIRE(!PreIncrementable<const int &>);
     REQUIRE(!PreIncrementable<int &&>);
     REQUIRE(!PreIncrementable<std::string &>);
-#endif
 }
 
 TEST_CASE("is_post_incrementable")
@@ -705,13 +677,11 @@ TEST_CASE("is_post_incrementable")
     REQUIRE(!is_post_incrementable_v<int &&>);
     REQUIRE(!is_post_incrementable_v<std::string &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PostIncrementable<void>);
     REQUIRE(PostIncrementable<int &>);
     REQUIRE(!PostIncrementable<const int &>);
     REQUIRE(!PostIncrementable<int &&>);
     REQUIRE(!PostIncrementable<std::string &>);
-#endif
 }
 
 TEST_CASE("is_pre_decrementable")
@@ -722,13 +692,11 @@ TEST_CASE("is_pre_decrementable")
     REQUIRE(!is_pre_decrementable_v<int &&>);
     REQUIRE(!is_pre_decrementable_v<std::string &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PreDecrementable<void>);
     REQUIRE(PreDecrementable<int &>);
     REQUIRE(!PreDecrementable<const int &>);
     REQUIRE(!PreDecrementable<int &&>);
     REQUIRE(!PreDecrementable<std::string &>);
-#endif
 }
 
 TEST_CASE("is_post_decrementable")
@@ -739,13 +707,11 @@ TEST_CASE("is_post_decrementable")
     REQUIRE(!is_post_decrementable_v<int &&>);
     REQUIRE(!is_post_decrementable_v<std::string &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PostDecrementable<void>);
     REQUIRE(PostDecrementable<int &>);
     REQUIRE(!PostDecrementable<const int &>);
     REQUIRE(!PostDecrementable<int &&>);
     REQUIRE(!PostDecrementable<std::string &>);
-#endif
 }
 
 // Boilerplate to test the arrow op type trait.
@@ -1363,7 +1329,6 @@ TEST_CASE("iterators")
     REQUIRE((!is_random_access_iterator_v<std::map<int, int>::const_iterator>));
     REQUIRE((!is_random_access_iterator_v<std::unordered_map<int, int>::const_iterator>));
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     // Just a few concept checks, as currently the concepts
     // are based on the type traits.
     REQUIRE(!Iterator<void>);
@@ -1384,7 +1349,6 @@ TEST_CASE("iterators")
     REQUIRE(RandomAccessIterator<int *>);
     REQUIRE(!RandomAccessIterator<const void>);
     REQUIRE(!RandomAccessIterator<std::unordered_map<int, int>::const_iterator>);
-#endif
 }
 
 TEST_CASE("limits_digits")
@@ -1424,7 +1388,6 @@ TEST_CASE("semi_regular")
     REQUIRE(!is_semi_regular_v<nondtible>);
     REQUIRE(!is_semi_regular_v<nondfctible>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SemiRegular<void>);
     REQUIRE(!SemiRegular<void(int)>);
     REQUIRE(SemiRegular<int>);
@@ -1435,7 +1398,6 @@ TEST_CASE("semi_regular")
     REQUIRE(!SemiRegular<int &&>);
     REQUIRE(!SemiRegular<nondtible>);
     REQUIRE(!SemiRegular<nondfctible>);
-#endif
 }
 
 struct non_si_00 {
@@ -1482,7 +1444,6 @@ TEST_CASE("stream_insertable")
     REQUIRE(is_stream_insertable_v<yes_si &>);
     REQUIRE(is_stream_insertable_v<yes_si &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertable<void>);
 
     REQUIRE(StreamInsertable<int>);
@@ -1505,7 +1466,6 @@ TEST_CASE("stream_insertable")
     REQUIRE(StreamInsertable<yes_si &>);
     REQUIRE(StreamInsertable<yes_si &>);
     REQUIRE(StreamInsertable<yes_si &&>);
-#endif
 }
 
 TEST_CASE("in_place_addable")
@@ -1534,7 +1494,6 @@ TEST_CASE("in_place_addable")
     REQUIRE(!is_in_place_addable_v<int, const int &>);
     REQUIRE(!is_in_place_addable_v<int, int &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!InPlaceAddable<void, void>);
     REQUIRE(!InPlaceAddable<void, int>);
     REQUIRE(!InPlaceAddable<int, void>);
@@ -1558,7 +1517,6 @@ TEST_CASE("in_place_addable")
     REQUIRE(!InPlaceAddable<int, int &>);
     REQUIRE(!InPlaceAddable<int, const int &>);
     REQUIRE(!InPlaceAddable<int, int &&>);
-#endif
 }
 
 struct nonsubtractable_0 {
@@ -1600,7 +1558,6 @@ TEST_CASE("is_subtractable")
     REQUIRE(!is_subtractable_v<nonsubtractable_1, subtractable_0>);
     REQUIRE(!is_subtractable_v<nonsubtractable_2, subtractable_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Subtractable<void>);
     REQUIRE(!Subtractable<void, void>);
     REQUIRE(!Subtractable<void, int>);
@@ -1616,7 +1573,6 @@ TEST_CASE("is_subtractable")
     REQUIRE(Subtractable<subtractable_1, subtractable_0>);
     REQUIRE(!Subtractable<nonsubtractable_1, subtractable_0>);
     REQUIRE(!Subtractable<nonsubtractable_2, subtractable_0>);
-#endif
 }
 
 TEST_CASE("in_place_subtractable")
@@ -1645,7 +1601,6 @@ TEST_CASE("in_place_subtractable")
     REQUIRE(!is_in_place_subtractable_v<int, const int &>);
     REQUIRE(!is_in_place_subtractable_v<int, int &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!InPlaceSubtractable<void, void>);
     REQUIRE(!InPlaceSubtractable<void, int>);
     REQUIRE(!InPlaceSubtractable<int, void>);
@@ -1669,7 +1624,6 @@ TEST_CASE("in_place_subtractable")
     REQUIRE(!InPlaceSubtractable<int, int &>);
     REQUIRE(!InPlaceSubtractable<int, const int &>);
     REQUIRE(!InPlaceSubtractable<int, int &&>);
-#endif
 }
 
 struct defstr00 {
@@ -1684,7 +1638,6 @@ struct nondestr00 {
 
 TEST_CASE("constructible")
 {
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Constructible<void>);
 
     REQUIRE(Constructible<int>);
@@ -1698,7 +1651,6 @@ TEST_CASE("constructible")
     REQUIRE(Constructible<defstr00, int &, const int &>);
 
     REQUIRE(!Constructible<nondestr00>);
-#endif
 }
 
 TEST_CASE("mutable_rvalue_reference")
@@ -1711,7 +1663,6 @@ TEST_CASE("mutable_rvalue_reference")
     REQUIRE(!is_mutable_rvalue_reference_v<const int &&>);
     REQUIRE(is_mutable_rvalue_reference_v<int &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MutableRvalueReference<void>);
 
     REQUIRE(!MutableRvalueReference<int>);
@@ -1719,7 +1670,6 @@ TEST_CASE("mutable_rvalue_reference")
     REQUIRE(!MutableRvalueReference<const int &>);
     REQUIRE(!MutableRvalueReference<const int &&>);
     REQUIRE(MutableRvalueReference<int &&>);
-#endif
 }
 
 struct nonmultipliable_0 {
@@ -1761,7 +1711,6 @@ TEST_CASE("is_multipliable")
     REQUIRE(!is_multipliable_v<nonmultipliable_1, multipliable_0>);
     REQUIRE(!is_multipliable_v<nonmultipliable_2, multipliable_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Multipliable<void>);
     REQUIRE(!Multipliable<void, void>);
     REQUIRE(!Multipliable<void, int>);
@@ -1777,7 +1726,6 @@ TEST_CASE("is_multipliable")
     REQUIRE(Multipliable<multipliable_1, multipliable_0>);
     REQUIRE(!Multipliable<nonmultipliable_1, multipliable_0>);
     REQUIRE(!Multipliable<nonmultipliable_2, multipliable_0>);
-#endif
 }
 
 TEST_CASE("in_place_multipliable")
@@ -1806,7 +1754,6 @@ TEST_CASE("in_place_multipliable")
     REQUIRE(!is_in_place_multipliable_v<int, const int &>);
     REQUIRE(!is_in_place_multipliable_v<int, int &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!InPlaceMultipliable<void, void>);
     REQUIRE(!InPlaceMultipliable<void, int>);
     REQUIRE(!InPlaceMultipliable<int, void>);
@@ -1830,7 +1777,6 @@ TEST_CASE("in_place_multipliable")
     REQUIRE(!InPlaceMultipliable<int, int &>);
     REQUIRE(!InPlaceMultipliable<int, const int &>);
     REQUIRE(!InPlaceMultipliable<int, int &&>);
-#endif
 }
 
 struct nondivisible_0 {
@@ -1872,7 +1818,6 @@ TEST_CASE("is_divisible")
     REQUIRE(!is_divisible_v<nondivisible_1, divisible_0>);
     REQUIRE(!is_divisible_v<nondivisible_2, divisible_0>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Divisible<void>);
     REQUIRE(!Divisible<void, void>);
     REQUIRE(!Divisible<void, int>);
@@ -1888,7 +1833,6 @@ TEST_CASE("is_divisible")
     REQUIRE(Divisible<divisible_1, divisible_0>);
     REQUIRE(!Divisible<nondivisible_1, divisible_0>);
     REQUIRE(!Divisible<nondivisible_2, divisible_0>);
-#endif
 }
 
 TEST_CASE("in_place_divisible")
@@ -1917,7 +1861,6 @@ TEST_CASE("in_place_divisible")
     REQUIRE(!is_in_place_divisible_v<int, const int &>);
     REQUIRE(!is_in_place_divisible_v<int, int &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!InPlaceDivisible<void, void>);
     REQUIRE(!InPlaceDivisible<void, int>);
     REQUIRE(!InPlaceDivisible<int, void>);
@@ -1941,5 +1884,4 @@ TEST_CASE("in_place_divisible")
     REQUIRE(!InPlaceDivisible<int, int &>);
     REQUIRE(!InPlaceDivisible<int, const int &>);
     REQUIRE(!InPlaceDivisible<int, int &&>);
-#endif
 }

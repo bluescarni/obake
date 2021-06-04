@@ -52,7 +52,6 @@ TEST_CASE("is_zero_arith")
     REQUIRE(obake::is_zero_testable_v<const __uint128_t &>);
     REQUIRE(obake::is_zero_testable_v<__int128_t &>);
 #endif
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!obake::ZeroTestable<void>);
     REQUIRE(obake::ZeroTestable<float>);
     REQUIRE(obake::ZeroTestable<int>);
@@ -67,7 +66,6 @@ TEST_CASE("is_zero_arith")
     REQUIRE(obake::ZeroTestable<const __uint128_t>);
     REQUIRE(obake::ZeroTestable<const __uint128_t &>);
     REQUIRE(obake::ZeroTestable<__int128_t &>);
-#endif
 #endif
 
     REQUIRE(c_iz);
@@ -101,12 +99,10 @@ TEST_CASE("is_zero_mp++_int")
     REQUIRE(obake::is_zero_testable_v<const int_t &>);
     REQUIRE(obake::is_zero_testable_v<int_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::ZeroTestable<int_t>);
     REQUIRE(obake::ZeroTestable<int_t &>);
     REQUIRE(obake::ZeroTestable<const int_t &>);
     REQUIRE(obake::ZeroTestable<int_t &&>);
-#endif
 
     REQUIRE(obake::is_zero(int_t{}));
     REQUIRE(!obake::is_zero(int_t{-1}));
@@ -121,12 +117,10 @@ TEST_CASE("is_zero_mp++_rat")
     REQUIRE(obake::is_zero_testable_v<const rat_t &>);
     REQUIRE(obake::is_zero_testable_v<rat_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::ZeroTestable<rat_t>);
     REQUIRE(obake::ZeroTestable<rat_t &>);
     REQUIRE(obake::ZeroTestable<const rat_t &>);
     REQUIRE(obake::ZeroTestable<rat_t &&>);
-#endif
 
     REQUIRE(obake::is_zero(rat_t{}));
     REQUIRE(!obake::is_zero(rat_t{-1, 45}));
@@ -141,12 +135,10 @@ TEST_CASE("is_zero_mp++_real")
     REQUIRE(obake::is_zero_testable_v<const mppp::real &>);
     REQUIRE(obake::is_zero_testable_v<mppp::real &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::ZeroTestable<mppp::real>);
     REQUIRE(obake::ZeroTestable<mppp::real &>);
     REQUIRE(obake::ZeroTestable<const mppp::real &>);
     REQUIRE(obake::ZeroTestable<mppp::real &&>);
-#endif
 
     REQUIRE(obake::is_zero(mppp::real{}));
     REQUIRE(!obake::is_zero(mppp::real{42}));
@@ -165,12 +157,10 @@ TEST_CASE("is_zero_mp++_real128")
     REQUIRE(obake::is_zero_testable_v<const mppp::real128 &>);
     REQUIRE(obake::is_zero_testable_v<mppp::real128 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::ZeroTestable<mppp::real128>);
     REQUIRE(obake::ZeroTestable<mppp::real128 &>);
     REQUIRE(obake::ZeroTestable<const mppp::real128 &>);
     REQUIRE(obake::ZeroTestable<mppp::real128 &&>);
-#endif
 
     REQUIRE(obake::is_zero(mppp::real128{}));
     REQUIRE(!obake::is_zero(mppp::real128{42}));
@@ -220,10 +210,8 @@ TEST_CASE("is_zero_custom")
     REQUIRE(obake::is_zero_testable_v<is_zero_0>);
     REQUIRE(obake::is_zero_testable_v<is_zero_1>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!obake::ZeroTestable<no_is_zero_0>);
     REQUIRE(!obake::ZeroTestable<no_is_zero_1>);
     REQUIRE(obake::ZeroTestable<is_zero_0>);
     REQUIRE(obake::ZeroTestable<is_zero_1>);
-#endif
 }

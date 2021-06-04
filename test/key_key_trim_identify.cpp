@@ -10,7 +10,6 @@
 #include <type_traits>
 #include <vector>
 
-#include <obake/config.hpp>
 #include <obake/key/key_trim_identify.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -55,34 +54,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt00> inline constexpr auto key_trim_identify<T>
-#else
-inline constexpr auto key_trim_identify<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
-#endif
-    = [](std::vector<int> &, auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt00>
+inline constexpr auto key_trim_identify<T> = [](std::vector<int> &, auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt01> inline constexpr auto key_trim_identify<T>
-#else
-inline constexpr auto key_trim_identify<T, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
-#endif
-    = [](std::vector<int> &, auto &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt01>
+inline constexpr auto key_trim_identify<T> = [](std::vector<int> &, auto &, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nzt00> inline constexpr auto key_trim_identify<T>
-#else
-inline constexpr auto key_trim_identify<T, std::enable_if_t<is_same_cvr_v<T, ext_nzt00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_nzt00>
+inline constexpr auto key_trim_identify<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return std::string{};
 };
@@ -135,7 +122,6 @@ TEST_CASE("key_trim_identify_test")
 
     REQUIRE(!is_trim_identifiable_key_v<const ext_nzt00 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!TrimIdentifiableKey<void>);
 
     REQUIRE(!TrimIdentifiableKey<int>);
@@ -171,5 +157,4 @@ TEST_CASE("key_trim_identify_test")
     REQUIRE(!TrimIdentifiableKey<ext_zt01 &&>);
 
     REQUIRE(!TrimIdentifiableKey<const ext_nzt00 &>);
-#endif
 }

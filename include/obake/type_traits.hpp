@@ -69,12 +69,8 @@ using is_same_cvr = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
 template <typename T, typename U>
 inline constexpr bool is_same_cvr_v = is_same_cvr<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL SameCvr = is_same_cvr_v<T, U>;
-
-#endif
+concept SameCvr = is_same_cvr_v<T, U>;
 
 // Detect nonconst rvalue reference.
 template <typename T>
@@ -84,12 +80,8 @@ using is_mutable_rvalue_reference
 template <typename T>
 inline constexpr bool is_mutable_rvalue_reference_v = is_mutable_rvalue_reference<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL MutableRvalueReference = is_mutable_rvalue_reference_v<T>;
-
-#endif
+concept MutableRvalueReference = is_mutable_rvalue_reference_v<T>;
 
 // Detect C++ integral types, including GCC-style 128bit integers.
 template <typename T>
@@ -104,20 +96,12 @@ using is_integral = ::std::disjunction<::std::is_integral<T>
 template <typename T>
 inline constexpr bool is_integral_v = is_integral<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL integral = is_integral_v<T>;
-
-#endif
-
-#if defined(OBAKE_HAVE_CONCEPTS)
+concept integral = is_integral_v<T>;
 
 // Concept for detecting C++ FP types.
 template <typename T>
-OBAKE_CONCEPT_DECL FloatingPoint = ::std::is_floating_point_v<T>;
-
-#endif
+concept FloatingPoint = ::std::is_floating_point_v<T>;
 
 // Detect C++ arithmetic types, including GCC-style 128bit integers.
 template <typename T>
@@ -126,12 +110,8 @@ using is_arithmetic = ::std::disjunction<is_integral<T>, ::std::is_floating_poin
 template <typename T>
 inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Arithmetic = is_arithmetic_v<T>;
-
-#endif
+concept Arithmetic = is_arithmetic_v<T>;
 
 // Detect (possibly cv-qualified) signed types.
 // Supports also 128bit integers.
@@ -146,36 +126,32 @@ using is_signed = ::std::disjunction<::std::is_signed<T>
 template <typename T>
 inline constexpr bool is_signed_v = is_signed<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Signed = is_signed_v<T>;
-
-#endif
+concept Signed = is_signed_v<T>;
 
 namespace detail
 {
 
-template <typename T, typename = void>
-struct make_unsigned_impl : ::std::make_unsigned<T> {
-    // NOTE: std::make_unsigned requires integrals but refuses bool:
-    // https://en.cppreference.com/w/cpp/types/make_unsigned
-    static_assert(!::std::is_same_v<bool, ::std::remove_cv_t<T>>,
-                  "make_unsigned_t does not accept bool as input type.");
-    static_assert(::std::is_integral_v<::std::remove_cv_t<T>> || ::std::is_enum_v<::std::remove_cv_t<T>>,
-                  "make_unsigned_t works only on integrals or enumeration types.");
-};
+    template <typename T, typename = void>
+    struct make_unsigned_impl : ::std::make_unsigned<T> {
+        // NOTE: std::make_unsigned requires integrals but refuses bool:
+        // https://en.cppreference.com/w/cpp/types/make_unsigned
+        static_assert(!::std::is_same_v<bool, ::std::remove_cv_t<T>>,
+                      "make_unsigned_t does not accept bool as input type.");
+        static_assert(::std::is_integral_v<::std::remove_cv_t<T>> || ::std::is_enum_v<::std::remove_cv_t<T>>,
+                      "make_unsigned_t works only on integrals or enumeration types.");
+    };
 
 #if defined(OBAKE_HAVE_GCC_INT128)
 
-// NOTE: make_unsigned is supposed to preserve cv qualifiers, hence the non-trivial implementation.
-template <typename T>
-struct make_unsigned_impl<T,
-                          ::std::enable_if_t<::std::disjunction_v<::std::is_same<::std::remove_cv_t<T>, __uint128_t>,
-                                                                  ::std::is_same<::std::remove_cv_t<T>, __int128_t>>>> {
-    using tmp_type = ::std::conditional_t<::std::is_const_v<T>, const __uint128_t, __uint128_t>;
-    using type = ::std::conditional_t<::std::is_volatile_v<T>, volatile tmp_type, tmp_type>;
-};
+    // NOTE: make_unsigned is supposed to preserve cv qualifiers, hence the non-trivial implementation.
+    template <typename T>
+    struct make_unsigned_impl<
+        T, ::std::enable_if_t<::std::disjunction_v<::std::is_same<::std::remove_cv_t<T>, __uint128_t>,
+                                                   ::std::is_same<::std::remove_cv_t<T>, __int128_t>>>> {
+        using tmp_type = ::std::conditional_t<::std::is_const_v<T>, const __uint128_t, __uint128_t>;
+        using type = ::std::conditional_t<::std::is_volatile_v<T>, volatile tmp_type, tmp_type>;
+    };
 
 #endif
 
@@ -213,19 +189,11 @@ using is_semi_regular
 template <typename T>
 inline constexpr bool is_semi_regular_v = is_semi_regular<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL SemiRegular = is_semi_regular_v<T>;
-
-#endif
-
-#if defined(OBAKE_HAVE_CONCEPTS)
+concept SemiRegular = is_semi_regular_v<T>;
 
 template <typename T, typename... Args>
-OBAKE_CONCEPT_DECL Constructible = ::std::is_constructible_v<T, Args...>;
-
-#endif
+concept Constructible = ::std::is_constructible_v<T, Args...>;
 
 // Detect if a local variable of a given type can be returned from a function.
 // NOTE: for returnability, we check for constructability from
@@ -240,23 +208,19 @@ using is_returnable = ::std::disjunction<
 template <typename T>
 inline constexpr bool is_returnable_v = is_returnable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Returnable = is_returnable_v<T>;
-
-#endif
+concept Returnable = is_returnable_v<T>;
 
 namespace detail
 {
 
-// NOTE: std::remove_pointer_t removes the top level qualifiers of the pointer as well:
-// http://en.cppreference.com/w/cpp/types/remove_pointer
-// After removal of pointer, we could still have a type which is cv-qualified. Thus,
-// we remove cv-qualifications after pointer removal.
-template <typename T>
-using is_char_pointer
-    = ::std::conjunction<::std::is_pointer<T>, ::std::is_same<::std::remove_cv_t<::std::remove_pointer_t<T>>, char>>;
+    // NOTE: std::remove_pointer_t removes the top level qualifiers of the pointer as well:
+    // http://en.cppreference.com/w/cpp/types/remove_pointer
+    // After removal of pointer, we could still have a type which is cv-qualified. Thus,
+    // we remove cv-qualifications after pointer removal.
+    template <typename T>
+    using is_char_pointer = ::std::conjunction<::std::is_pointer<T>,
+                                               ::std::is_same<::std::remove_cv_t<::std::remove_pointer_t<T>>, char>>;
 
 } // namespace detail
 
@@ -277,12 +241,8 @@ using is_string_like = ::std::disjunction<
 template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL StringLike = is_string_like_v<T>;
-
-#endif
+concept StringLike = is_string_like_v<T>;
 
 // NOTE: the binary operators require symmetry, but
 // the in-place operators do not. We should probably
@@ -290,8 +250,8 @@ OBAKE_CONCEPT_DECL StringLike = is_string_like_v<T>;
 namespace detail
 {
 
-template <typename T, typename U>
-using add_t = decltype(::std::declval<T>() + ::std::declval<U>());
+    template <typename T, typename U>
+    using add_t = decltype(::std::declval<T>() + ::std::declval<U>());
 
 }
 
@@ -302,18 +262,14 @@ using is_addable = ::std::conjunction<is_detected<detail::add_t, T, U>, is_detec
 template <typename T, typename U = T>
 inline constexpr bool is_addable_v = is_addable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL Addable = requires(T &&x, U &&y)
+concept Addable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) + ::std::forward<U>(y);
     ::std::forward<U>(y) + ::std::forward<T>(x);
     requires ::std::is_same_v<decltype(::std::forward<T>(x) + ::std::forward<U>(y)),
                               decltype(::std::forward<U>(y) + ::std::forward<T>(x))>;
 };
-
-#endif
 
 namespace detail
 {
@@ -329,15 +285,11 @@ using is_in_place_addable = is_detected<detail::in_place_add_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_in_place_addable_v = is_in_place_addable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL InPlaceAddable = requires(T &&x, U &&y)
+concept InPlaceAddable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) += ::std::forward<U>(y);
 };
-
-#endif
 
 namespace detail
 {
@@ -367,15 +319,11 @@ using is_pre_incrementable = is_detected<detail::preinc_t, T>;
 template <typename T>
 inline constexpr bool is_pre_incrementable_v = is_pre_incrementable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL PreIncrementable = requires(T &&x)
+concept PreIncrementable = requires(T &&x)
 {
     ++::std::forward<T>(x);
 };
-
-#endif
 
 namespace detail
 {
@@ -405,15 +353,11 @@ using is_post_incrementable = is_detected<detail::postinc_t, T>;
 template <typename T>
 inline constexpr bool is_post_incrementable_v = is_post_incrementable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL PostIncrementable = requires(T &&x)
+concept PostIncrementable = requires(T &&x)
 {
     ::std::forward<T>(x)++;
 };
-
-#endif
 
 namespace detail
 {
@@ -431,18 +375,14 @@ using is_subtractable
 template <typename T, typename U = T>
 inline constexpr bool is_subtractable_v = is_subtractable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL Subtractable = requires(T &&x, U &&y)
+concept Subtractable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) - ::std::forward<U>(y);
     ::std::forward<U>(y) - ::std::forward<T>(x);
     requires ::std::is_same_v<decltype(::std::forward<T>(x) - ::std::forward<U>(y)),
                               decltype(::std::forward<U>(y) - ::std::forward<T>(x))>;
 };
-
-#endif
 
 namespace detail
 {
@@ -458,15 +398,11 @@ using is_in_place_subtractable = is_detected<detail::in_place_sub_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_in_place_subtractable_v = is_in_place_subtractable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL InPlaceSubtractable = requires(T &&x, U &&y)
+concept InPlaceSubtractable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) -= ::std::forward<U>(y);
 };
-
-#endif
 
 namespace detail
 {
@@ -483,15 +419,11 @@ using is_pre_decrementable = is_detected<detail::predec_t, T>;
 template <typename T>
 inline constexpr bool is_pre_decrementable_v = is_pre_decrementable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL PreDecrementable = requires(T &&x)
+concept PreDecrementable = requires(T &&x)
 {
     --::std::forward<T>(x);
 };
-
-#endif
 
 namespace detail
 {
@@ -508,15 +440,11 @@ using is_post_decrementable = is_detected<detail::postdec_t, T>;
 template <typename T>
 inline constexpr bool is_post_decrementable_v = is_post_decrementable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL PostDecrementable = requires(T &&x)
+concept PostDecrementable = requires(T &&x)
 {
     ::std::forward<T>(x)--;
 };
-
-#endif
 
 namespace detail
 {
@@ -534,18 +462,14 @@ using is_multipliable
 template <typename T, typename U = T>
 inline constexpr bool is_multipliable_v = is_multipliable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL Multipliable = requires(T &&x, U &&y)
+concept Multipliable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) * ::std::forward<U>(y);
     ::std::forward<U>(y) * ::std::forward<T>(x);
     requires ::std::is_same_v<decltype(::std::forward<T>(x) * ::std::forward<U>(y)),
                               decltype(::std::forward<U>(y) * ::std::forward<T>(x))>;
 };
-
-#endif
 
 namespace detail
 {
@@ -561,15 +485,11 @@ using is_in_place_multipliable = is_detected<detail::in_place_mul_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_in_place_multipliable_v = is_in_place_multipliable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL InPlaceMultipliable = requires(T &&x, U &&y)
+concept InPlaceMultipliable = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) *= ::std::forward<U>(y);
 };
-
-#endif
 
 namespace detail
 {
@@ -587,18 +507,14 @@ using is_divisible
 template <typename T, typename U = T>
 inline constexpr bool is_divisible_v = is_divisible<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL Divisible = requires(T &&x, U &&y)
+concept Divisible = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) / ::std::forward<U>(y);
     ::std::forward<U>(y) / ::std::forward<T>(x);
     requires ::std::is_same_v<decltype(::std::forward<T>(x) / ::std::forward<U>(y)),
                               decltype(::std::forward<U>(y) / ::std::forward<T>(x))>;
 };
-
-#endif
 
 namespace detail
 {
@@ -614,15 +530,11 @@ using is_in_place_divisible = is_detected<detail::in_place_div_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_in_place_divisible_v = is_in_place_divisible<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL InPlaceDivisible = requires(T &&x, U &&y)
+concept InPlaceDivisible = requires(T &&x, U &&y)
 {
     ::std::forward<T>(x) /= ::std::forward<U>(y);
 };
-
-#endif
 
 namespace detail
 {
@@ -647,18 +559,14 @@ using is_equality_comparable = ::std::conjunction<::std::is_convertible<detected
 template <typename T, typename U = T>
 inline constexpr bool is_equality_comparable_v = is_equality_comparable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL EqualityComparable = is_equality_comparable_v<T, U>;
-
-#endif
+concept EqualityComparable = is_equality_comparable_v<T, U>;
 
 namespace detail
 {
 
-template <typename T, typename U>
-using lt_cmp_t = decltype(::std::declval<T>() < ::std::declval<U>());
+    template <typename T, typename U>
+    using lt_cmp_t = decltype(::std::declval<T>() < ::std::declval<U>());
 
 } // namespace detail
 
@@ -670,18 +578,14 @@ using is_less_than_comparable = ::std::conjunction<::std::is_convertible<detecte
 template <typename T, typename U = T>
 inline constexpr bool is_less_than_comparable_v = is_less_than_comparable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL LessThanComparable = is_less_than_comparable_v<T, U>;
-
-#endif
+concept LessThanComparable = is_less_than_comparable_v<T, U>;
 
 namespace detail
 {
 
-template <typename T, typename U>
-using gt_cmp_t = decltype(::std::declval<T>() > ::std::declval<U>());
+    template <typename T, typename U>
+    using gt_cmp_t = decltype(::std::declval<T>() > ::std::declval<U>());
 
 } // namespace detail
 
@@ -693,18 +597,14 @@ using is_greater_than_comparable = ::std::conjunction<::std::is_convertible<dete
 template <typename T, typename U = T>
 inline constexpr bool is_greater_than_comparable_v = is_greater_than_comparable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL GreaterThanComparable = is_greater_than_comparable_v<T, U>;
-
-#endif
+concept GreaterThanComparable = is_greater_than_comparable_v<T, U>;
 
 namespace detail
 {
 
-template <typename T, typename U>
-using lte_cmp_t = decltype(::std::declval<T>() <= ::std::declval<U>());
+    template <typename T, typename U>
+    using lte_cmp_t = decltype(::std::declval<T>() <= ::std::declval<U>());
 
 } // namespace detail
 
@@ -716,18 +616,14 @@ using is_lte_comparable = ::std::conjunction<::std::is_convertible<detected_t<de
 template <typename T, typename U = T>
 inline constexpr bool is_lte_comparable_v = is_lte_comparable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL LTEComparable = is_lte_comparable_v<T, U>;
-
-#endif
+concept LTEComparable = is_lte_comparable_v<T, U>;
 
 namespace detail
 {
 
-template <typename T, typename U>
-using gte_cmp_t = decltype(::std::declval<T>() >= ::std::declval<U>());
+    template <typename T, typename U>
+    using gte_cmp_t = decltype(::std::declval<T>() >= ::std::declval<U>());
 
 } // namespace detail
 
@@ -739,12 +635,8 @@ using is_gte_comparable = ::std::conjunction<::std::is_convertible<detected_t<de
 template <typename T, typename U = T>
 inline constexpr bool is_gte_comparable_v = is_gte_comparable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U = T>
-OBAKE_CONCEPT_DECL GTEComparable = is_gte_comparable_v<T, U>;
-
-#endif
+concept GTEComparable = is_gte_comparable_v<T, U>;
 
 namespace detail
 {
@@ -755,54 +647,54 @@ namespace detail
     template <typename T>                                                                                              \
     using it_traits_##type = typename ::std::iterator_traits<T>::type;
 
-OBAKE_DECLARE_IT_TRAITS_TYPE(difference_type)
-OBAKE_DECLARE_IT_TRAITS_TYPE(value_type)
-OBAKE_DECLARE_IT_TRAITS_TYPE(pointer)
-OBAKE_DECLARE_IT_TRAITS_TYPE(reference)
-OBAKE_DECLARE_IT_TRAITS_TYPE(iterator_category)
+    OBAKE_DECLARE_IT_TRAITS_TYPE(difference_type)
+    OBAKE_DECLARE_IT_TRAITS_TYPE(value_type)
+    OBAKE_DECLARE_IT_TRAITS_TYPE(pointer)
+    OBAKE_DECLARE_IT_TRAITS_TYPE(reference)
+    OBAKE_DECLARE_IT_TRAITS_TYPE(iterator_category)
 
 #undef OBAKE_DECLARE_IT_TRAITS_TYPE
 
-// Detect the availability of std::iterator_traits on type It.
-template <typename It>
-using has_iterator_traits
-    = ::std::conjunction<is_detected<it_traits_reference, It>, is_detected<it_traits_value_type, It>,
-                         is_detected<it_traits_pointer, It>, is_detected<it_traits_difference_type, It>,
-                         is_detected<it_traits_iterator_category, It>>;
+    // Detect the availability of std::iterator_traits on type It.
+    template <typename It>
+    using has_iterator_traits
+        = ::std::conjunction<is_detected<it_traits_reference, It>, is_detected<it_traits_value_type, It>,
+                             is_detected<it_traits_pointer, It>, is_detected<it_traits_difference_type, It>,
+                             is_detected<it_traits_iterator_category, It>>;
 
-// All standard iterator tags packed in a tuple.
-inline constexpr ::std::tuple<::std::input_iterator_tag, ::std::output_iterator_tag, ::std::forward_iterator_tag,
-                              ::std::bidirectional_iterator_tag, ::std::random_access_iterator_tag>
-    all_it_tags;
+    // All standard iterator tags packed in a tuple.
+    inline constexpr ::std::tuple<::std::input_iterator_tag, ::std::output_iterator_tag, ::std::forward_iterator_tag,
+                                  ::std::bidirectional_iterator_tag, ::std::random_access_iterator_tag>
+        all_it_tags;
 
-// Type resulting from the dereferencing operation.
-template <typename T>
-using deref_t = decltype(*::std::declval<T>());
+    // Type resulting from the dereferencing operation.
+    template <typename T>
+    using deref_t = decltype(*::std::declval<T>());
 
 // Check if the type T derives from one of the standard iterator tags.
 // NOTE: MSVC has issues with the pattern below, adopt another implementation.
 #if defined(_MSC_VER)
 
-// NOTE: default empty for hard error (the default implementation is unused).
-template <typename, typename>
-struct derives_from_it_tag_impl {
-};
+    // NOTE: default empty for hard error (the default implementation is unused).
+    template <typename, typename>
+    struct derives_from_it_tag_impl {
+    };
 
-template <typename T, typename... Args>
-struct derives_from_it_tag_impl<T, ::std::tuple<Args...>> : ::std::disjunction<::std::is_base_of<Args, T>...> {
-    static_assert(sizeof...(Args) > 0u, "Invalid parameter pack.");
-};
+    template <typename T, typename... Args>
+    struct derives_from_it_tag_impl<T, ::std::tuple<Args...>> : ::std::disjunction<::std::is_base_of<Args, T>...> {
+        static_assert(sizeof...(Args) > 0u, "Invalid parameter pack.");
+    };
 
-template <typename T>
-using derives_from_it_tag = derives_from_it_tag_impl<T, ::std::remove_const_t<decltype(all_it_tags)>>;
+    template <typename T>
+    using derives_from_it_tag = derives_from_it_tag_impl<T, ::std::remove_const_t<decltype(all_it_tags)>>;
 
 #else
 
-template <typename T>
-struct derives_from_it_tag {
-    static constexpr bool value
-        = ::std::apply([](auto... tag) { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
-};
+    template <typename T>
+    struct derives_from_it_tag {
+        static constexpr bool value
+            = ::std::apply([](auto... tag) { return (... || ::std::is_base_of_v<decltype(tag), T>); }, all_it_tags);
+    };
 
 #endif
 
@@ -846,72 +738,68 @@ using is_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_iterator_v = is_iterator<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Iterator = is_iterator_v<T>;
-
-#endif
+concept Iterator = is_iterator_v<T>;
 
 namespace detail
 {
 
-// The purpose of these bits is to check whether U correctly implements the arrow operator.
-// A correct implementation will return a pointer, after potentially calling
-// the operator recursively as many times as needed. See:
-// http://stackoverflow.com/questions/10677804/how-arrow-operator-overloading-works-internally-in-c
+    // The purpose of these bits is to check whether U correctly implements the arrow operator.
+    // A correct implementation will return a pointer, after potentially calling
+    // the operator recursively as many times as needed. See:
+    // http://stackoverflow.com/questions/10677804/how-arrow-operator-overloading-works-internally-in-c
 
-// The expression x->m is either:
-// - equivalent to (*x).m, if x is a pointer, or
-// - equivalent to (x.operator->())->m otherwise. That is, if operator->()
-//   returns a pointer, then the member "m" of the pointee is returned,
-//   otherwise there's a recursion to call again operator->() on the returned
-//   value.
-// This type trait will extract the final pointer type whose pointee type
-// contains the "m" member.
-template <typename, typename = void>
-struct arrow_operator_type {
-};
+    // The expression x->m is either:
+    // - equivalent to (*x).m, if x is a pointer, or
+    // - equivalent to (x.operator->())->m otherwise. That is, if operator->()
+    //   returns a pointer, then the member "m" of the pointee is returned,
+    //   otherwise there's a recursion to call again operator->() on the returned
+    //   value.
+    // This type trait will extract the final pointer type whose pointee type
+    // contains the "m" member.
+    template <typename, typename = void>
+    struct arrow_operator_type {
+    };
 
-// Handy alias.
-template <typename T>
-using arrow_operator_t = typename arrow_operator_type<T>::type;
+    // Handy alias.
+    template <typename T>
+    using arrow_operator_t = typename arrow_operator_type<T>::type;
 
-// If T is a pointer (after ref removal), we don't need to do anything: the final pointer type
-// will be T itself (unreffed).
-template <typename T>
-struct arrow_operator_type<T, ::std::enable_if_t<::std::is_pointer_v<::std::remove_reference_t<T>>>> {
-    using type = ::std::remove_reference_t<T>;
-};
+    // If T is a pointer (after ref removal), we don't need to do anything: the final pointer type
+    // will be T itself (unreffed).
+    template <typename T>
+    struct arrow_operator_type<T, ::std::enable_if_t<::std::is_pointer_v<::std::remove_reference_t<T>>>> {
+        using type = ::std::remove_reference_t<T>;
+    };
 
-// Type resulting from the invocation of the member function operator->().
-template <typename T>
-using mem_arrow_op_t = decltype(::std::declval<T>().operator->());
+    // Type resulting from the invocation of the member function operator->().
+    template <typename T>
+    using mem_arrow_op_t = decltype(::std::declval<T>().operator->());
 
-// T is not a pointer, it is a class whose operator->() returns some type U.
-// We call again arrow_operator_type on that U: if that leads eventually to a pointer
-// (possibly by calling this specialisation recursively) then we define that pointer
-// as the internal "type" member, otherwise we will SFINAE out.
-template <typename T>
-struct arrow_operator_type<T, ::std::enable_if_t<is_detected_v<arrow_operator_t, mem_arrow_op_t<T>>>> {
-    using type = arrow_operator_t<mem_arrow_op_t<T>>;
-};
+    // T is not a pointer, it is a class whose operator->() returns some type U.
+    // We call again arrow_operator_type on that U: if that leads eventually to a pointer
+    // (possibly by calling this specialisation recursively) then we define that pointer
+    // as the internal "type" member, otherwise we will SFINAE out.
+    template <typename T>
+    struct arrow_operator_type<T, ::std::enable_if_t<is_detected_v<arrow_operator_t, mem_arrow_op_t<T>>>> {
+        using type = arrow_operator_t<mem_arrow_op_t<T>>;
+    };
 
-// *it++ expression, used below.
-template <typename T>
-using it_inc_deref_t = decltype(*::std::declval<T>()++);
+    // *it++ expression, used below.
+    template <typename T>
+    using it_inc_deref_t = decltype(*::std::declval<T>()++);
 
-// The type resulting from dereferencing an lvalue of T,
-// or nonesuch. Shortcut useful below.
-template <typename T>
-using det_deref_t = detected_t<deref_t, ::std::add_lvalue_reference_t<T>>;
+    // The type resulting from dereferencing an lvalue of T,
+    // or nonesuch. Shortcut useful below.
+    template <typename T>
+    using det_deref_t = detected_t<deref_t, ::std::add_lvalue_reference_t<T>>;
 
-// Deferred conditional. It will check the value of the
-// compile-time boolean constant C, and derive from T if
-// C is true, from F otherwise.
-template <typename C, typename T, typename F>
-struct dcond : ::std::conditional_t<C::value != false, T, F> {
-};
+    // Deferred conditional. It will check the value of the
+    // compile-time boolean constant C, and derive from T if
+    // C is true, from F otherwise.
+    template <typename C, typename T, typename F>
+    struct dcond : ::std::conditional_t<C::value != false, T, F> {
+    };
 
 } // namespace detail
 
@@ -983,21 +871,17 @@ using is_input_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_input_iterator_v = is_input_iterator<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL InputIterator = is_input_iterator_v<T>;
-
-#endif
+concept InputIterator = is_input_iterator_v<T>;
 
 namespace detail
 {
 
-template <typename T, typename U>
-using out_iter_assign_t = decltype(*::std::declval<T>() = ::std::declval<U>());
+    template <typename T, typename U>
+    using out_iter_assign_t = decltype(*::std::declval<T>() = ::std::declval<U>());
 
-template <typename T, typename U>
-using out_iter_pia_t = decltype(*::std::declval<T>()++ = ::std::declval<U>());
+    template <typename T, typename U>
+    using out_iter_pia_t = decltype(*::std::declval<T>()++ = ::std::declval<U>());
 
 } // namespace detail
 
@@ -1028,12 +912,8 @@ using is_output_iterator = ::std::conjunction<
 template <typename T, typename U>
 inline constexpr bool is_output_iterator_v = is_output_iterator<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL OutputIterator = is_output_iterator_v<T, U>;
-
-#endif
+concept OutputIterator = is_output_iterator_v<T, U>;
 
 template <typename T>
 using is_forward_iterator = ::std::conjunction<
@@ -1066,12 +946,8 @@ using is_forward_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_forward_iterator_v = is_forward_iterator<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL ForwardIterator = is_forward_iterator_v<T>;
-
-#endif
+concept ForwardIterator = is_forward_iterator_v<T>;
 
 template <typename T>
 using is_mutable_forward_iterator
@@ -1082,20 +958,16 @@ using is_mutable_forward_iterator
 template <typename T>
 inline constexpr bool is_mutable_forward_iterator_v = is_mutable_forward_iterator<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL MutableForwardIterator = is_mutable_forward_iterator_v<T>;
-
-#endif
+concept MutableForwardIterator = is_mutable_forward_iterator_v<T>;
 
 namespace detail
 {
 
-// *it-- expression, used in the detection
-// of bidirectional iterators.
-template <typename T>
-using it_dec_deref_t = decltype(*::std::declval<T>()--);
+    // *it-- expression, used in the detection
+    // of bidirectional iterators.
+    template <typename T>
+    using it_dec_deref_t = decltype(*::std::declval<T>()--);
 
 } // namespace detail
 
@@ -1120,18 +992,14 @@ using is_bidirectional_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_bidirectional_iterator_v = is_bidirectional_iterator<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL BidirectionalIterator = is_bidirectional_iterator_v<T>;
-
-#endif
+concept BidirectionalIterator = is_bidirectional_iterator_v<T>;
 
 namespace detail
 {
 
-template <typename T, typename U>
-using subscript_t = decltype(::std::declval<T>()[::std::declval<U>()]);
+    template <typename T, typename U>
+    using subscript_t = decltype(::std::declval<T>()[::std::declval<U>()]);
 
 }
 
@@ -1187,18 +1055,14 @@ using is_random_access_iterator = ::std::conjunction<
 template <typename T>
 inline constexpr bool is_random_access_iterator_v = is_random_access_iterator<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL RandomAccessIterator = is_random_access_iterator_v<T>;
-
-#endif
+concept RandomAccessIterator = is_random_access_iterator_v<T>;
 
 namespace detail
 {
 
-template <typename T>
-using stream_insertion_t = decltype(::std::declval<::std::ostream &>() << ::std::declval<T>());
+    template <typename T>
+    using stream_insertion_t = decltype(::std::declval<::std::ostream &>() << ::std::declval<T>());
 
 }
 
@@ -1210,30 +1074,26 @@ using is_stream_insertable = ::std::is_same<detected_t<detail::stream_insertion_
 template <typename T>
 inline constexpr bool is_stream_insertable_v = is_stream_insertable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL StreamInsertable = is_stream_insertable_v<T>;
-
-#endif
+concept StreamInsertable = is_stream_insertable_v<T>;
 
 namespace detail
 {
 
-// A small utility to make a type dependent on
-// another one. This is sometimes useful
-// in if-constexpr contexts (e.g., see use in the tests).
-template <typename T, typename>
-struct make_dependent {
-    using type = T;
-};
+    // A small utility to make a type dependent on
+    // another one. This is sometimes useful
+    // in if-constexpr contexts (e.g., see use in the tests).
+    template <typename T, typename>
+    struct make_dependent {
+        using type = T;
+    };
 
-template <typename T, typename U>
-using make_dependent_t = typename make_dependent<T, U>::type;
+    template <typename T, typename U>
+    using make_dependent_t = typename make_dependent<T, U>::type;
 
-// Helper for making static_assert() always fire.
-template <typename, typename...>
-inline constexpr bool always_false_v = false;
+    // Helper for making static_assert() always fire.
+    template <typename, typename...>
+    inline constexpr bool always_false_v = false;
 
 } // namespace detail
 

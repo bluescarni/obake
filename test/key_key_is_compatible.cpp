@@ -9,7 +9,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_is_compatible.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -54,34 +53,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_ct00> inline constexpr auto key_is_compatible<T>
-#else
-inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvr_v<T, ext_ct00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_ct00>
+inline constexpr auto key_is_compatible<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_ct01> inline constexpr auto key_is_compatible<T>
-#else
-inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvr_v<T, ext_ct01>>>
-#endif
-    = [](auto &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_ct01>
+inline constexpr auto key_is_compatible<T> = [](auto &, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nct00> inline constexpr auto key_is_compatible<T>
-#else
-inline constexpr auto key_is_compatible<T, std::enable_if_t<is_same_cvr_v<T, ext_nct00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_nct00>
+inline constexpr auto key_is_compatible<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return std::string{};
 };
@@ -126,7 +113,6 @@ TEST_CASE("key_is_compatible_test")
 
     REQUIRE(!is_compatibility_testable_key_v<const ext_nct00 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CompatibilityTestableKey<void>);
 
     REQUIRE(!CompatibilityTestableKey<int>);
@@ -162,5 +148,4 @@ TEST_CASE("key_is_compatible_test")
     REQUIRE(!CompatibilityTestableKey<ext_ct01 &&>);
 
     REQUIRE(!CompatibilityTestableKey<const ext_nct00 &>);
-#endif
 }

@@ -28,7 +28,7 @@
 // GCC >= 5 is good to go:
 // https://gcc.gnu.org/onlinedocs/gcc/Integer-Overflow-Builtins.html
 // https://software.intel.com/en-us/forums/intel-c-compiler/topic/720757
-// NOTE: the minimum GCC version supported in obake is 7.
+// NOTE: the minimum GCC version supported in obake is 9.
 #define OBAKE_HAVE_INTEGER_OVERFLOW_BUILTINS
 
 #elif defined(__clang__)

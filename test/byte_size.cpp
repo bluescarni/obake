@@ -62,7 +62,6 @@ TEST_CASE("byte_size_arith")
     REQUIRE(obake::is_size_measurable_v<const mppp::real128 &>);
 #endif
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!obake::SizeMeasurable<void>);
     REQUIRE(obake::SizeMeasurable<float>);
     REQUIRE(obake::SizeMeasurable<int>);
@@ -83,7 +82,6 @@ TEST_CASE("byte_size_arith")
     REQUIRE(obake::SizeMeasurable<mppp::real128 &>);
     REQUIRE(obake::SizeMeasurable<mppp::real128 &&>);
     REQUIRE(obake::SizeMeasurable<const mppp::real128 &>);
-#endif
 #endif
 
     REQUIRE(s_int == sizeof(int));
@@ -111,12 +109,10 @@ TEST_CASE("byte_size_mp++_int")
     REQUIRE(obake::is_size_measurable_v<const int_t &>);
     REQUIRE(obake::is_size_measurable_v<int_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::SizeMeasurable<int_t>);
     REQUIRE(obake::SizeMeasurable<int_t &>);
     REQUIRE(obake::SizeMeasurable<const int_t &>);
     REQUIRE(obake::SizeMeasurable<int_t &&>);
-#endif
 
     REQUIRE(obake::byte_size(int_t(0)) == sizeof(int_t));
     int_t n{42}, nc(n);
@@ -134,12 +130,10 @@ TEST_CASE("byte_size_mp++_rat")
     REQUIRE(obake::is_size_measurable_v<const rat_t &>);
     REQUIRE(obake::is_size_measurable_v<rat_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::SizeMeasurable<rat_t>);
     REQUIRE(obake::SizeMeasurable<rat_t &>);
     REQUIRE(obake::SizeMeasurable<const rat_t &>);
     REQUIRE(obake::SizeMeasurable<rat_t &&>);
-#endif
 
     REQUIRE(obake::byte_size(rat_t{}) >= sizeof(rat_t));
     rat_t q{3, 4}, qc{q};
@@ -157,12 +151,10 @@ TEST_CASE("byte_size_mp++_real")
     REQUIRE(obake::is_size_measurable_v<const mppp::real &>);
     REQUIRE(obake::is_size_measurable_v<mppp::real &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::SizeMeasurable<mppp::real>);
     REQUIRE(obake::SizeMeasurable<mppp::real &>);
     REQUIRE(obake::SizeMeasurable<const mppp::real &>);
     REQUIRE(obake::SizeMeasurable<mppp::real &&>);
-#endif
 
     REQUIRE(obake::byte_size(mppp::real{45}) > sizeof(mppp::real));
 }
@@ -195,13 +187,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
 requires SameCvr<T, byte_size_1>
-inline constexpr auto byte_size<T>
-#else
-inline constexpr auto byte_size<T, std::enable_if_t<is_same_cvr_v<T, byte_size_1>>>
-#endif
-    = [](auto &&) constexpr noexcept
+inline constexpr auto byte_size<T> = [](auto &&) constexpr noexcept
 {
     return std::size_t(42);
 };
@@ -216,12 +203,10 @@ TEST_CASE("byte_size_custom")
     REQUIRE(obake::is_size_measurable_v<byte_size_0>);
     REQUIRE(obake::is_size_measurable_v<byte_size_1>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::SizeMeasurable<byte_size_def>);
     REQUIRE(!obake::SizeMeasurable<no_byte_size_1>);
     REQUIRE(obake::SizeMeasurable<byte_size_0>);
     REQUIRE(obake::SizeMeasurable<byte_size_1>);
-#endif
 
     REQUIRE(obake::byte_size(byte_size_def{}) == sizeof(byte_size_def));
     REQUIRE(obake::byte_size(byte_size_0{}) == 41u);

@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::monomial_integrate().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto monomial_integrate = not_implemented;
 
 } // namespace customisation
@@ -74,22 +68,8 @@ constexpr auto monomial_integrate_impl_with_ret_check(T &&x, const symbol_idx &i
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct monomial_integrate_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_idx &idx, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::monomial_integrate_impl_with_ret_check(::std::forward<T>(x), idx, ss))
-};
-
-inline constexpr auto monomial_integrate = monomial_integrate_msvc{};
-
-#else
-
 inline constexpr auto monomial_integrate = [](auto &&x, const symbol_idx &idx, const symbol_set &ss)
     OBAKE_SS_FORWARD_LAMBDA(detail::monomial_integrate_impl_with_ret_check(::std::forward<decltype(x)>(x), idx, ss));
-
-#endif
 
 namespace detail
 {
@@ -108,15 +88,11 @@ using is_integrable_monomial = is_detected<detail::monomial_integrate_t, T>;
 template <typename T>
 inline constexpr bool is_integrable_monomial_v = is_integrable_monomial<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL IntegrableMonomial = requires(T &&x, const symbol_idx &idx, const symbol_set &ss)
+concept IntegrableMonomial = requires(T &&x, const symbol_idx &idx, const symbol_set &ss)
 {
     ::obake::monomial_integrate(::std::forward<T>(x), idx, ss);
 };
-
-#endif
 
 } // namespace obake
 

@@ -560,14 +560,12 @@ TEST_CASE("monomial_range_overflow_check")
         REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, void>);
         REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<pm_t>>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
         REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::vector<pm_t>>);
         REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::list<pm_t>>);
         REQUIRE(OverflowTestableMonomialRanges<std::list<pm_t>, std::vector<pm_t>>);
 
         REQUIRE(!OverflowTestableMonomialRanges<std::vector<pm_t>, void>);
         REQUIRE(!OverflowTestableMonomialRanges<void, std::vector<pm_t>>);
-#endif
     });
 }
 
@@ -584,12 +582,10 @@ TEST_CASE("homomorphic_hash")
         REQUIRE(!is_homomorphically_hashable_monomial_v<pm_t &&>);
         REQUIRE(!is_homomorphically_hashable_monomial_v<const pm_t &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
         REQUIRE(HomomorphicallyHashableMonomial<pm_t>);
         REQUIRE(!HomomorphicallyHashableMonomial<pm_t &>);
         REQUIRE(!HomomorphicallyHashableMonomial<pm_t &&>);
         REQUIRE(!HomomorphicallyHashableMonomial<const pm_t &>);
-#endif
 
         {
             std::vector<int_t> v1, v2, v3;
