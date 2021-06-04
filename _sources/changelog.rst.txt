@@ -1,6 +1,15 @@
 Changelog
 =========
 
+0.8.0 (unreleased)
+------------------
+
+Changes
+~~~~~~~
+
+- Various internal cleanups as a consequence of the C++20 migration
+  (`#140 <https://github.com/bluescarni/obake/pull/140>`__).
+
 0.7.0 (2021-06-01)
 ------------------
 
