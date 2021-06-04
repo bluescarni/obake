@@ -8,7 +8,6 @@
 
 #include <string>
 
-#include <obake/config.hpp>
 #include <obake/math/safe_cast.hpp>
 
 #include "catch.hpp"
@@ -46,7 +45,6 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!is_safely_castable_v<long, const int &>);
     REQUIRE(!is_safely_castable_v<long, int &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SafelyCastable<int, void>);
     REQUIRE(!SafelyCastable<void, int>);
     REQUIRE(SafelyCastable<int, int>);
@@ -62,7 +60,6 @@ TEST_CASE("safe_cast_test")
     REQUIRE(!SafelyCastable<long, const int>);
     REQUIRE(!SafelyCastable<long, const int &>);
     REQUIRE(!SafelyCastable<long, int &&>);
-#endif
 
     REQUIRE(obake::safe_cast<int>(5u) == 5);
     OBAKE_REQUIRES_THROWS_CONTAINS(obake::safe_cast<unsigned>(-5), safe_cast_failure, "A value of type '");

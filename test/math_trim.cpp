@@ -12,7 +12,6 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <obake/config.hpp>
 #include <obake/math/trim.hpp>
 #include <obake/type_traits.hpp>
 
@@ -63,34 +62,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, trim_ext> inline constexpr auto trim<T>
-#else
-inline constexpr auto trim<T, std::enable_if_t<is_same_cvr_v<T, trim_ext>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, trim_ext>
+inline constexpr auto trim<T> = [](auto &&) constexpr noexcept
 {
     return trim_ext{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notrim_ext_00> inline constexpr auto trim<T>
-#else
-inline constexpr auto trim<T, std::enable_if_t<is_same_cvr_v<T, notrim_ext_00>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, notrim_ext_00>
+inline constexpr auto trim<T> = [](auto &&) constexpr noexcept
 {
     return 1;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notrim_ext_01> inline constexpr auto trim<T>
-#else
-inline constexpr auto trim<T, std::enable_if_t<is_same_cvr_v<T, notrim_ext_01>>>
-#endif
-    = [](notrim_ext_01 &) constexpr noexcept
+requires SameCvr<T, notrim_ext_01>
+inline constexpr auto trim<T> = [](notrim_ext_01 &) constexpr noexcept
 {
     return notrim_ext_01{};
 };
@@ -154,7 +141,6 @@ TEST_CASE("trim_test")
     REQUIRE(is_trimmable_v<const notrim_ext_01 &>);
     REQUIRE(is_trimmable_v<notrim_ext_01 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Trimmable<void>);
 
     REQUIRE(Trimmable<int>);
@@ -209,5 +195,4 @@ TEST_CASE("trim_test")
     REQUIRE(Trimmable<notrim_ext_01 &>);
     REQUIRE(Trimmable<const notrim_ext_01 &>);
     REQUIRE(Trimmable<notrim_ext_01 &&>);
-#endif
 }

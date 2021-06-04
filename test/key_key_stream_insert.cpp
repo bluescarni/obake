@@ -10,7 +10,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_stream_insert.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -62,45 +61,29 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si00> inline constexpr auto key_stream_insert<T>
-#else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si00>>>
-#endif
-    = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_si00>
+inline constexpr auto key_stream_insert<T> = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_si01> inline constexpr auto key_stream_insert<T>
-#else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_si01>>>
-#endif
-    = [](std::ostream &, auto &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_si01>
+inline constexpr auto key_stream_insert<T> = [](std::ostream &, auto &, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nsi00> inline constexpr auto key_stream_insert<T>
-#else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ext_nsi00>>>
-#endif
-    = [](std::ostream &, auto &&, symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_nsi00>
+inline constexpr auto key_stream_insert<T> = [](std::ostream &, auto &&, symbol_set &) constexpr noexcept
 {
     return std::string{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ns::nsi01> inline constexpr auto key_stream_insert<T>
-#else
-inline constexpr auto key_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::nsi01>>>
-#endif
-    = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ns::nsi01>
+inline constexpr auto key_stream_insert<T> = [](std::ostream &, auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
@@ -152,7 +135,6 @@ TEST_CASE("key_stream_insert_test")
     REQUIRE(!is_stream_insertable_key_v<const ext_nsi00 &>);
     REQUIRE(!is_stream_insertable_key_v<ext_nsi00 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!StreamInsertableKey<void>);
 
     REQUIRE(!StreamInsertableKey<int>);
@@ -192,5 +174,4 @@ TEST_CASE("key_stream_insert_test")
     REQUIRE(!StreamInsertableKey<ext_nsi00 &>);
     REQUIRE(!StreamInsertableKey<const ext_nsi00 &>);
     REQUIRE(!StreamInsertableKey<ext_nsi00 &&>);
-#endif
 }

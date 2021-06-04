@@ -9,7 +9,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/integrate.hpp>
 #include <obake/type_traits.hpp>
 
@@ -37,7 +36,6 @@ TEST_CASE("integrate_test")
     REQUIRE(!is_integrable_v<const double>);
     REQUIRE(!is_integrable_v<const double &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Integrable<void>);
     REQUIRE(!Integrable<const void>);
 
@@ -55,7 +53,6 @@ TEST_CASE("integrate_test")
     REQUIRE(!Integrable<double &>);
     REQUIRE(!Integrable<const double>);
     REQUIRE(!Integrable<const double &>);
-#endif
 }
 
 struct nointegrate_00 {
@@ -95,34 +92,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, integrate_ext> inline constexpr auto integrate<T>
-#else
-inline constexpr auto integrate<T, std::enable_if_t<is_same_cvr_v<T, integrate_ext>>>
-#endif
-    = [](auto &&, const std::string &) constexpr noexcept
+requires SameCvr<T, integrate_ext>
+inline constexpr auto integrate<T> = [](auto &&, const std::string &) constexpr noexcept
 {
     return integrate_ext{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, nointegrate_ext_00> inline constexpr auto integrate<T>
-#else
-inline constexpr auto integrate<T, std::enable_if_t<is_same_cvr_v<T, nointegrate_ext_00>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, nointegrate_ext_00>
+inline constexpr auto integrate<T> = [](auto &&) constexpr noexcept
 {
     return 1;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, nointegrate_ext_01> inline constexpr auto integrate<T>
-#else
-inline constexpr auto integrate<T, std::enable_if_t<is_same_cvr_v<T, nointegrate_ext_01>>>
-#endif
-    = [](nointegrate_ext_01 &, const std::string &) constexpr noexcept
+requires SameCvr<T, nointegrate_ext_01>
+inline constexpr auto integrate<T> = [](nointegrate_ext_01 &, const std::string &) constexpr noexcept
 {
     return nointegrate_ext_01{};
 };
@@ -146,7 +131,6 @@ TEST_CASE("integrate_custom_test")
     REQUIRE(!is_integrable_v<const nointegrate_ext_01 &>);
     REQUIRE(!is_integrable_v<const nointegrate_ext_01>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Integrable<integrate_ext>);
     REQUIRE(Integrable<integrate_ext &>);
     REQUIRE(Integrable<const integrate_ext &>);
@@ -161,5 +145,4 @@ TEST_CASE("integrate_custom_test")
     REQUIRE(Integrable<nointegrate_ext_01 &>);
     REQUIRE(!Integrable<const nointegrate_ext_01 &>);
     REQUIRE(!Integrable<const nointegrate_ext_01>);
-#endif
 }

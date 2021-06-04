@@ -609,12 +609,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ns::s1_t> inline constexpr auto series_mul<T, T>
-#else
-inline constexpr auto series_mul<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
-#endif
-    = [](const auto &, const auto &) { return false; };
+requires SameCvr<T, ns::s1_t>
+inline constexpr auto series_mul<T, T> = [](const auto &, const auto &) { return false; };
 
 } // namespace obake::customisation
 
@@ -783,28 +779,12 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_in_place_add<T, U>
-#else
-inline constexpr auto
-    series_add<T, U,
-               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
-                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
-#endif
-    = custom_in_place_add{};
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> && SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>>
+inline constexpr auto series_in_place_add<T, U> = custom_in_place_add{};
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_in_place_add<T, U>
-#else
-inline constexpr auto
-    series_add<T, U,
-               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
-                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
-#endif
-    = wrong_custom_in_place_add{};
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>> && SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>>
+inline constexpr auto series_in_place_add<T, U> = wrong_custom_in_place_add{};
 
 } // namespace obake::customisation
 
@@ -851,28 +831,12 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_in_place_sub<T, U>
-#else
-inline constexpr auto
-    series_sub<T, U,
-               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
-                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
-#endif
-    = custom_in_place_sub{};
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> && SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>>
+inline constexpr auto series_in_place_sub<T, U> = custom_in_place_sub{};
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>> inline constexpr auto series_in_place_sub<T, U>
-#else
-inline constexpr auto
-    series_sub<T, U,
-               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag02>>,
-                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag02>>>>>
-#endif
-    = wrong_custom_in_place_sub{};
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag02>> && SameCvr<U, series<ns::pm_t, rat_t, ns::tag02>>
+inline constexpr auto series_in_place_sub<T, U> = wrong_custom_in_place_sub{};
 
 } // namespace obake::customisation
 

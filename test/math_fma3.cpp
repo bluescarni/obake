@@ -61,7 +61,6 @@ TEST_CASE("fma3_fp")
     REQUIRE(!is_mult_addable_v<void, const float &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const float &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const float &, const float &, const float &>);
     REQUIRE(!MultAddable<const double &, const double &, const double &>);
     REQUIRE(!MultAddable<const long double &, const long double &, const long double &>);
@@ -70,7 +69,6 @@ TEST_CASE("fma3_fp")
     REQUIRE(!MultAddable<float &, void, void>);
     REQUIRE(!MultAddable<void, const float &, void>);
     REQUIRE(!MultAddable<void, void, const float &>);
-#endif
 }
 
 TEST_CASE("fma3_integral")
@@ -83,14 +81,12 @@ TEST_CASE("fma3_integral")
     REQUIRE(!is_mult_addable_v<void, const int &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const int &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const int &, const int &, const int &>);
 
     REQUIRE(!MultAddable<void, void, void>);
     REQUIRE(!MultAddable<int &, void, void>);
     REQUIRE(!MultAddable<void, const int &, void>);
     REQUIRE(!MultAddable<void, void, const int &>);
-#endif
 }
 
 TEST_CASE("fma3_mp++_integer")
@@ -108,14 +104,12 @@ TEST_CASE("fma3_mp++_integer")
     REQUIRE(!is_mult_addable_v<void, const int_t &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const int_t &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const int_t &, const int_t &, const int_t &>);
 
     REQUIRE(!MultAddable<void, void, void>);
     REQUIRE(!MultAddable<int_t &, void, void>);
     REQUIRE(!MultAddable<void, const int_t &, void>);
     REQUIRE(!MultAddable<void, void, const int_t &>);
-#endif
 }
 
 #if defined(MPPP_WITH_MPFR)
@@ -133,14 +127,12 @@ TEST_CASE("fma3_mp++_real")
     REQUIRE(!is_mult_addable_v<void, const mppp::real &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const mppp::real &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const mppp::real &, const mppp::real &, const mppp::real &>);
 
     REQUIRE(!MultAddable<void, void, void>);
     REQUIRE(!MultAddable<mppp::real &, void, void>);
     REQUIRE(!MultAddable<void, const mppp::real &, void>);
     REQUIRE(!MultAddable<void, void, const mppp::real &>);
-#endif
 }
 
 #endif
@@ -160,14 +152,12 @@ TEST_CASE("fma3_mp++_real128")
     REQUIRE(!is_mult_addable_v<void, const mppp::real128 &, void>);
     REQUIRE(!is_mult_addable_v<void, void, const mppp::real128 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultAddable<const mppp::real128 &, const mppp::real128 &, const mppp::real128 &>);
 
     REQUIRE(!MultAddable<void, void, void>);
     REQUIRE(!MultAddable<mppp::real128 &, void, void>);
     REQUIRE(!MultAddable<void, const mppp::real128 &, void>);
     REQUIRE(!MultAddable<void, void, const mppp::real128 &>);
-#endif
 }
 
 #endif
@@ -194,12 +184,8 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, bar> &&SameCvr<U, bar> inline constexpr auto fma3<bar &, T, U>
-#else
-inline constexpr auto fma3<bar &, T, U, std::enable_if_t<std::conjunction_v<is_same_cvr<T, bar>, is_same_cvr<U, bar>>>>
-#endif
-    = [](auto &, auto &&, auto &&) constexpr noexcept
+requires SameCvr<T, bar> && SameCvr<U, bar>
+inline constexpr auto fma3<bar &, T, U> = [](auto &, auto &&, auto &&) constexpr noexcept
 {
     return true;
 };
@@ -220,7 +206,6 @@ TEST_CASE("fma3_custom")
     REQUIRE(!is_mult_addable_v<const nobar &, const nobar &, const nobar &>);
     REQUIRE(!is_mult_addable_v<nobar &&, const nobar &, const nobar &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(MultAddable<ns::foo &, const ns::foo &, const ns::foo &>);
     REQUIRE(!MultAddable<const ns::foo &, const ns::foo &, const ns::foo &>);
     REQUIRE(!MultAddable<ns::foo &&, const ns::foo &, const ns::foo &>);
@@ -232,5 +217,4 @@ TEST_CASE("fma3_custom")
     REQUIRE(!MultAddable<nobar &, const nobar &, const nobar &>);
     REQUIRE(!MultAddable<const nobar &, const nobar &, const nobar &>);
     REQUIRE(!MultAddable<nobar &&, const nobar &, const nobar &>);
-#endif
 }

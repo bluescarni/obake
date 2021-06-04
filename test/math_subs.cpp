@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/subs.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -33,7 +32,6 @@ TEST_CASE("subs_arith")
     REQUIRE(!is_substitutable_v<int, int &>);
     REQUIRE(!is_substitutable_v<int, const int>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Substitutable<void, void>);
     REQUIRE(!Substitutable<void, int>);
     REQUIRE(!Substitutable<int, void>);
@@ -47,7 +45,6 @@ TEST_CASE("subs_arith")
     REQUIRE(Substitutable<const int, int>);
     REQUIRE(!Substitutable<int, int &>);
     REQUIRE(!Substitutable<int, const int>);
-#endif
 }
 
 struct subs_base {
@@ -67,12 +64,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, subs_1> inline constexpr auto subs<T, double>
-#else
-inline constexpr auto subs<T, double, std::enable_if_t<is_same_cvr_v<T, subs_1>>>
-#endif
-    = [](auto &&, const symbol_map<double> &) constexpr noexcept
+requires SameCvr<T, subs_1>
+inline constexpr auto subs<T, double> = [](auto &&, const symbol_map<double> &) constexpr noexcept
 {
     return true;
 };
@@ -100,12 +93,10 @@ TEST_CASE("subs_custom")
     REQUIRE(std::is_same_v<subs_1, decltype(obake::subs(subs_1{}, symbol_map<int>{}))>);
     REQUIRE(std::is_same_v<bool, decltype(obake::subs(subs_1{}, symbol_map<double>{}))>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Substitutable<subs_base, int>);
     REQUIRE(!Substitutable<subs_base, int &>);
     REQUIRE(Substitutable<subs_0, int>);
     REQUIRE(Substitutable<subs_0, double>);
     REQUIRE(Substitutable<subs_1, double>);
     REQUIRE(Substitutable<subs_1, int>);
-#endif
 }

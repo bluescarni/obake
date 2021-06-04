@@ -144,7 +144,6 @@ TEST_CASE("safe_convert_integrals")
     REQUIRE(!obake::is_safely_convertible_v<__uint128_t &, int &&>);
 #endif
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::SafelyConvertible<int &&, int &>);
     REQUIRE(obake::SafelyConvertible<int &, int &>);
     REQUIRE(obake::SafelyConvertible<const int &, int &>);
@@ -161,7 +160,6 @@ TEST_CASE("safe_convert_integrals")
     REQUIRE(obake::SafelyConvertible<__uint128_t &, int &>);
     REQUIRE(!obake::SafelyConvertible<__int128_t &&, const int &>);
     REQUIRE(!obake::SafelyConvertible<__uint128_t &, int &&>);
-#endif
 #endif
 }
 
@@ -352,13 +350,9 @@ struct foo0 {
 namespace obake::customisation
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires SameCvr<T, foo0> &&SameCvr<U, foo0>
-#else
-template <typename T, typename U, std::enable_if_t<is_same_cvr_v<T, foo0> && is_same_cvr_v<U, foo0>, int> = 0>
-#endif
-    auto safe_convert(safe_convert_t, T &&, U &&)
+requires SameCvr<T, foo0> && SameCvr<U, foo0>
+auto safe_convert(safe_convert_t, T &&, U &&)
 {
     return true;
 }
@@ -404,7 +398,6 @@ TEST_CASE("safe_convert_same")
     REQUIRE(!obake::is_safely_convertible_v<foo2 &&, const foo2 &>);
     REQUIRE(!obake::is_safely_convertible_v<foo2 &&, foo2 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::SafelyConvertible<std::string, std::string &>);
     REQUIRE(obake::SafelyConvertible<const std::string &, std::string &>);
     REQUIRE(obake::SafelyConvertible<std::string &&, std::string &>);
@@ -422,7 +415,6 @@ TEST_CASE("safe_convert_same")
     REQUIRE(!obake::SafelyConvertible<foo2 &&, foo2 &>);
     REQUIRE(!obake::SafelyConvertible<foo2 &&, const foo2 &>);
     REQUIRE(!obake::SafelyConvertible<foo2 &&, foo2 &&>);
-#endif
 
     std::string s = "hello";
     REQUIRE(obake::safe_convert(s, std::string{"world"}));

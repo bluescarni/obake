@@ -9,7 +9,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_is_zero.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -54,34 +53,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt00> inline constexpr auto key_is_zero<T>
-#else
-inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt00>
+inline constexpr auto key_is_zero<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt01> inline constexpr auto key_is_zero<T>
-#else
-inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
-#endif
-    = [](auto &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt01>
+inline constexpr auto key_is_zero<T> = [](auto &, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nzt00> inline constexpr auto key_is_zero<T>
-#else
-inline constexpr auto key_is_zero<T, std::enable_if_t<is_same_cvr_v<T, ext_nzt00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_nzt00>
+inline constexpr auto key_is_zero<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return std::string{};
 };
@@ -126,7 +113,6 @@ TEST_CASE("key_is_zero_test")
 
     REQUIRE(!is_zero_testable_key_v<const ext_nzt00 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!ZeroTestableKey<void>);
 
     REQUIRE(!ZeroTestableKey<int>);
@@ -162,5 +148,4 @@ TEST_CASE("key_is_zero_test")
     REQUIRE(!ZeroTestableKey<ext_zt01 &&>);
 
     REQUIRE(!ZeroTestableKey<const ext_nzt00 &>);
-#endif
 }

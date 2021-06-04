@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/truncate_p_degree.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -27,14 +26,12 @@ TEST_CASE("truncate_p_degree_arith")
     REQUIRE(!is_p_degree_truncatable_v<int &, const int>);
     REQUIRE(!is_p_degree_truncatable_v<const int &, double>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PDegreeTruncatable<void, void>);
     REQUIRE(!PDegreeTruncatable<void, int>);
     REQUIRE(!PDegreeTruncatable<int, void>);
     REQUIRE(!PDegreeTruncatable<int, int>);
     REQUIRE(!PDegreeTruncatable<int &, const int>);
     REQUIRE(!PDegreeTruncatable<const int &, double>);
-#endif
 }
 
 struct notr_00 {
@@ -82,36 +79,24 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, tr_ext> inline constexpr auto truncate_p_degree<T, U>
-#else
-inline constexpr auto truncate_p_degree<T, U, std::enable_if_t<is_same_cvr_v<T, tr_ext>>>
-#endif
-    = [](auto &&, auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, tr_ext>
+inline constexpr auto truncate_p_degree<T, U> = [](auto &&, auto &&, const symbol_set &) constexpr noexcept
 {
     return tr_ext{};
 };
 
 // Wrong signature.
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notr_ext_01> inline constexpr auto truncate_p_degree<T, U>
-#else
-inline constexpr auto truncate_p_degree<T, U, std::enable_if_t<is_same_cvr_v<T, notr_ext_01>>>
-#endif
-    = [](notr_ext_01 &) constexpr noexcept
+requires SameCvr<T, notr_ext_01>
+inline constexpr auto truncate_p_degree<T, U> = [](notr_ext_01 &) constexpr noexcept
 {
     return 1;
 };
 
 // symbol_set non-const reference.
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notr_ext_02> inline constexpr auto truncate_p_degree<T, U>
-#else
-inline constexpr auto truncate_p_degree<T, U, std::enable_if_t<is_same_cvr_v<T, notr_ext_02>>>
-#endif
-    = [](auto &&, auto &&, symbol_set &) constexpr noexcept
+requires SameCvr<T, notr_ext_02>
+inline constexpr auto truncate_p_degree<T, U> = [](auto &&, auto &&, symbol_set &) constexpr noexcept
 {
     return notr_ext_02{};
 };
@@ -159,7 +144,6 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(!is_p_degree_truncatable_v<const notr_ext_02 &, int &>);
     REQUIRE(!is_p_degree_truncatable_v<notr_ext_02, double>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!PDegreeTruncatable<ns::tr_00, void>);
     REQUIRE(!PDegreeTruncatable<ns::tr_00 &, void>);
     REQUIRE(!PDegreeTruncatable<const ns::tr_00 &, void>);
@@ -198,5 +182,4 @@ TEST_CASE("truncate_p_degree_custom")
     REQUIRE(!PDegreeTruncatable<const notr_ext_02 &, const int>);
     REQUIRE(!PDegreeTruncatable<const notr_ext_02 &, int &>);
     REQUIRE(!PDegreeTruncatable<notr_ext_02, double>);
-#endif
 }

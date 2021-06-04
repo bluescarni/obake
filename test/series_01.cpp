@@ -22,7 +22,6 @@
 
 #include <mp++/rational.hpp>
 
-#include <obake/config.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/math/is_zero.hpp>
 #include <obake/math/negate.hpp>
@@ -322,12 +321,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ns::s1_t> inline constexpr auto series_stream_insert<T>
-#else
-inline constexpr auto series_stream_insert<T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
-#endif
-    = [](std::ostream &os, auto &&) { os << "Hello world, again!"; };
+requires SameCvr<T, ns::s1_t>
+inline constexpr auto series_stream_insert<T> = [](std::ostream &os, auto &&) { os << "Hello world, again!"; };
 
 } // namespace obake::customisation
 
@@ -1368,16 +1363,8 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_add<T, U>
-#else
-inline constexpr auto
-    series_add<T, U,
-               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
-                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
-#endif
-    = custom_add{};
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> && SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>>
+inline constexpr auto series_add<T, U> = custom_add{};
 
 } // namespace obake::customisation
 
@@ -1419,16 +1406,8 @@ namespace obake::customisation
 {
 
 template <typename T, typename U>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>>
-    &&SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>> inline constexpr auto series_sub<T, U>
-#else
-inline constexpr auto
-    series_sub<T, U,
-               std::enable_if_t<std::conjunction_v<is_same_cvr<T, series<ns::pm_t, rat_t, ns::tag01>>,
-                                                   is_same_cvr<U, series<ns::pm_t, rat_t, ns::tag01>>>>>
-#endif
-    = custom_sub{};
+requires SameCvr<T, series<ns::pm_t, rat_t, ns::tag01>> && SameCvr<U, series<ns::pm_t, rat_t, ns::tag01>>
+inline constexpr auto series_sub<T, U> = custom_sub{};
 
 } // namespace obake::customisation
 

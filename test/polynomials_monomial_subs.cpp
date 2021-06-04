@@ -10,7 +10,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/polynomials/monomial_subs.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -67,34 +66,24 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt00> inline constexpr auto monomial_subs<T, int>
-#else
-inline constexpr auto monomial_subs<T, int, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
-#endif
-    = [](auto &&, const symbol_idx_map<int> &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt00>
+inline constexpr auto monomial_subs<T, int> =
+    [](auto &&, const symbol_idx_map<int> &, const symbol_set &) constexpr noexcept
 {
     return std::make_pair(true, ext_zt00{});
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt01> inline constexpr auto monomial_subs<T, double>
-#else
-inline constexpr auto monomial_subs<T, double, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
-#endif
-    = [](auto &, const symbol_idx_map<double> &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt01>
+inline constexpr auto monomial_subs<T, double> =
+    [](auto &, const symbol_idx_map<double> &, const symbol_set &) constexpr noexcept
 {
     return std::make_pair(true, ext_zt01{});
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nzt00> inline constexpr auto monomial_subs<T, int>
-#else
-inline constexpr auto monomial_subs<T, int, std::enable_if_t<is_same_cvr_v<T, ext_nzt00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_nzt00>
+inline constexpr auto monomial_subs<T, int> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return std::string{};
 };
@@ -151,7 +140,6 @@ TEST_CASE("monomial_subs_test")
 
     REQUIRE(!is_substitutable_monomial_v<ext_nzt00, int>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SubstitutableMonomial<void, void>);
     REQUIRE(!SubstitutableMonomial<ns::zt00, void>);
     REQUIRE(!SubstitutableMonomial<void, ns::zt00>);
@@ -199,5 +187,4 @@ TEST_CASE("monomial_subs_test")
     REQUIRE(SubstitutableMonomial<ext_zt01 &, double>);
 
     REQUIRE(!SubstitutableMonomial<ext_nzt00, int>);
-#endif
 }

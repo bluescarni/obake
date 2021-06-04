@@ -6,7 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <obake/config.hpp>
 #include <obake/polynomials/monomial_pow.hpp>
 #include <obake/symbols.hpp>
 
@@ -86,7 +85,6 @@ TEST_CASE("monomial_pow_test")
     REQUIRE(!is_exponentiable_monomial_v<const nomp01 &, int>);
     REQUIRE(!is_exponentiable_monomial_v<nomp01 &&, int>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!ExponentiableMonomial<void, void>);
 
     REQUIRE(!ExponentiableMonomial<ns::mp00 &, void>);
@@ -111,5 +109,4 @@ TEST_CASE("monomial_pow_test")
     REQUIRE(!ExponentiableMonomial<nomp01 &, int>);
     REQUIRE(!ExponentiableMonomial<const nomp01 &, int>);
     REQUIRE(!ExponentiableMonomial<nomp01 &&, int>);
-#endif
 }

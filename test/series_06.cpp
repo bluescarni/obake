@@ -81,12 +81,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ns::s1_t> inline constexpr auto series_div<T, T>
-#else
-inline constexpr auto series_div<T, T, std::enable_if_t<is_same_cvr_v<T, ns::s1_t>>>
-#endif
-    = [](const auto &, const auto &) { return false; };
+requires SameCvr<T, ns::s1_t>
+inline constexpr auto series_div<T, T> = [](const auto &, const auto &) { return false; };
 
 } // namespace obake::customisation
 

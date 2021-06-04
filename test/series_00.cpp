@@ -74,7 +74,6 @@ TEST_CASE("cf_key_concepts")
     REQUIRE(!is_key_v<const pm_t &>);
     REQUIRE(!is_key_v<pm_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Cf<void>);
     REQUIRE(!Key<void>);
 
@@ -90,7 +89,6 @@ TEST_CASE("cf_key_concepts")
     REQUIRE(!Key<pm_t &>);
     REQUIRE(!Key<const pm_t &>);
     REQUIRE(!Key<pm_t &&>);
-#endif
 }
 
 TEST_CASE("series_rank")
@@ -142,7 +140,6 @@ TEST_CASE("is_cvr_series")
     REQUIRE(is_cvr_series_v<const series_t &>);
     REQUIRE(is_cvr_series_v<series_t &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!CvrSeries<void>);
     REQUIRE(!CvrSeries<int>);
     REQUIRE(!CvrSeries<double>);
@@ -151,7 +148,6 @@ TEST_CASE("is_cvr_series")
     REQUIRE(CvrSeries<series_t &>);
     REQUIRE(CvrSeries<const series_t &>);
     REQUIRE(CvrSeries<series_t &&>);
-#endif
 }
 
 TEST_CASE("add_term_primitives")

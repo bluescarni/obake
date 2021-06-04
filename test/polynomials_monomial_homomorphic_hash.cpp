@@ -9,7 +9,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/polynomials/monomial_homomorphic_hash.hpp>
 
 #include "catch.hpp"
@@ -134,7 +133,6 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!is_homomorphically_hashable_monomial_v<nhh2 &&>);
     REQUIRE(!is_homomorphically_hashable_monomial_v<const nhh2 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!HomomorphicallyHashableMonomial<int>);
     REQUIRE(!HomomorphicallyHashableMonomial<std::string>);
 
@@ -177,5 +175,4 @@ TEST_CASE("monomial_hash_homomorphism")
     REQUIRE(!HomomorphicallyHashableMonomial<nhh2 &>);
     REQUIRE(!HomomorphicallyHashableMonomial<nhh2 &&>);
     REQUIRE(!HomomorphicallyHashableMonomial<const nhh2 &>);
-#endif
 }
