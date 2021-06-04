@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::subs().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto subs = not_implemented;
 
 } // namespace customisation
@@ -87,15 +81,11 @@ using is_substitutable = is_detected<detail::subs_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_substitutable_v = is_substitutable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL Substitutable = requires(T &&x, const symbol_map<U> &sm)
+concept Substitutable = requires(T &&x, const symbol_map<U> &sm)
 {
     ::obake::subs(::std::forward<T>(x), sm);
 };
-
-#endif
 
 } // namespace obake
 

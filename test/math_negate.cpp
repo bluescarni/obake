@@ -45,7 +45,6 @@ TEST_CASE("negate_arith")
     REQUIRE(is_negatable_v<__int128_t &>);
 #endif
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Negatable<void>);
     REQUIRE(Negatable<float>);
     REQUIRE(Negatable<int>);
@@ -62,7 +61,6 @@ TEST_CASE("negate_arith")
     REQUIRE(!Negatable<const __uint128_t>);
     REQUIRE(!Negatable<const __uint128_t &>);
     REQUIRE(Negatable<__int128_t &>);
-#endif
 #endif
 
     REQUIRE(std::is_same_v<decltype(negate(4)), int &&>);
@@ -174,28 +172,16 @@ struct int00 {
 namespace obake::customisation
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T>
 requires SameCvr<T, ext00>
-#else
-template <typename T, std::enable_if_t<is_same_cvr_v<T, ext00>, int> = 0>
-#endif
-    void negate(negate_t, T &&)
-{
-}
+void negate(negate_t, T &&) {}
 
 namespace internal
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T>
 requires SameCvr<T, int00>
-#else
-template <typename T, std::enable_if_t<is_same_cvr_v<T, int00>, int> = 0>
-#endif
-    void negate(negate_t, T &&)
-{
-}
+void negate(negate_t, T &&) {}
 
 } // namespace internal
 
@@ -236,8 +222,6 @@ TEST_CASE("negate_customisation")
     REQUIRE(is_negatable_v<const int00 &&>);
     REQUIRE(is_negatable_v<const int00 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
     REQUIRE(!Negatable<noadl00>);
     REQUIRE(!Negatable<noadl00 &>);
     REQUIRE(!Negatable<noadl00 &&>);
@@ -270,6 +254,4 @@ TEST_CASE("negate_customisation")
     REQUIRE(Negatable<int00 &&>);
     REQUIRE(Negatable<const int00 &&>);
     REQUIRE(Negatable<const int00 &>);
-
-#endif
 }

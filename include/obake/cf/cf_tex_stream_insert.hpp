@@ -82,15 +82,11 @@ using is_tex_stream_insertable_cf = is_detected<detail::cf_tex_stream_insert_t, 
 template <typename T>
 inline constexpr bool is_tex_stream_insertable_cf_v = is_tex_stream_insertable_cf<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
 concept tex_stream_insertable_cf = requires(::std::ostream &os, T &&x)
 {
     ::obake::cf_tex_stream_insert(os, ::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

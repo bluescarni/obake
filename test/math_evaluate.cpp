@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/evaluate.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -33,7 +32,6 @@ TEST_CASE("evaluate_arith")
     REQUIRE(!is_evaluable_v<int, int &>);
     REQUIRE(!is_evaluable_v<int, const int>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Evaluable<void, void>);
     REQUIRE(!Evaluable<void, int>);
     REQUIRE(!Evaluable<int, void>);
@@ -47,7 +45,6 @@ TEST_CASE("evaluate_arith")
     REQUIRE(Evaluable<const int, int>);
     REQUIRE(!Evaluable<int, int &>);
     REQUIRE(!Evaluable<int, const int>);
-#endif
 }
 
 struct evaluate_base {
@@ -67,12 +64,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, evaluate_1> inline constexpr auto evaluate<T, double>
-#else
-inline constexpr auto evaluate<T, double, std::enable_if_t<is_same_cvr_v<T, evaluate_1>>>
-#endif
-    = [](auto &&, const symbol_map<double> &) constexpr noexcept
+requires SameCvr<T, evaluate_1>
+inline constexpr auto evaluate<T, double> = [](auto &&, const symbol_map<double> &) constexpr noexcept
 {
     return true;
 };
@@ -100,12 +93,10 @@ TEST_CASE("evaluate_custom")
     REQUIRE(std::is_same_v<evaluate_1, decltype(obake::evaluate(evaluate_1{}, symbol_map<int>{}))>);
     REQUIRE(std::is_same_v<bool, decltype(obake::evaluate(evaluate_1{}, symbol_map<double>{}))>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Evaluable<evaluate_base, int>);
     REQUIRE(!Evaluable<evaluate_base, int &>);
     REQUIRE(Evaluable<evaluate_0, int>);
     REQUIRE(Evaluable<evaluate_0, double>);
     REQUIRE(Evaluable<evaluate_1, double>);
     REQUIRE(Evaluable<evaluate_1, int>);
-#endif
 }

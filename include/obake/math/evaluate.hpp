@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,24 +25,14 @@ namespace customisation
 {
 
 // External customisation point for obake::evaluate().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto evaluate = not_implemented;
 
 namespace internal
 {
 
 // Internal customisation point for obake::evaluate().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename>
 inline constexpr auto evaluate = not_implemented;
 
 } // namespace internal
@@ -106,15 +95,11 @@ using is_evaluable = is_detected<detail::evaluate_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_evaluable_v = is_evaluable<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL Evaluable = requires(T &&x, const symbol_map<U> &sm)
+concept Evaluable = requires(T &&x, const symbol_map<U> &sm)
 {
     ::obake::evaluate(::std::forward<T>(x), sm);
 };
-
-#endif
 
 } // namespace obake
 

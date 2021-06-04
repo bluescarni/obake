@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_trim.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -60,34 +59,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, trim_ext> inline constexpr auto key_trim<T>
-#else
-inline constexpr auto key_trim<T, std::enable_if_t<is_same_cvr_v<T, trim_ext>>>
-#endif
-    = [](auto &&, const symbol_idx_set &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, trim_ext>
+inline constexpr auto key_trim<T> = [](auto &&, const symbol_idx_set &, const symbol_set &) constexpr noexcept
 {
     return trim_ext{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notrim_ext_00> inline constexpr auto key_trim<T>
-#else
-inline constexpr auto key_trim<T, std::enable_if_t<is_same_cvr_v<T, notrim_ext_00>>>
-#endif
-    = [](auto &&, const symbol_idx_set &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, notrim_ext_00>
+inline constexpr auto key_trim<T> = [](auto &&, const symbol_idx_set &, const symbol_set &) constexpr noexcept
 {
     return 1;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, notrim_ext_01> inline constexpr auto key_trim<T>
-#else
-inline constexpr auto key_trim<T, std::enable_if_t<is_same_cvr_v<T, notrim_ext_01>>>
-#endif
-    = [](notrim_ext_01 &, const symbol_idx_set &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, notrim_ext_01>
+inline constexpr auto key_trim<T> = [](notrim_ext_01 &, const symbol_idx_set &, const symbol_set &) constexpr noexcept
 {
     return notrim_ext_01{};
 };
@@ -143,7 +130,6 @@ TEST_CASE("key_trim_test")
     REQUIRE(!is_trimmable_key_v<const notrim_ext_01 &>);
     REQUIRE(!is_trimmable_key_v<notrim_ext_01 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!TrimmableKey<void>);
 
     REQUIRE(!TrimmableKey<int>);
@@ -190,5 +176,4 @@ TEST_CASE("key_trim_test")
     REQUIRE(TrimmableKey<notrim_ext_01 &>);
     REQUIRE(!TrimmableKey<const notrim_ext_01 &>);
     REQUIRE(!TrimmableKey<notrim_ext_01 &&>);
-#endif
 }

@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_merge_symbols.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -63,34 +62,25 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext00> inline constexpr auto key_merge_symbols<T>
-#else
-inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ext00>>>
-#endif
-    = [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext00>
+inline constexpr auto key_merge_symbols<T> =
+    [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
 {
     return ext00{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext01> inline constexpr auto key_merge_symbols<T>
-#else
-inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ext01>>>
-#endif
-    = [](auto &, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext01>
+inline constexpr auto key_merge_symbols<T> =
+    [](auto &, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
 {
     return ext01{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, noext00> inline constexpr auto key_merge_symbols<T>
-#else
-inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, noext00>>>
-#endif
-    = [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, noext00>
+inline constexpr auto key_merge_symbols<T> =
+    [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
 {
     return 42;
 };
@@ -98,12 +88,9 @@ inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, noe
 // This will override a correct ADL implementation, thus disabling
 // obake::key_merge_symbols().
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ns::kms02> inline constexpr auto key_merge_symbols<T>
-#else
-inline constexpr auto key_merge_symbols<T, std::enable_if_t<is_same_cvr_v<T, ns::kms02>>>
-#endif
-    = [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ns::kms02>
+inline constexpr auto key_merge_symbols<T> =
+    [](auto &&, const symbol_idx_map<symbol_set> &, const symbol_set &) constexpr noexcept
 {
     return 42;
 };
@@ -145,7 +132,6 @@ TEST_CASE("key_merge_symbols_test")
     REQUIRE(!is_symbols_mergeable_key_v<ns::kms02 &>);
     REQUIRE(!is_symbols_mergeable_key_v<const ns::kms02 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!SymbolsMergeableKey<void>);
     REQUIRE(!SymbolsMergeableKey<int>);
     REQUIRE(!SymbolsMergeableKey<double>);
@@ -178,5 +164,4 @@ TEST_CASE("key_merge_symbols_test")
     REQUIRE(!SymbolsMergeableKey<ns::kms02>);
     REQUIRE(!SymbolsMergeableKey<ns::kms02 &>);
     REQUIRE(!SymbolsMergeableKey<const ns::kms02 &>);
-#endif
 }

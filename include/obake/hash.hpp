@@ -14,7 +14,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -27,12 +26,7 @@ namespace customisation
 {
 
 // External customisation point for obake::hash().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto hash = not_implemented;
 
 } // namespace customisation
@@ -65,22 +59,8 @@ constexpr auto hash_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct hash_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::hash_impl_with_ret_check(::std::forward<T>(x)))
-};
-
-inline constexpr auto hash = hash_msvc{};
-
-#else
-
 inline constexpr auto hash =
     [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::hash_impl_with_ret_check(::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {
@@ -96,15 +76,11 @@ using is_hashable = is_detected<detail::hash_t, T>;
 template <typename T>
 inline constexpr bool is_hashable_v = is_hashable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Hashable = requires(T &&x)
+concept Hashable = requires(T &&x)
 {
     ::obake::hash(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

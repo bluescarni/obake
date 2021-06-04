@@ -89,7 +89,6 @@ TEST_CASE("diff_test")
     REQUIRE(is_differentiable_v<const mppp::real128>);
 #endif
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Differentiable<void>);
     REQUIRE(!Differentiable<const void>);
 
@@ -142,7 +141,6 @@ TEST_CASE("diff_test")
     REQUIRE(Differentiable<mppp::real128 &>);
     REQUIRE(Differentiable<const mppp::real128 &>);
     REQUIRE(Differentiable<const mppp::real128>);
-#endif
 #endif
 
     REQUIRE(diff(0, "") == 0);
@@ -211,34 +209,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, diff_ext> inline constexpr auto diff<T>
-#else
-inline constexpr auto diff<T, std::enable_if_t<is_same_cvr_v<T, diff_ext>>>
-#endif
-    = [](auto &&, const std::string &) constexpr noexcept
+requires SameCvr<T, diff_ext>
+inline constexpr auto diff<T> = [](auto &&, const std::string &) constexpr noexcept
 {
     return diff_ext{};
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, nodiff_ext_00> inline constexpr auto diff<T>
-#else
-inline constexpr auto diff<T, std::enable_if_t<is_same_cvr_v<T, nodiff_ext_00>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, nodiff_ext_00>
+inline constexpr auto diff<T> = [](auto &&) constexpr noexcept
 {
     return 1;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, nodiff_ext_01> inline constexpr auto diff<T>
-#else
-inline constexpr auto diff<T, std::enable_if_t<is_same_cvr_v<T, nodiff_ext_01>>>
-#endif
-    = [](nodiff_ext_01 &, const std::string &) constexpr noexcept
+requires SameCvr<T, nodiff_ext_01>
+inline constexpr auto diff<T> = [](nodiff_ext_01 &, const std::string &) constexpr noexcept
 {
     return nodiff_ext_01{};
 };
@@ -262,7 +248,6 @@ TEST_CASE("diff_custom_test")
     REQUIRE(!is_differentiable_v<const nodiff_ext_01 &>);
     REQUIRE(!is_differentiable_v<const nodiff_ext_01>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(Differentiable<diff_ext>);
     REQUIRE(Differentiable<diff_ext &>);
     REQUIRE(Differentiable<const diff_ext &>);
@@ -277,5 +262,4 @@ TEST_CASE("diff_custom_test")
     REQUIRE(Differentiable<nodiff_ext_01 &>);
     REQUIRE(!Differentiable<const nodiff_ext_01 &>);
     REQUIRE(!Differentiable<const nodiff_ext_01>);
-#endif
 }

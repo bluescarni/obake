@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::key_trim().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto key_trim = not_implemented;
 
 } // namespace customisation
@@ -63,22 +57,8 @@ constexpr auto key_trim_impl_with_ret_check(T &&x, const symbol_idx_set &si, con
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct key_trim_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_idx_set &si, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::key_trim_impl_with_ret_check(::std::forward<T>(x), si, ss))
-};
-
-inline constexpr auto key_trim = key_trim_msvc{};
-
-#else
-
 inline constexpr auto key_trim = [](auto &&x, const symbol_idx_set &si, const symbol_set &ss)
     OBAKE_SS_FORWARD_LAMBDA(detail::key_trim_impl_with_ret_check(::std::forward<decltype(x)>(x), si, ss));
-
-#endif
 
 namespace detail
 {
@@ -98,15 +78,11 @@ using is_trimmable_key = is_detected<detail::key_trim_t, T>;
 template <typename T>
 inline constexpr bool is_trimmable_key_v = is_trimmable_key<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL TrimmableKey = requires(T &&x, const symbol_idx_set &si, const symbol_set &ss)
+concept TrimmableKey = requires(T &&x, const symbol_idx_set &si, const symbol_set &ss)
 {
     ::obake::key_trim(::std::forward<T>(x), si, ss);
 };
-
-#endif
 
 } // namespace obake
 

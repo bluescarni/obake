@@ -6,7 +6,6 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <obake/config.hpp>
 #include <obake/polynomials/monomial_mul.hpp>
 #include <obake/symbols.hpp>
 
@@ -75,7 +74,6 @@ TEST_CASE("monomial_mul_test")
     REQUIRE(!is_multipliable_monomial_v<const nomm01 &, const nomm01 &, const nomm01 &>);
     REQUIRE(!is_multipliable_monomial_v<nomm01 &&, const nomm01 &, const nomm01 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!MultipliableMonomial<void, void, void>);
 
     REQUIRE(!MultipliableMonomial<ns::mm00 &, void, void>);
@@ -97,5 +95,4 @@ TEST_CASE("monomial_mul_test")
     REQUIRE(!MultipliableMonomial<nomm01 &, const nomm01 &, const nomm01 &>);
     REQUIRE(!MultipliableMonomial<const nomm01 &, const nomm01 &, const nomm01 &>);
     REQUIRE(!MultipliableMonomial<nomm01 &&, const nomm01 &, const nomm01 &>);
-#endif
 }

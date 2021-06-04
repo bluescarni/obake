@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/p_degree.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -27,7 +26,6 @@ TEST_CASE("p_degree_arith")
     REQUIRE(!is_with_p_degree_v<int &&>);
     REQUIRE(!is_with_p_degree_v<const int>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!WithPDegree<void>);
 
     REQUIRE(!WithPDegree<int>);
@@ -35,7 +33,6 @@ TEST_CASE("p_degree_arith")
     REQUIRE(!WithPDegree<const int &>);
     REQUIRE(!WithPDegree<int &&>);
     REQUIRE(!WithPDegree<const int>);
-#endif
 }
 
 struct no_p_degree_0 {
@@ -68,23 +65,15 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, p_degree_1> inline constexpr auto p_degree<T>
-#else
-inline constexpr auto p_degree<T, std::enable_if_t<is_same_cvr_v<T, p_degree_1>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, p_degree_1>
+inline constexpr auto p_degree<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, p_degree_2> inline constexpr auto p_degree<T>
-#else
-inline constexpr auto p_degree<T, std::enable_if_t<is_same_cvr_v<T, p_degree_2>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, p_degree_2>
+inline constexpr auto p_degree<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
@@ -100,11 +89,9 @@ TEST_CASE("p_degree_custom")
     REQUIRE(!is_with_p_degree_v<no_p_degree_1>);
     REQUIRE(is_with_p_degree_v<p_degree_2>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!WithPDegree<no_p_degree_0>);
     REQUIRE(WithPDegree<p_degree_0>);
     REQUIRE(WithPDegree<p_degree_1>);
     REQUIRE(!WithPDegree<no_p_degree_1>);
     REQUIRE(WithPDegree<p_degree_2>);
-#endif
 }

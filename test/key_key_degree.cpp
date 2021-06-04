@@ -9,7 +9,6 @@
 #include <string>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/key/key_degree.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -48,23 +47,15 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt00> inline constexpr auto key_degree<T>
-#else
-inline constexpr auto key_degree<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt00>
+inline constexpr auto key_degree<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return true;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt01> inline constexpr auto key_degree<T>
-#else
-inline constexpr auto key_degree<T, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
-#endif
-    = [](auto &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt01>
+inline constexpr auto key_degree<T> = [](auto &, const symbol_set &) constexpr noexcept
 {
     return true;
 };
@@ -107,7 +98,6 @@ TEST_CASE("key_degree_test")
 
     REQUIRE(!is_key_with_degree_v<const ext_nzt00 &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!KeyWithDegree<void>);
 
     REQUIRE(!KeyWithDegree<int>);
@@ -141,5 +131,4 @@ TEST_CASE("key_degree_test")
     REQUIRE(!KeyWithDegree<ext_zt01 &&>);
 
     REQUIRE(!KeyWithDegree<const ext_nzt00 &>);
-#endif
 }

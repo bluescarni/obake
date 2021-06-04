@@ -221,14 +221,12 @@ TEST_CASE("range_overflow_check_test")
             REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<pm_t>, void>);
             REQUIRE(!are_overflow_testable_monomial_ranges_v<void, std::vector<pm_t>>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
             REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::vector<pm_t>>);
             REQUIRE(OverflowTestableMonomialRanges<std::vector<pm_t>, std::list<pm_t>>);
             REQUIRE(OverflowTestableMonomialRanges<std::list<pm_t>, std::vector<pm_t>>);
 
             REQUIRE(!OverflowTestableMonomialRanges<std::vector<pm_t>, void>);
             REQUIRE(!OverflowTestableMonomialRanges<void, std::vector<pm_t>>);
-#endif
 
             std::vector<pm_t> v1, v2;
             symbol_set ss;
