@@ -148,7 +148,7 @@ namespace detail
         const detail::ss_fw ss_fw(ss);
 
         auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
-            using str_t = remove_cvref_t<decltype(n)>;
+            using str_t = ::std::remove_cvref_t<decltype(n)>;
 
             // Fetch a const reference to either the original
             // std::string object n, or to a string temporary
@@ -198,7 +198,7 @@ namespace detail
     inline auto make_polynomials_impl(const Args &...names)
     {
         auto make_poly = [](const auto &n) {
-            using str_t = remove_cvref_t<decltype(n)>;
+            using str_t = ::std::remove_cvref_t<decltype(n)>;
 
             // Init the retval, assign a symbol set containing only n.
             T retval;
@@ -314,8 +314,8 @@ constexpr auto poly_mul_algorithm_impl()
 {
     // Preconditions: T and U are not cvr-qualified, both are series types
     // and they have the same key and tag types.
-    static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
-    static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(::std::is_same_v<::std::remove_cvref_t<T>, T>);
+    static_assert(::std::is_same_v<::std::remove_cvref_t<U>, U>);
     static_assert(any_series<T>);
     static_assert(any_series<U>);
     static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
@@ -1203,7 +1203,7 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))]
 #endif
                 (const auto &i, const auto &r2) {
-                    using idx_t = remove_cvref_t<decltype(i)>;
+                    using idx_t = ::std::remove_cvref_t<decltype(i)>;
 
 #if defined(_MSC_VER) && !defined(__clang__)
                     const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
@@ -1781,7 +1781,7 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
                     &max_deg = ::std::get<0>(::std::forward_as_tuple(args...))]
 #endif
                 (const auto &i) {
-                    using idx_t = remove_cvref_t<decltype(i)>;
+                    using idx_t = ::std::remove_cvref_t<decltype(i)>;
 
 #if defined(_MSC_VER) && !defined(__clang__)
                     const auto &max_deg = ::std::get<0>(::std::forward_as_tuple(args...));
@@ -2059,13 +2059,13 @@ constexpr auto poly_mul_truncated_degree_algorithm_impl()
 {
     // Preconditions: T and U are not cvr-qualified, both are series types,
     // they have the same key and tag types and V is not cvr-qualified.
-    static_assert(::std::is_same_v<remove_cvref_t<T>, T>);
-    static_assert(::std::is_same_v<remove_cvref_t<U>, U>);
+    static_assert(::std::is_same_v<::std::remove_cvref_t<T>, T>);
+    static_assert(::std::is_same_v<::std::remove_cvref_t<U>, U>);
     static_assert(any_series<T>);
     static_assert(any_series<U>);
     static_assert(::std::is_same_v<series_key_t<T>, series_key_t<U>>);
     static_assert(::std::is_same_v<series_tag_t<T>, series_tag_t<U>>);
-    static_assert(::std::is_same_v<remove_cvref_t<V>, V>);
+    static_assert(::std::is_same_v<::std::remove_cvref_t<V>, V>);
 
     // Check first if we can do the untruncated multiplication. If we cannot,
     // truncated mult is not possible.
@@ -2152,8 +2152,8 @@ inline auto pow_poly_impl(T &&x, U &&y)
 {
     using ret_t = customisation::internal::series_default_pow_ret_t<T &&, U &&>;
 
-    using rT = remove_cvref_t<T>;
-    using rU = remove_cvref_t<U>;
+    using rT = ::std::remove_cvref_t<T>;
+    using rU = ::std::remove_cvref_t<U>;
     using key_t = series_key_t<rT>;
 
     if constexpr (is_exponentiable_monomial_v<const key_t &, const rU &>) {
@@ -2192,7 +2192,7 @@ inline auto pow_poly_impl(T &&x, U &&y)
 
 // Exponentiation.
 template <typename T, typename U>
-requires Polynomial<remove_cvref_t<T>> &&(
+requires Polynomial<::std::remove_cvref_t<T>> &&(
     customisation::internal::series_default_pow_algo<
         T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
 {
@@ -2209,7 +2209,7 @@ namespace detail
 template <typename T, typename U>
 constexpr auto poly_subs_algorithm_impl()
 {
-    using rT = remove_cvref_t<T>;
+    using rT = ::std::remove_cvref_t<T>;
 
     // Shortcut for signalling that the subs implementation
     // is not well-defined.
@@ -2278,7 +2278,7 @@ inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
     const auto si = ::obake::detail::sm_intersect_idx(sm, ss);
 
     // Init a temp poly that we will use in the loop below.
-    remove_cvref_t<T> tmp_poly;
+    ::std::remove_cvref_t<T> tmp_poly;
     tmp_poly.set_symbol_set_fw(x.get_symbol_set_fw());
     tmp_poly.tag() = x.tag();
 
@@ -2326,7 +2326,7 @@ inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 
 // Polynomial subs.
 template <typename T, typename U>
-requires Polynomial<remove_cvref_t<T>> &&(
+requires Polynomial<::std::remove_cvref_t<T>> &&(
     detail::poly_subs_algo<T &&, U> != 0) inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
 {
     return detail::poly_subs_impl(::std::forward<T>(x), sm);
@@ -2358,7 +2358,8 @@ constexpr int poly_truncate_degree_algorithm_impl()
             // ref vs rvalue).
             using deg_t = typename d_impl::template ret_t<T>;
 
-            return is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t> ? 1 : 0;
+            return is_less_than_comparable_v<::std::add_lvalue_reference_t<const ::std::remove_cvref_t<U>>, deg_t> ? 1
+                                                                                                                   : 0;
         } else {
             // The key degree computation is not possible, or it
             // involves the coefficient in addition to the key.
@@ -2420,7 +2421,8 @@ constexpr int poly_truncate_p_degree_algorithm_impl()
             // ref vs rvalue).
             using deg_t = typename d_impl::template ret_t<T>;
 
-            return is_less_than_comparable_v<::std::add_lvalue_reference_t<const remove_cvref_t<U>>, deg_t> ? 1 : 0;
+            return is_less_than_comparable_v<::std::add_lvalue_reference_t<const ::std::remove_cvref_t<U>>, deg_t> ? 1
+                                                                                                                   : 0;
         } else {
             // The key partial degree computation is not possible, or it
             // involves the coefficient in addition to the key.
@@ -2469,7 +2471,7 @@ namespace detail
 template <typename T>
 constexpr auto poly_diff_algorithm_impl()
 {
-    using rT = remove_cvref_t<T>;
+    using rT = ::std::remove_cvref_t<T>;
 
     // Shortcut for signalling that the diff() implementation
     // is not well-defined.
@@ -2574,7 +2576,7 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
         // Init temp polys that we will use in the loop below.
         // These will represent the original monomial and its
         // derivative as series of type T (after cvref removal).
-        remove_cvref_t<T> tmp_p1, tmp_p2;
+        ::std::remove_cvref_t<T> tmp_p1, tmp_p2;
 
         tmp_p1.set_symbol_set_fw(ss_fw);
         tmp_p1.tag() = x.tag();
@@ -2615,7 +2617,7 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
     } else {
         // Faster implementation via term insertions.
         // The return type must be the original poly type.
-        static_assert(::std::is_same_v<ret_t, remove_cvref_t<T>>);
+        static_assert(::std::is_same_v<ret_t, ::std::remove_cvref_t<T>>);
 
         // Init retval, using the same symbol set, tag
         // and segmentation from x, and reserving
@@ -2661,8 +2663,8 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
 } // namespace detail
 
 template <typename T>
-requires Polynomial<remove_cvref_t<T>> &&(detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(
-    T &&x, const ::std::string &s)
+requires Polynomial<::std::remove_cvref_t<T>> &&(
+    detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
 {
     return detail::poly_diff_impl(::std::forward<T>(x), s);
 }
@@ -2679,7 +2681,7 @@ namespace detail
 template <typename T>
 constexpr auto poly_integrate_algorithm_impl()
 {
-    using rT = remove_cvref_t<T>;
+    using rT = ::std::remove_cvref_t<T>;
 
     // Shortcut for signalling that the integrate() implementation
     // is not well-defined.
@@ -2754,7 +2756,7 @@ template <typename T>
 inline auto poly_integrate_impl(T &&x_, const ::std::string &s)
 {
     using ret_t = poly_integrate_ret_t<T &&>;
-    using rT = remove_cvref_t<T>;
+    using rT = ::std::remove_cvref_t<T>;
 
     // The implementation function.
     auto impl = [&s](const rT &x, symbol_idx idx) {
@@ -2875,7 +2877,7 @@ inline auto poly_integrate_impl(T &&x_, const ::std::string &s)
 } // namespace detail
 
 template <typename T>
-requires Polynomial<remove_cvref_t<T>> &&(
+requires Polynomial<::std::remove_cvref_t<T>> &&(
     detail::poly_integrate_algo<T &&> != 0) inline detail::poly_integrate_ret_t<T &&> integrate(T &&x,
                                                                                                 const ::std::string &s)
 {

@@ -191,7 +191,7 @@ struct trunc_t_hasher {
     {
         return ::std::visit(
             [](const auto &v) -> ::std::size_t {
-                using type = remove_cvref_t<decltype(v)>;
+                using type = ::std::remove_cvref_t<decltype(v)>;
 
                 if constexpr (::std::is_same_v<type, no_truncation>) {
                     return 0;
@@ -317,7 +317,7 @@ inline ::std::ostream &operator<<(::std::ostream &os, const tag<T> &t)
     return os << "Series type: power series\n"
               << ::std::visit(
                      [&os](const auto &v) -> ::std::string {
-                         using type = remove_cvref_t<decltype(v)>;
+                         using type = ::std::remove_cvref_t<decltype(v)>;
 
                          if constexpr (::std::is_same_v<type, detail::no_truncation>) {
                              return "Truncation: none";
@@ -386,10 +386,11 @@ using psk_pdeg_t = detected_t<detail::key_p_degree_t, ::std::add_lvalue_referenc
 // operations).
 template <typename K>
 concept power_series_key
-    = Key<K> &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>::value
-        &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_pdeg_t<K>>::value
-            && ::std::is_same_v<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>> &&Hashable<const detail::psk_deg_t<K> &>
-                &&EqualityComparable<const detail::psk_deg_t<K> &> &&StreamInsertable<const detail::psk_deg_t<K> &>;
+    = Key<K> && customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>::
+          value && customisation::internal::series_default_degree_type_common_reqs<
+              detail::psk_pdeg_t<K>>::value && ::std::is_same_v<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>> && Hashable
+      < const detail::psk_deg_t<K>
+& > &&EqualityComparable<const detail::psk_deg_t<K> &> &&StreamInsertable<const detail::psk_deg_t<K> &>;
 
 // Definition of the power series class.
 template <power_series_key K, power_series_cf C>
@@ -415,44 +416,44 @@ concept any_p_series = detail::is_any_p_series_impl<T>::value;
 namespace power_series
 {
 
-// Implementation of (partial) degree truncation for power series.
-template <typename K, typename C, typename T>
-requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline void truncate_degree(p_series<K, C> &ps,
-                                                                                                  const T &d)
-{
-    // Use the default functor for the extraction of the term degree.
-    // NOTE: d_impl is assured to work thanks to the concept
-    // requirements for ps key. The only extra bit we need in this function
-    // is to be able to compare d to the degree type, which
-    // is checked above.
-    using d_impl = customisation::internal::series_default_degree_impl;
+    // Implementation of (partial) degree truncation for power series.
+    template <typename K, typename C, typename T>
+    requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>>
+    inline void truncate_degree(p_series<K, C> & ps, const T &d)
+    {
+        // Use the default functor for the extraction of the term degree.
+        // NOTE: d_impl is assured to work thanks to the concept
+        // requirements for ps key. The only extra bit we need in this function
+        // is to be able to compare d to the degree type, which
+        // is checked above.
+        using d_impl = customisation::internal::series_default_degree_impl;
 
-    // Implement on top of filter().
-    ::obake::filter(ps, [deg_ext = d_impl::d_extractor<p_series<K, C>>{&ps.get_symbol_set()}, &d](const auto &t) {
-        return !(d < deg_ext(t));
-    });
-}
+        // Implement on top of filter().
+        ::obake::filter(ps, [deg_ext = d_impl::d_extractor<p_series<K, C>>{&ps.get_symbol_set()}, &d](const auto &t) {
+            return !(d < deg_ext(t));
+        });
+    }
 
-template <typename K, typename C, typename T>
-requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline void
-truncate_p_degree(p_series<K, C> &ps, const T &d, const symbol_set &s)
-{
-    // Use the default functor for the extraction of the term degree.
-    // NOTE: d_impl is assured to work thanks to the concept
-    // requirements for ps key. The only extra bit we need in this function
-    // is to be able to compare d to the degree type, which
-    // is checked above.
-    using d_impl = customisation::internal::series_default_p_degree_impl;
+    template <typename K, typename C, typename T>
+    requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>>
+    inline void truncate_p_degree(p_series<K, C> & ps, const T &d, const symbol_set &s)
+    {
+        // Use the default functor for the extraction of the term degree.
+        // NOTE: d_impl is assured to work thanks to the concept
+        // requirements for ps key. The only extra bit we need in this function
+        // is to be able to compare d to the degree type, which
+        // is checked above.
+        using d_impl = customisation::internal::series_default_p_degree_impl;
 
-    // Extract the symbol indices.
-    const auto &ss = ps.get_symbol_set();
-    const auto si = ::obake::detail::ss_intersect_idx(s, ss);
+        // Extract the symbol indices.
+        const auto &ss = ps.get_symbol_set();
+        const auto si = ::obake::detail::ss_intersect_idx(s, ss);
 
-    // Implement on top of filter().
-    ::obake::filter(ps, [deg_ext = d_impl::d_extractor<p_series<K, C>>{&s, &si, &ss}, &d](const auto &t) {
-        return !(d < deg_ext(t));
-    });
-}
+        // Implement on top of filter().
+        ::obake::filter(ps, [deg_ext = d_impl::d_extractor<p_series<K, C>>{&s, &si, &ss}, &d](const auto &t) {
+            return !(d < deg_ext(t));
+        });
+    }
 
 } // namespace power_series
 
@@ -461,8 +462,8 @@ namespace detail
 
 // Set total degree truncation.
 template <typename K, typename C, typename T>
-requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps,
-                                                                                                    const T &d)
+requires SafelyCastable<const T &, detail::psk_deg_t<K>>
+inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps, const T &d)
 {
     // Convert safely d to the degree type.
     const auto deg = ::obake::safe_cast<detail::psk_deg_t<K>>(d);
@@ -494,8 +495,8 @@ requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &
 
 // Set partial degree truncation.
 template <typename K, typename C, typename T>
-requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &
-set_truncation_impl(p_series<K, C> &ps, const T &d, symbol_set ss)
+requires SafelyCastable<const T &, detail::psk_deg_t<K>>
+inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps, const T &d, symbol_set ss)
 {
     // Convert safely d to the degree type.
     const auto deg = ::obake::safe_cast<detail::psk_deg_t<K>>(d);
@@ -548,7 +549,7 @@ inline constexpr auto get_truncation = []<typename K, typename C>(const p_series
 inline constexpr auto truncate = []<typename K, typename C>(p_series<K, C> &ps) {
     ::std::visit(
         [&ps](const auto &v) {
-            using type = remove_cvref_t<decltype(v)>;
+            using type = ::std::remove_cvref_t<decltype(v)>;
 
             if constexpr (::std::is_same_v<type, power_series::detail::no_truncation>) {
             } else if constexpr (::std::is_same_v<type, detail::psk_deg_t<K>>) {
@@ -578,10 +579,11 @@ concept make_p_series_supported
 
 // Overload without a symbol set, no truncation.
 template <typename T, typename... Args>
-requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(const Args &...names)
+requires make_p_series_supported<T, Args...>
+inline auto make_p_series_impl(const Args &...names)
 {
     auto make_p_series = [](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        using str_t = ::std::remove_cvref_t<decltype(n)>;
 
         // Init the retval, assign a symbol set containing only n.
         T retval;
@@ -604,7 +606,8 @@ requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(cons
 
 // Overload with a symbol set, no truncation.
 template <typename T, typename... Args>
-requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
+requires make_p_series_supported<T, Args...>
+inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
 {
     // Create a temp vector of ints which we will use to
     // init the keys.
@@ -614,7 +617,7 @@ requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(cons
     const detail::ss_fw ss_fw(ss);
 
     auto make_p_series = [&ss_fw, &ss, &tmp](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        using str_t = ::std::remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
         // std::string object n, or to a string temporary
@@ -673,17 +676,18 @@ namespace detail
 
 template <typename T, typename U, typename... Args>
 concept make_p_series_t_supported
-    = make_p_series_supported<T, Args...> &&SafelyCastable<const U &, psk_deg_t<series_key_t<T>>>;
+    = make_p_series_supported<T, Args...> && SafelyCastable<const U &, psk_deg_t<series_key_t<T>>>;
 
 // Overload without a symbol set, total truncation.
 template <typename T, typename U, typename... Args>
-requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_impl(const U &d, const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_t_impl(const U &d, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
 
     auto make_p_series = [&deg](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        using str_t = ::std::remove_cvref_t<decltype(n)>;
 
         // Init the retval, assign a symbol set containing only n.
         T retval;
@@ -709,8 +713,8 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_im
 
 // Overload with a symbol set, total truncation.
 template <typename T, typename U, typename... Args>
-requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_impl(const symbol_set &ss, const U &d,
-                                                                                   const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_t_impl(const symbol_set &ss, const U &d, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -723,7 +727,7 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_im
     const detail::ss_fw ss_fw(ss);
 
     auto make_p_series = [&deg, &ss_fw, &ss, &tmp](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        using str_t = ::std::remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
         // std::string object n, or to a string temporary
@@ -787,14 +791,14 @@ namespace detail
 template <typename T, typename U, typename... Args>
 // NOTE: for partial degree truncation we can re-use the concepts
 // used in total degree truncation.
-requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_p_impl(const U &d, const symbol_set &tss,
-                                                                                   const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_p_impl(const U &d, const symbol_set &tss, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
 
     auto make_p_series = [&deg, &tss](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        using str_t = ::std::remove_cvref_t<decltype(n)>;
 
         // Init the retval, assign a symbol set containing only n.
         T retval;
@@ -822,8 +826,8 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_p_im
 template <typename T, typename U, typename... Args>
 // NOTE: for partial degree truncation we can re-use the concepts
 // used in total degree truncation.
-requires make_p_series_t_supported<T, U, Args...> inline auto
-make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -836,7 +840,7 @@ make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, co
     const detail::ss_fw ss_fw(ss);
 
     auto make_p_series = [&deg, &ss_fw, &ss, &tmp, &tss](const auto &n) {
-        using str_t = remove_cvref_t<decltype(n)>;
+        using str_t = ::std::remove_cvref_t<decltype(n)>;
 
         // Fetch a const reference to either the original
         // std::string object n, or to a string temporary
@@ -907,7 +911,7 @@ inline void tex_stream_insert(::std::ostream &os, const p_series<K, C> &ps)
     using deg_t [[maybe_unused]] = decltype(::obake::degree(ps));
     os << ::std::visit(
         [&os](const auto &v) -> ::std::string {
-            using type = remove_cvref_t<decltype(v)>;
+            using type = ::std::remove_cvref_t<decltype(v)>;
 
             if constexpr (::std::is_same_v<type, detail::no_truncation>) {
                 return "";
@@ -1014,13 +1018,13 @@ inline auto ps_addsub_impl(T &&x, U &&y)
         // different coefficients.
 
         // Fetch the return type.
-        using ret_t = decltype(
-            ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y)));
+        using ret_t = decltype(::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                     ::std::forward<U>(y)));
 
         return ::std::visit(
             [&x, &y](const auto &v0, const auto &v1) -> ret_t {
-                using type0 = remove_cvref_t<decltype(v0)>;
-                using type1 = remove_cvref_t<decltype(v1)>;
+                using type0 = ::std::remove_cvref_t<decltype(v0)>;
+                using type1 = ::std::remove_cvref_t<decltype(v1)>;
 
                 if constexpr (::std::is_same_v<type0, type1>) {
                     // The truncation policies match. In this case, we first
@@ -1079,9 +1083,9 @@ inline auto ps_addsub_impl(T &&x, U &&y)
 } // namespace detail
 
 template <typename T, typename U>
-    requires
+requires
     // At least one of the operands must be a power series.
-    (any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
+    (any_p_series<::std::remove_cvref_t<T>> || any_p_series<::std::remove_cvref_t<U>>)
     // Check that the specialised addsub implementation
     // for power series is avaialable and appropriate.
     // Otherwise, the default series addsub will be used.
@@ -1094,7 +1098,7 @@ template <typename T, typename U>
 }
 
 template <typename T, typename U>
-    requires(any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
+requires(any_p_series<::std::remove_cvref_t<T>> || any_p_series<::std::remove_cvref_t<U>>)
     && (detail::ps_addsub_algo<false, T &&, U &&>()
         != 0) inline ::obake::detail::series_default_addsub_ret_t<false, T &&, U &&> series_sub(T &&x, U &&y)
 {
@@ -1169,13 +1173,13 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
         // different coefficients.
 
         // Fetch the return type.
-        using ret_t = decltype(
-            ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y)));
+        using ret_t = decltype(::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                              ::std::forward<U>(y)));
 
         return ::std::visit(
             [&x, &y](const auto &v0, const auto &v1) -> ret_t {
-                using type0 = remove_cvref_t<decltype(v0)>;
-                using type1 = remove_cvref_t<decltype(v1)>;
+                using type0 = ::std::remove_cvref_t<decltype(v0)>;
+                using type1 = ::std::remove_cvref_t<decltype(v1)>;
 
                 if constexpr (::std::is_same_v<type0, type1>) {
                     // The truncation policies match. In this case, we first
@@ -1233,7 +1237,7 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
 } // namespace detail
 
 template <typename T, typename U>
-    requires
+requires
     // T must be a power series.
     // NOTE: if T is not a power series and U is,
     // then there are the following possibilities:
@@ -1244,19 +1248,20 @@ template <typename T, typename U>
     // - rank_T == rank_U -> this is not possible because
     //   T is not a power series, thus its tag differs from U's
     //   which disables the default implementation.
-    any_p_series<remove_cvref_t<T>>
+    any_p_series<::std::remove_cvref_t<T>>
     // Check that the specialised addsub implementation
     // for power series is avaialable and appropriate.
     // Otherwise, the default series addsub will be used.
-    && (detail::ps_in_place_addsub_algo<true, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_add(T &&x,
-                                                                                                                U &&y)
+    &&(detail::ps_in_place_addsub_algo<true, T &&, U &&>()
+       != 0) inline ::std::remove_cvref_t<T> &series_in_place_add(T &&x, U &&y)
 {
     return detail::ps_in_place_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 template <typename T, typename U>
-    requires any_p_series<remove_cvref_t<
-        T>> && (detail::ps_in_place_addsub_algo<false, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_sub(T &&x, U &&y)
+requires any_p_series<::std::remove_cvref_t<T>> &&(detail::ps_in_place_addsub_algo<false, T &&, U &&>()
+                                                   != 0) inline ::std::remove_cvref_t<T> &series_in_place_sub(T &&x,
+                                                                                                              U &&y)
 {
     return detail::ps_in_place_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
 }
@@ -1305,8 +1310,8 @@ requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline
 
     return ::std::visit(
         [&ps0, &ps1](const auto &v0, const auto &v1) -> ret_t {
-            using type0 = remove_cvref_t<decltype(v0)>;
-            using type1 = remove_cvref_t<decltype(v1)>;
+            using type0 = ::std::remove_cvref_t<decltype(v0)>;
+            using type1 = ::std::remove_cvref_t<decltype(v1)>;
 
             if constexpr (::std::is_same_v<type0, type1>) {
                 // The truncation policies match. In this case, we first
@@ -1380,8 +1385,9 @@ requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline
 // Exponentiation: we re-use the poly implementation, ensuring
 // that the output is properly truncated.
 template <typename T, typename U>
-    requires any_p_series<remove_cvref_t<
-        T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+requires any_p_series<::std::remove_cvref_t<T>> &&(
+    customisation::internal::series_default_pow_algo<
+        T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
 {
     // Store x's tag.
     auto orig_tag = x.tag();
@@ -1405,8 +1411,9 @@ template <typename T, typename U>
 // even if the input object(s) have truncation (e.g.,
 // empty x). Not sure what's the best way of dealing with this.
 template <typename T, typename U>
-    requires any_p_series<remove_cvref_t<
-        T>> && (polynomials::detail::poly_subs_algo<T &&, U> != 0) inline polynomials::detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+requires any_p_series<::std::remove_cvref_t<T>> &&(
+    polynomials::detail::poly_subs_algo<
+        T &&, U> != 0) inline polynomials::detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
 {
     return polynomials::detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
@@ -1420,8 +1427,8 @@ template <typename T, typename U>
 // value is not truncated even if x is. If this becomes a problem,
 // we can enable this specialisation only for some values of diff_algo.
 template <typename T>
-    requires any_p_series<remove_cvref_t<
-        T>> && (polynomials::detail::poly_diff_algo<T &&> != 0) inline polynomials::detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
+requires any_p_series<::std::remove_cvref_t<T>> &&(polynomials::detail::poly_diff_algo<T &&> != 0) inline polynomials::
+    detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
 {
     return polynomials::detail::poly_diff_impl(::std::forward<T>(x), s);
 }
@@ -1435,12 +1442,13 @@ template <typename T>
 // value is not truncated even if x is. If this becomes a problem,
 // we can enable this specialisation only for some values of integrate_algo.
 template <typename T>
-    requires any_p_series<remove_cvref_t<
-        T>> && (polynomials::detail::poly_integrate_algo<T &&> != 0) inline polynomials::detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
+requires any_p_series<::std::remove_cvref_t<T>> &&(
+    polynomials::detail::poly_integrate_algo<
+        T &&> != 0) inline polynomials::detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
 {
     auto ret = polynomials::detail::poly_integrate_impl(::std::forward<T>(x), s);
 
-    if constexpr (::std::is_same_v<decltype(ret), remove_cvref_t<T>>) {
+    if constexpr (::std::is_same_v<decltype(ret), ::std::remove_cvref_t<T>>) {
         // NOTE: if the return type matches the input type,
         // then the result was calculated via repeated term insertions
         // and we need to explicitly truncate.

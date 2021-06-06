@@ -11,6 +11,7 @@
 #include <random>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -19,7 +20,6 @@
 #include <obake/detail/tuple_for_each.hpp>
 #include <obake/kpack.hpp>
 #include <obake/type_name.hpp>
-#include <obake/type_traits.hpp>
 
 #include "catch.hpp"
 #include "test_utils.hpp"
@@ -42,7 +42,7 @@ TEST_CASE("k_packer_unpacker")
     obake_test::disable_slow_stack_traces();
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
         using kp_t = kpacker<int_t>;
         using ku_t = kunpacker<int_t>;
 

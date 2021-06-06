@@ -514,7 +514,7 @@ TEST_CASE("swap")
     using ps_t = p_series<pm_t, double>;
 
     REQUIRE(std::is_nothrow_swappable_v<ps_t>);
-    REQUIRE(std::is_nothrow_swappable_v<remove_cvref_t<decltype(ps_t{}.tag())>>);
+    REQUIRE(std::is_nothrow_swappable_v<::std::remove_cvref_t<decltype(ps_t{}.tag())>>);
 
     auto [x] = make_p_series<ps_t>("x");
     auto [y] = make_p_series_t<ps_t>(10, "y");
@@ -557,7 +557,7 @@ TEST_CASE("hash")
     using pm_t = packed_monomial<std::int32_t>;
     using ps_t = p_series<pm_t, double>;
 
-    REQUIRE(is_hashable_v<const remove_cvref_t<decltype(ps_t{}.tag())> &>);
+    REQUIRE(is_hashable_v<const ::std::remove_cvref_t<decltype(ps_t{}.tag())> &>);
 
     auto [x, y] = make_p_series<ps_t>("x", "y");
 

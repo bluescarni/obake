@@ -164,7 +164,7 @@ constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<1>)
 // Lowest priority: it will assign y to x, but only if T and U are the same type,
 // after the removal of reference and cv qualifiers.
 template <typename T, typename U>
-requires ::std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>
+requires SameCvr<T, U>
 constexpr auto safe_convert_impl(T &&x, U &&y, priority_tag<0>)
     OBAKE_SS_FORWARD_FUNCTION((void(::std::forward<T>(x) = ::std::forward<U>(y)), true));
 

@@ -59,9 +59,10 @@ using monomial_diff_impl_ret_t
     = decltype(detail::monomial_diff_impl(::std::declval<T>(), ::std::declval<const symbol_idx &>(),
                                           ::std::declval<const symbol_set &>(), priority_tag<1>{}));
 
-template <typename T,
-          ::std::enable_if_t<is_monomial_diff_retval<detected_t<monomial_diff_impl_ret_t, T>, remove_cvref_t<T>>::value,
-                             int> = 0>
+template <
+    typename T,
+    ::std::enable_if_t<
+        is_monomial_diff_retval<detected_t<monomial_diff_impl_ret_t, T>, ::std::remove_cvref_t<T>>::value, int> = 0>
 constexpr auto monomial_diff_impl_with_ret_check(T &&x, const symbol_idx &idx, const symbol_set &ss)
     OBAKE_SS_FORWARD_FUNCTION(detail::monomial_diff_impl(::std::forward<T>(x), idx, ss, priority_tag<1>{}));
 

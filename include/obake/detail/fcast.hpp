@@ -31,9 +31,9 @@ constexpr T &&fcast_impl(T &&x, ::std::true_type) noexcept
 }
 
 template <typename T>
-constexpr const remove_cvref_t<T> &fcast_impl(T &&x, ::std::false_type) noexcept
+constexpr const ::std::remove_cvref_t<T> &fcast_impl(T &&x, ::std::false_type) noexcept
 {
-    return static_cast<const remove_cvref_t<T> &>(x);
+    return static_cast<const ::std::remove_cvref_t<T> &>(x);
 }
 
 template <typename T>
@@ -50,7 +50,7 @@ constexpr decltype(auto) fcast(T &&x) noexcept
     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
         return static_cast<T &&>(x);
     } else {
-        return static_cast<const remove_cvref_t<T> &>(x);
+        return static_cast<const ::std::remove_cvref_t<T> &>(x);
     }
 }
 

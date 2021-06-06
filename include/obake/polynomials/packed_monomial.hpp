@@ -73,9 +73,8 @@ public:
     constexpr explicit packed_monomial(const T &n) : m_value(n) {}
     // Constructor from input iterator and size.
     template <typename It>
-    requires InputIterator<It> &&
-        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> constexpr explicit packed_monomial(It it,
-                                                                                                             unsigned n)
+    requires InputIterator<It> && SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
+    constexpr explicit packed_monomial(It it, unsigned n)
     {
         kpacker<T> kp(n);
         for (auto i = 0u; i < n; ++i, ++it) {
@@ -100,24 +99,27 @@ private:
 public:
     // Ctor from a pair of forward iterators.
     template <typename It>
-    requires ForwardIterator<It> &&SafelyCastable<typename ::std::iterator_traits<It>::difference_type, unsigned> &&
-        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> constexpr explicit packed_monomial(It b, It e)
+    requires ForwardIterator<It> && SafelyCastable < typename ::std::iterator_traits<It>::difference_type,
+    unsigned
+        > &&SafelyCastable<typename ::std::iterator_traits<It>::reference, T> constexpr explicit packed_monomial(It b,
+                                                                                                                 It e)
         : packed_monomial(fwd_it_ctor_tag{}, b, e)
     {
     }
     // Ctor from forward range.
     template <typename Range>
-    requires ForwardRange<Range> &&
-        SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::difference_type, unsigned> &&
-            SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference,
-                           T> constexpr explicit packed_monomial(Range &&r)
+    requires ForwardRange<Range> && SafelyCastable <
+        typename ::std::iterator_traits<range_begin_t<Range>>::difference_type,
+    unsigned > &&SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference,
+                                T> constexpr explicit packed_monomial(Range &&r)
         : packed_monomial(fwd_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
                           ::obake::end(::std::forward<Range>(r)))
     {
     }
     // Ctor from init list.
     template <typename U>
-    requires SafelyCastable<const U &, T> constexpr explicit packed_monomial(::std::initializer_list<U> l)
+    requires SafelyCastable<const U &, T>
+    constexpr explicit packed_monomial(::std::initializer_list<U> l)
         : packed_monomial(fwd_it_ctor_tag{}, l.begin(), l.end())
     {
     }
@@ -290,12 +292,12 @@ inline constexpr bool same_packed_monomial_v = same_packed_monomial<T, U>::value
 //   the constraints on packed_monomial),
 // - the random-access iterator concept.
 template <typename R1, typename R2>
-requires InputRange<R1> &&InputRange<R2> &&detail::same_packed_monomial_v<
-    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>> inline bool
-monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+requires InputRange<R1> && InputRange<R2> && detail::same_packed_monomial_v<
+    ::std::remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
+    ::std::remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
+inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
 {
-    using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
+    using pm_t = ::std::remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
     using value_type = typename pm_t::value_type;
     using int_t = ::mppp::integer<1>;
 
@@ -436,7 +438,7 @@ monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
                         assert(l1.size() == s_size);
                         assert(l2.size() == s_size);
 
-                        remove_cvref_t<decltype(l1)> ret;
+                        ::std::remove_cvref_t<decltype(l1)> ret;
                         ret.reserve(s_size);
 
                         for (auto i = 0u; i < s_size; ++i) {
@@ -557,7 +559,7 @@ inline packed_monomial<T> monomial_pow(const packed_monomial<T> &p, const U &n, 
     kunpacker<T> ku(p.get_value(), s_size);
     kpacker<T> kp(s_size);
     T tmp;
-    remove_cvref_t<decltype(exp)> tmp_int;
+    ::std::remove_cvref_t<decltype(exp)> tmp_int;
     for (auto i = 0u; i < s_size; ++i) {
         ku >> tmp;
         tmp_int = tmp;

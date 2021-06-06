@@ -57,14 +57,16 @@ constexpr auto trim_impl(T &&x, priority_tag<1>)
 
 // Lowest-priority: forward-construct the input value.
 template <typename T>
-constexpr auto trim_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(remove_cvref_t<T>(::std::forward<T>(x)));
+constexpr auto trim_impl(T &&x, priority_tag<0>)
+    OBAKE_SS_FORWARD_FUNCTION(::std::remove_cvref_t<T>(::std::forward<T>(x)));
 
 // Machinery to enable the trim() implementation only if the return
 // type is the same as the input type (after cvref removal).
 template <typename T>
 using trim_impl_ret_t = decltype(detail::trim_impl(::std::declval<T>(), priority_tag<3>{}));
 
-template <typename T, ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, detected_t<trim_impl_ret_t, T>>, int> = 0>
+template <typename T,
+          ::std::enable_if_t<::std::is_same_v<::std::remove_cvref_t<T>, detected_t<trim_impl_ret_t, T>>, int> = 0>
 constexpr auto trim_impl_with_ret_check(T &&x)
     OBAKE_SS_FORWARD_FUNCTION(detail::trim_impl(::std::forward<T>(x), priority_tag<3>{}));
 

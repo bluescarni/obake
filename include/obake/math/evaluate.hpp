@@ -60,7 +60,7 @@ constexpr auto evaluate_impl(T &&x, const symbol_map<U> &sm, priority_tag<1>)
 // Lowest-priority: forward-construct the input value.
 template <typename T, typename U>
 constexpr auto evaluate_impl(T &&x, const symbol_map<U> &, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION(remove_cvref_t<T>(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(::std::remove_cvref_t<T>(::std::forward<T>(x)));
 
 } // namespace detail
 

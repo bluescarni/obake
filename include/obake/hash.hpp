@@ -46,7 +46,7 @@ constexpr auto hash_impl(T &&x, priority_tag<1>) OBAKE_SS_FORWARD_FUNCTION(hash(
 // Lowest priority: try to use std::hash.
 template <typename T>
 constexpr auto hash_impl(T &&x, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION(::std::hash<remove_cvref_t<T>>{}(::std::forward<T>(x)));
+    OBAKE_SS_FORWARD_FUNCTION(::std::hash<::std::remove_cvref_t<T>>{}(::std::forward<T>(x)));
 
 // Machinery to enable the hash implementation only if the return
 // type is std::size_t.

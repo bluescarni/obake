@@ -60,7 +60,7 @@ TEST_CASE("basic_test")
     obake_test::disable_slow_stack_traces();
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
@@ -193,7 +193,7 @@ TEST_CASE("basic_test")
 TEST_CASE("key_is_zero_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
@@ -211,7 +211,7 @@ TEST_CASE("key_is_zero_test")
 TEST_CASE("key_is_one_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
@@ -230,7 +230,7 @@ TEST_CASE("key_is_one_test")
 TEST_CASE("hash_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
@@ -275,7 +275,7 @@ TEST_CASE("hash_test")
 TEST_CASE("compatibility_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
@@ -334,7 +334,7 @@ TEST_CASE("compatibility_test")
 TEST_CASE("stream_insert_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;
@@ -404,7 +404,7 @@ TEST_CASE("stream_insert_test")
 TEST_CASE("tex_stream_insert_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;

@@ -35,7 +35,7 @@ TEST_CASE("to_string_test")
 
     // Test the integral types for which we supply our own implementation.
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = remove_cvref_t<decltype(n)>;
+        using int_t = ::std::remove_cvref_t<decltype(n)>;
 
         REQUIRE(detail::to_string(int_t(0)) == "0");
 
