@@ -65,7 +65,7 @@ namespace obake::customisation
 
 template <typename T>
 requires SameCvr<T, subs_1>
-inline constexpr auto subs<T, double> = [](auto &&, const symbol_map<double> &) constexpr noexcept
+inline constexpr auto subs(subs_t, T &&, const symbol_map<double> &) noexcept
 {
     return true;
 };

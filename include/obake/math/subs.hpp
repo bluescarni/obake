@@ -25,8 +25,8 @@ namespace customisation
 {
 
 // External customisation point for obake::subs().
-template <typename T, typename U>
-inline constexpr auto subs = not_implemented;
+struct subs_t {
+};
 
 } // namespace customisation
 
@@ -36,7 +36,7 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<2>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::subs<T &&, U>)(::std::forward<T>(x), sm));
+    OBAKE_SS_FORWARD_FUNCTION(subs(customisation::subs_t{}, ::std::forward<T>(x), sm));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
