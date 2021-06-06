@@ -31,7 +31,7 @@ struct ex_thrower {
 
     // The non-decorating version of the call operator.
     template <typename... Args>
-    requires(::std::is_constructible_v<Exception, Args...>) [[noreturn]] void operator()(Args &&...args) const
+    requires(::std::is_constructible_v<Exception, Args...>) void operator() [[noreturn]] (Args &&...args) const
     {
         throw Exception(::std::forward<Args>(args)...);
     }
@@ -41,8 +41,8 @@ struct ex_thrower {
     // if Str is not a string-like type or the construction of the decorated exception is not possible.
     template <typename Str, typename... Args>
     requires string_like<::std::remove_reference_t<Str>> &&(
-        ::std::is_constructible_v<Exception, ::std::string, Args...>) [[noreturn]] void
-    operator()(Str &&desc, Args &&...args) const
+        ::std::is_constructible_v<Exception, ::std::string, Args...>)void
+    operator() [[noreturn]] (Str &&desc, Args &&...args) const
     {
         ::std::string str = ::obake::stack_trace(1) + '\n';
 
