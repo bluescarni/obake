@@ -51,7 +51,7 @@ using key_trim_impl_ret_t
                                      ::std::declval<const symbol_set &>(), priority_tag<1>{}));
 
 template <typename T,
-          ::std::enable_if_t<::std::is_same_v<::std::remove_cvref_t<T>, detected_t<key_trim_impl_ret_t, T>>, int> = 0>
+          ::std::enable_if_t<::std::is_same_v<remove_cvref_t<T>, detected_t<key_trim_impl_ret_t, T>>, int> = 0>
 constexpr auto key_trim_impl_with_ret_check(T &&x, const symbol_idx_set &si, const symbol_set &ss)
     OBAKE_SS_FORWARD_FUNCTION(detail::key_trim_impl(::std::forward<T>(x), si, ss, priority_tag<1>{}));
 

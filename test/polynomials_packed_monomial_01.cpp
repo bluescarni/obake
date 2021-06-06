@@ -48,7 +48,7 @@ TEST_CASE("key_evaluate_test")
     obake_test::disable_slow_stack_traces();
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_evaluable_key_v<pm_t, double>);
@@ -97,7 +97,7 @@ TEST_CASE("key_evaluate_test")
 TEST_CASE("monomial_subs_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(!is_substitutable_monomial_v<pm_t, void>);
@@ -156,7 +156,7 @@ TEST_CASE("monomial_subs_test")
 TEST_CASE("key_trim_identify")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_trim_identifiable_key_v<pm_t>);
@@ -213,7 +213,7 @@ TEST_CASE("key_trim_identify")
 TEST_CASE("key_trim")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_trimmable_key_v<pm_t>);
@@ -236,7 +236,7 @@ TEST_CASE("key_trim")
 TEST_CASE("monomial_diff")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_differentiable_monomial_v<pm_t>);
@@ -279,7 +279,7 @@ TEST_CASE("monomial_diff")
 TEST_CASE("monomial_integrate")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_integrable_monomial_v<pm_t>);

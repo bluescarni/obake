@@ -47,7 +47,7 @@ using psizes
 TEST_CASE("degree_overflow_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
 
         using pm_t = d_packed_monomial<int_t, 1>;
 
@@ -263,7 +263,7 @@ TEST_CASE("degree_overflow_test_bug00")
 TEST_CASE("mt_overflow_check_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
 
         detail::tuple_for_each(psizes<int_t>{}, [](auto b) {
             constexpr auto bw = decltype(b)::value;

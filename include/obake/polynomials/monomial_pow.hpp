@@ -50,9 +50,8 @@ template <typename T, typename U>
 using monomial_pow_impl_ret_t = decltype(detail::monomial_pow_impl(
     ::std::declval<T>(), ::std::declval<U>(), ::std::declval<const symbol_set &>(), priority_tag<1>{}));
 
-template <
-    typename T, typename U,
-    ::std::enable_if_t<::std::is_same_v<detected_t<monomial_pow_impl_ret_t, T, U>, ::std::remove_cvref_t<T>>, int> = 0>
+template <typename T, typename U,
+          ::std::enable_if_t<::std::is_same_v<detected_t<monomial_pow_impl_ret_t, T, U>, remove_cvref_t<T>>, int> = 0>
 constexpr auto monomial_pow_impl_with_ret_check(T &&x, U &&y, const symbol_set &ss)
     OBAKE_SS_FORWARD_FUNCTION(detail::monomial_pow_impl(::std::forward<T>(x), ::std::forward<U>(y), ss,
                                                         priority_tag<1>{}));

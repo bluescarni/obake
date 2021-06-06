@@ -170,7 +170,7 @@ struct series_term_t_impl {
 
 template <typename K, typename C, typename Tag>
 struct series_term_t_impl<series<K, C, Tag>> {
-    using type = ::std::remove_cvref_t<decltype(*::std::declval<series<K, C, Tag> &>().begin())>;
+    using type = remove_cvref_t<decltype(*::std::declval<series<K, C, Tag> &>().begin())>;
 };
 
 } // namespace detail
@@ -243,7 +243,7 @@ struct is_series_impl<series<K, C, Tag>> : ::std::true_type {
 } // namespace detail
 
 template <typename T>
-using is_cvr_series = detail::is_series_impl<::std::remove_cvref_t<T>>;
+using is_cvr_series = detail::is_series_impl<remove_cvref_t<T>>;
 
 template <typename T>
 inline constexpr bool is_cvr_series_v = is_cvr_series<T>::value;
@@ -275,7 +275,7 @@ namespace detail
         // Determine the key/cf types.
         using key_type = series_key_t<::std::remove_reference_t<S>>;
         using cf_type = series_cf_t<::std::remove_reference_t<S>>;
-        static_assert(::std::is_same_v<key_type, ::std::remove_cvref_t<T>>);
+        static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
         // Cache a reference to the symbol set.
         [[maybe_unused]] const auto &ss = s.get_symbol_set();
@@ -344,7 +344,7 @@ namespace detail
                 // a pack that can be used to construct a coefficient.
                 constexpr auto args_is_cf = []() {
                     if constexpr (sizeof...(args) == 1u) {
-                        return ::std::is_same_v<cf_type, ::std::remove_cvref_t<Args>...>;
+                        return ::std::is_same_v<cf_type, remove_cvref_t<Args>...>;
                     } else {
                         return false;
                     }
@@ -393,7 +393,7 @@ namespace detail
     {
         // Determine the key type.
         using key_type = series_key_t<::std::remove_reference_t<S>>;
-        static_assert(::std::is_same_v<key_type, ::std::remove_cvref_t<T>>);
+        static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
         auto &s_table = s._get_s_table();
         const auto s_table_size = s_table.size();
@@ -427,7 +427,7 @@ namespace detail
         // types, it will return 0 rather than giving a hard error.
         if constexpr (is_detected_v<series, K, C, Tag>) {
             using series_t = series<K, C, Tag>;
-            using rT = ::std::remove_cvref_t<T>;
+            using rT = remove_cvref_t<T>;
 
             if constexpr (::std::is_same_v<rT, series_t>) {
                 // Avoid competition with the copy/move ctors.
@@ -583,13 +583,13 @@ namespace detail
         // "to" series. "to" must have the correct symbol set.
         assert(!ins_map.empty());
         assert(to.empty());
-        if constexpr (::std::is_same_v<::std::remove_cvref_t<To>, ::std::remove_cvref_t<From>>) {
+        if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
             assert(&to != &from);
         }
 
         // Ensure that the key type of From
         // is symbol mergeable (via const lvalue ref).
-        static_assert(is_symbols_mergeable_key_v<const series_key_t<::std::remove_cvref_t<From>> &>);
+        static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
 
         // We may end up moving coefficients from "from" in the conversion to "to".
         // Make sure we will clear "from" out properly.
@@ -608,7 +608,7 @@ namespace detail
         // coincide (i.e., no cf conversion takes place),
         // otherwise the conversion might generate zeroes.
         constexpr auto check_zero
-            = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<::std::remove_cvref_t<From>>>);
+            = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
 
         // Merge the terms, distinguishing the segmented vs non-segmented case.
         if (from_log2_size) {
@@ -743,8 +743,8 @@ public:
             // it will be default-constructed.
             // NOTE: the cf or tag must differ, because otherwise we would be
             // in a copy/move scenario.
-            static_assert(!::std::is_same_v<series_cf_t<::std::remove_cvref_t<T>>,
-                                            C> || !::std::is_same_v<series_tag_t<::std::remove_cvref_t<T>>, Tag>);
+            static_assert(!::std::is_same_v<series_cf_t<remove_cvref_t<T>>,
+                                            C> || !::std::is_same_v<series_tag_t<remove_cvref_t<T>>, Tag>);
 
             // Init a rref clearer, as we may be extracting
             // coefficients from x below.
@@ -753,7 +753,7 @@ public:
             // Copy over the symbol set.
             m_symbol_set = x.get_symbol_set_fw();
 
-            if constexpr (::std::is_same_v<series_tag_t<::std::remove_cvref_t<T>>, Tag>) {
+            if constexpr (::std::is_same_v<series_tag_t<remove_cvref_t<T>>, Tag>) {
                 // The tag types coincide, forward x's tag.
                 // NOTE: if x is an rvalue, the rref_clearer will reset
                 // x's tag exiting the scope, either as part of normal
@@ -827,11 +827,10 @@ public:
                     *this = series(::std::as_const(x.begin()->second));
                 }
             } else {
-                obake_throw(::std::invalid_argument, "Cannot construct a series of type '"
-                                                         + ::obake::type_name<series>()
-                                                         + "' from a series of higher rank of type '"
-                                                         + ::obake::type_name<::std::remove_cvref_t<T>>()
-                                                         + "' which does not consist of a single coefficient");
+                obake_throw(::std::invalid_argument,
+                            "Cannot construct a series of type '" + ::obake::type_name<series>()
+                                + "' from a series of higher rank of type '" + ::obake::type_name<remove_cvref_t<T>>()
+                                + "' which does not consist of a single coefficient");
             }
         }
     }
@@ -1774,8 +1773,8 @@ constexpr auto series_default_pow_algorithm_impl()
         // - exponentiable by U, with the return value a coefficient type
         //   which is constructible from int.
         // The exponent type must be zero-testable.
-        using rT = ::std::remove_cvref_t<T>;
-        using rU = ::std::remove_cvref_t<U>;
+        using rT = remove_cvref_t<T>;
+        using rU = remove_cvref_t<U>;
         using cf_t = series_cf_t<rT>;
         // NOTE: check exponentiability via const
         // lvalue refs.
@@ -1809,8 +1808,8 @@ requires(series_default_pow_algo<T &&, U &&> != 0) inline series_default_pow_ret
 {
     using ret_t = series_default_pow_ret_t<T &&, U &&>;
 
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     // Need only const access to the exponent.
     const auto &e = ::std::as_const(e_);
@@ -1883,7 +1882,7 @@ requires(series_default_pow_algo<T &&, U &&> != 0) inline series_default_pow_ret
 
 // Identity operator for series.
 template <CvrSeries T>
-inline ::std::remove_cvref_t<T> operator+(T &&x)
+inline remove_cvref_t<T> operator+(T &&x)
 {
     return ::std::forward<T>(x);
 }
@@ -1913,7 +1912,7 @@ inline void series_default_negate_impl(T &&x)
 
 // Negated copy operator.
 template <CvrSeries T>
-inline ::std::remove_cvref_t<T> operator-(T &&x)
+inline remove_cvref_t<T> operator-(T &&x)
 {
     if constexpr (is_mutable_rvalue_reference_v<T &&>) {
         // NOTE: if we have an rvalue reference in input, we
@@ -1980,7 +1979,7 @@ struct series_default_byte_size_impl {
     template <typename T>
     ::std::size_t operator()(const T &x) const
     {
-        using table_t = ::std::remove_cvref_t<decltype(x._get_s_table()[0])>;
+        using table_t = remove_cvref_t<decltype(x._get_s_table()[0])>;
 
         // NOTE: start out with the size of the series class, plus
         // the class size of all the tables. This is slightly incorrect,
@@ -2021,8 +2020,8 @@ struct series_default_byte_size_impl {
 };
 
 template <typename T>
-requires CvrSeries<T> && SizeMeasurable < const series_key_t<::std::remove_cvref_t<T>>
-& > &&SizeMeasurable<const series_cf_t<::std::remove_cvref_t<T>> &> inline constexpr auto
+requires CvrSeries<T> && SizeMeasurable < const series_key_t<remove_cvref_t<T>>
+& > &&SizeMeasurable<const series_cf_t<remove_cvref_t<T>> &> inline constexpr auto
         byte_size<T> = series_default_byte_size_impl{};
 
 } // namespace customisation::internal
@@ -2195,11 +2194,11 @@ constexpr auto series_stream_insert_impl(::std::ostream &os, T &&x, priority_tag
 template <typename T, ::std::enable_if_t<is_cvr_series_v<T>, int> = 0>
 inline void series_stream_insert_impl(::std::ostream &os, T &&s, priority_tag<0>)
 {
-    using series_t = ::std::remove_cvref_t<T>;
+    using series_t = remove_cvref_t<T>;
 
     // Print the header.
     // Stream out the tag, if supported.
-    if constexpr (is_stream_insertable_v<const series_tag_t<::std::remove_cvref_t<T>> &>) {
+    if constexpr (is_stream_insertable_v<const series_tag_t<remove_cvref_t<T>> &>) {
         os << ::std::as_const(s).tag() << '\n';
     }
     os << "Key type: " << ::obake::type_name<series_key_t<series_t>>() << '\n';
@@ -2254,8 +2253,8 @@ constexpr auto series_add_impl(T &&x, U &&y, priority_tag<1>)
 template <bool Sign, typename T, typename U>
 constexpr auto series_default_addsub_algorithm_impl()
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr auto rank_T = series_rank<rT>;
     constexpr auto rank_U = series_rank<rU>;
@@ -2368,8 +2367,8 @@ using series_default_addsub_ret_t = typename decltype(series_default_addsub_algo
 template <bool Sign, typename T, typename U>
 inline series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(T &&x, U &&y)
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     // Determine the algorithm.
     constexpr int algo = series_default_addsub_algorithm<Sign, T &&, U &&>.first;
@@ -2428,8 +2427,7 @@ inline series_default_addsub_ret_t<Sign, T &&, U &&> series_default_addsub_impl(
                     // NOTE: if lhs and rhs are the same object, don't
                     // perfectly forward in order to avoid move-contruction
                     // of retval which would alter the state of rhs.
-                    if constexpr (::std::is_same_v<::std::remove_cvref_t<decltype(lhs)>,
-                                                   ::std::remove_cvref_t<decltype(rhs)>>) {
+                    if constexpr (::std::is_same_v<remove_cvref_t<decltype(lhs)>, remove_cvref_t<decltype(rhs)>>) {
                         if (&lhs == &rhs) {
                             return ret_t(lhs);
                         } else {
@@ -2618,8 +2616,8 @@ constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<1>)
 template <bool Sign, typename T, typename U>
 constexpr auto series_default_in_place_addsub_algorithm_impl()
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr auto rank_T = series_rank<rT>;
     [[maybe_unused]] constexpr auto rank_U = series_rank<rU>;
@@ -2715,8 +2713,8 @@ using series_default_in_place_addsub_ret_t =
 template <bool Sign, typename T, typename U>
 inline series_default_in_place_addsub_ret_t<Sign, T &&, U &&> series_default_in_place_addsub_impl(T &&x, U &&y)
 {
-    using rT [[maybe_unused]] = ::std::remove_cvref_t<T>;
-    using rU [[maybe_unused]] = ::std::remove_cvref_t<U>;
+    using rT [[maybe_unused]] = remove_cvref_t<T>;
+    using rU [[maybe_unused]] = remove_cvref_t<U>;
 
     // Determine the algorithm.
     constexpr int algo = series_default_in_place_addsub_algorithm<Sign, T &&, U &&>.first;
@@ -2904,7 +2902,7 @@ constexpr auto series_in_place_add_impl(T &&x, U &&y, priority_tag<0>)
 // series coefficient becoming zero after being moved-from.
 // This is a corner case, but perhaps we need to document it?
 inline constexpr auto series_in_place_add = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
-    static_cast<::std::add_lvalue_reference_t<::std::remove_cvref_t<decltype(x)>>>(detail::series_in_place_add_impl(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_in_place_add_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 // NOTE: handle separately the two cases
@@ -2919,8 +2917,7 @@ constexpr auto operator+=(T &&x, U &&y)
 template <typename T, typename U>
 requires(!CvrSeries<T>)
     && CvrSeries<U> constexpr auto operator+=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(x
-                                  = static_cast<::std::remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) + ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3009,7 +3006,7 @@ constexpr auto series_in_place_sub_impl(T &&x, U &&y, priority_tag<0>)
 // series coefficient becoming zero after being moved-from.
 // This is a corner case, but perhaps we need to document it?
 inline constexpr auto series_in_place_sub = [](auto &&x, auto &&y) OBAKE_SS_FORWARD_LAMBDA(
-    static_cast<::std::add_lvalue_reference_t<::std::remove_cvref_t<decltype(x)>>>(detail::series_in_place_sub_impl(
+    static_cast<::std::add_lvalue_reference_t<remove_cvref_t<decltype(x)>>>(detail::series_in_place_sub_impl(
         ::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y), detail::priority_tag<2>{})));
 
 // NOTE: handle separately the two cases
@@ -3024,8 +3021,7 @@ constexpr auto operator-=(T &&x, U &&y)
 template <typename T, typename U>
 requires(!CvrSeries<T>)
     && CvrSeries<U> constexpr auto operator-=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(x
-                                  = static_cast<::std::remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) - ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3058,8 +3054,8 @@ constexpr auto series_mul_impl(T &&x, U &&y, priority_tag<1>)
 template <typename T, typename U>
 constexpr auto series_default_mul_algorithm_impl()
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr auto rank_T = series_rank<rT>;
     constexpr auto rank_U = series_rank<rU>;
@@ -3146,8 +3142,8 @@ inline series_default_mul_ret_t<T &&, U &&> series_default_mul_impl(T &&x, U &&y
     // Helper to implement the multiplication of a series
     // of a higher rank (a) by a series with a lower rank (b);
     auto impl = [](auto &&a, auto &&b) {
-        using ra_t = ::std::remove_cvref_t<decltype(a)>;
-        using rb_t = ::std::remove_cvref_t<decltype(b)>;
+        using ra_t = remove_cvref_t<decltype(a)>;
+        using rb_t = remove_cvref_t<decltype(b)>;
 
         static_assert((series_rank<ra_t>) > series_rank<rb_t>);
 
@@ -3241,8 +3237,7 @@ constexpr auto operator*=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::for
 template <typename T, typename U>
 requires(!CvrSeries<T>)
     && CvrSeries<U> constexpr auto operator*=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(x
-                                  = static_cast<::std::remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) * ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3275,8 +3270,8 @@ constexpr auto series_div_impl(T &&x, U &&y, priority_tag<1>)
 template <typename T, typename U>
 constexpr auto series_default_div_algorithm_impl()
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr auto rank_T = series_rank<rT>;
     constexpr auto rank_U = series_rank<rU>;
@@ -3399,8 +3394,7 @@ constexpr auto operator/=(T &&x, U &&y) OBAKE_SS_FORWARD_FUNCTION(x = ::std::for
 template <typename T, typename U>
 requires(!CvrSeries<T>)
     && CvrSeries<U> constexpr auto operator/=(T &&x, U &&y)
-        OBAKE_SS_FORWARD_FUNCTION(x
-                                  = static_cast<::std::remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
+        OBAKE_SS_FORWARD_FUNCTION(x = static_cast<remove_cvref_t<T>>(::std::forward<T>(x) / ::std::forward<U>(y)));
 
 namespace customisation
 {
@@ -3427,8 +3421,8 @@ constexpr auto series_equal_to_impl(T &&x, U &&y, priority_tag<1>)
 template <typename T, typename U>
 constexpr int series_equal_to_algorithm_impl()
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr auto rank_T = series_rank<rT>;
     constexpr auto rank_U = series_rank<rU>;
@@ -3482,8 +3476,8 @@ inline constexpr int series_equal_to_algorithm = detail::series_equal_to_algorit
 template <typename T, typename U, ::std::enable_if_t<series_equal_to_algorithm<T &&, U &&> != 0, int> = 0>
 constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
 {
-    using rT = ::std::remove_cvref_t<T>;
-    using rU = ::std::remove_cvref_t<U>;
+    using rT = remove_cvref_t<T>;
+    using rU = remove_cvref_t<U>;
 
     constexpr int algo = series_equal_to_algorithm<T &&, U &&>;
     static_assert(algo > 0 && algo <= 3);
@@ -3549,8 +3543,7 @@ constexpr bool series_equal_to_impl(T &&x, U &&y, priority_tag<0>)
         // Helper to compare series of different rank
         // (lhs has higher rank than rhs).
         auto diff_rank_cmp = [](const auto &lhs, const auto &rhs) {
-            static_assert((series_rank<::std::remove_cvref_t<decltype(lhs)>>)
-                          > series_rank<::std::remove_cvref_t<decltype(rhs)>>);
+            static_assert((series_rank<remove_cvref_t<decltype(lhs)>>) > series_rank<remove_cvref_t<decltype(rhs)>>);
 
             switch (lhs.size()) {
                 case 0u:
@@ -3637,7 +3630,7 @@ constexpr auto series_default_degree_algorithm_impl()
         // Not a series type.
         return failure;
     } else {
-        using rT = ::std::remove_cvref_t<T>;
+        using rT = remove_cvref_t<T>;
         using cf_t = series_cf_t<rT>;
         using key_t = series_key_t<rT>;
 
@@ -3713,7 +3706,7 @@ struct series_default_degree_impl {
         template <typename U>
         auto operator()(const U &p) const
         {
-            constexpr auto al = algo<::std::remove_cvref_t<T>>;
+            constexpr auto al = algo<remove_cvref_t<T>>;
             static_assert(al > 0 && al <= 3);
             assert(ss != nullptr);
 
@@ -3853,7 +3846,7 @@ struct series_default_p_degree_impl {
         template <typename U>
         auto operator()(const U &p) const
         {
-            constexpr auto al = algo<::std::remove_cvref_t<T>>;
+            constexpr auto al = algo<remove_cvref_t<T>>;
             static_assert(al > 0 && al <= 3);
             assert(s != nullptr);
             assert(si != nullptr);
@@ -3997,7 +3990,7 @@ constexpr auto series_default_evaluate_algorithm_impl()
         // Not a series type.
         return failure;
     } else {
-        using rT = ::std::remove_cvref_t<T>;
+        using rT = remove_cvref_t<T>;
         using key_t = series_key_t<rT>;
         using cf_t = series_cf_t<rT>;
 
@@ -4118,7 +4111,7 @@ constexpr auto series_default_trim_algorithm_impl()
         // Not a series type.
         return failure;
     } else {
-        using rT = ::std::remove_cvref_t<T>;
+        using rT = remove_cvref_t<T>;
         using cf_t = series_cf_t<rT>;
         using key_t = series_key_t<rT>;
 
@@ -4156,7 +4149,7 @@ struct series_default_trim_impl {
     {
         // Sanity checks.
         static_assert(algo<T &&> != 0);
-        static_assert(::std::is_same_v<ret_t<T &&>, ::std::remove_cvref_t<T>>);
+        static_assert(::std::is_same_v<ret_t<T &&>, remove_cvref_t<T>>);
 
         // Need only const access to x.
         const auto &x = ::std::as_const(x_);

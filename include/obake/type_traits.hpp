@@ -58,9 +58,13 @@ using detected_t = typename detail::detector<detail::nonesuch, void, Op, Args...
 template <template <class...> class Op, class... Args>
 inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
+// Handy alias.
+template <typename T>
+using remove_cvref_t = ::std::remove_cv_t<::std::remove_reference_t<T>>;
+
 // Detect if T and U, after the removal of reference and cv qualifiers, are the same type.
 template <typename T, typename U>
-using is_same_cvr = ::std::is_same<::std::remove_cvref_t<T>, ::std::remove_cvref_t<U>>;
+using is_same_cvr = ::std::is_same<remove_cvref_t<T>, remove_cvref_t<U>>;
 
 template <typename T, typename U>
 inline constexpr bool is_same_cvr_v = is_same_cvr<T, U>::value;
@@ -238,7 +242,7 @@ template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
 
 template <typename T>
-concept string_like = is_string_like_v<T>;
+concept StringLike = is_string_like_v<T>;
 
 // NOTE: the binary operators require symmetry, but
 // the in-place operators do not. We should probably

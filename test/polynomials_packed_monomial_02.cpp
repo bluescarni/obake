@@ -12,7 +12,6 @@
 #include <random>
 #include <sstream>
 #include <tuple>
-#include <type_traits>
 #include <vector>
 
 #include <boost/archive/binary_iarchive.hpp>
@@ -45,7 +44,7 @@ using int_types = std::tuple<std::int32_t, std::uint32_t
 TEST_CASE("key_stream_insert_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_tex_stream_insertable_key_v<pm_t>);
@@ -146,7 +145,7 @@ TEST_CASE("key_stream_insert_test")
 TEST_CASE("s11n_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(boost::serialization::tracking_level<pm_t>::value == boost::serialization::track_never);
@@ -196,7 +195,7 @@ TEST_CASE("s11n_test")
 TEST_CASE("mt_overflow_check_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
 
         using pm_t = packed_monomial<int_t>;
 

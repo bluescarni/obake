@@ -74,7 +74,7 @@ TEST_CASE("ctor_test")
     obake_test::disable_slow_stack_traces();
 
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using kp_t = kpacker<int_t>;
         using pm_t = packed_monomial<int_t>;
 
@@ -142,7 +142,7 @@ TEST_CASE("ctor_test")
 TEST_CASE("key_is_zero_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(!key_is_zero(pm_t{}, symbol_set{}));
@@ -157,7 +157,7 @@ TEST_CASE("key_is_zero_test")
 TEST_CASE("key_is_one_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(key_is_one(pm_t{}, symbol_set{}));
@@ -179,7 +179,7 @@ TEST_CASE("key_is_one_test")
 TEST_CASE("compare_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_equality_comparable_v<pm_t>);
@@ -198,7 +198,7 @@ TEST_CASE("compare_test")
 TEST_CASE("hash_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_hashable_v<pm_t>);
@@ -232,7 +232,7 @@ TEST_CASE("hash_test")
 TEST_CASE("key_is_compatible_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_compatibility_testable_key_v<pm_t>);
@@ -358,7 +358,7 @@ TEST_CASE("key_is_compatible_test")
 TEST_CASE("key_stream_insert_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         auto oss_wrap = [](const pm_t &p, const symbol_set &s) {
@@ -422,7 +422,7 @@ TEST_CASE("key_stream_insert_test")
 TEST_CASE("key_merge_symbols_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_symbols_mergeable_key_v<pm_t>);
@@ -472,7 +472,7 @@ TEST_CASE("key_merge_symbols_test")
 TEST_CASE("monomial_mul_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_multipliable_monomial_v<pm_t &, const pm_t &, const pm_t &>);
@@ -496,7 +496,7 @@ TEST_CASE("monomial_mul_test")
 TEST_CASE("monomial_range_overflow_check")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         std::vector<pm_t> v1, v2;
@@ -574,7 +574,7 @@ const int ntrials = 10000;
 TEST_CASE("homomorphic_hash")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(is_homomorphically_hashable_monomial_v<pm_t>);
@@ -620,7 +620,7 @@ TEST_CASE("homomorphic_hash")
 TEST_CASE("key_degree_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(key_degree(pm_t{}, symbol_set{}) == int_t(0));
@@ -650,7 +650,7 @@ TEST_CASE("key_degree_test")
 TEST_CASE("key_p_degree_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(key_p_degree(pm_t{}, symbol_idx_set{}, symbol_set{}) == int_t(0));
@@ -705,7 +705,7 @@ TEST_CASE("key_p_degree_test")
 TEST_CASE("monomial_pow_test")
 {
     detail::tuple_for_each(int_types{}, [](const auto &n) {
-        using int_t = ::std::remove_cvref_t<decltype(n)>;
+        using int_t = remove_cvref_t<decltype(n)>;
         using pm_t = packed_monomial<int_t>;
 
         REQUIRE(!is_exponentiable_monomial_v<pm_t, void>);

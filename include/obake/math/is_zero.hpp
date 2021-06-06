@@ -9,7 +9,6 @@
 #ifndef OBAKE_MATH_IS_ZERO_HPP
 #define OBAKE_MATH_IS_ZERO_HPP
 
-#include <type_traits>
 #include <utility>
 
 #include <mp++/config.hpp>
@@ -83,7 +82,7 @@ constexpr auto is_zero_impl(T &&x, priority_tag<1>)
 // the precedence.
 template <typename T>
 constexpr auto is_zero_impl(T &&x, priority_tag<0>)
-    OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) == ::std::remove_cvref_t<T>(0));
+    OBAKE_SS_FORWARD_FUNCTION(::std::forward<T>(x) == remove_cvref_t<T>(0));
 
 } // namespace detail
 
