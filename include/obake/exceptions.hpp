@@ -24,20 +24,25 @@ template <typename Exception>
 struct ex_thrower {
     // Determine the type of the __LINE__ macro.
     using line_type = remove_cvref_t<decltype(__LINE__)>;
+
+    const char *m_file;
+    const line_type m_line;
+    const char *m_func;
+
     // The non-decorating version of the call operator.
-    template <typename... Args, ::std::enable_if_t<::std::is_constructible_v<Exception, Args...>, int> = 0>
-    [[noreturn]] void operator()(Args &&... args) const
+    template <typename... Args>
+    requires(::std::is_constructible_v<Exception, Args...>) void operator() [[noreturn]] (Args &&...args) const
     {
         throw Exception(::std::forward<Args>(args)...);
     }
+
     // The decorating version of the call operator. This is a better match during overload resolution
     // if there is at least one argument (the previous overload is "more" variadic), but it is disabled
     // if Str is not a string-like type or the construction of the decorated exception is not possible.
-    template <typename Str, typename... Args,
-              ::std::enable_if_t<::std::conjunction_v<is_string_like<::std::remove_reference_t<Str>>,
-                                                      ::std::is_constructible<Exception, ::std::string, Args...>>,
-                                 int> = 0>
-    [[noreturn]] void operator()(Str &&desc, Args &&... args) const
+    template <typename Str, typename... Args>
+    requires string_like<::std::remove_reference_t<Str>> &&(
+        ::std::is_constructible_v<Exception, ::std::string, Args...>)void
+    operator() [[noreturn]] (Str &&desc, Args &&...args) const
     {
         ::std::string str = ::obake::stack_trace(1) + '\n';
 
@@ -49,9 +54,6 @@ struct ex_thrower {
 
         throw Exception(::std::move(str), ::std::forward<Args>(args)...);
     }
-    const char *m_file;
-    const line_type m_line;
-    const char *m_func;
 };
 
 } // namespace obake::detail

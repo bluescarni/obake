@@ -242,7 +242,7 @@ template <typename T>
 inline constexpr bool is_string_like_v = is_string_like<T>::value;
 
 template <typename T>
-concept StringLike = is_string_like_v<T>;
+concept string_like = is_string_like_v<T>;
 
 // NOTE: the binary operators require symmetry, but
 // the in-place operators do not. We should probably
