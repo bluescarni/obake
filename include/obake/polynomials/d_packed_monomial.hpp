@@ -491,10 +491,10 @@ inline T dpm_key_merge_symbols(const T &d, const symbol_idx_map<symbol_set> &ins
     const auto s_size = s.size();
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
-    T tmp;
+    value_type tmp;
     // NOTE: store the merged monomial in a temporary
     // vector and then pack it at the end.
-    thread_local ::std::vector<T> tmp_v;
+    thread_local ::std::vector<value_type> tmp_v;
     tmp_v.clear();
     for (const auto &n : c) {
         kunpacker<value_type> ku(n, T::psize);
