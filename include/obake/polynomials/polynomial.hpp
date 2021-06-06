@@ -501,7 +501,8 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
     decltype(detail::poly_mul_impl_par_make_idx_vector(y)) vidx2;
 
     // Concurrently create the degree data for x and y, and fill
-    // in the vidx1/vidx2 vectors.
+    // in the vidx1/vidx2 vectors. vidx2 and y's degree data
+    // will also be sorted, if the multiplication is truncated.
     ::tbb::parallel_invoke(
         [&vidx1, &x, &ss, &degree_data, &args...]() {
             if constexpr (sizeof...(args) == 1u) {

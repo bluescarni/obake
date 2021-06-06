@@ -294,10 +294,23 @@ concept InPlaceAddable = requires(T &&x, U &&y)
 namespace detail
 {
 
+#if defined(__clang__)
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincrement-bool"
+
+#endif
+
     template <typename T>
     using preinc_t = decltype(++::std::declval<T>());
 
-}
+#if defined(__clang__)
+
+#pragma clang diagnostic pop
+
+#endif
+
+} // namespace detail
 
 // Pre-incrementable type-trait.
 template <typename T>
@@ -315,10 +328,23 @@ concept PreIncrementable = requires(T &&x)
 namespace detail
 {
 
+#if defined(__clang__)
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincrement-bool"
+
+#endif
+
     template <typename T>
     using postinc_t = decltype(::std::declval<T>()++);
 
-}
+#if defined(__clang__)
+
+#pragma clang diagnostic pop
+
+#endif
+
+} // namespace detail
 
 // Post-incrementable type-trait.
 template <typename T>
