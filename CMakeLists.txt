@@ -16,7 +16,7 @@ endif()
 # enable C here, on some configurations (e.g., Ubuntu
 # + clang) the threading detection/setup seems to break
 # down.
-project(obake VERSION 0.7.0 LANGUAGES CXX C)
+project(obake VERSION 0.8.0 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
 
@@ -148,7 +148,7 @@ endif()
 # NOTE: put the minimum version in a variable
 # so that we can re-use it in the config-file package
 # machinery below.
-set (_OBAKE_MIN_MPPP_VERSION 0.22)
+set (_OBAKE_MIN_MPPP_VERSION 0.23)
 find_package(mp++ REQUIRED)
 if(${mp++_VERSION} VERSION_LESS ${_OBAKE_MIN_MPPP_VERSION})
     message(FATAL_ERROR "The minimum mp++ version required by obake is ${_OBAKE_MIN_MPPP_VERSION}, but version ${mp++_VERSION} was found instead.")
@@ -166,8 +166,18 @@ if(OBAKE_WITH_LIBBACKTRACE)
     find_package(libbacktrace REQUIRED)
 endif()
 
-# TBB.
-find_package(TBB REQUIRED)
+# TBB. Try to find it first in config mode (supported
+# since version 2021 after the oneTBB rename), and, if this
+# fails, fall back to our own FindTBB.cmake. This is of course
+# not an ideal solution, but it should work until oneTBB
+# becomes widely deployed.
+find_package(TBB QUIET CONFIG)
+if(NOT TBB_FOUND)
+    message(STATUS "TBB not found using config mode, retrying in module mode.")
+    find_package(TBB REQUIRED MODULE)
+else()
+    message(STATUS "TBB found using config mode.")
+endif()
 
 # Depend on DbgEng on WIN32, for the stack trace support.
 if(WIN32)
@@ -283,8 +293,8 @@ if(YACMA_COMPILER_IS_MSVC)
 endif()
 
 add_library(obake SHARED "${OBAKE_SRC_FILES}")
-set_property(TARGET obake PROPERTY VERSION "7.0")
-set_property(TARGET obake PROPERTY SOVERSION 7)
+set_property(TARGET obake PROPERTY VERSION "8.0")
+set_property(TARGET obake PROPERTY SOVERSION 8)
 target_compile_options(obake PRIVATE
     "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"

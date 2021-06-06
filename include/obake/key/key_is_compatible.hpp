@@ -11,7 +11,6 @@
 
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -25,12 +24,7 @@ namespace customisation
 {
 
 // External customisation point for obake::key_is_compatible().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto key_is_compatible = not_implemented;
 
 } // namespace customisation
@@ -50,25 +44,10 @@ constexpr auto key_is_compatible_impl(T &&x, const symbol_set &ss, priority_tag<
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct key_is_compatible_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x, const symbol_set &ss) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(static_cast<bool>(detail::key_is_compatible_impl(::std::forward<T>(x), ss,
-                                                                                          detail::priority_tag<1>{})))
-};
-
-inline constexpr auto key_is_compatible = key_is_compatible_msvc{};
-
-#else
-
 // NOTE: forcibly cast to bool the return value, so that if the selected implementation
 // returns a type which is not convertible to bool, this call will SFINAE out.
 inline constexpr auto key_is_compatible = [](auto &&x, const symbol_set &ss) OBAKE_SS_FORWARD_LAMBDA(
     static_cast<bool>(detail::key_is_compatible_impl(::std::forward<decltype(x)>(x), ss, detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {
@@ -85,15 +64,11 @@ using is_compatibility_testable_key = is_detected<detail::key_is_compatible_t, T
 template <typename T>
 inline constexpr bool is_compatibility_testable_key_v = is_compatibility_testable_key<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL CompatibilityTestableKey = requires(T &&x, const symbol_set &ss)
+concept CompatibilityTestableKey = requires(T &&x, const symbol_set &ss)
 {
     ::obake::key_is_compatible(::std::forward<T>(x), ss);
 };
-
-#endif
 
 } // namespace obake
 

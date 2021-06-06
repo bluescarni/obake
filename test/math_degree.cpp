@@ -8,7 +8,6 @@
 
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/math/degree.hpp>
 #include <obake/type_traits.hpp>
 
@@ -26,7 +25,6 @@ TEST_CASE("degree_arith")
     REQUIRE(!is_with_degree_v<int &&>);
     REQUIRE(!is_with_degree_v<const int>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!WithDegree<void>);
 
     REQUIRE(!WithDegree<int>);
@@ -34,7 +32,6 @@ TEST_CASE("degree_arith")
     REQUIRE(!WithDegree<const int &>);
     REQUIRE(!WithDegree<int &&>);
     REQUIRE(!WithDegree<const int>);
-#endif
 }
 
 struct no_degree_0 {
@@ -54,12 +51,8 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, degree_1> inline constexpr auto degree<T>
-#else
-inline constexpr auto degree<T, std::enable_if_t<is_same_cvr_v<T, degree_1>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, degree_1>
+inline constexpr auto degree<T> = [](auto &&) constexpr noexcept
 {
     return true;
 };
@@ -73,9 +66,7 @@ TEST_CASE("degree_custom")
     REQUIRE(is_with_degree_v<degree_0>);
     REQUIRE(is_with_degree_v<degree_1>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!WithDegree<no_degree_0>);
     REQUIRE(WithDegree<degree_0>);
     REQUIRE(WithDegree<degree_1>);
-#endif
 }

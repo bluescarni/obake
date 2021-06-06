@@ -48,7 +48,6 @@ TEST_CASE("pow_arith")
     REQUIRE(!obake::is_exponentiable_v<__uint128_t &&, __int128_t>);
     REQUIRE(!obake::is_exponentiable_v<__int128_t &&, __uint128_t>);
 #endif
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(obake::Exponentiable<float, int>);
     REQUIRE(obake::Exponentiable<const double &, float &&>);
     REQUIRE(obake::Exponentiable<long double &, float &&>);
@@ -62,7 +61,6 @@ TEST_CASE("pow_arith")
     REQUIRE(obake::Exponentiable<__uint128_t, long double &>);
     REQUIRE(!obake::Exponentiable<int, const __int128_t>);
     REQUIRE(!obake::Exponentiable<__uint128_t, const __int128_t>);
-#endif
 #endif
 
     // Simple checks, and check the return types.
@@ -189,13 +187,9 @@ inline void non_constexpr() {}
 namespace obake::customisation
 {
 
-#if defined(OBAKE_HAVE_CONCEPTS)
 template <typename T, typename U>
-requires SameCvr<T, foo0> &&SameCvr<U, foo0>
-#else
-template <typename T, typename U, std::enable_if_t<is_same_cvr_v<T, foo0> && is_same_cvr_v<U, foo0>, int> = 0>
-#endif
-    constexpr auto pow(pow_t, T &&, U &&) noexcept
+requires SameCvr<T, foo0> && SameCvr<U, foo0>
+constexpr auto pow(pow_t, T &&, U &&) noexcept
 {
     if constexpr (std::is_rvalue_reference_v<T &&> && std::is_rvalue_reference_v<U &&>) {
         return 1;

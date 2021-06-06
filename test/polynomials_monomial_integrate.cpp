@@ -9,7 +9,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/polynomials/monomial_integrate.hpp>
 #include <obake/symbols.hpp>
 #include <obake/type_traits.hpp>
@@ -66,34 +65,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt00> inline constexpr auto monomial_integrate<T>
-#else
-inline constexpr auto monomial_integrate<T, std::enable_if_t<is_same_cvr_v<T, ext_zt00>>>
-#endif
-    = [](auto &&, const symbol_idx &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt00>
+inline constexpr auto monomial_integrate<T> = [](auto &&, const symbol_idx &, const symbol_set &) constexpr noexcept
 {
     return std::make_pair(true, ext_zt00{});
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_zt01> inline constexpr auto monomial_integrate<T>
-#else
-inline constexpr auto monomial_integrate<T, std::enable_if_t<is_same_cvr_v<T, ext_zt01>>>
-#endif
-    = [](auto &, const symbol_idx &, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_zt01>
+inline constexpr auto monomial_integrate<T> = [](auto &, const symbol_idx &, const symbol_set &) constexpr noexcept
 {
     return std::make_pair(true, ext_zt01{});
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, ext_nzt00> inline constexpr auto monomial_integrate<T>
-#else
-inline constexpr auto monomial_integrate<T, std::enable_if_t<is_same_cvr_v<T, ext_nzt00>>>
-#endif
-    = [](auto &&, const symbol_set &) constexpr noexcept
+requires SameCvr<T, ext_nzt00>
+inline constexpr auto monomial_integrate<T> = [](auto &&, const symbol_set &) constexpr noexcept
 {
     return std::string{};
 };
@@ -134,7 +121,6 @@ TEST_CASE("monomial_integrate_test")
     REQUIRE(!is_integrable_monomial_v<const ext_nzt00 &>);
     REQUIRE(!is_integrable_monomial_v<const ext_nzt00>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!IntegrableMonomial<void>);
     REQUIRE(!IntegrableMonomial<const void>);
     REQUIRE(!IntegrableMonomial<int>);
@@ -166,5 +152,4 @@ TEST_CASE("monomial_integrate_test")
     REQUIRE(!IntegrableMonomial<ext_nzt00 &>);
     REQUIRE(!IntegrableMonomial<const ext_nzt00 &>);
     REQUIRE(!IntegrableMonomial<const ext_nzt00>);
-#endif
 }

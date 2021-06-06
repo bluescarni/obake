@@ -42,12 +42,7 @@ namespace customisation
 {
 
 // External customisation point for obake::fma3().
-template <typename T, typename U, typename V
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U, typename V>
 inline constexpr auto fma3 = not_implemented;
 
 } // namespace customisation
@@ -94,7 +89,8 @@ inline void fma3(::mppp::integer<SSize> &ret, const ::mppp::integer<SSize> &x, c
 
 #if defined(MPPP_WITH_MPFR)
 
-inline void fma3(::mppp::real &ret, const ::mppp::real &x, const ::mppp::real &y)
+template <typename T>
+requires(::std::is_same_v<::mppp::real, T>) inline void fma3(T &ret, const T &x, const T &y)
 {
     ::mppp::fma(ret, x, y, ret);
 }
@@ -103,7 +99,8 @@ inline void fma3(::mppp::real &ret, const ::mppp::real &x, const ::mppp::real &y
 
 #if defined(MPPP_WITH_QUADMATH)
 
-inline void fma3(::mppp::real128 &ret, const ::mppp::real128 &x, const ::mppp::real128 &y)
+template <typename T>
+requires(::std::is_same_v<::mppp::real128, T>) inline void fma3(T &ret, const T &x, const T &y)
 {
     ret = ::mppp::fma(x, y, ret);
 }
@@ -123,24 +120,9 @@ constexpr auto fma3_impl(T &&x, U &&y, V &&z, priority_tag<0>)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct fma3_msvc {
-    template <typename T, typename U, typename V>
-    constexpr auto operator()(T &&x, U &&y, V &&z) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(void(detail::fma3_impl(::std::forward<T>(x), ::std::forward<U>(y),
-                                                                ::std::forward<V>(z), detail::priority_tag<1>{})))
-};
-
-inline constexpr auto fma3 = fma3_msvc{};
-
-#else
-
 inline constexpr auto fma3 = [](auto &&x, auto &&y, auto &&z)
     OBAKE_SS_FORWARD_LAMBDA(void(detail::fma3_impl(::std::forward<decltype(x)>(x), ::std::forward<decltype(y)>(y),
                                                    ::std::forward<decltype(z)>(z), detail::priority_tag<1>{})));
-
-#endif
 
 namespace detail
 {
@@ -156,15 +138,11 @@ using is_mult_addable = is_detected<detail::fma3_t, T, U, V>;
 template <typename T, typename U, typename V>
 inline constexpr bool is_mult_addable_v = is_mult_addable<T, U, V>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U, typename V>
-OBAKE_CONCEPT_DECL MultAddable = requires(T &&x, U &&y, V &&z)
+concept MultAddable = requires(T &&x, U &&y, V &&z)
 {
     ::obake::fma3(::std::forward<T>(x), ::std::forward<U>(y), ::std::forward<V>(z));
 };
-
-#endif
 
 } // namespace obake
 

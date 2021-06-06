@@ -14,7 +14,6 @@
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
 
-#include <obake/config.hpp>
 #include <obake/hash.hpp>
 #include <obake/type_traits.hpp>
 
@@ -65,34 +64,22 @@ namespace obake::customisation
 {
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, hash_ext> inline constexpr auto hash<T>
-#else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, hash_ext>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, hash_ext>
+inline constexpr auto hash<T> = [](auto &&) constexpr noexcept
 {
     return std::size_t(0);
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, nohash_ext_00> inline constexpr auto hash<T>
-#else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_00>>>
-#endif
-    = [](auto &&) constexpr noexcept
+requires SameCvr<T, nohash_ext_00>
+inline constexpr auto hash<T> = [](auto &&) constexpr noexcept
 {
     return 1;
 };
 
 template <typename T>
-#if defined(OBAKE_HAVE_CONCEPTS)
-requires SameCvr<T, nohash_ext_01> inline constexpr auto hash<T>
-#else
-inline constexpr auto hash<T, std::enable_if_t<is_same_cvr_v<T, nohash_ext_01>>>
-#endif
-    = [](nohash_ext_01 &) constexpr noexcept
+requires SameCvr<T, nohash_ext_01>
+inline constexpr auto hash<T> = [](nohash_ext_01 &) constexpr noexcept
 {
     return std::size_t(0);
 };
@@ -161,7 +148,6 @@ TEST_CASE("hash_test")
     REQUIRE(!is_hashable_v<const nohash_ext_01 &>);
     REQUIRE(!is_hashable_v<nohash_ext_01 &&>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!Hashable<void>);
 
     REQUIRE(Hashable<int>);
@@ -216,5 +202,4 @@ TEST_CASE("hash_test")
     REQUIRE(Hashable<nohash_ext_01 &>);
     REQUIRE(!Hashable<const nohash_ext_01 &>);
     REQUIRE(!Hashable<nohash_ext_01 &&>);
-#endif
 }

@@ -12,7 +12,6 @@
 #include <cstddef>
 #include <type_traits>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/type_traits.hpp>
 
@@ -32,24 +31,14 @@ namespace customisation
 {
 
 // External customisation point for monomial_hash_is_homomorphic.
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto monomial_hash_is_homomorphic = not_implemented;
 
 } // namespace customisation
 
 // Main monomial_hash_is_homomorphic implementation.
 // Defaults to false.
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto monomial_hash_is_homomorphic = false;
 
 namespace detail
@@ -108,12 +97,8 @@ using is_homomorphically_hashable_monomial = ::std::integral_constant<bool, deta
 template <typename T>
 inline constexpr bool is_homomorphically_hashable_monomial_v = is_homomorphically_hashable_monomial<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL HomomorphicallyHashableMonomial = is_homomorphically_hashable_monomial_v<T>;
-
-#endif
+concept HomomorphicallyHashableMonomial = is_homomorphically_hashable_monomial_v<T>;
 
 } // namespace obake
 

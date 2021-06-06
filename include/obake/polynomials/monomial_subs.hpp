@@ -12,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <obake/config.hpp>
 #include <obake/detail/not_implemented.hpp>
 #include <obake/detail/priority_tag.hpp>
 #include <obake/detail/ss_func_forward.hpp>
@@ -26,12 +25,7 @@ namespace customisation
 {
 
 // External customisation point for obake::monomial_subs().
-template <typename T, typename U
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T, typename U>
 inline constexpr auto monomial_subs = not_implemented;
 
 } // namespace customisation
@@ -110,15 +104,11 @@ using is_substitutable_monomial = is_detected<detail::monomial_subs_t, T, U>;
 template <typename T, typename U>
 inline constexpr bool is_substitutable_monomial_v = is_substitutable_monomial<T, U>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T, typename U>
-OBAKE_CONCEPT_DECL SubstitutableMonomial = requires(T &&x, const symbol_idx_map<U> &sm, const symbol_set &ss)
+concept SubstitutableMonomial = requires(T &&x, const symbol_idx_map<U> &sm, const symbol_set &ss)
 {
     ::obake::monomial_subs(::std::forward<T>(x), sm, ss);
 };
-
-#endif
 
 } // namespace obake
 

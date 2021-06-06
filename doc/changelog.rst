@@ -1,7 +1,16 @@
 Changelog
 =========
 
-0.7.0 (unreleased)
+0.8.0 (unreleased)
+------------------
+
+Changes
+~~~~~~~
+
+- Various internal cleanups as a consequence of the C++20 migration
+  (`#140 <https://github.com/bluescarni/obake/pull/140>`__).
+
+0.7.0 (2021-06-01)
 ------------------
 
 New
@@ -18,6 +27,8 @@ New
 Changes
 ~~~~~~~
 
+- obake now requires mp++ >= 0.23
+  (`#139 <https://github.com/bluescarni/obake/pull/139>`__).
 - Continue moving code from the headers into the compiled
   part of the library
   (`#134 <https://github.com/bluescarni/obake/pull/134>`__).
@@ -25,6 +36,9 @@ Changes
   CMake version has been bumped up to 3.12. As a consequence,
   obake now requires GCC >= 9, clang >= 11 and MSVC >= 2019
   (`#128 <https://github.com/bluescarni/obake/pull/128>`__).
+- obake now depends on the `{fmt} <https://fmt.dev/latest/index.html>`__
+  library
+  (`#125 <https://github.com/bluescarni/obake/pull/125>`__).
 - **BREAKING**: the implementation of ``packed_monomial`` and
   ``d_packed_monomial`` has changed: now when specifying the desired
   exponent type, only ``std::(u)int32_t`` and ``std::(u)int64_t``
@@ -53,6 +67,10 @@ Changes
 Fix
 ~~~
 
+- Fix build with mp++ >= 0.23
+  (`#139 <https://github.com/bluescarni/obake/pull/139>`__).
+- Fix build with oneTBB
+  (`#139 <https://github.com/bluescarni/obake/pull/139>`__).
 - Fix a bug when streaming monomials in tex mode
   (`#132 <https://github.com/bluescarni/obake/pull/132>`__).
 

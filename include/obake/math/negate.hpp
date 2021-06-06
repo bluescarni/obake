@@ -85,12 +85,16 @@ inline void negate(::mppp::rational<SSize> &&q)
 
 #if defined(MPPP_WITH_MPFR)
 
-inline void negate(::mppp::real &r)
+// NOTE: use templates because otherwise implict conversions
+// in mppp::real create issues.
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real>) inline void negate(T &r)
 {
     r.neg();
 }
 
-inline void negate(::mppp::real &&r)
+template <typename T>
+requires(::std::is_same_v<T &&, ::mppp::real &&>) inline void negate(T &&r)
 {
     r.neg();
 }
@@ -132,37 +136,11 @@ constexpr auto negate_impl(T &&x, priority_tag<0>) OBAKE_SS_FORWARD_FUNCTION(x =
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-namespace detail
-{
-
-template <typename T>
-using negate_impl_t = decltype(detail::negate_impl(::std::declval<T>(), priority_tag<3>{}));
-
-}
-
-struct negate_msvc {
-    template <typename T, ::std::enable_if_t<is_detected_v<detail::negate_impl_t, T>, int> = 0>
-    constexpr T &&operator()(T &&x) const
-        noexcept(noexcept(detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{})))
-    {
-        detail::negate_impl(::std::forward<T>(x), detail::priority_tag<3>{});
-        return ::std::forward<T>(x);
-    }
-};
-
-inline constexpr auto negate = negate_msvc{};
-
-#else
-
 // NOTE: we return a perfectly forwarded reference to x, that is, the
 // return type is decltype(x) &&.
 inline constexpr auto negate = [](auto &&x)
     OBAKE_SS_FORWARD_LAMBDA((void(detail::negate_impl(::std::forward<decltype(x)>(x), detail::priority_tag<3>{})),
                              ::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {
@@ -180,15 +158,11 @@ using is_negatable = is_detected<detail::negate_t, T>;
 template <typename T>
 inline constexpr bool is_negatable_v = is_negatable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL Negatable = requires(T &&x)
+concept Negatable = requires(T &&x)
 {
     ::obake::negate(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

@@ -9,7 +9,6 @@
 #include <list>
 #include <vector>
 
-#include <obake/config.hpp>
 #include <obake/polynomials/monomial_range_overflow_check.hpp>
 #include <obake/symbols.hpp>
 
@@ -85,7 +84,6 @@ TEST_CASE("monomial_range_overflow_check_test")
     REQUIRE(!are_overflow_testable_monomial_ranges_v<std::vector<nomroc01>, std::vector<nomroc01>>);
     REQUIRE(!are_overflow_testable_monomial_ranges_v<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
 
-#if defined(OBAKE_HAVE_CONCEPTS)
     REQUIRE(!OverflowTestableMonomialRanges<void, void>);
 
     REQUIRE(!OverflowTestableMonomialRanges<std::vector<ns::mroc00>, void>);
@@ -98,5 +96,4 @@ TEST_CASE("monomial_range_overflow_check_test")
 
     REQUIRE(!OverflowTestableMonomialRanges<std::vector<nomroc01>, std::vector<nomroc01>>);
     REQUIRE(!OverflowTestableMonomialRanges<const std::vector<nomroc01> &, const std::vector<nomroc01> &>);
-#endif
 }

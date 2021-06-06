@@ -34,24 +34,14 @@ namespace customisation
 {
 
 // External customisation point for obake::byte_size().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto byte_size = not_implemented;
 
 namespace internal
 {
 
 // Internal customisation point for obake::byte_size().
-template <typename T
-#if !defined(OBAKE_HAVE_CONCEPTS)
-          ,
-          typename = void
-#endif
-          >
+template <typename T>
 inline constexpr auto byte_size = not_implemented;
 
 } // namespace internal
@@ -94,7 +84,10 @@ inline ::std::size_t byte_size(const ::mppp::rational<SSize> &q)
 
 #if defined(MPPP_WITH_MPFR)
 
-inline ::std::size_t byte_size(const ::mppp::real &r)
+// NOTE: make this a template because otherwise implict conversions
+// in mppp::real create issues.
+template <typename T>
+requires(::std::is_same_v<T, ::mppp::real>) inline ::std::size_t byte_size(const T &r)
 {
     // Size of r plus the dynamically-allocated storage.
     // NOTE: not ideal here to use directly an MPFR
@@ -134,22 +127,8 @@ constexpr auto byte_size_impl_with_ret_check(T &&x)
 
 } // namespace detail
 
-#if defined(OBAKE_MSVC_LAMBDA_WORKAROUND)
-
-struct byte_size_msvc {
-    template <typename T>
-    constexpr auto operator()(T &&x) const
-        OBAKE_SS_FORWARD_MEMBER_FUNCTION(detail::byte_size_impl_with_ret_check(::std::forward<T>(x)))
-};
-
-inline constexpr auto byte_size = byte_size_msvc{};
-
-#else
-
 inline constexpr auto byte_size =
     [](auto &&x) OBAKE_SS_FORWARD_LAMBDA(detail::byte_size_impl_with_ret_check(::std::forward<decltype(x)>(x)));
-
-#endif
 
 namespace detail
 {
@@ -165,15 +144,11 @@ using is_size_measurable = is_detected<detail::byte_size_t, T>;
 template <typename T>
 inline constexpr bool is_size_measurable_v = is_size_measurable<T>::value;
 
-#if defined(OBAKE_HAVE_CONCEPTS)
-
 template <typename T>
-OBAKE_CONCEPT_DECL SizeMeasurable = requires(T &&x)
+concept SizeMeasurable = requires(T &&x)
 {
     ::obake::byte_size(::std::forward<T>(x));
 };
-
-#endif
 
 } // namespace obake
 

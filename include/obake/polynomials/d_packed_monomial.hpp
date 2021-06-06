@@ -84,7 +84,7 @@ inline constexpr unsigned dpm_max_psize = ::obake::detail::kpack_max_size<T>();
 
 // Dynamic packed monomial.
 template <kpackable T, unsigned PSize>
-    requires(PSize > 0u) && (PSize <= dpm_max_psize<T>)class d_packed_monomial
+requires(PSize > 0u) && (PSize <= dpm_max_psize<T>)class d_packed_monomial
 {
     friend class ::boost::serialization::access;
 
@@ -110,9 +110,8 @@ public:
 
     // Constructor from input iterator and size.
     template <typename It>
-    requires InputIterator<It> &&
-        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It it,
-                                                                                                     ::std::size_t n)
+    requires InputIterator<It> && SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
+    explicit d_packed_monomial(It it, ::std::size_t n)
         // LCOV_EXCL_START
         : m_container(
             ::obake::safe_cast<typename container_t::size_type>(detail::dpm_n_expos_to_vsize<d_packed_monomial>(n)),
@@ -159,17 +158,13 @@ private:
 public:
     // Ctor from a pair of input iterators.
     template <typename It>
-    requires InputIterator<It> &&
-        SafelyCastable<typename ::std::iterator_traits<It>::reference, T> explicit d_packed_monomial(It b, It e)
-        : d_packed_monomial(input_it_ctor_tag{}, b, e)
-    {
-    }
+    requires InputIterator<It> && SafelyCastable<typename ::std::iterator_traits<It>::reference, T>
+    explicit d_packed_monomial(It b, It e) : d_packed_monomial(input_it_ctor_tag{}, b, e) {}
 
     // Ctor from input range.
     template <typename Range>
-    requires InputRange<Range> &&
-        SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T> explicit d_packed_monomial(
-            Range &&r)
+    requires InputRange<Range> && SafelyCastable<typename ::std::iterator_traits<range_begin_t<Range>>::reference, T>
+    explicit d_packed_monomial(Range &&r)
         : d_packed_monomial(input_it_ctor_tag{}, ::obake::begin(::std::forward<Range>(r)),
                             ::obake::end(::std::forward<Range>(r)))
     {
@@ -177,7 +172,8 @@ public:
 
     // Ctor from init list.
     template <typename U>
-    requires SafelyCastable<const U &, T> explicit d_packed_monomial(::std::initializer_list<U> l)
+    requires SafelyCastable<const U &, T>
+    explicit d_packed_monomial(::std::initializer_list<U> l)
         : d_packed_monomial(input_it_ctor_tag{}, l.begin(), l.end())
     {
     }
@@ -495,10 +491,10 @@ inline T dpm_key_merge_symbols(const T &d, const symbol_idx_map<symbol_set> &ins
     const auto s_size = s.size();
     auto map_it = ins_map.begin();
     const auto map_end = ins_map.end();
-    value_type tmp;
+    T tmp;
     // NOTE: store the merged monomial in a temporary
     // vector and then pack it at the end.
-    thread_local ::std::vector<value_type> tmp_v;
+    thread_local ::std::vector<T> tmp_v;
     tmp_v.clear();
     for (const auto &n : c) {
         kunpacker<value_type> ku(n, T::psize);
@@ -603,10 +599,10 @@ inline constexpr bool same_d_packed_monomial_v = same_d_packed_monomial<T, U>::v
 // is worth it to change the safe arithmetics API
 // for this.
 template <typename R1, typename R2>
-requires InputRange<R1> &&InputRange<R2> &&detail::same_d_packed_monomial_v<
+requires InputRange<R1> && InputRange<R2> && detail::same_d_packed_monomial_v<
     remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>,
-    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>> inline bool
-monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
+    remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R2>>::reference>>
+inline bool monomial_range_overflow_check(R1 &&r1, R2 &&r2, const symbol_set &ss)
 {
     using pm_t = remove_cvref_t<typename ::std::iterator_traits<range_begin_t<R1>>::reference>;
     using value_type = typename pm_t::value_type;
