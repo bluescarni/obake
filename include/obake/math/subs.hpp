@@ -50,9 +50,10 @@ constexpr auto subs_impl(T &&x, const symbol_map<U> &, priority_tag<0>)
 
 } // namespace detail
 
-// NOTE: we need the functor for this in C++17, because of the
-// template parameter U inside symbol_map. In C++20 we could
-// use the new lambda template syntax.
+// NOTE: in principle we could use here the template lambda syntax
+// + concept check instead of this helper and enable_if. However
+// this does not work in GCC 9 due to a compiler issue, thus we
+// keep for now this legacy implementation.
 struct subs_functor {
     // NOTE: place an enabling condition here on U, otherwise
     // if we invoke the type-trait/concept with pathological types
