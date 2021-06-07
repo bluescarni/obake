@@ -25,8 +25,8 @@ namespace customisation
 {
 
 // External customisation point for obake::subs().
-template <typename T, typename U>
-inline constexpr auto subs = not_implemented;
+struct subs_t {
+};
 
 } // namespace customisation
 
@@ -36,7 +36,7 @@ namespace detail
 // Highest priority: explicit user override in the external customisation namespace.
 template <typename T, typename U>
 constexpr auto subs_impl(T &&x, const symbol_map<U> &sm, priority_tag<2>)
-    OBAKE_SS_FORWARD_FUNCTION((customisation::subs<T &&, U>)(::std::forward<T>(x), sm));
+    OBAKE_SS_FORWARD_FUNCTION(subs(customisation::subs_t{}, ::std::forward<T>(x), sm));
 
 // Unqualified function call implementation.
 template <typename T, typename U>
@@ -50,9 +50,10 @@ constexpr auto subs_impl(T &&x, const symbol_map<U> &, priority_tag<0>)
 
 } // namespace detail
 
-// NOTE: we need the functor for this in C++17, because of the
-// template parameter U inside symbol_map. In C++20 we could
-// use the new lambda template syntax.
+// NOTE: in principle we could use here the template lambda syntax
+// + concept check instead of this helper and enable_if. However
+// this does not work in GCC 9 due to a compiler issue, thus we
+// keep for now this legacy implementation.
 struct subs_functor {
     // NOTE: place an enabling condition here on U, otherwise
     // if we invoke the type-trait/concept with pathological types

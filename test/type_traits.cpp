@@ -299,14 +299,14 @@ TEST_CASE("is_string_like_v")
     REQUIRE(!is_string_like_v<const std::string_view &>);
     REQUIRE(is_string_like_v<const std::string_view>);
 
-    REQUIRE(!StringLike<void>);
-    REQUIRE(StringLike<char *>);
-    REQUIRE(StringLike<const char *>);
-    REQUIRE(!StringLike<char *&>);
-    REQUIRE(!StringLike<const char(&)[10]>);
-    REQUIRE(StringLike<std::string>);
-    REQUIRE(StringLike<std::string_view>);
-    REQUIRE(!StringLike<std::string &>);
+    REQUIRE(!string_like<void>);
+    REQUIRE(string_like<char *>);
+    REQUIRE(string_like<const char *>);
+    REQUIRE(!string_like<char *&>);
+    REQUIRE(!string_like<const char(&)[10]>);
+    REQUIRE(string_like<std::string>);
+    REQUIRE(string_like<std::string_view>);
+    REQUIRE(!string_like<std::string &>);
 
     std::string s{"foo"};
     check_string_like_dispatch(std::string{"foo"});
