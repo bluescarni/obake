@@ -208,7 +208,7 @@ namespace detail
                 retval.set_symbol_set(symbol_set{::std::string(n)});
             }
 
-            constexpr int arr[] = {1};
+            static constexpr int arr[] = {1};
 
             // Create and add a new term.
             retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
