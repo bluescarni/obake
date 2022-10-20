@@ -72,6 +72,10 @@ template <>
 struct formatter<mppp::integer<1>> : obake::detail::ostream_formatter {
 };
 
+template <>
+struct formatter<mppp::rational<1>> : obake::detail::ostream_formatter {
+};
+
 } // namespace fmt
 
 #endif
