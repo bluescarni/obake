@@ -257,217 +257,215 @@ concept any_series = detail::is_series_impl<T>::value;
 namespace detail
 {
 
-    // A bunch of scoped enums used to fine-tune at compile-time
-    // the behaviour of the term insertion helpers below.
-    // NOTE: use scoped enums instead of plain bools to avoid
-    // mixing up the order of the flags when invoking the helpers.
-    enum class sat_check_zero : bool { off, on };
-    enum class sat_check_compat_key : bool { off, on };
-    enum class sat_check_table_size : bool { off, on };
-    enum class sat_assume_unique : bool { off, on };
+// A bunch of scoped enums used to fine-tune at compile-time
+// the behaviour of the term insertion helpers below.
+// NOTE: use scoped enums instead of plain bools to avoid
+// mixing up the order of the flags when invoking the helpers.
+enum class sat_check_zero : bool { off, on };
+enum class sat_check_compat_key : bool { off, on };
+enum class sat_check_table_size : bool { off, on };
+enum class sat_assume_unique : bool { off, on };
 
-    // Helper for inserting a term into a series table.
-    template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey,
-              sat_check_table_size CheckTableSize, sat_assume_unique AssumeUnique, typename S, typename Table,
-              typename T, typename... Args>
-    inline void series_add_term_table(S & s, Table & t, T && key, Args && ...args)
-    {
-        // Determine the key/cf types.
-        using key_type = series_key_t<::std::remove_reference_t<S>>;
-        using cf_type = series_cf_t<::std::remove_reference_t<S>>;
-        static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
+// Helper for inserting a term into a series table.
+template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
+          sat_assume_unique AssumeUnique, typename S, typename Table, typename T, typename... Args>
+inline void series_add_term_table(S &s, Table &t, T &&key, Args &&...args)
+{
+    // Determine the key/cf types.
+    using key_type = series_key_t<::std::remove_reference_t<S>>;
+    using cf_type = series_cf_t<::std::remove_reference_t<S>>;
+    static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
 
-        // Cache a reference to the symbol set.
-        [[maybe_unused]] const auto &ss = s.get_symbol_set();
+    // Cache a reference to the symbol set.
+    [[maybe_unused]] const auto &ss = s.get_symbol_set();
 
-        if constexpr (CheckTableSize == sat_check_table_size::on) {
-            // LCOV_EXCL_START
-            // Check the table size, if requested.
-            if (obake_unlikely(t.size() == s._get_max_table_size())) {
-                // The table size is already the maximum allowed, don't
-                // attempt the insertion.
-                obake_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
-                                                   "destination table already contains the maximum number of terms ("
-                                                       + detail::to_string(s._get_max_table_size()) + ")");
-            }
-            // LCOV_EXCL_STOP
+    if constexpr (CheckTableSize == sat_check_table_size::on) {
+        // LCOV_EXCL_START
+        // Check the table size, if requested.
+        if (obake_unlikely(t.size() == s._get_max_table_size())) {
+            // The table size is already the maximum allowed, don't
+            // attempt the insertion.
+            obake_throw(::std::overflow_error, "Cannot attempt the insertion of a new term into a series: the "
+                                               "destination table already contains the maximum number of terms ("
+                                                   + detail::to_string(s._get_max_table_size()) + ")");
         }
-
-        if constexpr (CheckCompatKey == sat_check_compat_key::on) {
-            // Check key for compatibility, if requested.
-            if (obake_unlikely(!::obake::key_is_compatible(::std::as_const(key), ss))) {
-                using namespace ::fmt::literals;
-
-                // The key is not compatible with the symbol set.
-                if constexpr (is_stream_insertable_v<const key_type &>) {
-                    // A slightly better error message if we can
-                    // produce a string representation of the key.
-                    obake_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '{}', "
-                                                         "is not compatible with the series' symbol set, {}"_format(
-                                                             ::std::as_const(key), detail::to_string(ss)));
-                } else {
-                    obake_throw(::std::invalid_argument,
-                                "Cannot add a term to a series: the term's key is not "
-                                "compatible with the series' symbol set, {}"_format(detail::to_string(ss)));
-                }
-            }
-        } else {
-            // Otherwise, assert that the key is compatible.
-            // There are no situations so far in which we may
-            // want to allow adding an incompatible key.
-            assert(::obake::key_is_compatible(::std::as_const(key), ss));
-        }
-
-        // Attempt the insertion.
-        const auto res = t.try_emplace(detail::fcast(::std::forward<T>(key)), ::std::forward<Args>(args)...);
-
-        if constexpr (AssumeUnique == sat_assume_unique::on) {
-            // Assert that we actually performed an insertion,
-            // in case we are assuming the term is unique.
-            assert(res.second);
-        }
-
-        try {
-            if (AssumeUnique == sat_assume_unique::on || res.second) {
-                // The insertion took place. Change
-                // the sign of the newly-inserted term,
-                // in case of negative insertion.
-                if constexpr (!Sign) {
-                    ::obake::negate(res.first->second);
-                }
-            } else {
-                // The insertion did not take place because a term with
-                // the same key exists already. Add/sub the input coefficient
-                // to/from the existing one.
-
-                // Determine if we are inserting a coefficient, or
-                // a pack that can be used to construct a coefficient.
-                constexpr auto args_is_cf = []() {
-                    if constexpr (sizeof...(args) == 1u) {
-                        return ::std::is_same_v<cf_type, remove_cvref_t<Args>...>;
-                    } else {
-                        return false;
-                    }
-                }();
-
-                if constexpr (Sign) {
-                    if constexpr (args_is_cf) {
-                        // NOTE: if we are inserting a coefficient, use it directly.
-                        res.first->second += detail::fcast(::std::forward<Args>(args)...);
-                    } else {
-                        // Otherwise, construct a coefficient from the input pack
-                        // and add that instead.
-                        res.first->second += cf_type(::std::forward<Args>(args)...);
-                    }
-                } else {
-                    if constexpr (args_is_cf) {
-                        res.first->second -= detail::fcast(::std::forward<Args>(args)...);
-                    } else {
-                        res.first->second -= cf_type(::std::forward<Args>(args)...);
-                    }
-                }
-            }
-
-            if constexpr (CheckZero == sat_check_zero::on) {
-                // If requested, check whether the term we inserted
-                // or modified is zero. If it is, erase it.
-                if (obake_unlikely(::obake::key_is_zero(res.first->first, ss)
-                                   || ::obake::is_zero(::std::as_const(res.first->second)))) {
-                    t.erase(res.first);
-                }
-            }
-        } catch (...) {
-            // NOTE: if something threw, the table might now be in an
-            // inconsistent state. Clear it out before rethrowing.
-            t.clear();
-
-            throw;
-        }
+        // LCOV_EXCL_STOP
     }
 
-    // Helper for inserting a term into a series.
-    template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey,
-              sat_check_table_size CheckTableSize, sat_assume_unique AssumeUnique, typename S, typename T,
-              typename... Args>
-    inline void series_add_term(S & s, T && key, Args && ...args)
-    {
-        // Determine the key type.
-        using key_type = series_key_t<::std::remove_reference_t<S>>;
-        static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
+    if constexpr (CheckCompatKey == sat_check_compat_key::on) {
+        // Check key for compatibility, if requested.
+        if (obake_unlikely(!::obake::key_is_compatible(::std::as_const(key), ss))) {
+            using namespace ::fmt::literals;
 
-        auto &s_table = s._get_s_table();
-        const auto s_table_size = s_table.size();
-        assert(s_table_size > 0u);
-
-        if (s_table_size == 1u) {
-            // NOTE: forcibly set the table size check to off (for a single
-            // table, the size limit is always the full range of size_type).
-            detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off, AssumeUnique>(
-                s, s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
-        } else {
-            // Compute the hash of the key via obake::hash().
-            const auto k_hash = ::obake::hash(::std::as_const(key));
-
-            // Determine the destination table.
-            const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s_table_size - 1u));
-
-            // Proceed to the insertion.
-            detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize, AssumeUnique>(
-                s, s_table[table_idx], ::std::forward<T>(key), ::std::forward<Args>(args)...);
+            // The key is not compatible with the symbol set.
+            if constexpr (is_stream_insertable_v<const key_type &>) {
+                // A slightly better error message if we can
+                // produce a string representation of the key.
+                obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key, '{}', "
+                                                                 "is not compatible with the series' symbol set, {}",
+                                                                 ::std::as_const(key), detail::to_string(ss)));
+            } else {
+                obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key is not "
+                                                                 "compatible with the series' symbol set, {}",
+                                                                 detail::to_string(ss)));
+            }
         }
+    } else {
+        // Otherwise, assert that the key is compatible.
+        // There are no situations so far in which we may
+        // want to allow adding an incompatible key.
+        assert(::obake::key_is_compatible(::std::as_const(key), ss));
     }
 
-    // Machinery for series' generic constructor.
-    template <typename T, typename K, typename C, typename Tag>
-    constexpr int series_generic_ctor_algorithm_impl()
-    {
-        // NOTE: check first if series<K, C, Tag> is a well-formed
-        // type (that is, K and C satisfy the key/cf requirements).
-        // Like this, if this function is instantiated with bogus
-        // types, it will return 0 rather than giving a hard error.
-        if constexpr (is_detected_v<series, K, C, Tag>) {
-            using series_t = series<K, C, Tag>;
-            using rT = remove_cvref_t<T>;
+    // Attempt the insertion.
+    const auto res = t.try_emplace(detail::fcast(::std::forward<T>(key)), ::std::forward<Args>(args)...);
 
-            if constexpr (::std::is_same_v<rT, series_t>) {
-                // Avoid competition with the copy/move ctors.
-                return 0;
-            } else if constexpr (series_rank<rT> < series_rank<series_t>) {
-                // Construction from lesser rank requires
-                // to be able to construct C from T.
-                return ::std::is_constructible_v<C, T> ? 1 : 0;
-            } else if constexpr (series_rank<rT> == series_rank<series_t>) {
-                if constexpr (::std::is_same_v<series_key_t<rT>, K>) {
-                    // Construction from equal rank and same key (but at least
-                    // one of cf and tag must differ, otherwise we are in a
-                    // copy/move situation). Requires
-                    // to be able to construct C from the coefficient type of T.
-                    // The construction argument will be a const reference or an rvalue
-                    // reference, depending on whether T && is a mutable rvalue reference or not.
-                    // NOTE: we need to explicitly put T && here because this function
-                    // is invoked with a type T which was deduced from a forwarding
-                    // reference (T &&).
-                    using cf_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
-                                                           const series_cf_t<rT> &>;
-                    return ::std::is_constructible_v<C, cf_conv_t> ? 2 : 0;
-                } else {
-                    return 0;
-                }
-            } else {
-                // Construction from higher rank. Requires that
-                // series_t can be constructed from the coefficient
-                // type of T.
-                using series_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
-                                                           const series_cf_t<rT> &>;
-                return ::std::is_constructible_v<series_t, series_conv_t> ? 3 : 0;
+    if constexpr (AssumeUnique == sat_assume_unique::on) {
+        // Assert that we actually performed an insertion,
+        // in case we are assuming the term is unique.
+        assert(res.second);
+    }
+
+    try {
+        if (AssumeUnique == sat_assume_unique::on || res.second) {
+            // The insertion took place. Change
+            // the sign of the newly-inserted term,
+            // in case of negative insertion.
+            if constexpr (!Sign) {
+                ::obake::negate(res.first->second);
             }
         } else {
+            // The insertion did not take place because a term with
+            // the same key exists already. Add/sub the input coefficient
+            // to/from the existing one.
+
+            // Determine if we are inserting a coefficient, or
+            // a pack that can be used to construct a coefficient.
+            constexpr auto args_is_cf = []() {
+                if constexpr (sizeof...(args) == 1u) {
+                    return ::std::is_same_v<cf_type, remove_cvref_t<Args>...>;
+                } else {
+                    return false;
+                }
+            }();
+
+            if constexpr (Sign) {
+                if constexpr (args_is_cf) {
+                    // NOTE: if we are inserting a coefficient, use it directly.
+                    res.first->second += detail::fcast(::std::forward<Args>(args)...);
+                } else {
+                    // Otherwise, construct a coefficient from the input pack
+                    // and add that instead.
+                    res.first->second += cf_type(::std::forward<Args>(args)...);
+                }
+            } else {
+                if constexpr (args_is_cf) {
+                    res.first->second -= detail::fcast(::std::forward<Args>(args)...);
+                } else {
+                    res.first->second -= cf_type(::std::forward<Args>(args)...);
+                }
+            }
+        }
+
+        if constexpr (CheckZero == sat_check_zero::on) {
+            // If requested, check whether the term we inserted
+            // or modified is zero. If it is, erase it.
+            if (obake_unlikely(::obake::key_is_zero(res.first->first, ss)
+                               || ::obake::is_zero(::std::as_const(res.first->second)))) {
+                t.erase(res.first);
+            }
+        }
+    } catch (...) {
+        // NOTE: if something threw, the table might now be in an
+        // inconsistent state. Clear it out before rethrowing.
+        t.clear();
+
+        throw;
+    }
+}
+
+// Helper for inserting a term into a series.
+template <bool Sign, sat_check_zero CheckZero, sat_check_compat_key CheckCompatKey, sat_check_table_size CheckTableSize,
+          sat_assume_unique AssumeUnique, typename S, typename T, typename... Args>
+inline void series_add_term(S &s, T &&key, Args &&...args)
+{
+    // Determine the key type.
+    using key_type = series_key_t<::std::remove_reference_t<S>>;
+    static_assert(::std::is_same_v<key_type, remove_cvref_t<T>>);
+
+    auto &s_table = s._get_s_table();
+    const auto s_table_size = s_table.size();
+    assert(s_table_size > 0u);
+
+    if (s_table_size == 1u) {
+        // NOTE: forcibly set the table size check to off (for a single
+        // table, the size limit is always the full range of size_type).
+        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, sat_check_table_size::off, AssumeUnique>(
+            s, s_table[0], ::std::forward<T>(key), ::std::forward<Args>(args)...);
+    } else {
+        // Compute the hash of the key via obake::hash().
+        const auto k_hash = ::obake::hash(::std::as_const(key));
+
+        // Determine the destination table.
+        const auto table_idx = static_cast<decltype(s_table.size())>(k_hash & (s_table_size - 1u));
+
+        // Proceed to the insertion.
+        detail::series_add_term_table<Sign, CheckZero, CheckCompatKey, CheckTableSize, AssumeUnique>(
+            s, s_table[table_idx], ::std::forward<T>(key), ::std::forward<Args>(args)...);
+    }
+}
+
+// Machinery for series' generic constructor.
+template <typename T, typename K, typename C, typename Tag>
+constexpr int series_generic_ctor_algorithm_impl()
+{
+    // NOTE: check first if series<K, C, Tag> is a well-formed
+    // type (that is, K and C satisfy the key/cf requirements).
+    // Like this, if this function is instantiated with bogus
+    // types, it will return 0 rather than giving a hard error.
+    if constexpr (is_detected_v<series, K, C, Tag>) {
+        using series_t = series<K, C, Tag>;
+        using rT = remove_cvref_t<T>;
+
+        if constexpr (::std::is_same_v<rT, series_t>) {
+            // Avoid competition with the copy/move ctors.
             return 0;
+        } else if constexpr (series_rank<rT> < series_rank<series_t>) {
+            // Construction from lesser rank requires
+            // to be able to construct C from T.
+            return ::std::is_constructible_v<C, T> ? 1 : 0;
+        } else if constexpr (series_rank<rT> == series_rank<series_t>) {
+            if constexpr (::std::is_same_v<series_key_t<rT>, K>) {
+                // Construction from equal rank and same key (but at least
+                // one of cf and tag must differ, otherwise we are in a
+                // copy/move situation). Requires
+                // to be able to construct C from the coefficient type of T.
+                // The construction argument will be a const reference or an rvalue
+                // reference, depending on whether T && is a mutable rvalue reference or not.
+                // NOTE: we need to explicitly put T && here because this function
+                // is invoked with a type T which was deduced from a forwarding
+                // reference (T &&).
+                using cf_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
+                                                       const series_cf_t<rT> &>;
+                return ::std::is_constructible_v<C, cf_conv_t> ? 2 : 0;
+            } else {
+                return 0;
+            }
+        } else {
+            // Construction from higher rank. Requires that
+            // series_t can be constructed from the coefficient
+            // type of T.
+            using series_conv_t = ::std::conditional_t<is_mutable_rvalue_reference_v<T &&>, series_cf_t<rT> &&,
+                                                       const series_cf_t<rT> &>;
+            return ::std::is_constructible_v<series_t, series_conv_t> ? 3 : 0;
         }
+    } else {
+        return 0;
     }
+}
 
-    template <typename T, typename K, typename C, typename Tag>
-    inline constexpr int series_generic_ctor_algorithm = detail::series_generic_ctor_algorithm_impl<T, K, C, Tag>();
+template <typename T, typename K, typename C, typename Tag>
+inline constexpr int series_generic_ctor_algorithm = detail::series_generic_ctor_algorithm_impl<T, K, C, Tag>();
 
 } // namespace detail
 
@@ -495,173 +493,173 @@ concept SeriesConvertible = is_series_convertible_v<T, C>;
 namespace detail
 {
 
-    // A small hashing wrapper for keys. It accomplishes two tasks:
-    // - force the evaluation of a key through const reference,
-    //   so that, in the Key requirements, we can request hashability
-    //   through const lvalue ref;
-    // - provide additional mixing.
-    struct series_key_hasher {
-        // NOTE: here we are duplicating a bit of internal
-        // abseil code for integral hash mixing, with the intent
-        // of avoiding the per-process seeding that abseil does.
-        // See here for the original code:
-        // https://github.com/abseil/abseil-cpp/blob/37dd2562ec830d547a1524bb306be313ac3f2556/absl/hash/internal/hash.h#L754
-        // If/when abseil starts supporting DLL builds, we can
-        // remove this code and switch back to using abseil's
-        // own hash machinery for mixing.
-        static constexpr ::std::uint64_t kMul
-            = sizeof(::std::size_t) == 4u ? ::std::uint64_t{0xcc9e2d51ull} : ::std::uint64_t{0x9ddfea08eb382d69ull};
-        ABSL_ATTRIBUTE_ALWAYS_INLINE static ::std::uint64_t Mix(::std::uint64_t state, ::std::uint64_t v)
-        {
-            using MultType = ::std::conditional_t<sizeof(::std::size_t) == 4u, ::std::uint64_t, ::absl::uint128>;
-            // We do the addition in 64-bit space to make sure the 128-bit
-            // multiplication is fast. If we were to do it as MultType the compiler has
-            // to assume that the high word is non-zero and needs to perform 2
-            // multiplications instead of one.
-            MultType m = state + v;
-            m *= kMul;
-            return static_cast<::std::uint64_t>(m ^ (m >> (sizeof(m) * 8 / 2)));
-        }
-        template <typename K>
-        ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
-        {
-            // NOTE: mix with a compile-time seed.
-            return static_cast<::std::size_t>(
-                series_key_hasher::Mix(15124392053943080205ull, static_cast<::std::uint64_t>(::obake::hash(k))));
-        }
-    };
-
-    // Wrapper to force key comparison via const lvalue refs.
-    struct series_key_comparer {
-        template <typename K>
-        constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
-        {
-            return k1 == k2;
-        }
-    };
-
-    // Small helper to clear() a nonconst
-    // rvalue reference to a series. This is used in various places
-    // where we might end up moving away individual coefficients from an input series,
-    // which may leave the series in an inconsistent state. With this
-    // RAII struct, we'll ensure the series is cleared out before
-    // leaving the scope (either as part of regular program
-    // flow or in case of exception).
-    // NOTE: this is different from the clear() that is called
-    // in debug mode during move operations: in that situation,
-    // we are guaranteeing that after the move the series
-    // is destructible and assignable, so the state of the series
-    // does not matter as long as we can revive it. This clearer,
-    // on the other hand, is not called during move operations,
-    // but only when it might make sense, for optimisation purposes,
-    // to move individual coefficients - hence the move semantics
-    // guarantee does not apply.
-    template <typename T>
-    struct series_rref_clearer {
-        series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
-        ~series_rref_clearer()
-        {
-            if constexpr (is_mutable_rvalue_reference_v<T &&>) {
-                m_ref.clear();
-            }
-        }
-        T &&m_ref;
-    };
-
-    // Helper to extend the keys of "from" with the symbol insertion map ins_map.
-    // The new series will be written to "to". The coefficient type of "to"
-    // may be different from the coefficient type of "from", in which case a coefficient
-    // conversion will take place. "to" is supposed to have the correct symbol set already,
-    // but, apart from that, it must be empty, and the number of segments and space
-    // reservation will be taken from "from".
-    // Another precondition is that to and from must be distinct objects.
-    template <typename To, typename From>
-    inline void series_sym_extender(To & to, From && from, const symbol_idx_map<symbol_set> &ins_map)
+// A small hashing wrapper for keys. It accomplishes two tasks:
+// - force the evaluation of a key through const reference,
+//   so that, in the Key requirements, we can request hashability
+//   through const lvalue ref;
+// - provide additional mixing.
+struct series_key_hasher {
+    // NOTE: here we are duplicating a bit of internal
+    // abseil code for integral hash mixing, with the intent
+    // of avoiding the per-process seeding that abseil does.
+    // See here for the original code:
+    // https://github.com/abseil/abseil-cpp/blob/37dd2562ec830d547a1524bb306be313ac3f2556/absl/hash/internal/hash.h#L754
+    // If/when abseil starts supporting DLL builds, we can
+    // remove this code and switch back to using abseil's
+    // own hash machinery for mixing.
+    static constexpr ::std::uint64_t kMul
+        = sizeof(::std::size_t) == 4u ? ::std::uint64_t{0xcc9e2d51ull} : ::std::uint64_t{0x9ddfea08eb382d69ull};
+    ABSL_ATTRIBUTE_ALWAYS_INLINE static ::std::uint64_t Mix(::std::uint64_t state, ::std::uint64_t v)
     {
-        // NOTE: we assume that this helper is
-        // invoked with a non-empty insertion map, and an empty
-        // "to" series. "to" must have the correct symbol set.
-        assert(!ins_map.empty());
-        assert(to.empty());
-        if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
-            assert(&to != &from);
+        using MultType = ::std::conditional_t<sizeof(::std::size_t) == 4u, ::std::uint64_t, ::absl::uint128>;
+        // We do the addition in 64-bit space to make sure the 128-bit
+        // multiplication is fast. If we were to do it as MultType the compiler has
+        // to assume that the high word is non-zero and needs to perform 2
+        // multiplications instead of one.
+        MultType m = state + v;
+        m *= kMul;
+        return static_cast<::std::uint64_t>(m ^ (m >> (sizeof(m) * 8 / 2)));
+    }
+    template <typename K>
+    ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
+    {
+        // NOTE: mix with a compile-time seed.
+        return static_cast<::std::size_t>(
+            series_key_hasher::Mix(15124392053943080205ull, static_cast<::std::uint64_t>(::obake::hash(k))));
+    }
+};
+
+// Wrapper to force key comparison via const lvalue refs.
+struct series_key_comparer {
+    template <typename K>
+    constexpr bool operator()(const K &k1, const K &k2) const noexcept(noexcept(k1 == k2))
+    {
+        return k1 == k2;
+    }
+};
+
+// Small helper to clear() a nonconst
+// rvalue reference to a series. This is used in various places
+// where we might end up moving away individual coefficients from an input series,
+// which may leave the series in an inconsistent state. With this
+// RAII struct, we'll ensure the series is cleared out before
+// leaving the scope (either as part of regular program
+// flow or in case of exception).
+// NOTE: this is different from the clear() that is called
+// in debug mode during move operations: in that situation,
+// we are guaranteeing that after the move the series
+// is destructible and assignable, so the state of the series
+// does not matter as long as we can revive it. This clearer,
+// on the other hand, is not called during move operations,
+// but only when it might make sense, for optimisation purposes,
+// to move individual coefficients - hence the move semantics
+// guarantee does not apply.
+template <typename T>
+struct series_rref_clearer {
+    series_rref_clearer(T &&ref) : m_ref(::std::forward<T>(ref)) {}
+    ~series_rref_clearer()
+    {
+        if constexpr (is_mutable_rvalue_reference_v<T &&>) {
+            m_ref.clear();
         }
+    }
+    T &&m_ref;
+};
 
-        // Ensure that the key type of From
-        // is symbol mergeable (via const lvalue ref).
-        static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
+// Helper to extend the keys of "from" with the symbol insertion map ins_map.
+// The new series will be written to "to". The coefficient type of "to"
+// may be different from the coefficient type of "from", in which case a coefficient
+// conversion will take place. "to" is supposed to have the correct symbol set already,
+// but, apart from that, it must be empty, and the number of segments and space
+// reservation will be taken from "from".
+// Another precondition is that to and from must be distinct objects.
+template <typename To, typename From>
+inline void series_sym_extender(To &to, From &&from, const symbol_idx_map<symbol_set> &ins_map)
+{
+    // NOTE: we assume that this helper is
+    // invoked with a non-empty insertion map, and an empty
+    // "to" series. "to" must have the correct symbol set.
+    assert(!ins_map.empty());
+    assert(to.empty());
+    if constexpr (::std::is_same_v<remove_cvref_t<To>, remove_cvref_t<From>>) {
+        assert(&to != &from);
+    }
 
-        // We may end up moving coefficients from "from" in the conversion to "to".
-        // Make sure we will clear "from" out properly.
-        series_rref_clearer<From> from_c(::std::forward<From>(from));
+    // Ensure that the key type of From
+    // is symbol mergeable (via const lvalue ref).
+    static_assert(is_symbols_mergeable_key_v<const series_key_t<remove_cvref_t<From>> &>);
 
-        // Cache the original symbol set.
-        const auto &orig_ss = from.get_symbol_set();
+    // We may end up moving coefficients from "from" in the conversion to "to".
+    // Make sure we will clear "from" out properly.
+    series_rref_clearer<From> from_c(::std::forward<From>(from));
 
-        // Set the number of segments, reserve space.
-        const auto from_log2_size = from.get_s_size();
-        to.set_n_segments(from_log2_size);
-        to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
+    // Cache the original symbol set.
+    const auto &orig_ss = from.get_symbol_set();
 
-        // Establish if we need to check for zero coefficients
-        // when inserting. We don't if the coefficient types of to and from
-        // coincide (i.e., no cf conversion takes place),
-        // otherwise the conversion might generate zeroes.
-        constexpr auto check_zero
-            = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
+    // Set the number of segments, reserve space.
+    const auto from_log2_size = from.get_s_size();
+    to.set_n_segments(from_log2_size);
+    to.reserve(::obake::safe_cast<decltype(to.size())>(from.size()));
 
-        // Merge the terms, distinguishing the segmented vs non-segmented case.
-        if (from_log2_size) {
-            for (auto &t : from._get_s_table()) {
-                for (auto &term : t) {
-                    // NOTE: old clang does not like structured
-                    // bindings in the for loop.
-                    auto &k = term.first;
-                    auto &c = term.second;
+    // Establish if we need to check for zero coefficients
+    // when inserting. We don't if the coefficient types of to and from
+    // coincide (i.e., no cf conversion takes place),
+    // otherwise the conversion might generate zeroes.
+    constexpr auto check_zero
+        = static_cast<sat_check_zero>(::std::is_same_v<series_cf_t<To>, series_cf_t<remove_cvref_t<From>>>);
 
-                    // Compute the merged key.
-                    auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+    // Merge the terms, distinguishing the segmented vs non-segmented case.
+    if (from_log2_size) {
+        for (auto &t : from._get_s_table()) {
+            for (auto &term : t) {
+                // NOTE: old clang does not like structured
+                // bindings in the for loop.
+                auto &k = term.first;
+                auto &c = term.second;
 
-                    // Insert the term. We need the following checks:
-                    // - zero check, in case the coefficient type changes,
-                    // - table size check, because even if we know the
-                    //   max table size was not exceeded in the original series,
-                    //   it might be now (as the merged key may end up in a different
-                    //   table).
-                    // NOTE: in the runtime requirements for key_merge_symbol(), we impose
-                    // that symbol merging does not affect is_zero(), compatibility and
-                    // uniqueness.
-                    if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                        detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                                sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
-                    } else {
-                        detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
-                                                sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
-                    }
-                }
-            }
-        } else {
-            auto &to_table = to._get_s_table()[0];
-
-            for (const auto &[k, c] : from._get_s_table()[0]) {
                 // Compute the merged key.
                 auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
 
-                // Insert the term: the only check we may need is check_zero, in case
-                // the coefficient type changes. We know that the table size cannot be
-                // exceeded as we are dealing with a single table.
+                // Insert the term. We need the following checks:
+                // - zero check, in case the coefficient type changes,
+                // - table size check, because even if we know the
+                //   max table size was not exceeded in the original series,
+                //   it might be now (as the merged key may end up in a different
+                //   table).
+                // NOTE: in the runtime requirements for key_merge_symbol(), we impose
+                // that symbol merging does not affect is_zero(), compatibility and
+                // uniqueness.
                 if constexpr (is_mutable_rvalue_reference_v<From &&>) {
-                    detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
-                                                  sat_check_table_size::off, sat_assume_unique::on>(
-                        to, to_table, ::std::move(merged_key), ::std::move(c));
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::move(c));
                 } else {
-                    detail::series_add_term_table<true, check_zero, sat_check_compat_key::off,
-                                                  sat_check_table_size::off, sat_assume_unique::on>(
-                        to, to_table, ::std::move(merged_key), ::std::as_const(c));
+                    detail::series_add_term<true, check_zero, sat_check_compat_key::off, sat_check_table_size::on,
+                                            sat_assume_unique::on>(to, ::std::move(merged_key), ::std::as_const(c));
                 }
             }
         }
+    } else {
+        auto &to_table = to._get_s_table()[0];
+
+        for (const auto &[k, c] : from._get_s_table()[0]) {
+            // Compute the merged key.
+            auto merged_key = ::obake::key_merge_symbols(k, ins_map, orig_ss);
+
+            // Insert the term: the only check we may need is check_zero, in case
+            // the coefficient type changes. We know that the table size cannot be
+            // exceeded as we are dealing with a single table.
+            if constexpr (is_mutable_rvalue_reference_v<From &&>) {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::move(c));
+            } else {
+                detail::series_add_term_table<true, check_zero, sat_check_compat_key::off, sat_check_table_size::off,
+                                              sat_assume_unique::on>(to, to_table, ::std::move(merged_key),
+                                                                     ::std::as_const(c));
+            }
+        }
     }
+}
 
 } // namespace detail
 
@@ -1857,9 +1855,11 @@ requires(series_default_pow_algo<T &&, U &&> != 0) inline series_default_pow_ret
         if (obake_unlikely(!::obake::safe_convert(un, e))) {
             if constexpr (is_stream_insertable_v<const rU &>) {
                 // Provide better error message if U is ostreamable.
-                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                     "multiplications: the exponent ({}) cannot be converted into "
-                                                     "a non-negative integral value"_format(e));
+                obake_throw(::std::invalid_argument,
+                            fmt::format("Invalid exponent for series exponentiation via repeated "
+                                        "multiplications: the exponent ({}) cannot be converted into "
+                                        "a non-negative integral value",
+                                        e));
             } else {
                 obake_throw(::std::invalid_argument,
                             "Invalid exponent for series exponentiation via repeated "
@@ -1869,12 +1869,13 @@ requires(series_default_pow_algo<T &&, U &&> != 0) inline series_default_pow_ret
 
         return internal::series_pow_from_cache(b, un);
     } else {
-        obake_throw(
-            ::std::invalid_argument,
-            "Cannot compute the power of a series of type '{}': the series does not consist of a single coefficient, "
-            "and exponentiation via repeated multiplications is not possible (either because the "
-            "exponent cannot be converted to a non-negative integral value, or because the "
-            "series/coefficient types do not support the necessary operations)"_format(::obake::type_name<rT>()));
+        obake_throw(::std::invalid_argument,
+                    fmt::format("Cannot compute the power of a series of type '{}': the series does not consist of a "
+                                "single coefficient, "
+                                "and exponentiation via repeated multiplications is not possible (either because the "
+                                "exponent cannot be converted to a non-negative integral value, or because the "
+                                "series/coefficient types do not support the necessary operations)",
+                                ::obake::type_name<rT>()));
     }
 }
 

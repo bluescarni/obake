@@ -157,61 +157,61 @@ concept kpackable = is_kpackable_v<T>;
 namespace detail
 {
 
-    // Various helpers to fetch kpack data.
+// Various helpers to fetch kpack data.
 
-    // Return the max packable size for a given type. This is
-    // the size of the deltas, lims and klims arrays.
-    // NOTE: unsigned conversion is ok as the array sizes
-    // are always a fraction of a bit size.
-    template <typename T>
-    constexpr unsigned kpack_max_size()
-    {
-        auto ret = ::std::size(kpack_data<T>::deltas);
+// Return the max packable size for a given type. This is
+// the size of the deltas, lims and klims arrays.
+// NOTE: unsigned conversion is ok as the array sizes
+// are always a fraction of a bit size.
+template <typename T>
+constexpr unsigned kpack_max_size()
+{
+    auto ret = ::std::size(kpack_data<T>::deltas);
 
-        assert(ret == ::std::size(kpack_data<T>::lims));
-        assert(ret == ::std::size(kpack_data<T>::klims));
+    assert(ret == ::std::size(kpack_data<T>::lims));
+    assert(ret == ::std::size(kpack_data<T>::klims));
 
-        return static_cast<unsigned>(ret);
+    return static_cast<unsigned>(ret);
+}
+
+// Return the delta for a given size.
+template <typename T>
+inline T kpack_get_delta(unsigned size)
+{
+    assert(size > 0u && size <= detail::kpack_max_size<T>());
+
+    return kpack_data<T>::deltas[size - 1u];
+}
+
+// Return the components' limits for a given size.
+template <typename T>
+inline ::std::pair<T, T> kpack_get_lims(unsigned size)
+{
+    assert(size > 0u && size <= detail::kpack_max_size<T>());
+
+    const auto lim = kpack_data<T>::lims[size - 1u];
+
+    if constexpr (is_signed_v<T>) {
+        return ::std::pair{-lim, lim};
+    } else {
+        return ::std::pair{T(0), lim};
     }
+}
 
-    // Return the delta for a given size.
-    template <typename T>
-    inline T kpack_get_delta(unsigned size)
-    {
-        assert(size > 0u && size <= detail::kpack_max_size<T>());
+// Return the coded values' limits for a given size.
+template <typename T>
+inline ::std::pair<T, T> kpack_get_klims(unsigned size)
+{
+    assert(size > 0u && size <= detail::kpack_max_size<T>());
 
-        return kpack_data<T>::deltas[size - 1u];
+    const auto klim = kpack_data<T>::klims[size - 1u];
+
+    if constexpr (is_signed_v<T>) {
+        return ::std::pair{-klim, klim};
+    } else {
+        return ::std::pair{T(0), klim};
     }
-
-    // Return the components' limits for a given size.
-    template <typename T>
-    inline ::std::pair<T, T> kpack_get_lims(unsigned size)
-    {
-        assert(size > 0u && size <= detail::kpack_max_size<T>());
-
-        const auto lim = kpack_data<T>::lims[size - 1u];
-
-        if constexpr (is_signed_v<T>) {
-            return ::std::pair{-lim, lim};
-        } else {
-            return ::std::pair{T(0), lim};
-        }
-    }
-
-    // Return the coded values' limits for a given size.
-    template <typename T>
-    inline ::std::pair<T, T> kpack_get_klims(unsigned size)
-    {
-        assert(size > 0u && size <= detail::kpack_max_size<T>());
-
-        const auto klim = kpack_data<T>::klims[size - 1u];
-
-        if constexpr (is_signed_v<T>) {
-            return ::std::pair{-klim, klim};
-        } else {
-            return ::std::pair{T(0), klim};
-        }
-    }
+}
 
 } // namespace detail
 
@@ -232,9 +232,10 @@ public:
             using namespace ::fmt::literals;
 
             obake_throw(::std::overflow_error,
-                        "Invalid size specified in the constructor of a Kronecker packer for "
-                        "the type '{}': the maximum possible size is {}, but a size of {} "
-                        "was specified instead"_format(::obake::type_name<T>(), detail::kpack_max_size<T>(), size));
+                        fmt::format("Invalid size specified in the constructor of a Kronecker packer for "
+                                    "the type '{}': the maximum possible size is {}, but a size of {} "
+                                    "was specified instead",
+                                    ::obake::type_name<T>(), detail::kpack_max_size<T>(), size));
         }
     }
 
@@ -244,9 +245,10 @@ public:
         using namespace ::fmt::literals;
 
         if (obake_unlikely(m_index == m_size)) {
-            obake_throw(::std::out_of_range,
-                        "Cannot push any more values to this Kronecker packer for the type '{}': the number of "
-                        "values already pushed to the packer is equal to the packer's size ({})"_format(
+            obake_throw(
+                ::std::out_of_range,
+                fmt::format("Cannot push any more values to this Kronecker packer for the type '{}': the number of "
+                            "values already pushed to the packer is equal to the packer's size ({})",
                             ::obake::type_name<T>(), m_size));
         }
 
@@ -255,9 +257,10 @@ public:
 
         // Check that n is within the limits.
         if (obake_unlikely(n < lim_min || n > lim_max)) {
-            obake_throw(::std::overflow_error, "Cannot push the value {} to this Kronecker packer for the type "
-                                               "'{}': the value is outside the allowed range [{}, {}]"_format(
-                                                   n, ::obake::type_name<T>(), lim_min, lim_max));
+            obake_throw(::std::overflow_error,
+                        fmt::format("Cannot push the value {} to this Kronecker packer for the type "
+                                    "'{}': the value is outside the allowed range [{}, {}]",
+                                    n, ::obake::type_name<T>(), lim_min, lim_max));
         }
 
         // Do the encoding.
@@ -297,15 +300,18 @@ public:
         if (size == 0u) {
             if (obake_unlikely(n != T(0))) {
                 obake_throw(::std::invalid_argument,
-                            "Only a value of zero can be used in a Kronecker unpacker "
-                            "with a size of zero, but a value of {} was provided instead"_format(n));
+                            fmt::format("Only a value of zero can be used in a Kronecker unpacker "
+                                        "with a size of zero, but a value of {} was provided instead",
+                                        n));
             }
         } else {
             if (obake_unlikely(size > detail::kpack_max_size<T>())) {
-                obake_throw(::std::overflow_error,
-                            "Invalid size specified in the constructor of a Kronecker unpacker for the type '{}': the "
-                            "maximum possible size is {}, but a size of {} was specified instead"_format(
-                                ::obake::type_name<T>(), detail::kpack_max_size<T>(), size));
+                obake_throw(
+                    ::std::overflow_error,
+                    fmt::format(
+                        "Invalid size specified in the constructor of a Kronecker unpacker for the type '{}': the "
+                        "maximum possible size is {}, but a size of {} was specified instead",
+                        ::obake::type_name<T>(), detail::kpack_max_size<T>(), size));
             }
 
             // Get the coded value's limits.
@@ -313,9 +319,10 @@ public:
 
             // Check that n is within the limits.
             if (obake_unlikely(n < klim_min || n > klim_max)) {
-                obake_throw(::std::overflow_error, "The value {} passed to a Kronecker unpacker for the type "
-                                                   "'{}' is outside the allowed range [{}, {}]"_format(
-                                                       n, ::obake::type_name<T>(), klim_min, klim_max));
+                obake_throw(::std::overflow_error,
+                            fmt::format("The value {} passed to a Kronecker unpacker for the type "
+                                        "'{}' is outside the allowed range [{}, {}]",
+                                        n, ::obake::type_name<T>(), klim_min, klim_max));
             }
         }
     }
@@ -326,8 +333,9 @@ public:
             using namespace ::fmt::literals;
 
             obake_throw(::std::out_of_range,
-                        "Cannot unpack any more values from this Kronecker unpacker: the number of "
-                        "values already unpacked is equal to the unpacker's size ({})"_format(m_size));
+                        fmt::format("Cannot unpack any more values from this Kronecker unpacker: the number of "
+                                    "values already unpacked is equal to the unpacker's size ({})",
+                                    m_size));
         }
 
         // Prepare m_cur_prod. This is the divisor in the remainder operation.

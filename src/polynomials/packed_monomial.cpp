@@ -74,7 +74,7 @@ void packed_monomial_stream_insert(::std::ostream &os, const packed_monomial<T> 
                 // The exponent is not unitary,
                 // print it.
                 using namespace ::fmt::literals;
-                os << "**{}"_format(tmp);
+                os << fmt::format("**{}", tmp);
             }
         }
     }
@@ -169,11 +169,11 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
             }
 
             // Print the symbol name.
-            *cur_oss << "{{{}}}"_format(var);
+            *cur_oss << fmt::format("{{{}}}", var);
 
             // Raise to power, if the exponent is not one.
             if (!tmp_mp.is_one()) {
-                *cur_oss << "^{{{}}}"_format(tmp_mp);
+                *cur_oss << fmt::format("^{{{}}}", tmp_mp);
             }
         }
     }
@@ -183,13 +183,13 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
     if (!num_str.empty() && !den_str.empty()) {
         // We have both negative and positive exponents,
         // print them both in a fraction.
-        os << "\\frac{{{}}}{{{}}}"_format(num_str, den_str);
+        os << fmt::format("\\frac{{{}}}{{{}}}", num_str, den_str);
     } else if (!num_str.empty() && den_str.empty()) {
         // Only positive exponents.
         os << num_str;
     } else if (num_str.empty() && !den_str.empty()) {
         // Only negative exponents, display them as 1/something.
-        os << "\\frac{{1}}{{{}}}"_format(den_str);
+        os << fmt::format("\\frac{{1}}{{{}}}", den_str);
     } else {
         // We did not write anything to the stream.
         // It means that all variables have zero
@@ -685,11 +685,11 @@ template <typename T>
                 // we are not integrating x**-1.
                 if (obake_unlikely(tmp == T(-1))) {
                     using namespace ::fmt::literals;
-                    obake_throw(
-                        ::std::domain_error,
-                        "Cannot integrate a packed monomial: the exponent of the integration variable ('{}') is -1, "
-                        "and the integration would generate a logarithmic term"_format(
-                            *ss.nth(static_cast<decltype(ss.size())>(i))));
+                    obake_throw(::std::domain_error,
+                                fmt::format("Cannot integrate a packed monomial: the exponent of the integration "
+                                            "variable ('{}') is -1, "
+                                            "and the integration would generate a logarithmic term",
+                                            *ss.nth(static_cast<decltype(ss.size())>(i))));
                 }
             }
 

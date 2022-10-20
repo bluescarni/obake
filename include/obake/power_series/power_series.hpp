@@ -152,8 +152,9 @@ inline void load(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsi
         default: {
             using namespace ::fmt::literals;
 
-            obake_throw(::std::invalid_argument, "The deserialisation of a truncation limit for a power"
-                                                 "series produced the invalid variant index {}"_format(idx));
+            obake_throw(::std::invalid_argument, fmt::format("The deserialisation of a truncation limit for a power"
+                                                             "series produced the invalid variant index {}",
+                                                             idx));
         }
             // LCOV_EXCL_STOP
     }
@@ -386,10 +387,11 @@ using psk_pdeg_t = detected_t<detail::key_p_degree_t, ::std::add_lvalue_referenc
 // operations).
 template <typename K>
 concept power_series_key
-    = Key<K> &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>::value
-        &&customisation::internal::series_default_degree_type_common_reqs<detail::psk_pdeg_t<K>>::value
-            && ::std::is_same_v<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>> &&Hashable<const detail::psk_deg_t<K> &>
-                &&EqualityComparable<const detail::psk_deg_t<K> &> &&StreamInsertable<const detail::psk_deg_t<K> &>;
+    = Key<K> && customisation::internal::series_default_degree_type_common_reqs<detail::psk_deg_t<K>>::
+          value && customisation::internal::series_default_degree_type_common_reqs<
+              detail::psk_pdeg_t<K>>::value && ::std::is_same_v<detail::psk_deg_t<K>, detail::psk_pdeg_t<K>> && Hashable
+      < const detail::psk_deg_t<K>
+& > &&EqualityComparable<const detail::psk_deg_t<K> &> &&StreamInsertable<const detail::psk_deg_t<K> &>;
 
 // Definition of the power series class.
 template <power_series_key K, power_series_cf C>
@@ -417,8 +419,8 @@ namespace power_series
 
 // Implementation of (partial) degree truncation for power series.
 template <typename K, typename C, typename T>
-requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline void truncate_degree(p_series<K, C> &ps,
-                                                                                                  const T &d)
+requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>>
+inline void truncate_degree(p_series<K, C> &ps, const T &d)
 {
     // Use the default functor for the extraction of the term degree.
     // NOTE: d_impl is assured to work thanks to the concept
@@ -434,8 +436,8 @@ requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline voi
 }
 
 template <typename K, typename C, typename T>
-requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>> inline void
-truncate_p_degree(p_series<K, C> &ps, const T &d, const symbol_set &s)
+requires LessThanComparable<const T &, ::obake::detail::psk_deg_t<K>>
+inline void truncate_p_degree(p_series<K, C> &ps, const T &d, const symbol_set &s)
 {
     // Use the default functor for the extraction of the term degree.
     // NOTE: d_impl is assured to work thanks to the concept
@@ -461,8 +463,8 @@ namespace detail
 
 // Set total degree truncation.
 template <typename K, typename C, typename T>
-requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps,
-                                                                                                    const T &d)
+requires SafelyCastable<const T &, detail::psk_deg_t<K>>
+inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps, const T &d)
 {
     // Convert safely d to the degree type.
     const auto deg = ::obake::safe_cast<detail::psk_deg_t<K>>(d);
@@ -494,8 +496,8 @@ requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &
 
 // Set partial degree truncation.
 template <typename K, typename C, typename T>
-requires SafelyCastable<const T &, detail::psk_deg_t<K>> inline p_series<K, C> &
-set_truncation_impl(p_series<K, C> &ps, const T &d, symbol_set ss)
+requires SafelyCastable<const T &, detail::psk_deg_t<K>>
+inline p_series<K, C> &set_truncation_impl(p_series<K, C> &ps, const T &d, symbol_set ss)
 {
     // Convert safely d to the degree type.
     const auto deg = ::obake::safe_cast<detail::psk_deg_t<K>>(d);
@@ -578,7 +580,8 @@ concept make_p_series_supported
 
 // Overload without a symbol set, no truncation.
 template <typename T, typename... Args>
-requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(const Args &...names)
+requires make_p_series_supported<T, Args...>
+inline auto make_p_series_impl(const Args &...names)
 {
     auto make_p_series = [](const auto &n) {
         using str_t = remove_cvref_t<decltype(n)>;
@@ -604,7 +607,8 @@ requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(cons
 
 // Overload with a symbol set, no truncation.
 template <typename T, typename... Args>
-requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
+requires make_p_series_supported<T, Args...>
+inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
 {
     // Create a temp vector of ints which we will use to
     // init the keys.
@@ -636,9 +640,9 @@ requires make_p_series_supported<T, Args...> inline auto make_p_series_impl(cons
         if (obake_unlikely(it == ss.end() || *it != s)) {
             using namespace ::fmt::literals;
 
-            obake_throw(::std::invalid_argument,
-                        "Cannot create a power series with symbol set {} from the "
-                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+            obake_throw(::std::invalid_argument, fmt::format("Cannot create a power series with symbol set {} from the "
+                                                             "generator '{}': the generator is not in the symbol set",
+                                                             detail::to_string(ss), s));
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -673,11 +677,12 @@ namespace detail
 
 template <typename T, typename U, typename... Args>
 concept make_p_series_t_supported
-    = make_p_series_supported<T, Args...> &&SafelyCastable<const U &, psk_deg_t<series_key_t<T>>>;
+    = make_p_series_supported<T, Args...> && SafelyCastable<const U &, psk_deg_t<series_key_t<T>>>;
 
 // Overload without a symbol set, total truncation.
 template <typename T, typename U, typename... Args>
-requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_impl(const U &d, const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_t_impl(const U &d, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -709,8 +714,8 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_im
 
 // Overload with a symbol set, total truncation.
 template <typename T, typename U, typename... Args>
-requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_impl(const symbol_set &ss, const U &d,
-                                                                                   const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_t_impl(const symbol_set &ss, const U &d, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -745,9 +750,9 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_t_im
         if (obake_unlikely(it == ss.end() || *it != s)) {
             using namespace ::fmt::literals;
 
-            obake_throw(::std::invalid_argument,
-                        "Cannot create a power series with symbol set {} from the "
-                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+            obake_throw(::std::invalid_argument, fmt::format("Cannot create a power series with symbol set {} from the "
+                                                             "generator '{}': the generator is not in the symbol set",
+                                                             detail::to_string(ss), s));
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -787,8 +792,8 @@ namespace detail
 template <typename T, typename U, typename... Args>
 // NOTE: for partial degree truncation we can re-use the concepts
 // used in total degree truncation.
-requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_p_impl(const U &d, const symbol_set &tss,
-                                                                                   const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_p_impl(const U &d, const symbol_set &tss, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -822,8 +827,8 @@ requires make_p_series_t_supported<T, U, Args...> inline auto make_p_series_p_im
 template <typename T, typename U, typename... Args>
 // NOTE: for partial degree truncation we can re-use the concepts
 // used in total degree truncation.
-requires make_p_series_t_supported<T, U, Args...> inline auto
-make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, const Args &...names)
+requires make_p_series_t_supported<T, U, Args...>
+inline auto make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, const Args &...names)
 {
     // Convert d to the degree type.
     const auto deg = ::obake::safe_cast<psk_deg_t<series_key_t<T>>>(d);
@@ -858,9 +863,9 @@ make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_set &tss, co
         if (obake_unlikely(it == ss.end() || *it != s)) {
             using namespace ::fmt::literals;
 
-            obake_throw(::std::invalid_argument,
-                        "Cannot create a power series with symbol set {} from the "
-                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+            obake_throw(::std::invalid_argument, fmt::format("Cannot create a power series with symbol set {} from the "
+                                                             "generator '{}': the generator is not in the symbol set",
+                                                             detail::to_string(ss), s));
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -1014,8 +1019,8 @@ inline auto ps_addsub_impl(T &&x, U &&y)
         // different coefficients.
 
         // Fetch the return type.
-        using ret_t = decltype(
-            ::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y)));
+        using ret_t = decltype(::obake::detail::series_default_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                     ::std::forward<U>(y)));
 
         return ::std::visit(
             [&x, &y](const auto &v0, const auto &v1) -> ret_t {
@@ -1032,8 +1037,8 @@ inline auto ps_addsub_impl(T &&x, U &&y)
                         using namespace ::fmt::literals;
 
                         throw ::std::invalid_argument(
-                            "Unable to {} two power series if their truncation levels do not match"_format(
-                                AddOrSub ? "add" : "subtract"));
+                            fmt::format("Unable to {} two power series if their truncation levels do not match",
+                                        AddOrSub ? "add" : "subtract"));
                     }
 
                     // Store the original tag.
@@ -1068,8 +1073,8 @@ inline auto ps_addsub_impl(T &&x, U &&y)
                     using namespace ::fmt::literals;
 
                     throw ::std::invalid_argument(
-                        "Unable to {} two power series if their truncation policies do not match"_format(
-                            AddOrSub ? "add" : "subtract"));
+                        fmt::format("Unable to {} two power series if their truncation policies do not match",
+                                    AddOrSub ? "add" : "subtract"));
                 }
             },
             ::obake::get_truncation(x), ::obake::get_truncation(y));
@@ -1079,7 +1084,7 @@ inline auto ps_addsub_impl(T &&x, U &&y)
 } // namespace detail
 
 template <typename T, typename U>
-    requires
+requires
     // At least one of the operands must be a power series.
     (any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
     // Check that the specialised addsub implementation
@@ -1094,7 +1099,7 @@ template <typename T, typename U>
 }
 
 template <typename T, typename U>
-    requires(any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
+requires(any_p_series<remove_cvref_t<T>> || any_p_series<remove_cvref_t<U>>)
     && (detail::ps_addsub_algo<false, T &&, U &&>()
         != 0) inline ::obake::detail::series_default_addsub_ret_t<false, T &&, U &&> series_sub(T &&x, U &&y)
 {
@@ -1169,8 +1174,8 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
         // different coefficients.
 
         // Fetch the return type.
-        using ret_t = decltype(
-            ::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x), ::std::forward<U>(y)));
+        using ret_t = decltype(::obake::detail::series_default_in_place_addsub_impl<AddOrSub>(::std::forward<T>(x),
+                                                                                              ::std::forward<U>(y)));
 
         return ::std::visit(
             [&x, &y](const auto &v0, const auto &v1) -> ret_t {
@@ -1186,9 +1191,9 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
                     if (obake_unlikely(v0 != v1)) {
                         using namespace ::fmt::literals;
 
-                        throw ::std::invalid_argument(
-                            "Unable to {} two power series in place if "
-                            "their truncation levels do not match"_format(AddOrSub ? "add" : "subtract"));
+                        throw ::std::invalid_argument(fmt::format("Unable to {} two power series in place if "
+                                                                  "their truncation levels do not match",
+                                                                  AddOrSub ? "add" : "subtract"));
                     }
 
                     // Store the original tag.
@@ -1222,8 +1227,8 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
                     using namespace ::fmt::literals;
 
                     throw ::std::invalid_argument(
-                        "Unable to {} two power series in place if their truncation policies do not match"_format(
-                            AddOrSub ? "add" : "subtract"));
+                        fmt::format("Unable to {} two power series in place if their truncation policies do not match",
+                                    AddOrSub ? "add" : "subtract"));
                 }
             },
             ::obake::get_truncation(x), ::obake::get_truncation(y));
@@ -1233,7 +1238,7 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
 } // namespace detail
 
 template <typename T, typename U>
-    requires
+requires
     // T must be a power series.
     // NOTE: if T is not a power series and U is,
     // then there are the following possibilities:
@@ -1248,15 +1253,15 @@ template <typename T, typename U>
     // Check that the specialised addsub implementation
     // for power series is avaialable and appropriate.
     // Otherwise, the default series addsub will be used.
-    && (detail::ps_in_place_addsub_algo<true, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_add(T &&x,
-                                                                                                                U &&y)
+    &&(detail::ps_in_place_addsub_algo<true, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_add(T &&x,
+                                                                                                               U &&y)
 {
     return detail::ps_in_place_addsub_impl<true>(::std::forward<T>(x), ::std::forward<U>(y));
 }
 
 template <typename T, typename U>
-    requires any_p_series<remove_cvref_t<
-        T>> && (detail::ps_in_place_addsub_algo<false, T &&, U &&>() != 0) inline remove_cvref_t<T> &series_in_place_sub(T &&x, U &&y)
+requires any_p_series<remove_cvref_t<T>> &&(detail::ps_in_place_addsub_algo<false, T &&, U &&>()
+                                            != 0) inline remove_cvref_t<T> &series_in_place_sub(T &&x, U &&y)
 {
     return detail::ps_in_place_addsub_impl<false>(::std::forward<T>(x), ::std::forward<U>(y));
 }
@@ -1380,8 +1385,9 @@ requires(detail::ps_mul_algo<p_series<K, C0>, p_series<K, C1>>() == true) inline
 // Exponentiation: we re-use the poly implementation, ensuring
 // that the output is properly truncated.
 template <typename T, typename U>
-    requires any_p_series<remove_cvref_t<
-        T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+requires any_p_series<remove_cvref_t<T>> &&(
+    customisation::internal::series_default_pow_algo<
+        T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
 {
     // Store x's tag.
     auto orig_tag = x.tag();
@@ -1405,8 +1411,8 @@ template <typename T, typename U>
 // even if the input object(s) have truncation (e.g.,
 // empty x). Not sure what's the best way of dealing with this.
 template <typename T, typename U>
-    requires any_p_series<remove_cvref_t<
-        T>> && (polynomials::detail::poly_subs_algo<T &&, U> != 0) inline polynomials::detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+requires any_p_series<remove_cvref_t<T>> &&(polynomials::detail::poly_subs_algo<T &&, U> != 0) inline polynomials::
+    detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
 {
     return polynomials::detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
@@ -1420,8 +1426,8 @@ template <typename T, typename U>
 // value is not truncated even if x is. If this becomes a problem,
 // we can enable this specialisation only for some values of diff_algo.
 template <typename T>
-    requires any_p_series<remove_cvref_t<
-        T>> && (polynomials::detail::poly_diff_algo<T &&> != 0) inline polynomials::detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
+requires any_p_series<remove_cvref_t<T>> &&(polynomials::detail::poly_diff_algo<T &&> != 0) inline polynomials::detail::
+    poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
 {
     return polynomials::detail::poly_diff_impl(::std::forward<T>(x), s);
 }
@@ -1435,8 +1441,8 @@ template <typename T>
 // value is not truncated even if x is. If this becomes a problem,
 // we can enable this specialisation only for some values of integrate_algo.
 template <typename T>
-    requires any_p_series<remove_cvref_t<
-        T>> && (polynomials::detail::poly_integrate_algo<T &&> != 0) inline polynomials::detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
+requires any_p_series<remove_cvref_t<T>> &&(polynomials::detail::poly_integrate_algo<T &&> != 0) inline polynomials::
+    detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
 {
     auto ret = polynomials::detail::poly_integrate_impl(::std::forward<T>(x), s);
 
