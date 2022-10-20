@@ -45,7 +45,7 @@ jobs:
                         tbb ^
                         tbb-devel ^
                         boost-cpp ^
-                        python=3.6
+                        python=3.10
           conda list
         displayName: "Install conda packages"
 
