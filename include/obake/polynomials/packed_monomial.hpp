@@ -24,9 +24,6 @@
 
 #include <boost/serialization/access.hpp>
 
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
 #include <tbb/parallel_reduce.h>
@@ -34,6 +31,7 @@
 #include <mp++/integer.hpp>
 
 #include <obake/config.hpp>
+#include <obake/detail/fmt_compat.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/mppp_utils.hpp>
 #include <obake/detail/to_string.hpp>
@@ -798,6 +796,17 @@ template <typename T>
 inline constexpr bool monomial_hash_is_homomorphic<packed_monomial<T>> = true;
 
 } // namespace obake
+
+// fmt formatter for packed_monomial, implemented
+// on top of the streaming operator.
+namespace fmt
+{
+
+template <typename T>
+struct formatter<obake::packed_monomial<T>> : obake::detail::ostream_formatter {
+};
+
+} // namespace fmt
 
 namespace boost::serialization
 {

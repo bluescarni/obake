@@ -14,12 +14,10 @@
 #include <utility>
 #include <vector>
 
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-
 #include <mp++/integer.hpp>
 
 #include <obake/config.hpp>
+#include <obake/detail/fmt_compat.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/exceptions.hpp>
