@@ -1427,8 +1427,8 @@ inline constexpr bool monomial_hash_is_homomorphic<d_packed_monomial<T, PSize>> 
 namespace fmt
 {
 
-template <typename T>
-struct formatter<obake::d_packed_monomial<T>> : obake::detail::ostream_formatter {
+template <typename T, unsigned PSize>
+struct formatter<obake::d_packed_monomial<T, PSize>> : obake::detail::ostream_formatter {
 };
 
 } // namespace fmt

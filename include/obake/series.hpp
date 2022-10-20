@@ -38,9 +38,6 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_reduce.h>
@@ -53,6 +50,7 @@
 #include <obake/config.hpp>
 #include <obake/detail/abseil.hpp>
 #include <obake/detail/fcast.hpp>
+#include <obake/detail/fmt_compat.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/not_implemented.hpp>

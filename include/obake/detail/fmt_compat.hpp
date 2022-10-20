@@ -61,4 +61,19 @@ struct ostream_formatter {
 
 } // namespace obake::detail
 
+#if FMT_VERSION >= 90000L
+
+// fmt formatter for mppp:integer
+// on top of the streaming operator.
+namespace fmt
+{
+
+template <>
+struct formatter<mppp::integer<1>> : obake::detail::ostream_formatter {
+};
+
+} // namespace fmt
+
+#endif
+
 #endif
