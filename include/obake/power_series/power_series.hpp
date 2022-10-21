@@ -25,7 +25,7 @@
 #include <boost/serialization/tracking.hpp>
 #include <boost/serialization/utility.hpp>
 
-#include <fmt/format.h>
+#include <fmt/core.h>
 
 #include <obake/detail/fw_utils.hpp>
 #include <obake/detail/it_diff_check.hpp>
@@ -150,10 +150,9 @@ inline void load(Archive &ar, ::obake::power_series::detail::trunc_t<T> &t, unsi
         }
         // LCOV_EXCL_START
         default: {
-            using namespace ::fmt::literals;
-
-            obake_throw(::std::invalid_argument, "The deserialisation of a truncation limit for a power"
-                                                 "series produced the invalid variant index {}"_format(idx));
+            obake_throw(::std::invalid_argument, fmt::format("The deserialisation of a truncation limit for a power"
+                                                             "series produced the invalid variant index {}",
+                                                             idx));
         }
             // LCOV_EXCL_STOP
     }
@@ -637,11 +636,9 @@ inline auto make_p_series_impl(const symbol_set &ss, const Args &...names)
         // Try to locate s within the symbol set.
         const auto it = ss.find(s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
-            using namespace ::fmt::literals;
-
-            obake_throw(::std::invalid_argument,
-                        "Cannot create a power series with symbol set {} from the "
-                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+            obake_throw(::std::invalid_argument, fmt::format("Cannot create a power series with symbol set {} from the "
+                                                             "generator '{}': the generator is not in the symbol set",
+                                                             detail::to_string(ss), s));
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -747,11 +744,9 @@ inline auto make_p_series_t_impl(const symbol_set &ss, const U &d, const Args &.
         // Try to locate s within the symbol set.
         const auto it = ss.find(s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
-            using namespace ::fmt::literals;
-
-            obake_throw(::std::invalid_argument,
-                        "Cannot create a power series with symbol set {} from the "
-                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+            obake_throw(::std::invalid_argument, fmt::format("Cannot create a power series with symbol set {} from the "
+                                                             "generator '{}': the generator is not in the symbol set",
+                                                             detail::to_string(ss), s));
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -860,11 +855,9 @@ inline auto make_p_series_p_impl(const symbol_set &ss, const U &d, const symbol_
         // Try to locate s within the symbol set.
         const auto it = ss.find(s);
         if (obake_unlikely(it == ss.end() || *it != s)) {
-            using namespace ::fmt::literals;
-
-            obake_throw(::std::invalid_argument,
-                        "Cannot create a power series with symbol set {} from the "
-                        "generator '{}': the generator is not in the symbol set"_format(detail::to_string(ss), s));
+            obake_throw(::std::invalid_argument, fmt::format("Cannot create a power series with symbol set {} from the "
+                                                             "generator '{}': the generator is not in the symbol set",
+                                                             detail::to_string(ss), s));
         }
 
         // Set to 1 the exponent of the corresponding generator.
@@ -1033,11 +1026,9 @@ inline auto ps_addsub_impl(T &&x, U &&y)
                     // level. No explicit truncation of the result is needed
                     // because we assume that x and y satisfy the truncation setting.
                     if (obake_unlikely(v0 != v1)) {
-                        using namespace ::fmt::literals;
-
                         throw ::std::invalid_argument(
-                            "Unable to {} two power series if their truncation levels do not match"_format(
-                                AddOrSub ? "add" : "subtract"));
+                            fmt::format("Unable to {} two power series if their truncation levels do not match",
+                                        AddOrSub ? "add" : "subtract"));
                     }
 
                     // Store the original tag.
@@ -1068,11 +1059,9 @@ inline auto ps_addsub_impl(T &&x, U &&y)
                 } else {
                     // The series have different truncation policies and both
                     // series are truncating.
-                    using namespace ::fmt::literals;
-
                     throw ::std::invalid_argument(
-                        "Unable to {} two power series if their truncation policies do not match"_format(
-                            AddOrSub ? "add" : "subtract"));
+                        fmt::format("Unable to {} two power series if their truncation policies do not match",
+                                    AddOrSub ? "add" : "subtract"));
                 }
             },
             ::obake::get_truncation(x), ::obake::get_truncation(y));
@@ -1188,11 +1177,9 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
                     // level. No explicit truncation of the result is needed
                     // because we assume that x and y satisfy the truncation setting.
                     if (obake_unlikely(v0 != v1)) {
-                        using namespace ::fmt::literals;
-
-                        throw ::std::invalid_argument(
-                            "Unable to {} two power series in place if "
-                            "their truncation levels do not match"_format(AddOrSub ? "add" : "subtract"));
+                        throw ::std::invalid_argument(fmt::format("Unable to {} two power series in place if "
+                                                                  "their truncation levels do not match",
+                                                                  AddOrSub ? "add" : "subtract"));
                     }
 
                     // Store the original tag.
@@ -1222,11 +1209,9 @@ inline decltype(auto) ps_in_place_addsub_impl(T &&x, U &&y)
 
                     return ret;
                 } else {
-                    using namespace ::fmt::literals;
-
                     throw ::std::invalid_argument(
-                        "Unable to {} two power series in place if their truncation policies do not match"_format(
-                            AddOrSub ? "add" : "subtract"));
+                        fmt::format("Unable to {} two power series in place if their truncation policies do not match",
+                                    AddOrSub ? "add" : "subtract"));
                 }
             },
             ::obake::get_truncation(x), ::obake::get_truncation(y));

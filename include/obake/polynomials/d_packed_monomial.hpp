@@ -27,8 +27,7 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
-#include <fmt/format.h>
-#include <fmt/ostream.h>
+#include <fmt/core.h>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_invoke.h>
@@ -361,8 +360,7 @@ inline void key_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSi
                 if (tmp != T(1)) {
                     // The exponent is not unitary,
                     // print it.
-                    using namespace ::fmt::literals;
-                    os << "**{}"_format(tmp);
+                    os << fmt::format("**{}", tmp);
                 }
             }
         }
@@ -388,8 +386,6 @@ template <typename T, unsigned PSize>
 inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T, PSize> &d, const symbol_set &s)
 {
     assert(polynomials::key_is_compatible(d, s));
-
-    using namespace ::fmt::literals;
 
     const auto &c = d._container();
     auto s_it = s.cbegin();
@@ -433,11 +429,11 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
                 }
 
                 // Print the symbol name.
-                *cur_oss << "{{{}}}"_format(*s_it);
+                *cur_oss << fmt::format("{{{}}}", *s_it);
 
                 // Raise to power, if the exponent is not one.
                 if (!tmp_mp.is_one()) {
-                    *cur_oss << "^{{{}}}"_format(tmp_mp);
+                    *cur_oss << fmt::format("^{{{}}}", tmp_mp);
                 }
             }
         }
@@ -448,13 +444,13 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
     if (!num_str.empty() && !den_str.empty()) {
         // We have both negative and positive exponents,
         // print them both in a fraction.
-        os << "\\frac{{{}}}{{{}}}"_format(num_str, den_str);
+        os << fmt::format("\\frac{{{}}}{{{}}}", num_str, den_str);
     } else if (!num_str.empty() && den_str.empty()) {
         // Only positive exponents.
         os << num_str;
     } else if (num_str.empty() && !den_str.empty()) {
         // Only negative exponents, display them as 1/something.
-        os << "\\frac{{1}}{{{}}}"_format(den_str);
+        os << fmt::format("\\frac{{1}}{{{}}}", den_str);
     } else {
         // We did not write anything to the stream.
         // It means that all variables have zero
@@ -989,9 +985,10 @@ inline d_packed_monomial<T, PSize> monomial_pow(const d_packed_monomial<T, PSize
             if (obake_unlikely(!::obake::safe_convert(ret, n))) {
                 if constexpr (is_stream_insertable_v<const U &>) {
                     // Provide better error message if U is ostreamable.
-                    using namespace ::fmt::literals;
-                    obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
-                                                         "({}) cannot be converted into an integral value"_format(n));
+                    obake_throw(::std::invalid_argument,
+                                fmt::format("Invalid exponent for monomial exponentiation: the exponent "
+                                            "({}) cannot be converted into an integral value",
+                                            n));
                 } else {
                     obake_throw(::std::invalid_argument, "Invalid exponent for monomial exponentiation: the exponent "
                                                          "cannot be converted into an integral value");
@@ -1372,12 +1369,11 @@ inline ::std::pair<T, d_packed_monomial<T, PSize>> monomial_integrate(const d_pa
                     // For signed integrals, make sure
                     // we are not integrating x**-1.
                     if (obake_unlikely(tmp == T(-1))) {
-                        using namespace ::fmt::literals;
-
                         obake_throw(
                             ::std::domain_error,
-                            "Cannot integrate a dynamic packed monomial: the exponent of the integration variable "
-                            "('{}') is -1, and the integration would generate a logarithmic term"_format(
+                            fmt::format(
+                                "Cannot integrate a dynamic packed monomial: the exponent of the integration variable "
+                                "('{}') is -1, and the integration would generate a logarithmic term",
                                 *ss.nth(static_cast<decltype(ss.size())>(i))));
                     }
                 }

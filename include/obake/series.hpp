@@ -38,8 +38,7 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
 
-#include <fmt/format.h>
-#include <fmt/ostream.h>
+#include <fmt/core.h>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -295,19 +294,17 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&...args)
     if constexpr (CheckCompatKey == sat_check_compat_key::on) {
         // Check key for compatibility, if requested.
         if (obake_unlikely(!::obake::key_is_compatible(::std::as_const(key), ss))) {
-            using namespace ::fmt::literals;
-
             // The key is not compatible with the symbol set.
             if constexpr (is_stream_insertable_v<const key_type &>) {
                 // A slightly better error message if we can
                 // produce a string representation of the key.
-                obake_throw(::std::invalid_argument, "Cannot add a term to a series: the term's key, '{}', "
-                                                     "is not compatible with the series' symbol set, {}"_format(
-                                                         ::std::as_const(key), detail::to_string(ss)));
+                obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key, '{}', "
+                                                                 "is not compatible with the series' symbol set, {}",
+                                                                 ::std::as_const(key), detail::to_string(ss)));
             } else {
-                obake_throw(::std::invalid_argument,
-                            "Cannot add a term to a series: the term's key is not "
-                            "compatible with the series' symbol set, {}"_format(detail::to_string(ss)));
+                obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key is not "
+                                                                 "compatible with the series' symbol set, {}",
+                                                                 detail::to_string(ss)));
             }
         }
     } else {
@@ -1847,7 +1844,6 @@ inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
     // NOTE: the idea here is that, for ease of reasoning and
     // implementation, we want the base type, its product type
     // and the return type to be all the same.
-    using namespace ::fmt::literals;
     if constexpr (::std::conjunction_v<is_safely_convertible<const rU &, unsigned &>,
                                        // NOTE: this also checks that mul_t is defined, as
                                        // nonesuch is not a series type.
@@ -1857,9 +1853,11 @@ inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
         if (obake_unlikely(!::obake::safe_convert(un, e))) {
             if constexpr (is_stream_insertable_v<const rU &>) {
                 // Provide better error message if U is ostreamable.
-                obake_throw(::std::invalid_argument, "Invalid exponent for series exponentiation via repeated "
-                                                     "multiplications: the exponent ({}) cannot be converted into "
-                                                     "a non-negative integral value"_format(e));
+                obake_throw(::std::invalid_argument,
+                            fmt::format("Invalid exponent for series exponentiation via repeated "
+                                        "multiplications: the exponent ({}) cannot be converted into "
+                                        "a non-negative integral value",
+                                        e));
             } else {
                 obake_throw(::std::invalid_argument,
                             "Invalid exponent for series exponentiation via repeated "
@@ -1869,12 +1867,13 @@ inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
 
         return internal::series_pow_from_cache(b, un);
     } else {
-        obake_throw(
-            ::std::invalid_argument,
-            "Cannot compute the power of a series of type '{}': the series does not consist of a single coefficient, "
-            "and exponentiation via repeated multiplications is not possible (either because the "
-            "exponent cannot be converted to a non-negative integral value, or because the "
-            "series/coefficient types do not support the necessary operations)"_format(::obake::type_name<rT>()));
+        obake_throw(::std::invalid_argument,
+                    fmt::format("Cannot compute the power of a series of type '{}': the series does not consist of a "
+                                "single coefficient, "
+                                "and exponentiation via repeated multiplications is not possible (either because the "
+                                "exponent cannot be converted to a non-negative integral value, or because the "
+                                "series/coefficient types do not support the necessary operations)",
+                                ::obake::type_name<rT>()));
     }
 }
 
