@@ -157,61 +157,61 @@ concept kpackable = is_kpackable_v<T>;
 namespace detail
 {
 
-    // Various helpers to fetch kpack data.
+// Various helpers to fetch kpack data.
 
-    // Return the max packable size for a given type. This is
-    // the size of the deltas, lims and klims arrays.
-    // NOTE: unsigned conversion is ok as the array sizes
-    // are always a fraction of a bit size.
-    template <typename T>
-    constexpr unsigned kpack_max_size()
-    {
-        auto ret = ::std::size(kpack_data<T>::deltas);
+// Return the max packable size for a given type. This is
+// the size of the deltas, lims and klims arrays.
+// NOTE: unsigned conversion is ok as the array sizes
+// are always a fraction of a bit size.
+template <typename T>
+constexpr unsigned kpack_max_size()
+{
+    auto ret = ::std::size(kpack_data<T>::deltas);
 
-        assert(ret == ::std::size(kpack_data<T>::lims));
-        assert(ret == ::std::size(kpack_data<T>::klims));
+    assert(ret == ::std::size(kpack_data<T>::lims));
+    assert(ret == ::std::size(kpack_data<T>::klims));
 
-        return static_cast<unsigned>(ret);
+    return static_cast<unsigned>(ret);
+}
+
+// Return the delta for a given size.
+template <typename T>
+inline T kpack_get_delta(unsigned size)
+{
+    assert(size > 0u && size <= detail::kpack_max_size<T>());
+
+    return kpack_data<T>::deltas[size - 1u];
+}
+
+// Return the components' limits for a given size.
+template <typename T>
+inline ::std::pair<T, T> kpack_get_lims(unsigned size)
+{
+    assert(size > 0u && size <= detail::kpack_max_size<T>());
+
+    const auto lim = kpack_data<T>::lims[size - 1u];
+
+    if constexpr (is_signed_v<T>) {
+        return ::std::pair{-lim, lim};
+    } else {
+        return ::std::pair{T(0), lim};
     }
+}
 
-    // Return the delta for a given size.
-    template <typename T>
-    inline T kpack_get_delta(unsigned size)
-    {
-        assert(size > 0u && size <= detail::kpack_max_size<T>());
+// Return the coded values' limits for a given size.
+template <typename T>
+inline ::std::pair<T, T> kpack_get_klims(unsigned size)
+{
+    assert(size > 0u && size <= detail::kpack_max_size<T>());
 
-        return kpack_data<T>::deltas[size - 1u];
+    const auto klim = kpack_data<T>::klims[size - 1u];
+
+    if constexpr (is_signed_v<T>) {
+        return ::std::pair{-klim, klim};
+    } else {
+        return ::std::pair{T(0), klim};
     }
-
-    // Return the components' limits for a given size.
-    template <typename T>
-    inline ::std::pair<T, T> kpack_get_lims(unsigned size)
-    {
-        assert(size > 0u && size <= detail::kpack_max_size<T>());
-
-        const auto lim = kpack_data<T>::lims[size - 1u];
-
-        if constexpr (is_signed_v<T>) {
-            return ::std::pair{-lim, lim};
-        } else {
-            return ::std::pair{T(0), lim};
-        }
-    }
-
-    // Return the coded values' limits for a given size.
-    template <typename T>
-    inline ::std::pair<T, T> kpack_get_klims(unsigned size)
-    {
-        assert(size > 0u && size <= detail::kpack_max_size<T>());
-
-        const auto klim = kpack_data<T>::klims[size - 1u];
-
-        if constexpr (is_signed_v<T>) {
-            return ::std::pair{-klim, klim};
-        } else {
-            return ::std::pair{T(0), klim};
-        }
-    }
+}
 
 } // namespace detail
 
