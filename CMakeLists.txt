@@ -24,6 +24,7 @@ message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "obake version: ${obake_VERSION}")
 
 # The build options.
+option(OBAKE_BUILD_STATIC_LIBRARY "Build static library." OFF)
 option(OBAKE_BUILD_TESTS "Build unit tests." OFF)
 option(OBAKE_BUILD_BENCHMARKS "Build benchmarks." OFF)
 option(OBAKE_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
@@ -32,6 +33,11 @@ option(OBAKE_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF
 include(YACMACompilerLinkerSettings)
 # Also the threading setup.
 include(YACMAThreadingSetup)
+
+if(YACMA_COMPILER_IS_MSVC AND OBAKE_BUILD_STATIC_LIBRARY)
+    option(OBAKE_BUILD_STATIC_LIBRARY_WITH_DYNAMIC_MSVC_RUNTIME "Link to the dynamic MSVC runtime when building obake as a static library." OFF)
+    mark_as_advanced(OBAKE_BUILD_STATIC_LIBRARY_WITH_DYNAMIC_MSVC_RUNTIME)
+endif()
 
 # NOTE: on Unix systems, the correct library installation path
 # could be something other than just "lib", such as "lib64",
@@ -190,6 +196,30 @@ find_package(fmt REQUIRED)
 # Wrap the CMAKE_DL_LIBS variable in an imported target.
 include(ObakeFindDl)
 
+# Explanation: on MSVC, when building static libraries, it is good practice to link
+# to the static runtime. CMake, however, is hard-coded to link to the dynamic runtime.
+# Hence we hackishly replace the /MD flag with /MT. This is the approach suggested
+# in the CMake FAQ:
+#
+# https://gitlab.kitware.com/cmake/community/wikis/FAQ#how-can-i-build-my-msvc-application-with-a-static-runtime
+#
+# Note that at one point CMake added the possiblity to set this as a target property,
+# so in the future we should definitely migrate to that approach:
+#
+# https://cmake.org/cmake/help/git-master/prop_tgt/MSVC_RUNTIME_LIBRARY.html
+#
+# NOTE: the OBAKE_BUILD_STATIC_LIBRARY_WITH_DYNAMIC_MSVC_RUNTIME option overrides this choice
+# and keeps the dynamic runtime. This can be needed in specific rare situations.
+if(YACMA_COMPILER_IS_MSVC AND OBAKE_BUILD_STATIC_LIBRARY AND NOT OBAKE_BUILD_STATIC_LIBRARY_WITH_DYNAMIC_MSVC_RUNTIME)
+    foreach(flag_var
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+        if(${flag_var} MATCHES "/MD")
+            string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+        endif()
+    endforeach()
+endif()
+
 # Initial setup of the obake target.
 set(OBAKE_SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/cf/cf_stream_insert.cpp"
@@ -291,9 +321,14 @@ if(YACMA_COMPILER_IS_MSVC)
     set(OBAKE_SRC_FILES ${OBAKE_SRC_FILES} ${OBAKE_HEADER_FILES})
 endif()
 
-add_library(obake SHARED "${OBAKE_SRC_FILES}")
-set_property(TARGET obake PROPERTY VERSION "8.0")
-set_property(TARGET obake PROPERTY SOVERSION 8)
+if(OBAKE_BUILD_STATIC_LIBRARY)
+    add_library(obake STATIC "${OBAKE_SRC_FILES}")
+    target_compile_definitions(obake PUBLIC OBAKE_STATIC_BUILD)
+else()
+    add_library(obake SHARED "${OBAKE_SRC_FILES}")
+    set_property(TARGET obake PROPERTY VERSION "8.0")
+    set_property(TARGET obake PROPERTY SOVERSION 8)
+endif()
 target_compile_options(obake PRIVATE
     "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"

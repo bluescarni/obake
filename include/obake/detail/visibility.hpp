@@ -9,6 +9,14 @@
 #ifndef OBAKE_DETAIL_VISIBILITY_HPP
 #define OBAKE_DETAIL_VISIBILITY_HPP
 
+#if defined(OBAKE_STATIC_BUILD)
+
+#define OBAKE_DLL_PUBLIC
+#define OBAKE_DLL_LOCAL
+#define OBAKE_DLL_PUBLIC_INLINE_CLASS
+
+#else
+
 // Convenience macros for setting the visibility of entities
 // when building/using the shared library. Mostly inspired by:
 // https://gcc.gnu.org/wiki/Visibility
@@ -56,6 +64,8 @@
 #else
 
 #define OBAKE_DLL_PUBLIC_INLINE_CLASS OBAKE_DLL_PUBLIC
+
+#endif
 
 #endif
 
