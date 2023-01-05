@@ -9,9 +9,12 @@
 #include <cmath>
 #include <cstdint>
 #include <initializer_list>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+
+#include <fmt/core.h>
 
 #include <mp++/integer.hpp>
 #include <mp++/rational.hpp>
@@ -236,4 +239,20 @@ TEST_CASE("series_trim_test")
     REQUIRE(trim(p5) == p5);
     REQUIRE(trim(p5).get_symbol_set() != p5.get_symbol_set());
     REQUIRE(trim(p5).get_symbol_set() == symbol_set{});
+}
+
+// Test the fmt formatter specialisation.
+TEST_CASE("series fmt test")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using p1_t = polynomial<pm_t, rat_t>;
+
+    auto [x, y, z] = make_polynomials<p1_t>("x", "y", "z");
+
+    auto s = (x + y) * z;
+
+    std::ostringstream oss;
+    oss << s;
+
+    REQUIRE(oss.str() == fmt::format("{}", s));
 }

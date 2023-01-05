@@ -52,6 +52,7 @@
 #include <obake/config.hpp>
 #include <obake/detail/abseil.hpp>
 #include <obake/detail/fcast.hpp>
+#include <obake/detail/fmt_compat.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/limits.hpp>
 #include <obake/detail/not_implemented.hpp>
@@ -2204,6 +2205,22 @@ inline constexpr auto series_stream_insert = [](::std::ostream & os, auto &&s) O
 template <CvrSeries S>
 constexpr auto operator<<(::std::ostream &os, S &&s)
     OBAKE_SS_FORWARD_FUNCTION((void(::obake::series_stream_insert(os, ::std::forward<S>(s))), os));
+
+} // namespace obake
+
+namespace fmt
+{
+
+// Specialisation of the fmt formatter for series.
+template <typename S>
+    requires obake::any_series<S> && obake::StreamInsertable<const S &>
+struct formatter<S> : obake::detail::ostream_formatter {
+};
+
+} // namespace fmt
+
+namespace obake
+{
 
 namespace customisation
 {
