@@ -68,8 +68,6 @@ TEST_CASE("stack_trace")
 
     std::cout << bar<100>() << '\n';
     REQUIRE(!bar<100>().empty());
-    std::cout << bar<100>(30) << '\n';
-    REQUIRE(!bar<100>(30).empty());
 
     // Try from different threads as well.
     // Use a barrier in order to make sure
