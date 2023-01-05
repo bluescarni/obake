@@ -8,6 +8,9 @@ build*
 # .orig files from patch.
 *.orig
 
+# clangd.
+.cache
+
 # Docs.
 doc/conf.py
 doc/_build
