@@ -295,17 +295,9 @@ inline void series_add_term_table(S &s, Table &t, T &&key, Args &&...args)
         // Check key for compatibility, if requested.
         if (obake_unlikely(!::obake::key_is_compatible(::std::as_const(key), ss))) {
             // The key is not compatible with the symbol set.
-            if constexpr (is_stream_insertable_v<const key_type &>) {
-                // A slightly better error message if we can
-                // produce a string representation of the key.
-                obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key, '{}', "
-                                                                 "is not compatible with the series' symbol set, {}",
-                                                                 ::std::as_const(key), detail::to_string(ss)));
-            } else {
-                obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key is not "
-                                                                 "compatible with the series' symbol set, {}",
-                                                                 detail::to_string(ss)));
-            }
+            obake_throw(::std::invalid_argument, fmt::format("Cannot add a term to a series: the term's key is not "
+                                                             "compatible with the series' symbol set, {}",
+                                                             detail::to_string(ss)));
         }
     } else {
         // Otherwise, assert that the key is compatible.
@@ -1851,18 +1843,9 @@ inline series_default_pow_ret_t<T &&, U &&> pow(pow_t, T &&b, U &&e_)
                                        ::std::is_same<rT, ret_t>, is_equality_comparable<const series_cf_t<rT> &>>) {
         unsigned un;
         if (obake_unlikely(!::obake::safe_convert(un, e))) {
-            if constexpr (is_stream_insertable_v<const rU &>) {
-                // Provide better error message if U is ostreamable.
-                obake_throw(::std::invalid_argument,
-                            fmt::format("Invalid exponent for series exponentiation via repeated "
-                                        "multiplications: the exponent ({}) cannot be converted into "
-                                        "a non-negative integral value",
-                                        e));
-            } else {
-                obake_throw(::std::invalid_argument,
-                            "Invalid exponent for series exponentiation via repeated "
-                            "multiplications: the exponent cannot be converted into a non-negative integral value");
-            }
+            obake_throw(::std::invalid_argument,
+                        "Invalid exponent for series exponentiation via repeated "
+                        "multiplications: the exponent cannot be converted into a non-negative integral value");
         }
 
         return internal::series_pow_from_cache(b, un);

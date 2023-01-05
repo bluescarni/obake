@@ -88,11 +88,11 @@ TEST_CASE("series_pow_test")
     OBAKE_REQUIRES_THROWS_CONTAINS(
         impl(x - y, rat_t{1, 2}), std::invalid_argument,
         "Invalid exponent for series exponentiation via repeated "
-        "multiplications: the exponent (1/2) cannot be converted into a non-negative integral value");
+        "multiplications: the exponent cannot be converted into a non-negative integral value");
     OBAKE_REQUIRES_THROWS_CONTAINS(
         impl(x - y, -1), std::invalid_argument,
         "Invalid exponent for series exponentiation via repeated "
-        "multiplications: the exponent (-1) cannot be converted into a non-negative integral value");
+        "multiplications: the exponent cannot be converted into a non-negative integral value");
 
     s1_t a;
     a.set_symbol_set(symbol_set{"a"});
