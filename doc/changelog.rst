@@ -7,6 +7,8 @@ Changelog
 New
 ~~~
 
+- Series types now support formatting via {fmt}
+  (`#149 <https://github.com/bluescarni/obake/pull/149>`__).
 - obake can now be built as a static library
   (`#146 <https://github.com/bluescarni/obake/pull/146>`__).
 
