@@ -9,6 +9,8 @@
 #ifndef OBAKE_DETAIL_VISIBILITY_HPP
 #define OBAKE_DETAIL_VISIBILITY_HPP
 
+#include <obake/config.hpp>
+
 #if defined(OBAKE_STATIC_BUILD)
 
 #define OBAKE_DLL_PUBLIC
