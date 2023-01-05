@@ -363,5 +363,5 @@ TEST_CASE("polynomial_pow_test")
 
     OBAKE_REQUIRES_THROWS_CONTAINS(
         obake::pow(a * a * b * b, mppp::rational<1>{2, 3}), std::invalid_argument,
-        "Invalid exponent for monomial exponentiation: the exponent (2/3) cannot be converted into an integral value");
+        "Invalid exponent for monomial exponentiation: the exponent cannot be converted into an integral value");
 }

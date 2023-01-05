@@ -8,10 +8,13 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <variant>
+
+#include <fmt/core.h>
 
 #include <obake/cf/cf_tex_stream_insert.hpp>
 #include <obake/math/degree.hpp>
@@ -1237,4 +1240,20 @@ TEST_CASE("integrate")
         REQUIRE(obake::get_truncation(ret).index() == 2u);
         REQUIRE(std::get<2>(obake::get_truncation(ret)) == std::pair{std::int32_t(4), symbol_set{"x", "z"}});
     }
+}
+
+// Check the fmt formatter specialisation.
+TEST_CASE("fmt")
+{
+    using pm_t = packed_monomial<std::int32_t>;
+    using ps_t = p_series<pm_t, double>;
+
+    auto [x, y, z] = make_p_series_t<ps_t>(2, "x", "y", "z");
+
+    auto s = (x + y) * z;
+
+    std::ostringstream oss;
+    oss << s;
+
+    REQUIRE(oss.str() == fmt::format("{}", s));
 }

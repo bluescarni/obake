@@ -431,7 +431,7 @@ TEST_CASE("monomial_pow_test")
                 OBAKE_REQUIRES_THROWS_CONTAINS(
                     monomial_pow(pm_t{1, 2, 3}, mppp::rational<1>{4, 3}, symbol_set{"x", "y", "z"}),
                     std::invalid_argument,
-                    "Invalid exponent for monomial exponentiation: the exponent (4/3) cannot be converted into an "
+                    "Invalid exponent for monomial exponentiation: the exponent cannot be converted into an "
                     "integral value");
 
                 // Check overflows, both in the single exponent exponentiation and in the coding limits.

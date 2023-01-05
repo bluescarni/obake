@@ -4,11 +4,27 @@ Changelog
 0.8.0 (unreleased)
 ------------------
 
+New
+~~~
+
+- Series types now support formatting via {fmt}
+  (`#149 <https://github.com/bluescarni/obake/pull/149>`__).
+- obake can now be built as a static library
+  (`#146 <https://github.com/bluescarni/obake/pull/146>`__).
+
 Changes
 ~~~~~~~
 
+- obake now requires mp++ >= 0.27
+  (`#149 <https://github.com/bluescarni/obake/pull/149>`__).
 - Various internal cleanups as a consequence of the C++20 migration
   (`#140 <https://github.com/bluescarni/obake/pull/140>`__).
+
+Fix
+~~~
+
+- Workaround for build error in MSVC
+  (`#144 <https://github.com/bluescarni/obake/pull/144>`__).
 
 0.7.0 (2021-06-01)
 ------------------

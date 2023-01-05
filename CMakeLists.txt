@@ -24,7 +24,7 @@ message(STATUS "System name: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "obake version: ${obake_VERSION}")
 
 # The build options.
-option(OBAKE_BUILD_STATIC_LIBRARY "Build static library." OFF)
+option(OBAKE_BUILD_STATIC_LIBRARY "Build obake as a static library, instead of dynamic." OFF)
 option(OBAKE_BUILD_TESTS "Build unit tests." OFF)
 option(OBAKE_BUILD_BENCHMARKS "Build benchmarks." OFF)
 option(OBAKE_WITH_LIBBACKTRACE "Use libbacktrace for improved stack traces." OFF)
@@ -154,7 +154,7 @@ endif()
 # NOTE: put the minimum version in a variable
 # so that we can re-use it in the config-file package
 # machinery below.
-set (_OBAKE_MIN_MPPP_VERSION 0.23)
+set (_OBAKE_MIN_MPPP_VERSION 0.27)
 find_package(mp++ REQUIRED)
 if(${mp++_VERSION} VERSION_LESS ${_OBAKE_MIN_MPPP_VERSION})
     message(FATAL_ERROR "The minimum mp++ version required by obake is ${_OBAKE_MIN_MPPP_VERSION}, but version ${mp++_VERSION} was found instead.")
@@ -322,21 +322,27 @@ if(YACMA_COMPILER_IS_MSVC)
 endif()
 
 if(OBAKE_BUILD_STATIC_LIBRARY)
+    # Setup of the obake static library.
+    message(STATUS "obake will be built as a static library.")
+    set(OBAKE_STATIC_BUILD "#define OBAKE_STATIC_BUILD")
     add_library(obake STATIC "${OBAKE_SRC_FILES}")
-    target_compile_definitions(obake PUBLIC OBAKE_STATIC_BUILD)
 else()
+    # Setup of the obake shared library.
     add_library(obake SHARED "${OBAKE_SRC_FILES}")
     set_property(TARGET obake PROPERTY VERSION "8.0")
     set_property(TARGET obake PROPERTY SOVERSION 8)
+    set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
+    set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
 endif()
+
+# Setup common to both the shared and static variants.
 target_compile_options(obake PRIVATE
     "$<$<CONFIG:Debug>:${OBAKE_CXX_FLAGS_DEBUG}>"
     "$<$<CONFIG:Release>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:RelWithDebInfo>:${OBAKE_CXX_FLAGS_RELEASE}>"
     "$<$<CONFIG:MinSizeRel>:${OBAKE_CXX_FLAGS_RELEASE}>"
 )
-set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
-set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
+
 # Ensure that C++20 is employed when both compiling and consuming obake.
 target_compile_features(obake PUBLIC cxx_std_20)
 # Ensure vanilla C++ is being used.
