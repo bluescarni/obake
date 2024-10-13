@@ -16,7 +16,7 @@ endif()
 # enable C here, on some configurations (e.g., Ubuntu
 # + clang) the threading detection/setup seems to break
 # down.
-project(obake VERSION 0.8.0 LANGUAGES CXX C)
+project(obake VERSION 0.9.0 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
 
@@ -329,8 +329,8 @@ if(OBAKE_BUILD_STATIC_LIBRARY)
 else()
     # Setup of the obake shared library.
     add_library(obake SHARED "${OBAKE_SRC_FILES}")
-    set_property(TARGET obake PROPERTY VERSION "8.0")
-    set_property(TARGET obake PROPERTY SOVERSION 8)
+    set_property(TARGET obake PROPERTY VERSION "9.0")
+    set_property(TARGET obake PROPERTY SOVERSION 9)
     set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
     set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
 endif()
