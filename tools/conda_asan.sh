@@ -11,7 +11,7 @@ export deps_dir=$HOME/local
 export PATH="$HOME/miniconda/bin:$PATH"
 bash miniconda.sh -b -p $HOME/miniconda
 conda create -y -p $deps_dir cmake c-compiler cxx-compiler fmt backtrace mppp \
-    libboost-devel libabseil tbb-devel ninja
+    libboost-devel tbb-devel ninja
 source activate $deps_dir
 
 # Create the build dir and cd into it.

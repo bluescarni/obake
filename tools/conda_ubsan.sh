@@ -15,7 +15,7 @@ bash miniconda.sh -b -p $HOME/miniconda
 export PATH="$HOME/miniconda/bin:$PATH"
 conda config --add channels conda-forge
 conda config --set channel_priority strict
-conda_pkgs="cmake mppp boost-cpp tbb tbb-devel abseil-cpp fmt backtrace"
+conda_pkgs="cmake mppp boost-cpp tbb tbb-devel fmt backtrace"
 conda create -q -p $deps_dir -y $conda_pkgs
 source activate $deps_dir
 

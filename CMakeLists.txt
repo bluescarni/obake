@@ -160,12 +160,9 @@ if(${mp++_VERSION} VERSION_LESS ${_OBAKE_MIN_MPPP_VERSION})
     message(FATAL_ERROR "The minimum mp++ version required by obake is ${_OBAKE_MIN_MPPP_VERSION}, but version ${mp++_VERSION} was found instead.")
 endif()
 
-# abseil.
-find_package(absl REQUIRED)
-
 # Boost setup.
-# NOTE: stacktrace available since 1.65.0.
-set(_OBAKE_MIN_BOOST_VERSION "1.69")
+# NOTE: need 1.81 for unordered_flat_set.
+set(_OBAKE_MIN_BOOST_VERSION "1.81")
 # NOTE: we look for Boost in CONFIG mode first, as that has become the official supported way
 # of locating Boost in recent Boost/CMake versions. If we fail, we try again in
 # MODULE mode as last resort.
@@ -307,7 +304,6 @@ if(YACMA_COMPILER_IS_MSVC)
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_tex_stream_insert.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_trim.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_trim_identify.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/abseil.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_flag_array.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_lock_guard.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/fcast.hpp"
@@ -360,13 +356,6 @@ target_compile_options(obake PRIVATE
 target_compile_features(obake PUBLIC cxx_std_20)
 # Ensure vanilla C++ is being used.
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
-if(YACMA_COMPILER_IS_MSVC)
-    # NOTE: older abseil versions have a problem on MSVC
-    # when using C++20:
-    # https://github.com/abseil/abseil-cpp/issues/649
-    # Hopefully we can eventually remove this.
-    target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
-endif()
 if(YACMA_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10")
     # GCC < 10 still needs the -fconcepts flag, even if C++20 is in use.
     message(STATUS "Activating the '-fconcepts' flag for GCC < 10.")
@@ -383,8 +372,6 @@ target_include_directories(obake PUBLIC
 target_link_libraries(obake PUBLIC
     Threads::Threads
     mp++::mp++
-    absl::flat_hash_map
-    absl::flat_hash_set
     Boost::boost
     Boost::serialization
     Boost::disable_autolinking

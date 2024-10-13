@@ -37,6 +37,7 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/split_member.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
 
 #include <fmt/core.h>
 
@@ -50,7 +51,6 @@
 #include <obake/cf/cf_stream_insert.hpp>
 #include <obake/cf/cf_tex_stream_insert.hpp>
 #include <obake/config.hpp>
-#include <obake/detail/abseil.hpp>
 #include <obake/detail/fcast.hpp>
 #include <obake/detail/fmt_compat.hpp>
 #include <obake/detail/ignore.hpp>
@@ -483,39 +483,12 @@ concept SeriesConvertible = is_series_convertible_v<T, C>;
 namespace detail
 {
 
-// A small hashing wrapper for keys. It accomplishes two tasks:
-// - force the evaluation of a key through const reference,
-//   so that, in the Key requirements, we can request hashability
-//   through const lvalue ref;
-// - provide additional mixing.
+// Wrapper to force key hashing via const lvalue refs.
 struct series_key_hasher {
-    // NOTE: here we are duplicating a bit of internal
-    // abseil code for integral hash mixing, with the intent
-    // of avoiding the per-process seeding that abseil does.
-    // See here for the original code:
-    // https://github.com/abseil/abseil-cpp/blob/37dd2562ec830d547a1524bb306be313ac3f2556/absl/hash/internal/hash.h#L754
-    // If/when abseil starts supporting DLL builds, we can
-    // remove this code and switch back to using abseil's
-    // own hash machinery for mixing.
-    static constexpr ::std::uint64_t kMul
-        = sizeof(::std::size_t) == 4u ? ::std::uint64_t{0xcc9e2d51ull} : ::std::uint64_t{0x9ddfea08eb382d69ull};
-    ABSL_ATTRIBUTE_ALWAYS_INLINE static ::std::uint64_t Mix(::std::uint64_t state, ::std::uint64_t v)
-    {
-        using MultType = ::std::conditional_t<sizeof(::std::size_t) == 4u, ::std::uint64_t, ::absl::uint128>;
-        // We do the addition in 64-bit space to make sure the 128-bit
-        // multiplication is fast. If we were to do it as MultType the compiler has
-        // to assume that the high word is non-zero and needs to perform 2
-        // multiplications instead of one.
-        MultType m = state + v;
-        m *= kMul;
-        return static_cast<::std::uint64_t>(m ^ (m >> (sizeof(m) * 8 / 2)));
-    }
     template <typename K>
     ::std::size_t operator()(const K &k) const noexcept(noexcept(::obake::hash(k)))
     {
-        // NOTE: mix with a compile-time seed.
-        return static_cast<::std::size_t>(
-            series_key_hasher::Mix(15124392053943080205ull, static_cast<::std::uint64_t>(::obake::hash(k))));
+        return ::obake::hash(k);
     }
 };
 
@@ -661,7 +634,8 @@ class series
 
 public:
     // Define the table type, and the type holding the set of tables (i.e., the segmented table).
-    using table_type = ::absl::flat_hash_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
+    using table_type
+        = ::boost::unordered::unordered_flat_map<K, C, detail::series_key_hasher, detail::series_key_comparer>;
     using s_table_type = ::boost::container::small_vector<table_type, 1>;
 
     // Shortcut for the segmented table size type.
@@ -1518,11 +1492,6 @@ private:
                     // - the original table had no incompatible keys,
                     // - the original table did not overflow the max size,
                     // - the original table had only unique keys.
-                    // Note that deserialisation of a series that was saved
-                    // in a previous program execution will result in a term
-                    // order different from the original one due to abseil's salting,
-                    // but the number of terms in a specific table will be the same
-                    // because the first level hash is not salted.
                     // NOTE: this is essentially identical to a straight emplace_back()
                     // on the table, just with some added assertions.
                     detail::series_add_term_table<true, detail::sat_check_zero::off, detail::sat_check_compat_key::off,
@@ -1954,10 +1923,8 @@ struct series_default_byte_size_impl {
             ret += ::obake::byte_size(k) + ::obake::byte_size(c) + (sizeof(series_term_t<T>) - (sizeof(k) + sizeof(c)));
         }
 
-        // Add the space occupied by the unused slots.
-        assert(tab.capacity() >= tab.size());
-        ret += (tab.capacity() - tab.size()) * sizeof(series_term_t<T>);
-
+        // NOTE: here we are not accounting for the empty slots in the table.
+        // Hopefully we do not end up very far from the true memory utilisation.
         return ret;
     }
     template <typename T>
@@ -3346,8 +3313,7 @@ inline series_default_div_ret_t<T &&, U &&> series_default_div_impl(T &&x, U &&y
                 c /= ::std::as_const(y);
 
                 if (obake_unlikely(::obake::is_zero(::std::as_const(c)))) {
-                    // NOTE: abseil's flat_hash_map returns void on erase(),
-                    // thus we need to increase 'it' before possibly erasing.
+                    // NOTE: increase 'it' before erasing.
                     // erase() does not cause rehash and thus will not invalidate
                     // any other iterator apart from the one being erased.
                     t.erase(it++);
@@ -4288,13 +4254,12 @@ inline void filter_impl(series<K, C, Tag> &s, const F &f)
         const auto it_f = table.end();
 
         for (auto it = table.begin(); it != it_f;) {
-            // NOTE: abseil's flat_hash_map returns void on erase(),
-            // thus we need to increase 'it' before possibly erasing.
-            // erase() does not cause rehash and thus will not invalidate
-            // any other iterator apart from the one being erased.
             if (f(::std::as_const(*it))) {
                 ++it;
             } else {
+                // NOTE: increase 'it' before erasing.
+                // erase() does not cause rehash and thus will not invalidate
+                // any other iterator apart from the one being erased.
                 table.erase(it++);
             }
         }

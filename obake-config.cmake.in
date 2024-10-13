@@ -8,7 +8,6 @@ find_package(mp++ REQUIRED)
 if(${mp++_VERSION} VERSION_LESS @_OBAKE_MIN_MPPP_VERSION@)
     message(FATAL_ERROR "The minimum mp++ version required by obake is @_OBAKE_MIN_MPPP_VERSION@, but version ${mp++_VERSION} was found instead.")
 endif()
-find_package(absl REQUIRED)
 # TBB. Try to find it first in config mode (supported
 # since version 2021 after the oneTBB rename), and, if this
 # fails, fall back to our own FindTBB.cmake. This is of course
