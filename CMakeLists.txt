@@ -164,7 +164,20 @@ endif()
 find_package(absl REQUIRED)
 
 # Boost setup.
-include(ObakeFindBoost)
+# NOTE: stacktrace available since 1.65.0.
+set(_OBAKE_MIN_BOOST_VERSION "1.69")
+# NOTE: we look for Boost in CONFIG mode first, as that has become the official supported way
+# of locating Boost in recent Boost/CMake versions. If we fail, we try again in
+# MODULE mode as last resort.
+find_package(Boost ${_OBAKE_MIN_BOOST_VERSION} QUIET COMPONENTS serialization CONFIG)
+if(NOT ${Boost_FOUND})
+    message(STATUS "Boost not found in CONFIG mode, retrying in MODULE mode.")
+    find_package(Boost ${_OBAKE_MIN_BOOST_VERSION} QUIET MODULE COMPONENTS serialization)
+endif()
+if(NOT ${Boost_FOUND})
+    message(FATAL_ERROR "Could not locate Boost in either CONFIG or MODULE mode.")
+endif()
+message(STATUS "Found Boost version ${Boost_VERSION}.")
 
 # libbacktrace.
 if(OBAKE_WITH_LIBBACKTRACE)
@@ -421,7 +434,6 @@ install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindDbgEng.cmake"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindTBB.cmake"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Findlibbacktrace.cmake"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ObakeFindBoost.cmake"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ObakeFindDl.cmake"
 DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 install(EXPORT obake_export NAMESPACE obake:: DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
