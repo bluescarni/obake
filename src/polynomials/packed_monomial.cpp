@@ -169,7 +169,7 @@ void packed_monomial_tex_stream_insert(::std::ostream &os, const packed_monomial
 
             // Raise to power, if the exponent is not one.
             if (!tmp_mp.is_one()) {
-                *cur_oss << fmt::format("^{{{}}}", tmp_mp);
+                *cur_oss << fmt::format(fmt::runtime("^{{{}}}"), tmp_mp);
             }
         }
     }

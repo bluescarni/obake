@@ -32,7 +32,7 @@ struct ostream_formatter {
     }
 
     template <typename T, typename FormatContext>
-    auto format(const T &x, FormatContext &ctx)
+    auto format(const T &x, FormatContext &ctx) const
     {
         std::ostringstream oss;
         oss << x;

@@ -16,7 +16,7 @@ endif()
 # enable C here, on some configurations (e.g., Ubuntu
 # + clang) the threading detection/setup seems to break
 # down.
-project(obake VERSION 0.8.0 LANGUAGES CXX C)
+project(obake VERSION 0.9.0 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/yacma")
 
@@ -160,11 +160,21 @@ if(${mp++_VERSION} VERSION_LESS ${_OBAKE_MIN_MPPP_VERSION})
     message(FATAL_ERROR "The minimum mp++ version required by obake is ${_OBAKE_MIN_MPPP_VERSION}, but version ${mp++_VERSION} was found instead.")
 endif()
 
-# abseil.
-find_package(absl REQUIRED)
-
 # Boost setup.
-include(ObakeFindBoost)
+# NOTE: need 1.81 for unordered_flat_set.
+set(_OBAKE_MIN_BOOST_VERSION "1.81")
+# NOTE: we look for Boost in CONFIG mode first, as that has become the official supported way
+# of locating Boost in recent Boost/CMake versions. If we fail, we try again in
+# MODULE mode as last resort.
+find_package(Boost ${_OBAKE_MIN_BOOST_VERSION} QUIET COMPONENTS serialization CONFIG)
+if(NOT ${Boost_FOUND})
+    message(STATUS "Boost not found in CONFIG mode, retrying in MODULE mode.")
+    find_package(Boost ${_OBAKE_MIN_BOOST_VERSION} QUIET MODULE COMPONENTS serialization)
+endif()
+if(NOT ${Boost_FOUND})
+    message(FATAL_ERROR "Could not locate Boost in either CONFIG or MODULE mode.")
+endif()
+message(STATUS "Found Boost version ${Boost_VERSION}.")
 
 # libbacktrace.
 if(OBAKE_WITH_LIBBACKTRACE)
@@ -294,7 +304,6 @@ if(YACMA_COMPILER_IS_MSVC)
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_tex_stream_insert.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_trim.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/key/key_trim_identify.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/abseil.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_flag_array.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/atomic_lock_guard.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/include/obake/detail/fcast.hpp"
@@ -329,8 +338,8 @@ if(OBAKE_BUILD_STATIC_LIBRARY)
 else()
     # Setup of the obake shared library.
     add_library(obake SHARED "${OBAKE_SRC_FILES}")
-    set_property(TARGET obake PROPERTY VERSION "8.0")
-    set_property(TARGET obake PROPERTY SOVERSION 8)
+    set_property(TARGET obake PROPERTY VERSION "9.0")
+    set_property(TARGET obake PROPERTY SOVERSION 9)
     set_target_properties(obake PROPERTIES CXX_VISIBILITY_PRESET hidden)
     set_target_properties(obake PROPERTIES VISIBILITY_INLINES_HIDDEN TRUE)
 endif()
@@ -347,13 +356,6 @@ target_compile_options(obake PRIVATE
 target_compile_features(obake PUBLIC cxx_std_20)
 # Ensure vanilla C++ is being used.
 set_property(TARGET obake PROPERTY CXX_EXTENSIONS NO)
-if(YACMA_COMPILER_IS_MSVC)
-    # NOTE: older abseil versions have a problem on MSVC
-    # when using C++20:
-    # https://github.com/abseil/abseil-cpp/issues/649
-    # Hopefully we can eventually remove this.
-    target_compile_definitions(obake PUBLIC -D_HAS_DEPRECATED_RESULT_OF=1)
-endif()
 if(YACMA_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10")
     # GCC < 10 still needs the -fconcepts flag, even if C++20 is in use.
     message(STATUS "Activating the '-fconcepts' flag for GCC < 10.")
@@ -370,8 +372,6 @@ target_include_directories(obake PUBLIC
 target_link_libraries(obake PUBLIC
     Threads::Threads
     mp++::mp++
-    absl::flat_hash_map
-    absl::flat_hash_set
     Boost::boost
     Boost::serialization
     Boost::disable_autolinking
@@ -421,7 +421,6 @@ install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindDbgEng.cmake"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindTBB.cmake"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Findlibbacktrace.cmake"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ObakeFindBoost.cmake"
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ObakeFindDl.cmake"
 DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")
 install(EXPORT obake_export NAMESPACE obake:: DESTINATION "${OBAKE_INSTALL_LIBDIR}/cmake/obake")

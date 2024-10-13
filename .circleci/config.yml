@@ -1,44 +1,45 @@
 version: 2.1
 
 jobs:
-  focal_gcc9_docs:
+  # focal_gcc9_docs:
+  #   docker:
+  #   - image: circleci/buildpack-deps:focal
+  #   steps:
+  #   - checkout
+  #   - run:
+  #       name: Build and test
+  #       command: bash ./tools/circleci_focal_gcc9_docs.sh
+  # focal_gcc9_coverage:
+  #   docker:
+  #   - image: circleci/buildpack-deps:focal
+  #   steps:
+  #   - checkout
+  #   - run:
+  #       name: Build and test
+  #       command: bash ./tools/circleci_focal_gcc9_coverage.sh
+  # focal_gcc9_ubsan:
+  #   docker:
+  #   - image: circleci/buildpack-deps:focal
+  #   steps:
+  #   - checkout
+  #   - run:
+  #       name: Build and test
+  #       command: bash ./tools/circleci_focal_gcc9_ubsan.sh
+  conda_asan:
     docker:
-    - image: circleci/buildpack-deps:focal
+    - image: cimg/base:current
+    resource_class: large
     steps:
     - checkout
     - run:
         name: Build and test
-        command: bash ./tools/circleci_focal_gcc9_docs.sh
-  focal_gcc9_coverage:
-    docker:
-    - image: circleci/buildpack-deps:focal
-    steps:
-    - checkout
-    - run:
-        name: Build and test
-        command: bash ./tools/circleci_focal_gcc9_coverage.sh
-  focal_gcc9_ubsan:
-    docker:
-    - image: circleci/buildpack-deps:focal
-    steps:
-    - checkout
-    - run:
-        name: Build and test
-        command: bash ./tools/circleci_focal_gcc9_ubsan.sh
-  focal_gcc9_asan:
-    docker:
-    - image: circleci/buildpack-deps:focal
-    steps:
-    - checkout
-    - run:
-        name: Build and test
-        command: bash ./tools/circleci_focal_gcc9_asan.sh
+        command: bash ./tools/conda_asan.sh
 
 workflows:
   version: 2.1
   all_builds:
     jobs:
-    - focal_gcc9_docs
-    - focal_gcc9_coverage
-    - focal_gcc9_ubsan
-    - focal_gcc9_asan
+    # - focal_gcc9_docs
+    # - focal_gcc9_coverage
+    # - focal_gcc9_ubsan
+    - conda_asan

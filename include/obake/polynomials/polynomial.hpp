@@ -30,6 +30,7 @@
 #include <boost/iterator/transform_iterator.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/serialization/tracking.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -41,7 +42,6 @@
 
 #include <obake/byte_size.hpp>
 #include <obake/config.hpp>
-#include <obake/detail/abseil.hpp>
 #include <obake/detail/hc.hpp>
 #include <obake/detail/ignore.hpp>
 #include <obake/detail/it_diff_check.hpp>
@@ -120,111 +120,111 @@ concept Polynomial = is_polynomial_v<T>;
 namespace detail
 {
 
-    // Enabler for make_polynomials():
-    // - need at least 1 Arg,
-    // - T must be a polynomial,
-    // - std::string can be constructed from each input Args,
-    // - poly key can be constructed from a const int * range,
-    // - poly cf can be constructed from an integral literal.
-    template <typename T, typename... Args>
-    using make_polynomials_supported
-        = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_polynomial<T>,
-                             ::std::is_constructible<::std::string, const Args &>...,
-                             ::std::is_constructible<series_key_t<T>, const int *, const int *>,
-                             ::std::is_constructible<series_cf_t<T>, int>>;
+// Enabler for make_polynomials():
+// - need at least 1 Arg,
+// - T must be a polynomial,
+// - std::string can be constructed from each input Args,
+// - poly key can be constructed from a const int * range,
+// - poly cf can be constructed from an integral literal.
+template <typename T, typename... Args>
+using make_polynomials_supported
+    = ::std::conjunction<::std::integral_constant<bool, (sizeof...(Args) > 0u)>, is_polynomial<T>,
+                         ::std::is_constructible<::std::string, const Args &>...,
+                         ::std::is_constructible<series_key_t<T>, const int *, const int *>,
+                         ::std::is_constructible<series_cf_t<T>, int>>;
 
-    template <typename T, typename... Args>
-    using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T, Args...>::value, int>;
+template <typename T, typename... Args>
+using make_polynomials_enabler = ::std::enable_if_t<make_polynomials_supported<T, Args...>::value, int>;
 
-    // Overload with a symbol set.
-    template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-    inline auto make_polynomials_impl(const symbol_set &ss, const Args &...names)
-    {
-        // Create a temp vector of ints which we will use to
-        // init the keys.
-        ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
+// Overload with a symbol set.
+template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
+inline auto make_polynomials_impl(const symbol_set &ss, const Args &...names)
+{
+    // Create a temp vector of ints which we will use to
+    // init the keys.
+    ::std::vector<int> tmp(::obake::safe_cast<::std::vector<int>::size_type>(ss.size()));
 
-        // Create the fw version of the symbol set.
-        const detail::ss_fw ss_fw(ss);
+    // Create the fw version of the symbol set.
+    const detail::ss_fw ss_fw(ss);
 
-        auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
-            using str_t = remove_cvref_t<decltype(n)>;
+    auto make_poly = [&ss_fw, &ss, &tmp](const auto &n) {
+        using str_t = remove_cvref_t<decltype(n)>;
 
-            // Fetch a const reference to either the original
-            // std::string object n, or to a string temporary
-            // created from it.
-            const auto &s = [&n]() -> decltype(auto) {
-                if constexpr (::std::is_same_v<str_t, ::std::string>) {
-                    return n;
-                } else {
-                    return ::std::string(n);
-                }
-            }();
-
-            // Init the retval, assign the symbol set.
-            T retval;
-            retval.set_symbol_set_fw(ss_fw);
-
-            // Try to locate s within the symbol set.
-            const auto it = ss.find(s);
-            if (obake_unlikely(it == ss.end() || *it != s)) {
-                obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set "
-                                                         + detail::to_string(ss) + " from the generator '" + s
-                                                         + "': the generator is not in the symbol set");
-            }
-
-            // Set to 1 the exponent of the corresponding generator.
-            tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
-
-            // Create and add a new term.
-            // NOTE: at least for some monomial types (e.g., packed monomial),
-            // we will be computing the iterator difference when constructing from
-            // a range. Make sure we can safely represent the size of tmp via
-            // iterator difference.
-            ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
-            retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
-
-            // Set back to zero the exponent that was previously set to 1.
-            tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
-
-            return retval;
-        };
-
-        return detail::make_array(make_poly(names)...);
-    }
-
-    // Overload without a symbol set.
-    template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
-    inline auto make_polynomials_impl(const Args &...names)
-    {
-        auto make_poly = [](const auto &n) {
-            using str_t = remove_cvref_t<decltype(n)>;
-
-            // Init the retval, assign a symbol set containing only n.
-            T retval;
+        // Fetch a const reference to either the original
+        // std::string object n, or to a string temporary
+        // created from it.
+        const auto &s = [&n]() -> decltype(auto) {
             if constexpr (::std::is_same_v<str_t, ::std::string>) {
-                retval.set_symbol_set(symbol_set{n});
+                return n;
             } else {
-                retval.set_symbol_set(symbol_set{::std::string(n)});
+                return ::std::string(n);
             }
+        }();
 
-            static constexpr int arr[] = {1};
+        // Init the retval, assign the symbol set.
+        T retval;
+        retval.set_symbol_set_fw(ss_fw);
 
-            // Create and add a new term.
-            retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
+        // Try to locate s within the symbol set.
+        const auto it = ss.find(s);
+        if (obake_unlikely(it == ss.end() || *it != s)) {
+            obake_throw(::std::invalid_argument, "Cannot create a polynomial with symbol set " + detail::to_string(ss)
+                                                     + " from the generator '" + s
+                                                     + "': the generator is not in the symbol set");
+        }
 
-            return retval;
-        };
+        // Set to 1 the exponent of the corresponding generator.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 1;
 
-        return detail::make_array(make_poly(names)...);
-    }
+        // Create and add a new term.
+        // NOTE: at least for some monomial types (e.g., packed monomial),
+        // we will be computing the iterator difference when constructing from
+        // a range. Make sure we can safely represent the size of tmp via
+        // iterator difference.
+        ::obake::detail::it_diff_check<decltype(::std::as_const(tmp).data())>(tmp.size());
+        retval.add_term(series_key_t<T>(::std::as_const(tmp).data(), ::std::as_const(tmp).data() + tmp.size()), 1);
+
+        // Set back to zero the exponent that was previously set to 1.
+        tmp[static_cast<::std::vector<int>::size_type>(ss.index_of(it))] = 0;
+
+        return retval;
+    };
+
+    return detail::make_array(make_poly(names)...);
+}
+
+// Overload without a symbol set.
+template <typename T, typename... Args, make_polynomials_enabler<T, Args...> = 0>
+inline auto make_polynomials_impl(const Args &...names)
+{
+    auto make_poly = [](const auto &n) {
+        using str_t = remove_cvref_t<decltype(n)>;
+
+        // Init the retval, assign a symbol set containing only n.
+        T retval;
+        if constexpr (::std::is_same_v<str_t, ::std::string>) {
+            retval.set_symbol_set(symbol_set{n});
+        } else {
+            retval.set_symbol_set(symbol_set{::std::string(n)});
+        }
+
+        static constexpr int arr[] = {1};
+
+        // Create and add a new term.
+        retval.add_term(series_key_t<T>(&arr[0], &arr[0] + 1), 1);
+
+        return retval;
+    };
+
+    return detail::make_array(make_poly(names)...);
+}
 
 } // namespace detail
 
 // Polynomial creation functor.
 template <typename T>
-inline constexpr auto make_polynomials
-    = [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
+inline constexpr auto make_polynomials =
+    [](const auto &...args) OBAKE_SS_FORWARD_LAMBDA(detail::make_polynomials_impl<T>(args...));
 
 namespace polynomials
 {
@@ -666,8 +666,8 @@ inline auto poly_mul_estimate_product_size(const ::std::vector<T1> &x, const ::s
             // Init the hash set we will be using for the trials.
             // NOTE: use exactly the same hasher/comparer as in series.hpp, so that
             // we are sure we are being consistent wrt type requirements, etc.
-            using local_set = ::absl::flat_hash_set<key_type, ::obake::detail::series_key_hasher,
-                                                    ::obake::detail::series_key_comparer>;
+            using local_set = ::boost::unordered_flat_set<key_type, ::obake::detail::series_key_hasher,
+                                                          ::obake::detail::series_key_comparer>;
             local_set ls;
             ls.reserve(::obake::safe_cast<decltype(ls.size())>(vidx1.size()));
 
@@ -1361,15 +1361,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                               // coefficient. This is wasteful, it would be better to directly
                               // construct the coefficient product only if the insertion actually
                               // takes place (using a lazy multiplication approach).
-                              // Unfortunately, abseil's hash map is not exception safe,
-                              // and if the lazy multiplication throws, the table will be left
-                              // in an inconsistent state. See:
-                              // https://github.com/abseil/abseil-cpp/issues/388
-                              // See the commit
-                              // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                              // See the commit 3e334f560d5844f5f2d8face05aa58be21649ff8
                               // for an implementation of the lazy multiplication approach.
-                              // If they fix the exception safety issue, we can re-enable the
-                              // lazy approach.
                               // NOTE: the coefficient concept demands default constructibility,
                               // thus we can always emplace without arguments for the coefficient.
                               const auto res = table.try_emplace(tmp_key);
@@ -1401,11 +1394,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                   // in the current table.
                   const auto it_f = table.end();
                   for (auto it = table.begin(); it != it_f;) {
-                      // NOTE: abseil's flat_hash_map returns void on erase(),
-                      // thus we need to increase 'it' before possibly erasing.
-                      // erase() does not cause rehash and thus will not invalidate
-                      // any other iterator apart from the one being erased.
                       if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
+                          // NOTE: increase 'it' before erasing.
+                          // erase() does not cause rehash and thus will not invalidate
+                          // any other iterator apart from the one being erased.
                           table.erase(it++);
                       } else {
                           ++it;
@@ -1504,15 +1496,8 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                               // coefficient. This is wasteful, it would be better to directly
                               // construct the coefficient product only if the insertion actually
                               // takes place (using a lazy multiplication approach).
-                              // Unfortunately, abseil's hash map is not exception safe,
-                              // and if the lazy multiplication throws, the table will be left
-                              // in an inconsistent state. See:
-                              // https://github.com/abseil/abseil-cpp/issues/388
-                              // See the commit
-                              // 3e334f560d5844f5f2d8face05aa58be21649ff8
+                              // See the commit 3e334f560d5844f5f2d8face05aa58be21649ff8
                               // for an implementation of the lazy multiplication approach.
-                              // If they fix the exception safety issue, we can re-enable the
-                              // lazy approach.
                               // NOTE: the coefficient concept demands default constructibility,
                               // thus we can always emplace without arguments for the coefficient.
                               const auto res = table.try_emplace(tmp_key);
@@ -1544,11 +1529,10 @@ inline void poly_mul_impl_mt_hm(Ret &retval, const T &x, const U &y, const Args 
                   // in the current table.
                   const auto it_f = table.end();
                   for (auto it = table.begin(); it != it_f;) {
-                      // NOTE: abseil's flat_hash_map returns void on erase(),
-                      // thus we need to increase 'it' before possibly erasing.
-                      // erase() does not cause rehash and thus will not invalidate
-                      // any other iterator apart from the one being erased.
                       if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
+                          // NOTE: increase 'it' before erasing.
+                          // erase() does not cause rehash and thus will not invalidate
+                          // any other iterator apart from the one being erased.
                           table.erase(it++);
                       } else {
                           ++it;
@@ -1867,11 +1851,10 @@ inline void poly_mul_impl_simple(Ret &retval, const T &x, const U &y, const Args
         // in the return value.
         const auto it_f = tab.end();
         for (auto it = tab.begin(); it != it_f;) {
-            // NOTE: abseil's flat_hash_map returns void on erase(),
-            // thus we need to increase 'it' before possibly erasing.
-            // erase() does not cause rehash and thus will not invalidate
-            // any other iterator apart from the one being erased.
             if (obake_unlikely(::obake::is_zero(::std::as_const(it->second)))) {
+                // NOTE: increase 'it' before erasing.
+                // erase() does not cause rehash and thus will not invalidate
+                // any other iterator apart from the one being erased.
                 tab.erase(it++);
             } else {
                 ++it;
@@ -2041,8 +2024,9 @@ inline auto poly_mul_impl_switch(const T &x, const U &y, const Args &...args)
 } // namespace detail
 
 template <typename K, typename C0, typename C1>
-requires(detail::poly_mul_algo<polynomial<K, C0>, polynomial<K, C1>> != 0) inline detail::poly_mul_ret_t<
-    polynomial<K, C0>, polynomial<K, C1>> series_mul(const polynomial<K, C0> &x, const polynomial<K, C1> &y)
+    requires(detail::poly_mul_algo<polynomial<K, C0>, polynomial<K, C1>> != 0)
+inline detail::poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>> series_mul(const polynomial<K, C0> &x,
+                                                                               const polynomial<K, C1> &y)
 {
     return detail::poly_mul_impl_switch(x, y);
 }
@@ -2127,18 +2111,17 @@ inline constexpr auto poly_mul_truncated_p_degree_algo
 // NOTE: do we need the type traits/concepts as well?
 // NOTE: should these be function objects?
 template <typename K, typename C0, typename C1, typename V>
-requires(detail::poly_mul_truncated_degree_algo<polynomial<K, C0>, polynomial<K, C1>, V> != 0) inline detail::
-    poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>> truncated_mul(const polynomial<K, C0> &x,
-                                                                       const polynomial<K, C1> &y, const V &max_degree)
+    requires(detail::poly_mul_truncated_degree_algo<polynomial<K, C0>, polynomial<K, C1>, V> != 0)
+inline detail::poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>>
+truncated_mul(const polynomial<K, C0> &x, const polynomial<K, C1> &y, const V &max_degree)
 {
     return detail::poly_mul_impl_switch(x, y, max_degree);
 }
 
 template <typename K, typename C0, typename C1, typename V>
-requires(detail::poly_mul_truncated_p_degree_algo<polynomial<K, C0>, polynomial<K, C1>, V> != 0) inline detail::
-    poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>> truncated_mul(const polynomial<K, C0> &x,
-                                                                       const polynomial<K, C1> &y, const V &max_degree,
-                                                                       const symbol_set &s)
+    requires(detail::poly_mul_truncated_p_degree_algo<polynomial<K, C0>, polynomial<K, C1>, V> != 0)
+inline detail::poly_mul_ret_t<polynomial<K, C0>, polynomial<K, C1>>
+truncated_mul(const polynomial<K, C0> &x, const polynomial<K, C1> &y, const V &max_degree, const symbol_set &s)
 {
     return detail::poly_mul_impl_switch(x, y, max_degree, s);
 }
@@ -2193,9 +2176,8 @@ inline auto pow_poly_impl(T &&x, U &&y)
 
 // Exponentiation.
 template <typename T, typename U>
-requires Polynomial<remove_cvref_t<T>> &&(
-    customisation::internal::series_default_pow_algo<
-        T &&, U &&> != 0) inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
+    requires Polynomial<remove_cvref_t<T>> && (customisation::internal::series_default_pow_algo<T &&, U &&> != 0)
+inline customisation::internal::series_default_pow_ret_t<T &&, U &&> pow(T &&x, U &&y)
 {
     return detail::pow_poly_impl(::std::forward<T>(x), ::std::forward<U>(y));
 }
@@ -2327,8 +2309,8 @@ inline auto poly_subs_impl(T &&x_, const symbol_map<U> &sm)
 
 // Polynomial subs.
 template <typename T, typename U>
-requires Polynomial<remove_cvref_t<T>> &&(
-    detail::poly_subs_algo<T &&, U> != 0) inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
+    requires Polynomial<remove_cvref_t<T>> && (detail::poly_subs_algo<T &&, U> != 0)
+inline detail::poly_subs_ret_t<T &&, U> subs(T &&x, const symbol_map<U> &sm)
 {
     return detail::poly_subs_impl(::std::forward<T>(x), sm);
 }
@@ -2662,8 +2644,8 @@ inline auto poly_diff_impl(T &&x_, const ::std::string &s)
 } // namespace detail
 
 template <typename T>
-requires Polynomial<remove_cvref_t<T>> &&(detail::poly_diff_algo<T &&> != 0) inline detail::poly_diff_ret_t<T &&> diff(
-    T &&x, const ::std::string &s)
+    requires Polynomial<remove_cvref_t<T>> && (detail::poly_diff_algo<T &&> != 0)
+inline detail::poly_diff_ret_t<T &&> diff(T &&x, const ::std::string &s)
 {
     return detail::poly_diff_impl(::std::forward<T>(x), s);
 }
@@ -2876,9 +2858,8 @@ inline auto poly_integrate_impl(T &&x_, const ::std::string &s)
 } // namespace detail
 
 template <typename T>
-requires Polynomial<remove_cvref_t<T>> &&(
-    detail::poly_integrate_algo<T &&> != 0) inline detail::poly_integrate_ret_t<T &&> integrate(T &&x,
-                                                                                                const ::std::string &s)
+    requires Polynomial<remove_cvref_t<T>> && (detail::poly_integrate_algo<T &&> != 0)
+inline detail::poly_integrate_ret_t<T &&> integrate(T &&x, const ::std::string &s)
 {
     return detail::poly_integrate_impl(::std::forward<T>(x), s);
 }
