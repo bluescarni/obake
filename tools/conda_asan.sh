@@ -30,7 +30,7 @@ cmake ../ -G Ninja \
     -DOBAKE_WITH_LIBBACKTRACE=YES \
     -DCMAKE_CXX_FLAGS_DEBUG="-g -Og"
 
-ninja -v
+ninja -v -j4
 
 ctest -VV -j4
 
