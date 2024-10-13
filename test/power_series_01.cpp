@@ -1255,5 +1255,5 @@ TEST_CASE("fmt")
     std::ostringstream oss;
     oss << s;
 
-    REQUIRE(oss.str() == fmt::format("{}", s));
+    REQUIRE(oss.str() == fmt::format(fmt::runtime("{}"), s));
 }

@@ -433,7 +433,7 @@ inline void key_tex_stream_insert(::std::ostream &os, const d_packed_monomial<T,
 
                 // Raise to power, if the exponent is not one.
                 if (!tmp_mp.is_one()) {
-                    *cur_oss << fmt::format("^{{{}}}", tmp_mp);
+                    *cur_oss << fmt::format(fmt::runtime("^{{{}}}"), tmp_mp);
                 }
             }
         }
